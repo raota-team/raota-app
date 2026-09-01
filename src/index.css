@@ -1,0 +1,136 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/packages/pretendard/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Serif+KR:wght@600;900&display=swap');
+@import "@seed-design/css/base.css";
+@import 'tailwindcss';
+@import "@seed-design/tailwind4-theme";
+
+@theme {
+  --color-primary: #E60000;
+  --color-primary-dark: #CC0000;
+  --color-on-primary: #FFFFFF;
+  --color-brand: #E60000;
+  --color-brand-dark: #CC0000;
+  --color-brand-light: #FFF0F0;
+  --color-ink: #25282B;
+  --color-ink-sub: #4A4D52;
+  --color-ink-muted: #7E7E7E;
+  --color-ink-faint: #BEBEBE;
+  --color-canvas: #FFFFFF;
+  --color-canvas-soft: #F2F2F2;
+  --color-on-dark: #FFFFFF;
+  --color-line: #E2E2E2;
+  --color-line-dark: #25282B;
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: 'Pretendard', sans-serif;
+  --font-serif: 'Noto Serif KR', serif;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background-color: #1A1C1E;
+  font-variant-numeric: tabular-nums;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+::selection {
+  background-color: #E60000;
+  color: #FFFFFF;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #F2F2F2;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #C4C4C4;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #E60000;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulseOnce {
+  0%   { box-shadow: 0 0 0 0 rgba(230,0,0,0.3); }
+  60%  { box-shadow: 0 0 0 8px rgba(230,0,0,0); }
+  100% { box-shadow: 0 0 0 0 rgba(230,0,0,0); }
+}
+
+.anim-fade-in-up { animation: fadeInUp 0.32s ease forwards; }
+.anim-slide-up   { animation: slideUp 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+.anim-fade-in    { animation: fadeIn 0.2s ease forwards; }
+.anim-pulse-once { animation: pulseOnce 0.9s ease forwards; }
+
+.ticket-border {
+  border: 1.5px dashed var(--color-line-dark);
+}
+
+.ticket-perforation {
+  background-image: radial-gradient(circle, transparent 0, transparent 6px, #FFFDF9 6px);
+  background-size: 100% 100%;
+}
+
+.stamp-badge {
+  border: 2px solid #D92228;
+  color: #D92228;
+  transform: rotate(-4deg);
+  border-radius: 4px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  box-shadow: 0 0 0 1px rgba(217, 34, 40, 0.2);
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.snap-x-mandatory {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.snap-start { scroll-snap-align: start; }
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-sans) !important;
+  background-color: #F4EFEB !important;
+}
+
+.custom-leaflet-marker,
+.custom-leaflet-cluster-marker,
+.user-location-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

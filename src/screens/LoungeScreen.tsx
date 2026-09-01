@@ -1,0 +1,1084 @@
+import { useState, useMemo, useRef, useEffect } from 'react'
+import type { RamenLog } from '../types'
+
+interface Props {
+  logs: RamenLog[]
+  onRecordClick: () => void
+  onShopClick?: (shopName: string) => void
+}
+
+export interface PostComment {
+  id: number
+  authorId?: number
+  authorNickname: string
+  authorImageUrl?: string
+  createdAt: string
+  content: string
+  isReply?: boolean
+  parentAuthorNickname?: string
+  likes: number
+  isLiked?: boolean
+}
+
+export interface CommunityPost {
+  postId: number
+  category: 'REVIEW' | 'TIP' | 'QUESTION' | 'FREE' | 'POPULAR'
+  categoryLabel: string
+  title: string
+  content: string
+  detailedContent?: string[]
+  authorId: number
+  authorName: string
+  authorImageUrl?: string
+  authorLevel: string
+  createdAt: string
+  likeCount: number
+  commentCount: number
+  viewCount: number
+  isLiked: boolean
+  shopName?: string
+  comments: PostComment[]
+}
+
+// ----------------------------------------------------
+// 🌟 raota-front 공식 Lucide Icons SVG 컴포넌트
+// ----------------------------------------------------
+export function IconMessageCircle({ className = 'w-3.5 h-3.5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+    </svg>
+  )
+}
+
+export function IconHeart({ className = 'w-3.5 h-3.5', filled = false }: { className?: string; filled?: boolean }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    </svg>
+  )
+}
+
+export function IconEye({ className = 'w-3.5 h-3.5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+export function IconCornerDownRight({ className = 'w-3.5 h-3.5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 10 20 15 15 20" />
+      <path d="M4 4v7a4 4 0 0 0 4 4h12" />
+    </svg>
+  )
+}
+
+export function IconSend({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </svg>
+  )
+}
+
+export function IconStore({ className = 'w-3.5 h-3.5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
+      <path d="M2 7h20" />
+    </svg>
+  )
+}
+
+// ----------------------------------------------------
+// 🌟 raota-front 커뮤니티 Mock 데이터
+// ----------------------------------------------------
+const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
+  {
+    postId: 1,
+    category: 'REVIEW',
+    categoryLabel: '맛집후기',
+    title: '망원·합정 일대 인생 쇼유 라멘 3곳 추천합니다',
+    content: '자가제면과 동물계 육수의 밸런스가 완벽한 곳들만 엄선했습니다. 1위는 역시 멘야준, 2위는 세상끝의라멘, 3위는 묘코입니다.',
+    detailedContent: [
+      '지난 3년간 마포구 일대 쇼유 라멘야 40여 곳을 투어하며 선별한 베스트 3곳을 공유합니다.',
+      '🥇 1위. 멘야준 (망원)\n닭과 오리 육수의 더블 블렌딩 감칠맛이 폭발적입니다. 특히 1.5mm 자가제면의 씹는 맛과 차슈의 부드러움이 일품입니다.',
+      '🥈 2위. 세상끝의라멘 (합정)\n진한 오사카 블랙풍의 끝라멘과 맑은 첫라멘 모두 개성이 뚜렷합니다. 닭가슴살 수비드 토핑이 예술입니다.',
+      '🥉 3위. 묘코 (연남)\n오리 기름(오리기름 치유)의 향이 은은하게 퍼지며 끝맛이 매우 깔끔합니다.',
+    ],
+    authorId: 101,
+    authorName: '쇼유장인',
+    authorLevel: '라멘 미식가 (Lv.5)',
+    createdAt: '2026. 09. 01 12:40',
+    likeCount: 42,
+    commentCount: 3,
+    viewCount: 318,
+    isLiked: true,
+    shopName: '멘야준',
+    comments: [
+      {
+        id: 1,
+        authorId: 201,
+        authorNickname: '멘마수집가',
+        createdAt: '2026. 09. 01 12:45',
+        content: '멘야준 특제 쇼유는 진짜 반박 불가 1위죠! 닭 육수 첫 모금의 염도 밸런스가 완벽합니다.',
+        likes: 5,
+        isLiked: false,
+      },
+      {
+        id: 2,
+        authorId: 202,
+        authorNickname: '라린이',
+        createdAt: '2026. 09. 01 12:50',
+        content: '세상끝의라멘 처음 가보려는데 첫라멘이랑 끝라멘 중에 어떤 걸 먼저 먹어봐야 할까요?',
+        likes: 2,
+        isLiked: false,
+      },
+      {
+        id: 3,
+        authorId: 101,
+        authorNickname: '쇼유장인',
+        createdAt: '2026. 09. 01 12:55',
+        content: '쇼유 본연의 깊은 풍미를 원하시면 첫 방문엔 무조건 "끝라멘" 추천드립니다!',
+        isReply: true,
+        parentAuthorNickname: '라린이',
+        likes: 7,
+        isLiked: true,
+      },
+    ],
+  },
+  {
+    postId: 2,
+    category: 'QUESTION',
+    categoryLabel: 'Q&A',
+    title: '돈코츠 농도 높은 곳 처음 가보는데 어디가 입문용으로 좋을까요?',
+    content: '하쿠텐이나 부탄츄 가보려고 하는데 극강의 꼬릿함에 적응할 수 있을지 걱정입니다. 추천 부탁드려요!',
+    detailedContent: [
+      '평소 맑은 국물 위주로 먹다가 진한 돈코츠에 입문해보려 합니다.',
+      '후보군으로 하쿠텐(이에케)과 부탄츄(토코톤코츠)를 보고 있는데, 농도 조절이나 덜 부담스러운 주문 팁이 있을까요?',
+    ],
+    authorId: 102,
+    authorName: '라린이',
+    authorLevel: '라멘집 탐험가 (Lv.3)',
+    createdAt: '2026. 09. 01 11:20',
+    likeCount: 15,
+    commentCount: 2,
+    viewCount: 184,
+    isLiked: false,
+    shopName: '오레노라멘',
+    comments: [
+      {
+        id: 4,
+        authorId: 203,
+        authorNickname: '돈골파마스터',
+        createdAt: '2026. 09. 01 11:35',
+        content: '하쿠텐 가셔서 "간 보통, 기름 보통, 면 꼬들하게"로 시작하시면 부담 없이 농후한 맛을 즐기실 수 있습니다.',
+        likes: 4,
+        isLiked: false,
+      },
+      {
+        id: 5,
+        authorId: 204,
+        authorNickname: '오레노매니아',
+        createdAt: '2026. 09. 01 11:50',
+        content: '크리미한 파이탄 느낌 좋아하시면 오레노라멘 토리파이탄도 훌륭한 징검다리가 됩니다!',
+        likes: 3,
+        isLiked: false,
+      },
+    ],
+  },
+  {
+    postId: 3,
+    category: 'TIP',
+    categoryLabel: '라멘꿀팁',
+    title: '라멘 먹을 때 염도 조절 실패하지 않는 완식 주문 꿀팁',
+    content: '초심자분들이 자주 실수하는 간 조절법과 무료 와리스프(육수 추가) 요청 타이밍 총정리입니다.',
+    detailedContent: [
+      '1. 일본 정통 라멘야는 기본 염도가 한국인 입맛에 다소 짤 수 있으므로 첫 방문 시 "싱겁게" 또는 "보통"으로 주문하세요.',
+      '2. 식사 중간에 너무 짜다고 느껴지면 주저하지 말고 "와리스프(연한 육수)"를 요청하시면 염도를 맞춰주십니다.',
+      '3. 밥이나 면 리필이 무료인 곳(라오타 완식 가이드 참고)은 국물을 1/3 이상 남겨두시는 것이 좋습니다.',
+    ],
+    authorId: 103,
+    authorName: '스프의신',
+    authorLevel: '라멘집 단골 (Lv.4)',
+    createdAt: '2026. 09. 01 09:15',
+    likeCount: 68,
+    commentCount: 4,
+    viewCount: 520,
+    isLiked: false,
+    comments: [
+      {
+        id: 6,
+        authorId: 205,
+        authorNickname: '차슈폭격기',
+        createdAt: '2026. 09. 01 09:30',
+        content: '와리스프 팁 진짜 유용하네요! 처음 갔을 때 모르고 다 먹느라 물 3컵 마셨던 기억이 납니다.',
+        likes: 8,
+        isLiked: false,
+      },
+    ],
+  },
+  {
+    postId: 4,
+    category: 'FREE',
+    categoryLabel: '자유게시판',
+    title: '올해 100그릇 달성했습니다! 취향 리포트 인증합니다',
+    content: '상반기 동안 서울 시내 라멘야 60곳 돌면서 심어둔 잔디가 꽉 찼네요. 다들 이번 주도 즐거운 완식하세요.',
+    detailedContent: [
+      '드디어 오늘 점심 완식으로 2026년 누적 100그릇 돌파했습니다.',
+      '활동 등급도 최고 등급인 Lv.6 라멘 마스터로 승급했네요! 라오타 커뮤니티 덕분에 좋은 라멘야 많이 알아갑니다.',
+    ],
+    authorId: 104,
+    authorName: '차슈폭격기',
+    authorLevel: '라멘 마스터 (Lv.6)',
+    createdAt: '2026. 09. 01 08:00',
+    likeCount: 89,
+    commentCount: 2,
+    viewCount: 642,
+    isLiked: false,
+    comments: [
+      {
+        id: 7,
+        authorId: 206,
+        authorNickname: '라멘러버',
+        createdAt: '2026. 09. 01 08:30',
+        content: '100그릇 대단하십니다 축하드려요! 👏',
+        likes: 6,
+        isLiked: false,
+      },
+    ],
+  },
+]
+
+const RAMEN_TYPE_FILTERS = ['전체', '쇼유', '돈코츠', '시오', '미소', '츠케멘', '기타']
+const COMMUNITY_CATEGORIES = [
+  { id: 'all', label: '전체' },
+  { id: 'POPULAR', label: '인기글' },
+  { id: 'REVIEW', label: '맛집후기' },
+  { id: 'TIP', label: '라멘꿀팁' },
+  { id: 'QUESTION', label: 'Q&A' },
+  { id: 'FREE', label: '자유게시판' },
+]
+
+export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props) {
+  const [loungeTab, setLoungeTab] = useState<'logs' | 'community'>('logs')
+  const [shopFilter, setShopFilter] = useState('ALL')
+  const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false)
+  const [shopSearchQuery, setShopSearchQuery] = useState('')
+  const shopDropdownRef = useRef<HTMLDivElement>(null)
+  const [communityCategory, setCommunityCategory] = useState('all')
+  const [allLogs, setAllLogs] = useState<RamenLog[]>(logs)
+  const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_COMMUNITY_POSTS)
+  const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null)
+  const [activePhotoIdx, setActivePhotoIdx] = useState<Record<number, number>>({})
+  const [newCommentText, setNewCommentText] = useState('')
+  const [replyToAuthor, setReplyToAuthor] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shopDropdownRef.current && !shopDropdownRef.current.contains(event.target as Node)) {
+        setIsShopDropdownOpen(false)
+      }
+    }
+    if (isShopDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isShopDropdownOpen])
+
+  const handleToggleLogLike = (id: number) => {
+    setAllLogs(prev =>
+      prev.map(item =>
+        item.id === id
+          ? {
+              ...item,
+              isLiked: !item.isLiked,
+              likes: item.isLiked ? item.likes - 1 : item.likes + 1,
+            }
+          : item
+      )
+    )
+  }
+
+  const handleTogglePostLike = (postId: number) => {
+    setPosts(prev =>
+      prev.map(p =>
+        p.postId === postId
+          ? {
+              ...p,
+              isLiked: !p.isLiked,
+              likeCount: p.isLiked ? p.likeCount - 1 : p.likeCount + 1,
+            }
+          : p
+      )
+    )
+    if (selectedPost && selectedPost.postId === postId) {
+      setSelectedPost(prev =>
+        prev
+          ? {
+              ...prev,
+              isLiked: !prev.isLiked,
+              likeCount: prev.isLiked ? prev.likeCount - 1 : prev.likeCount + 1,
+            }
+          : null
+      )
+    }
+  }
+
+  const handleAddComment = (postId: number) => {
+    if (!newCommentText.trim()) return
+    const newComment: PostComment = {
+      id: Date.now(),
+      authorNickname: '뿡',
+      createdAt: '방금 전',
+      content: newCommentText.trim(),
+      isReply: !!replyToAuthor,
+      parentAuthorNickname: replyToAuthor ?? undefined,
+      likes: 0,
+      isLiked: false,
+    }
+
+    setPosts(prev =>
+      prev.map(p => {
+        if (p.postId !== postId) return p
+        const updated = {
+          ...p,
+          commentCount: p.commentCount + 1,
+          comments: [...p.comments, newComment],
+        }
+        if (selectedPost && selectedPost.postId === postId) {
+          setSelectedPost(updated)
+        }
+        return updated
+      })
+    )
+    setNewCommentText('')
+    setReplyToAuthor(null)
+  }
+
+  const handleScrollPhoto = (logId: number, direction: 'prev' | 'next', total: number) => {
+    const container = document.getElementById(`log-photos-${logId}`)
+    if (!container) return
+    const current = activePhotoIdx[logId] ?? 0
+    const nextIdx = direction === 'next' ? Math.min(total - 1, current + 1) : Math.max(0, current - 1)
+    container.scrollTo({
+      left: nextIdx * container.clientWidth,
+      behavior: 'smooth',
+    })
+    setActivePhotoIdx(prev => ({ ...prev, [logId]: nextIdx }))
+  }
+
+  const shopList = useMemo(() => {
+    const shopMap = new Map<string, number>()
+    allLogs.forEach(l => {
+      const sName = l.shop?.name || '기타'
+      shopMap.set(sName, (shopMap.get(sName) || 0) + 1)
+    })
+    return [
+      { name: '전체 매장', value: 'ALL', count: allLogs.length },
+      ...Array.from(shopMap.entries()).map(([name, count]) => ({
+        name,
+        value: name,
+        count,
+      })),
+    ]
+  }, [allLogs])
+
+  const filteredLogs = shopFilter === 'ALL'
+    ? allLogs
+    : allLogs.filter(l => l.shop?.name === shopFilter)
+
+  const filteredPosts = communityCategory === 'all'
+    ? posts
+    : communityCategory === 'POPULAR'
+    ? [...posts].sort((a, b) => b.likeCount - a.likeCount)
+    : posts.filter(p => p.category === communityCategory)
+
+  // ==========================================
+  // 🌟 raota-front 레포지토리 기반 커뮤니티 상세 화면 (CommunityDetailClient)
+  // ==========================================
+  if (selectedPost) {
+    return (
+      <div className="h-full flex flex-col bg-[#FFFFFF] text-[#25282B] relative">
+        
+        {/* 1. 상단 헤더: 뒤로가기 + 카테고리 뱃지 */}
+        <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-4 pt-12 pb-3.5 border-b border-stone-200 flex items-center justify-between">
+          <button
+            onClick={() => { setSelectedPost(null); setReplyToAuthor(null) }}
+            className="flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-[#25282B] transition-colors active:scale-95 py-1 px-1.5 -ml-1 rounded-sm"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            <span>목록으로</span>
+          </button>
+
+          <span className="text-[11px] font-bold text-[#E60000] bg-[#E60000]/10 px-2.5 py-0.5 rounded-sm">
+            {selectedPost.categoryLabel}
+          </span>
+        </header>
+
+        {/* 2. 게시글 본문 & 댓글 영역 스크롤 */}
+        <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+          
+          {/* 게시글 메인 카드 */}
+          <article className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-4">
+            
+            {/* 작성자 정보 바 */}
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center text-[13px] font-black text-[#25282B]">
+                  🍜
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px] font-bold text-[#25282B]">{selectedPost.authorName}</span>
+                    <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-sm">
+                      {selectedPost.authorLevel}
+                    </span>
+                  </div>
+                  <p className="font-mono text-[10px] text-stone-500">{selectedPost.createdAt}</p>
+                </div>
+              </div>
+
+              {/* 연관 매장 바로가기 태그 */}
+              {selectedPost.shopName && (
+                <button
+                  onClick={() => onShopClick && onShopClick(selectedPost.shopName!)}
+                  className="flex items-center gap-1 text-[11px] font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 px-2 py-1 rounded-sm transition-colors"
+                >
+                  <IconStore className="w-3 h-3 text-[#E60000]" />
+                  <span>{selectedPost.shopName}</span>
+                </button>
+              )}
+            </div>
+
+            {/* 글 제목 & 본문 */}
+            <div className="space-y-3">
+              <h1 className="text-[17px] font-black text-[#25282B] leading-snug">
+                {selectedPost.title}
+              </h1>
+
+              <div className="text-[13px] text-[#25282B] leading-relaxed space-y-2.5">
+                {selectedPost.detailedContent ? (
+                  selectedPost.detailedContent.map((para, i) => (
+                    <div
+                      key={i}
+                      className={
+                        para.startsWith('🥇') || para.startsWith('🥈') || para.startsWith('🥉')
+                          ? 'p-3 bg-stone-50 rounded-[6px] border border-stone-200 text-[12px]'
+                          : ''
+                      }
+                    >
+                      <p className="whitespace-pre-line">{para}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p>{selectedPost.content}</p>
+                )}
+              </div>
+            </div>
+
+            {/* 하단 좋아요/댓글/조회수 Engagement 바 (raota-front 공식) */}
+            <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
+              <button
+                onClick={() => handleTogglePostLike(selectedPost.postId)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-bold border transition-all active:scale-95 ${
+                  selectedPost.isLiked
+                    ? 'bg-[#E60000]/10 border-[#E60000] text-[#E60000]'
+                    : 'bg-white border-stone-200 text-stone-600 hover:border-stone-400'
+                }`}
+              >
+                <IconHeart className="w-4 h-4" filled={selectedPost.isLiked} />
+                <span>좋아요 {selectedPost.likeCount}</span>
+              </button>
+
+              <div className="flex items-center gap-3 text-xs font-black text-stone-400">
+                <span className="flex items-center gap-1">
+                  <IconMessageCircle className="w-3.5 h-3.5" />
+                  {selectedPost.commentCount}
+                </span>
+                <span className="flex items-center gap-1">
+                  <IconEye className="w-3.5 h-3.5" />
+                  {selectedPost.viewCount}
+                </span>
+              </div>
+            </div>
+          </article>
+
+          {/* 댓글 목록 섹션 (raota-front CommentItem 스타일) */}
+          <div className="bg-white rounded-[6px] border border-stone-200 overflow-hidden">
+            <div className="p-3.5 bg-stone-50 border-b border-stone-200 flex items-center justify-between">
+              <span className="text-[13px] font-bold text-[#25282B]">
+                댓글 <span className="text-[#E60000]">{selectedPost.comments.length}</span>
+              </span>
+              <span className="text-[10px] text-stone-500">등록순</span>
+            </div>
+
+            <div className="divide-y divide-stone-100">
+              {selectedPost.comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className={`p-3.5 ${comment.isReply ? 'bg-stone-50/80 pl-8' : ''}`}
+                >
+                  <div className="flex items-start gap-2.5">
+                    {comment.isReply && (
+                      <IconCornerDownRight className="mt-1 w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
+                    )}
+                    <div className="w-7 h-7 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] font-bold text-[#25282B] flex-shrink-0">
+                      {comment.authorNickname[0]}
+                    </div>
+                    
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[12px] font-bold text-[#25282B]">{comment.authorNickname}</span>
+                          <span className="font-mono text-[9px] text-stone-400">{comment.createdAt}</span>
+                        </div>
+                        
+                        {!comment.isReply && (
+                          <button
+                            type="button"
+                            onClick={() => setReplyToAuthor(comment.authorNickname)}
+                            className="text-[10px] font-bold text-stone-500 hover:text-[#E60000] transition-colors"
+                          >
+                            답글
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="text-[12px] text-[#25282B] leading-relaxed">
+                        {comment.parentAuthorNickname && (
+                          <span className="mr-1.5 rounded-sm bg-stone-200 px-1 py-0.2 text-[10px] font-bold text-[#25282B]">
+                            @{comment.parentAuthorNickname}
+                          </span>
+                        )}
+                        {comment.content}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-16" />
+        </div>
+
+        {/* 3. 하단 고정 댓글 작성 인풋 바 */}
+        <div className="flex-shrink-0 bg-white/98 backdrop-blur-md p-3 px-4 border-t border-stone-200">
+          {replyToAuthor && (
+            <div className="flex items-center justify-between mb-2 px-1 text-[11px] text-stone-600 bg-stone-100 py-1 px-2.5 rounded-sm">
+              <span><strong>@{replyToAuthor}</strong>님에게 답글 작성 중</span>
+              <button onClick={() => setReplyToAuthor(null)} className="text-stone-400 hover:text-stone-700 font-bold">✕</button>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newCommentText}
+              onChange={e => setNewCommentText(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleAddComment(selectedPost.postId)
+              }}
+              placeholder={replyToAuthor ? `@${replyToAuthor}님에게 답글 남기기...` : '댓글을 입력하세요...'}
+              className="flex-1 h-10 px-3.5 bg-stone-50 border border-stone-200 rounded-sm text-[12px] text-[#25282B] placeholder-stone-400 outline-none focus:border-[#E60000] transition-colors"
+            />
+            <button
+              onClick={() => handleAddComment(selectedPost.postId)}
+              disabled={!newCommentText.trim()}
+              className="h-10 px-4 rounded-sm bg-[#25282B] text-white font-bold text-[12px] disabled:opacity-40 disabled:pointer-events-none active:scale-95 hover:bg-[#1A1C1E] transition-all flex items-center gap-1.5"
+            >
+              <IconSend className="w-3.5 h-3.5" />
+              <span>등록</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ==========================================
+  // 🌟 라운지 메인 피드 (라멘로그 & 커뮤니티 탭)
+  // ==========================================
+  return (
+    <div className="h-full flex flex-col overflow-hidden bg-[#FFFFFF] text-[#25282B] relative">
+      
+      {/* 1. 상단 라운지 마스터 헤더 */}
+      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-5 pt-12 pb-3.5 border-b border-[#E2E2E2]">
+        <div className="flex items-center gap-2.5 mb-3">
+          <img src="/logo.png" alt="RAOTA" className="w-8 h-8 object-contain" />
+          <div>
+            <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">
+              라오타 라운지
+            </h1>
+            <p className="text-[10px] text-[#7E7E7E]">라멘러들의 실시간 기록 & 커뮤니티</p>
+          </div>
+        </div>
+
+        {/* 서브 세그먼트 탭: [라멘로그 (완식후기)] | [커뮤니티] */}
+        <div className="flex bg-[#F2F2F2] p-1 rounded-[6px]">
+          <button
+            onClick={() => setLoungeTab('logs')}
+            className={`flex-1 py-1.5 text-[12px] font-black rounded-[4px] transition-all ${
+              loungeTab === 'logs'
+                ? 'bg-white text-[#25282B] shadow-xs'
+                : 'text-[#7E7E7E] hover:text-[#25282B]'
+            }`}
+          >
+            라멘로그 ({allLogs.length})
+          </button>
+          <button
+            onClick={() => setLoungeTab('community')}
+            className={`flex-1 py-1.5 text-[12px] font-black rounded-[4px] transition-all ${
+              loungeTab === 'community'
+                ? 'bg-white text-[#25282B] shadow-xs'
+                : 'text-[#7E7E7E] hover:text-[#25282B]'
+            }`}
+          >
+            커뮤니티 ({posts.length})
+          </button>
+        </div>
+      </header>
+
+      {/* 2. 카테고리 / 매장 필터 바 */}
+      {loungeTab === 'logs' ? (
+        <div className="flex-shrink-0 bg-white border-b border-[#E2E2E2]">
+          {/* 매장별 모음 드롭다운 바 */}
+          <div className="px-5 py-2.5 flex items-center justify-between gap-3 border-b border-stone-100">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <IconStore className="w-4 h-4 text-[#E60000] flex-shrink-0" />
+              <span className="text-[12px] font-black text-[#25282B] whitespace-nowrap">매장별 모음</span>
+            </div>
+
+            {/* 매장 선택 커스텀 검색 드롭다운 (raota-front 스펙) */}
+            <div className="relative flex-1 max-w-[210px]" ref={shopDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsShopDropdownOpen(prev => !prev)}
+                aria-expanded={isShopDropdownOpen}
+                className="w-full flex h-8 items-center justify-between gap-1.5 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] px-2.5 py-1 text-[11px] font-bold text-[#25282B] transition-colors"
+              >
+                <span className="truncate">
+                  {shopFilter === 'ALL' ? '전체 매장' : shopFilter}
+                </span>
+                <svg
+                  className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-200 ${
+                    isShopDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
+                  }`}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </button>
+
+              {/* 드롭다운 팝오버 메뉴 */}
+              {isShopDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 z-50 w-60 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
+                  {/* 검색창 인풋 바 */}
+                  <div className="p-2 border-b border-stone-100 bg-stone-50">
+                    <div className="relative">
+                      <svg
+                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.35-4.35"/>
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder="라멘집 검색..."
+                        value={shopSearchQuery}
+                        onChange={e => setShopSearchQuery(e.target.value)}
+                        className="w-full h-8 rounded-sm border border-stone-200 bg-white pl-8 pr-2.5 text-xs font-medium text-[#25282B] placeholder-stone-400 focus:border-[#E60000] outline-none"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* 매장 목록 리스트 */}
+                  <div className="max-h-52 overflow-y-auto no-scrollbar divide-y divide-stone-50">
+                    {/* 전체 매장 항목 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShopFilter('ALL')
+                        setIsShopDropdownOpen(false)
+                        setShopSearchQuery('')
+                      }}
+                      className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 flex items-center justify-between transition-colors ${
+                        shopFilter === 'ALL' ? 'font-black text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                      }`}
+                    >
+                      <span>전체 매장</span>
+                      <span className="text-[10px] text-stone-400">({allLogs.length}건)</span>
+                    </button>
+
+                    {/* 필터링된 개별 매장 리스트 */}
+                    {shopList
+                      .filter(s => s.value !== 'ALL')
+                      .filter(s => !shopSearchQuery.trim() || s.name.toLowerCase().includes(shopSearchQuery.toLowerCase()))
+                      .map(s => {
+                        const isSelected = shopFilter === s.value
+                        return (
+                          <button
+                            key={s.value}
+                            type="button"
+                            onClick={() => {
+                              setShopFilter(s.value)
+                              setIsShopDropdownOpen(false)
+                              setShopSearchQuery('')
+                            }}
+                            className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 flex items-center justify-between transition-colors ${
+                              isSelected ? 'font-black text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                            }`}
+                          >
+                            <span className="truncate font-medium">{s.name}</span>
+                            <span className="text-[10px] text-stone-400 shrink-0 ml-2">({s.count}건)</span>
+                          </button>
+                        )
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 가로 스크롤 매장 퀵 필터 칩 */}
+          <div className="px-5 py-2 bg-stone-50 overflow-x-auto no-scrollbar flex items-center gap-1.5">
+            {shopList.map(s => {
+              const active = shopFilter === s.value
+              return (
+                <button
+                  key={s.value}
+                  onClick={() => setShopFilter(s.value)}
+                  className={`px-3 py-1 rounded-[32px] text-[11px] font-bold whitespace-nowrap transition-all ${
+                    active
+                      ? 'bg-[#25282B] text-white shadow-xs'
+                      : 'bg-white border border-stone-200 text-[#7E7E7E] hover:text-[#25282B] hover:border-stone-300'
+                  }`}
+                >
+                  {s.name} {s.count > 0 && <span className="opacity-70 text-[10px]">({s.count})</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="flex-shrink-0 px-5 py-2.5 bg-white border-b border-[#E2E2E2] overflow-x-auto no-scrollbar flex items-center gap-1.5">
+          {COMMUNITY_CATEGORIES.map(cat => {
+            const active = communityCategory === cat.id
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setCommunityCategory(cat.id)}
+                className={`px-3 py-1 rounded-[32px] text-[11px] font-bold whitespace-nowrap transition-all ${
+                  active
+                    ? 'bg-[#25282B] text-white'
+                    : 'bg-[#F2F2F2] text-[#7E7E7E] hover:bg-[#EAEAEA]'
+                }`}
+              >
+                {cat.label}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {/* 3. 메인 피드 컨텐츠 스크롤 영역 */}
+      <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4">
+        
+        {/* 탭 1: 라멘로그 (완식 후기 피드) */}
+        {loungeTab === 'logs' && (
+          <div className="space-y-4">
+            {/* 선택된 매장 정보 배너 */}
+            {shopFilter !== 'ALL' && (
+              <div className="p-3 bg-stone-50 rounded-[6px] border border-stone-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <IconStore className="w-4 h-4 text-[#E60000]" />
+                  <span className="text-[13px] font-black text-[#25282B]">
+                    {shopFilter} 완식 기록 ({filteredLogs.length}건)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onShopClick && onShopClick(shopFilter)}
+                  className="text-[11px] font-bold text-[#E60000] hover:underline"
+                >
+                  매장 정보 →
+                </button>
+              </div>
+            )}
+            {filteredLogs.map(log => {
+              const allTags = [
+                ...log.tasteNotes.broth,
+                ...log.tasteNotes.noodle,
+                ...log.tasteNotes.seasoning,
+                ...log.tasteNotes.topping,
+              ]
+
+              const photos = log.photos && log.photos.length > 0 ? log.photos : log.imageUrl ? [log.imageUrl] : []
+              const curIdx = activePhotoIdx[log.id] ?? 0
+
+              return (
+                <article key={log.id} className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden">
+                  
+                  {/* 상단 작성자 및 매장 정보 */}
+                  <div className="p-3.5 pb-2.5 flex items-center justify-between border-b border-[#E2E2E2]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-[#25282B] text-white flex items-center justify-center text-[10px] font-black">
+                        {log.author.name[0]}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] font-black text-[#25282B]">{log.author.name}</span>
+                          <span className="text-[9px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-[32px]">
+                            {log.author.level}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#7E7E7E]">{log.visitedAt} 방문</p>
+                      </div>
+                    </div>
+
+                    <span className="text-[11px] font-bold text-[#25282B] bg-[#F2F2F2] px-2.5 py-1 rounded-[32px]">
+                      {log.revisit}
+                    </span>
+                  </div>
+
+                  {/* 라멘 다중 사진 스와이프 캐러셀 */}
+                  {photos.length > 0 && (
+                    <div className="relative aspect-[16/10] bg-[#F2F2F2] overflow-hidden group select-none">
+                      <div
+                        id={`log-photos-${log.id}`}
+                        className="flex h-full w-full overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth"
+                        onScroll={e => {
+                          const el = e.currentTarget
+                          const idx = Math.round(el.scrollLeft / (el.clientWidth || 1))
+                          if (idx !== (activePhotoIdx[log.id] ?? 0)) {
+                            setActivePhotoIdx(prev => ({ ...prev, [log.id]: idx }))
+                          }
+                        }}
+                      >
+                        {photos.map((img, i) => (
+                          <div key={i} className="w-full h-full flex-shrink-0 snap-start relative">
+                            <img src={img} alt={`${log.menuName} 사진 ${i + 1}`} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 좌측 상단 라멘 계통 뱃지 */}
+                      <div className="absolute top-2.5 left-2.5 bg-[#25282B]/85 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-[32px] pointer-events-none">
+                        {log.ramenType}
+                      </div>
+
+                      {/* 우측 상단 사진 장수 인디케이터 (2장 이상일 때) */}
+                      {photos.length > 1 && (
+                        <div className="absolute top-2.5 right-2.5 bg-[#25282B]/85 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-[32px] pointer-events-none flex items-center gap-1">
+                          <span>{curIdx + 1}</span>
+                          <span className="text-white/60">/</span>
+                          <span>{photos.length}</span>
+                        </div>
+                      )}
+
+                      {/* 좌우 이동 화살표 버튼 (2장 이상일 때) */}
+                      {photos.length > 1 && curIdx > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleScrollPhoto(log.id, 'prev', photos.length)
+                          }}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs active:scale-90 transition-all z-10"
+                          aria-label="이전 사진"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="m15 18-6-6 6-6"/>
+                          </svg>
+                        </button>
+                      )}
+
+                      {photos.length > 1 && curIdx < photos.length - 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleScrollPhoto(log.id, 'next', photos.length)
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs active:scale-90 transition-all z-10"
+                          aria-label="다음 사진"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="m9 18 6-6-6-6"/>
+                          </svg>
+                        </button>
+                      )}
+
+                      {/* 하단 점(dot) 인디케이터 */}
+                      {photos.length > 1 && (
+                        <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+                          {photos.map((_, i) => (
+                            <span
+                              key={i}
+                              className={`h-1.5 rounded-full transition-all ${
+                                curIdx === i
+                                  ? 'w-4 bg-white'
+                                  : 'w-1.5 bg-white/50'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 본문 내용 */}
+                  <div className="p-4">
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <h2 className="text-[16px] font-black text-[#25282B]">
+                        {log.menuName}
+                      </h2>
+                      <span className="text-[11px] font-bold text-[#7E7E7E]">
+                        {log.shop.name} {log.shop.branch && `· ${log.shop.branch}`}
+                      </span>
+                    </div>
+
+                    {/* 기억해둘 점 인용 */}
+                    <div className="p-3 bg-[#F2F2F2] rounded-[6px] text-[12px] text-[#25282B] leading-relaxed mb-3">
+                      “{log.note}”
+                    </div>
+
+                    {/* 맛 상세 태그 칩 */}
+                    {allTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {allTags.map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="bg-white border border-[#E2E2E2] text-[#4A4D52] text-[10px] font-bold px-2 py-0.5 rounded-[32px]"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 하단 좋아요 토글 및 시간 */}
+                    <div className="flex items-center justify-between pt-2.5 border-t border-[#E2E2E2] text-[11px]">
+                      <span className="text-[#7E7E7E]">{log.createdAt}</span>
+                      <button
+                        onClick={() => handleToggleLogLike(log.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-[60px] font-bold border transition-all active:scale-95 ${
+                          log.isLiked
+                            ? 'bg-[#E60000]/10 border-[#E60000] text-[#E60000]'
+                            : 'bg-white border-[#E2E2E2] text-[#7E7E7E] hover:border-[#25282B]'
+                        }`}
+                      >
+                        <span>{log.isLiked ? '♥' : '♡'}</span>
+                        <span>{log.likes}</span>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        )}
+
+        {/* 탭 2: 라멘러 커뮤니티 (raota-front PostListCard 스타일) */}
+        {loungeTab === 'community' && (
+          <div className="space-y-3">
+            {filteredPosts.map(post => (
+              <article
+                key={post.postId}
+                onClick={() => setSelectedPost(post)}
+                className="bg-white rounded-[6px] border border-stone-200 p-4 hover:border-[#25282B] active:scale-99 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-2 py-0.5 rounded-sm">
+                    {post.categoryLabel}
+                  </span>
+                  <span className="text-[10px] font-mono text-stone-400">{post.createdAt.split(' ')[0]}</span>
+                </div>
+
+                <h2 className="text-[15px] font-black text-[#25282B] leading-snug mb-1 group-hover:text-[#E60000] transition-colors">
+                  {post.title}
+                </h2>
+                <p className="text-[12px] text-stone-600 line-clamp-2 leading-relaxed mb-3">
+                  {post.content}
+                </p>
+
+                {/* raota-front Engagement & Author bar */}
+                <div className="flex items-center justify-between pt-2.5 border-t border-stone-100 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-[#25282B] text-xs">{post.authorName}</span>
+                    <span className="text-[10px] text-stone-400">({post.authorLevel})</span>
+                  </div>
+
+                  {/* Engagement cluster: Heart | MessageCircle | Eye */}
+                  <div className="flex flex-shrink-0 items-center gap-3 text-xs font-black text-stone-400">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleTogglePostLike(post.postId) }}
+                      className={`flex items-center gap-1 hover:text-[#E60000] transition-colors ${post.isLiked ? 'text-[#E60000]' : ''}`}
+                    >
+                      <IconHeart className="h-3.5 w-3.5" filled={post.isLiked} />
+                      <span>{post.likeCount}</span>
+                    </button>
+                    <span className="flex items-center gap-1">
+                      <IconMessageCircle className="h-3.5 w-3.5" />
+                      <span>{post.commentCount}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <IconEye className="h-3.5 w-3.5" />
+                      <span>{post.viewCount}</span>
+                    </span>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        <div className="h-14" />
+      </div>
+
+      {/* 우측 하단 플로팅 액션 버튼 (FAB) */}
+      <button
+        onClick={onRecordClick}
+        className="absolute bottom-4 right-4 z-30 h-12 px-4 rounded-[60px] bg-[#E60000] text-white font-bold text-[13px] shadow-lg flex items-center gap-2 active:scale-95 hover:bg-[#CC0000] transition-all"
+        aria-label={loungeTab === 'logs' ? '라멘로그 쓰기' : '커뮤니티 글쓰기'}
+      >
+        {loungeTab === 'logs' ? (
+          <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            <span>기록하기</span>
+          </>
+        ) : (
+          <>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+            <span>글쓰기</span>
+          </>
+        )}
+      </button>
+    </div>
+  )
+}
