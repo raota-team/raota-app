@@ -457,7 +457,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
     setWriteImagePreview(null)
     setCommunityCategory('all')
     setLoungeTab('community')
-    setToastMessage('✨ 커뮤니티에 새 글이 성공적으로 등록되었습니다!')
+    setToastMessage('커뮤니티에 새 글이 성공적으로 등록되었습니다.')
     setTimeout(() => setToastMessage(null), 3000)
   }
 

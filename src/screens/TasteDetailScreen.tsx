@@ -261,7 +261,7 @@ export default function TasteDetailScreen({ onBack, recordCount }: Props) {
       const now = new Date()
       const timeStr = `방금 갱신 (${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')})`
       setLastGeneratedTime(timeStr)
-      setToastMessage('✨ 최신 완식 데이터가 반영된 AI 정밀 리포트가 발행되었습니다!')
+      setToastMessage('최신 완식 데이터가 반영된 AI 정밀 리포트가 발행되었습니다.')
       setTimeout(() => setToastMessage(null), 3000)
     }, 4300)
 
