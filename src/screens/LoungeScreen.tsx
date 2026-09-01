@@ -37,6 +37,7 @@ export interface CommunityPost {
   viewCount: number
   isLiked: boolean
   shopName?: string
+  imageUrl?: string
   comments: PostComment[]
 }
 
@@ -267,6 +268,41 @@ const COMMUNITY_CATEGORIES = [
   { id: 'FREE', label: '자유게시판' },
 ]
 
+const WRITE_CATEGORIES = [
+  { id: 'REVIEW', name: '맛집후기', icon: '🍜' },
+  { id: 'TIP', name: '라멘꿀팁', icon: '💡' },
+  { id: 'QUESTION', name: 'Q&A', icon: '❓' },
+  { id: 'FREE', name: '자유게시판', icon: '✨' },
+]
+
+const WRITE_SHOP_OPTIONS = [
+  { name: '멘야준', location: '망원 본점' },
+  { name: '오레노라멘', location: '마포 본점' },
+  { name: '후쿠 라멘', location: '합정점' },
+  { name: '하쿠텐', location: '연남점' },
+  { name: '세상끝의라멘', location: '합정점' },
+  { name: '담택', location: '합정 본점' },
+  { name: '멘지', location: '망원점' },
+  { name: '이리에라멘', location: '합정점' },
+  { name: '사루카메', location: '연남 본점' },
+  { name: '라멘베라보', location: '망원점' },
+]
+
+const SAMPLE_IMAGE_PRESETS = [
+  {
+    name: '특제 쇼유 라멘',
+    url: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=600&fit=crop&auto=format&q=80',
+  },
+  {
+    name: '이에케 라멘',
+    url: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=600&fit=crop&auto=format&q=80',
+  },
+  {
+    name: '토리파이탄',
+    url: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=600&fit=crop&auto=format&q=80',
+  },
+]
+
 export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props) {
   const [loungeTab, setLoungeTab] = useState<'logs' | 'community'>('logs')
   const [shopFilter, setShopFilter] = useState('ALL')
@@ -283,6 +319,18 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
   const [activePhotoIdx, setActivePhotoIdx] = useState<Record<number, number>>({})
   const [newCommentText, setNewCommentText] = useState('')
   const [replyToAuthor, setReplyToAuthor] = useState<string | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  // 📝 커뮤니티 새 글 작성 모달 상태
+  const [isWriteModalOpen, setIsWriteModalOpen] = useState(false)
+  const [writeCategory, setWriteCategory] = useState('REVIEW')
+  const [writeTitle, setWriteTitle] = useState('')
+  const [writeContent, setWriteContent] = useState('')
+  const [writeSelectedShop, setWriteSelectedShop] = useState<{ name: string; location: string } | null>(null)
+  const [writeImagePreview, setWriteImagePreview] = useState<string | null>(null)
+  const [isWriteShopDropdownOpen, setIsWriteShopDropdownOpen] = useState(false)
+  const [writeShopSearchQuery, setWriteShopSearchQuery] = useState('')
+  const writeShopDropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -292,14 +340,17 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
       if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
         setIsSortDropdownOpen(false)
       }
+      if (writeShopDropdownRef.current && !writeShopDropdownRef.current.contains(event.target as Node)) {
+        setIsWriteShopDropdownOpen(false)
+      }
     }
-    if (isShopDropdownOpen || isSortDropdownOpen) {
+    if (isShopDropdownOpen || isSortDropdownOpen || isWriteShopDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isShopDropdownOpen, isSortDropdownOpen])
+  }, [isShopDropdownOpen, isSortDropdownOpen, isWriteShopDropdownOpen])
 
   const handleToggleLogLike = (id: number) => {
     setAllLogs(prev =>
@@ -371,6 +422,45 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
     setReplyToAuthor(null)
   }
 
+  // 📝 커뮤니티 새 글 등록 핸들러 (raota-front 스펙)
+  const handleCreateCommunityPost = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!writeTitle.trim() || !writeContent.trim()) return
+
+    const categoryObj = WRITE_CATEGORIES.find(c => c.id === writeCategory)
+    const newPost: CommunityPost = {
+      postId: Date.now(),
+      category: writeCategory as any,
+      categoryLabel: categoryObj?.name || '자유게시판',
+      title: writeTitle.trim(),
+      content: writeContent.trim(),
+      detailedContent: [writeContent.trim()],
+      authorId: 1,
+      authorName: '뿡',
+      authorLevel: 'Lv.4 라멘집 단골',
+      createdAt: '방금 전',
+      likeCount: 0,
+      commentCount: 0,
+      viewCount: 1,
+      isLiked: false,
+      shopName: writeCategory === 'REVIEW' && writeSelectedShop ? writeSelectedShop.name : undefined,
+      imageUrl: writeImagePreview || undefined,
+      comments: [],
+    }
+
+    setPosts(prev => [newPost, ...prev])
+    setIsWriteModalOpen(false)
+    setWriteTitle('')
+    setWriteContent('')
+    setWriteCategory('REVIEW')
+    setWriteSelectedShop(null)
+    setWriteImagePreview(null)
+    setCommunityCategory('all')
+    setLoungeTab('community')
+    setToastMessage('✨ 커뮤니티에 새 글이 성공적으로 등록되었습니다!')
+    setTimeout(() => setToastMessage(null), 3000)
+  }
+
   const handleScrollPhoto = (logId: number, direction: 'prev' | 'next', total: number) => {
     const container = document.getElementById(`log-photos-${logId}`)
     if (!container) return
@@ -417,6 +507,278 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
     : communityCategory === 'POPULAR'
     ? [...posts].sort((a, b) => b.likeCount - a.likeCount)
     : posts.filter(p => p.category === communityCategory)
+
+  // ==========================================
+  // 🌟 raota-front 기반 커뮤니티 글쓰기 화면 (CommunityWritePage)
+  // ==========================================
+  if (isWriteModalOpen) {
+    return (
+      <div className="h-full flex flex-col bg-[#FFFFFF] text-[#25282B] relative">
+        {/* 1. 상단 헤더: 취소 + 타이틀 + 등록 버튼 */}
+        <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-4 pt-12 pb-3.5 border-b border-[#E2E2E2] flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => {
+              setIsWriteModalOpen(false)
+              setWriteTitle('')
+              setWriteContent('')
+              setWriteCategory('REVIEW')
+              setWriteSelectedShop(null)
+              setWriteImagePreview(null)
+            }}
+            className="flex items-center gap-1 text-xs font-bold text-stone-500 hover:text-[#25282B] transition-colors py-1 px-1.5 -ml-1 rounded-sm"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+            <span>취소</span>
+          </button>
+
+          <h1 className="text-[16px] font-black text-[#25282B] tracking-tight">새 글 작성</h1>
+
+          <button
+            type="button"
+            disabled={!writeTitle.trim() || !writeContent.trim()}
+            onClick={handleCreateCommunityPost}
+            className="text-xs font-black bg-[#E60000] hover:bg-[#CC0000] text-white px-3 py-1.5 rounded-sm disabled:opacity-40 disabled:pointer-events-none transition-all active:scale-95 shadow-xs"
+          >
+            등록
+          </button>
+        </header>
+
+        {/* 2. 글 작성 폼 스크롤 영역 */}
+        <form onSubmit={handleCreateCommunityPost} className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4">
+          
+          {/* 카테고리 선택 바 (raota-front 스펙) */}
+          <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2.5">
+            <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
+              카테고리
+            </label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {WRITE_CATEGORIES.map(cat => {
+                const isSelected = writeCategory === cat.id
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setWriteCategory(cat.id)}
+                    className={`py-2.5 px-3 rounded-[6px] border text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-[#25282B] border-[#25282B] text-white shadow-xs'
+                        : 'bg-[#F2F2F2] border-stone-200 text-[#25282B] hover:bg-[#EAEAEA]'
+                    }`}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* 맛집후기일 때: 라멘집 선택 (커스텀 검색 드롭다운) */}
+          {writeCategory === 'REVIEW' && (
+            <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2.5">
+              <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
+                라멘집 선택
+              </label>
+
+              <div className="relative" ref={writeShopDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsWriteShopDropdownOpen(prev => !prev)}
+                  className="flex w-full items-center justify-between gap-2 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] px-3.5 py-2.5 text-xs font-bold text-[#25282B] transition-colors hover:border-[#E60000]"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <IconStore className="w-4 h-4 text-[#E60000] shrink-0" />
+                    <span className="truncate">
+                      {writeSelectedShop ? `${writeSelectedShop.name} (${writeSelectedShop.location})` : '라멘집을 선택하세요'}
+                    </span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-200 ${
+                      isWriteShopDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+
+                {/* 매장 검색 팝오버 */}
+                {isWriteShopDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
+                    <div className="p-2 border-b border-stone-100 bg-stone-50">
+                      <div className="relative">
+                        <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                        </svg>
+                        <input
+                          type="text"
+                          placeholder="라멘집 검색..."
+                          value={writeShopSearchQuery}
+                          onChange={e => setWriteShopSearchQuery(e.target.value)}
+                          className="w-full h-8 rounded-sm border border-stone-200 bg-white pl-8 pr-2.5 text-xs font-medium text-[#25282B] placeholder-stone-400 focus:border-[#E60000] outline-none"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto no-scrollbar divide-y divide-stone-50">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWriteSelectedShop(null)
+                          setIsWriteShopDropdownOpen(false)
+                        }}
+                        className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 ${
+                          !writeSelectedShop ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                        }`}
+                      >
+                        선택 안함 (직접 작성)
+                      </button>
+                      {WRITE_SHOP_OPTIONS
+                        .filter(s => !writeShopSearchQuery.trim() || s.name.toLowerCase().includes(writeShopSearchQuery.toLowerCase()))
+                        .map(s => {
+                          const isSelected = writeSelectedShop?.name === s.name
+                          return (
+                            <button
+                              key={s.name}
+                              type="button"
+                              onClick={() => {
+                                setWriteSelectedShop(s)
+                                setIsWriteShopDropdownOpen(false)
+                                setWriteShopSearchQuery('')
+                              }}
+                              className={`w-full px-3.5 py-2.5 text-left text-xs hover:bg-stone-50 transition-colors flex items-center justify-between ${
+                                isSelected ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                              }`}
+                            >
+                              <div className="font-bold">{s.name}</div>
+                              <div className="text-[11px] text-stone-400">{s.location}</div>
+                            </button>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 제목 입력 */}
+          <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2">
+            <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
+              글 제목
+            </label>
+            <input
+              type="text"
+              value={writeTitle}
+              onChange={e => setWriteTitle(e.target.value)}
+              placeholder="제목을 입력하세요 (예: 멘야준 신메뉴 먹고 왔습니다)"
+              maxLength={100}
+              className="w-full h-11 px-3.5 rounded-sm border border-stone-200 bg-stone-50 text-sm font-bold text-[#25282B] placeholder-stone-400 outline-none focus:border-[#E60000] focus:bg-white transition-colors"
+            />
+          </div>
+
+          {/* 본문 내용 입력 */}
+          <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2">
+            <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
+              본문 내용
+            </label>
+            <textarea
+              rows={7}
+              value={writeContent}
+              onChange={e => setWriteContent(e.target.value)}
+              placeholder="라멘에 대한 이야기를 들려주세요... (육수 농도, 면 삶기, 웨이팅 팁, 추가 토핑 추천 등)"
+              className="w-full p-3.5 rounded-sm border border-stone-200 bg-stone-50 text-sm text-[#25282B] placeholder-stone-400 outline-none focus:border-[#E60000] focus:bg-white transition-colors leading-relaxed resize-none"
+            />
+          </div>
+
+          {/* 대표 사진 첨부 (파일 업로드 + 원클릭 프리셋) */}
+          <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-3">
+            <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
+              대표 사진 (선택)
+            </label>
+
+            {writeImagePreview ? (
+              <div className="relative inline-block rounded-[6px] overflow-hidden border border-stone-200 w-full">
+                <img src={writeImagePreview} alt="Preview" className="h-44 w-full object-cover rounded-[4px]" />
+                <button
+                  type="button"
+                  onClick={() => setWriteImagePreview(null)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[#25282B]/80 hover:bg-[#25282B] text-white flex items-center justify-center text-xs font-bold backdrop-blur-xs transition-colors"
+                  aria-label="사진 제거"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                <label className="flex flex-col items-center justify-center h-28 rounded-sm border border-dashed border-stone-300 hover:border-[#E60000] bg-stone-50 cursor-pointer transition-colors group">
+                  <svg className="w-7 h-7 text-stone-400 group-hover:text-[#E60000] transition-colors mb-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                    <circle cx="9" cy="9" r="2" />
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                  </svg>
+                  <span className="text-xs font-bold text-stone-500 group-hover:text-[#25282B]">사진 파일 선택하여 업로드</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onload = ev => setWriteImagePreview(ev.target?.result as string)
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* 빠른 추천 사진 프리셋 칩 */}
+                <div>
+                  <span className="text-[10px] text-stone-400 font-bold block mb-1.5">또는 샘플 사진으로 바로 첨부:</span>
+                  <div className="flex gap-2">
+                    {SAMPLE_IMAGE_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setWriteImagePreview(preset.url)}
+                        className="flex-1 py-1 px-2 rounded-sm border border-stone-200 hover:border-[#E60000] bg-white text-[10px] font-bold text-stone-600 truncate hover:text-[#E60000] transition-colors"
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 하단 글 작성 완료 버튼 */}
+          <button
+            type="submit"
+            disabled={!writeTitle.trim() || !writeContent.trim()}
+            className="w-full h-12 rounded-[6px] bg-[#E60000] hover:bg-[#CC0000] text-white font-bold text-sm disabled:opacity-40 disabled:pointer-events-none active:scale-98 transition-all shadow-md flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            <span>글 작성 완료</span>
+          </button>
+
+          <div className="h-8" />
+        </form>
+      </div>
+    )
+  }
 
   // ==========================================
   // 🌟 raota-front 레포지토리 기반 커뮤니티 상세 화면 (CommunityDetailClient)
@@ -501,6 +863,13 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                   <p>{selectedPost.content}</p>
                 )}
               </div>
+
+              {/* 첨부된 대표 사진 */}
+              {selectedPost.imageUrl && (
+                <div className="rounded-[6px] overflow-hidden border border-stone-200 aspect-[16/10] bg-stone-100">
+                  <img src={selectedPost.imageUrl} alt={selectedPost.title} className="w-full h-full object-cover" />
+                </div>
+              )}
             </div>
 
             {/* 하단 좋아요/댓글/조회수 Engagement 바 (raota-front 공식) */}
@@ -1068,12 +1437,22 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                   <span className="text-[10px] font-mono text-stone-400">{post.createdAt.split(' ')[0]}</span>
                 </div>
 
-                <h2 className="text-[15px] font-black text-[#25282B] leading-snug mb-1 group-hover:text-[#E60000] transition-colors">
-                  {post.title}
-                </h2>
-                <p className="text-[12px] text-stone-600 line-clamp-2 leading-relaxed mb-3">
-                  {post.content}
-                </p>
+                <div className="flex gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-[15px] font-black text-[#25282B] leading-snug mb-1 group-hover:text-[#E60000] transition-colors">
+                      {post.title}
+                    </h2>
+                    <p className="text-[12px] text-stone-600 line-clamp-2 leading-relaxed mb-3">
+                      {post.content}
+                    </p>
+                  </div>
+
+                  {post.imageUrl && (
+                    <div className="w-16 h-16 rounded-[6px] overflow-hidden bg-stone-100 border border-stone-200 flex-shrink-0">
+                      <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
 
                 {/* raota-front Engagement & Author bar */}
                 <div className="flex items-center justify-between pt-2.5 border-t border-stone-100 text-xs">
@@ -1110,9 +1489,22 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
         <div className="h-14" />
       </div>
 
+      {/* 상단 알림 토스트 */}
+      {toastMessage && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 bg-[#25282B] text-white text-[12px] font-bold px-4 py-2.5 rounded-full shadow-xl anim-fade-in-up flex items-center gap-1.5 whitespace-nowrap border border-white/20">
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* 우측 하단 플로팅 액션 버튼 (FAB) */}
       <button
-        onClick={onRecordClick}
+        onClick={() => {
+          if (loungeTab === 'logs') {
+            onRecordClick()
+          } else {
+            setIsWriteModalOpen(true)
+          }
+        }}
         className="absolute bottom-4 right-4 z-30 h-12 px-4 rounded-[60px] bg-[#E60000] text-white font-bold text-[13px] shadow-lg flex items-center gap-2 active:scale-95 hover:bg-[#CC0000] transition-all"
         aria-label={loungeTab === 'logs' ? '라멘로그 쓰기' : '커뮤니티 글쓰기'}
       >
