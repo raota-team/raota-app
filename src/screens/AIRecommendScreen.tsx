@@ -90,55 +90,98 @@ export default function AIRecommendScreen({ onBack, onShopClick }: Props) {
 
   const result = getResult()
 
-  // 1) 전용 독립 로딩 화면
+  // 1) 전용 독립 로딩 화면 (RAOTA Sensory Radar Engine)
   if (step === 'loading') {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-[#25282B] text-white p-6 relative overflow-hidden">
-        
-        {/* 배경 레이더 애니메이션 효과 */}
-        <div className="absolute w-72 h-72 rounded-full border border-white/10 animate-ping opacity-20 pointer-events-none" />
-        <div className="absolute w-48 h-48 rounded-full border border-[#E60000]/30 animate-pulse pointer-events-none" />
-
-        {/* 중앙 AI 아이콘 */}
-        <div className="relative z-10 w-18 h-18 rounded-[12px] bg-[#E60000] text-white flex items-center justify-center mb-6">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C12 7.52285 7.52285 12 2 12C7.52285 12 12 16.4772 12 22C12 16.4772 16.4772 12 22 12C16.4772 12 12 7.52285 12 2Z" />
-            <path d="M19 3C19 5.20914 17.2091 7 15 7C17.2091 7 19 8.79086 19 11C19 8.79086 20.7909 7 23 7C20.7909 7 19 5.20914 19 3Z" opacity="0.8" />
-          </svg>
+      <div className="h-full flex flex-col justify-between bg-[#1A1C1E] text-white p-6 relative overflow-hidden select-none">
+        {/* 배경 레이더 및 동심원 격자 애니메이션 */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[360px] h-[360px] rounded-full border border-white/5 absolute" />
+          <div className="w-[260px] h-[260px] rounded-full border border-white/10 absolute anim-tracer-pulse" />
+          <div className="w-[180px] h-[180px] rounded-full border border-[#E60000]/20 absolute" />
+          <div className="w-[320px] h-[320px] rounded-full border-t border-r border-[#E60000]/30 absolute anim-radar-sweep" />
+          <div className="w-96 h-96 bg-[#E60000]/10 rounded-full blur-3xl absolute pointer-events-none" />
         </div>
 
-        <div className="relative z-10 text-center space-y-3 max-w-[280px]">
-          <span className="text-[10px] font-bold text-[#E60000] bg-white/10 px-3 py-1 rounded-[32px] uppercase tracking-wider">
-            AI Vector Matching Engine
-          </span>
+        {/* 상단 엔진 뱃지 */}
+        <div className="relative z-10 pt-10 flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[32px] bg-white/10 border border-white/15 backdrop-blur-md text-[10px] font-bold text-white/90 tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#E60000] animate-ping" />
+            <span>RAOTA SENSORY VECTOR ENGINE</span>
+          </div>
+        </div>
 
-          <h2 className="text-[18px] font-black tracking-tight leading-snug break-keep">
-            {loadingStage === 1 && '서울 120여 개 라멘야 데이터베이스 조회 중...'}
-            {loadingStage === 2 && '입력하신 취향과 자유 요청사항 정밀 분석 중...'}
-            {loadingStage === 3 && '최적의 1순위 라멘야 매칭 완료!'}
-          </h2>
+        {/* 중앙 인터랙티브 센서 코어 */}
+        <div className="relative z-10 flex flex-col items-center text-center px-4 -mt-4">
+          {/* 발광 코어 아이콘 */}
+          <div className="relative w-24 h-24 flex items-center justify-center mb-6">
+            {/* 외곽 회전 트레이서 */}
+            <div className="absolute inset-0 rounded-full border-2 border-dashed border-[#E60000]/40 animate-spin" style={{ animationDuration: '8s' }} />
+            <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-[#E60000] border-r-[#E60000] animate-spin" style={{ animationDuration: '2s' }} />
+            
+            {/* 중앙 발광 박스 */}
+            <div className="w-16 h-16 rounded-[14px] bg-[#E60000] text-white flex items-center justify-center shadow-[0_0_24px_rgba(230,0,0,0.6)] anim-glow-float">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C12 7.52285 7.52285 12 2 12C7.52285 12 12 16.4772 12 22C12 16.4772 16.4772 12 22 12C16.4772 12 12 7.52285 12 2Z" />
+                <path d="M19 3C19 5.20914 17.2091 7 15 7C17.2091 7 19 8.79086 19 11C19 8.79086 20.7909 7 23 7C20.7909 7 19 5.20914 19 3Z" opacity="0.8" />
+              </svg>
+            </div>
+          </div>
 
-          <div className="space-y-1.5 pt-2 text-[11px] text-white/60">
-            <p className="flex items-center justify-center gap-1.5">
-              <span>선택 조건:</span>
-              <span className="text-white font-bold">{selectedSoup.split(' ')[0]}</span>
-              <span>·</span>
-              <span className="text-white font-bold">{selectedPriority.split(' ')[0]}</span>
+          {/* 단계별 메인 안내 문구 */}
+          <div className="space-y-1.5 min-h-[58px] flex flex-col items-center justify-center">
+            <h2 className="text-[20px] font-black tracking-tight leading-tight text-white anim-fade-in key={loadingStage}">
+              {loadingStage === 1 && '서울 120여 개 라멘야 DB 스캔 중...'}
+              {loadingStage === 2 && '육수 농도 · 면 굵기 · 타레 밸런스 매칭 중...'}
+              {loadingStage === 3 && '오늘의 1순위 라멘야 도출 완료!'}
+            </h2>
+            <p className="text-[12px] text-white/50 font-medium">
+              {loadingStage === 1 && '장인의 레시피와 실시간 방문 데이터를 대조합니다.'}
+              {loadingStage === 2 && '선택하신 취향 패턴과 최적의 접점을 정밀 계산합니다.'}
+              {loadingStage === 3 && '당신의 미각을 깨울 최상의 한 그릇을 준비했습니다.'}
             </p>
+          </div>
+
+          {/* 실시간 매칭 조건 태그 칩 */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 mt-5 max-w-[300px]">
+            <span className="px-2.5 py-1 rounded-[4px] bg-white/5 border border-white/10 text-[11px] font-bold text-white/80">
+              🍜 {selectedSoup.split(' ')[0]}
+            </span>
+            <span className="px-2.5 py-1 rounded-[4px] bg-white/5 border border-white/10 text-[11px] font-bold text-white/80">
+              🎯 {selectedPriority.split(' ')[0]}
+            </span>
             {customPrompt && (
-              <p className="text-[10px] text-[#E60000] bg-white/5 px-2.5 py-1 rounded-[4px] truncate">
-                “{customPrompt}” 반영 중
-              </p>
+              <span className="px-2.5 py-1 rounded-[4px] bg-[#E60000]/15 border border-[#E60000]/40 text-[11px] font-bold text-[#FF6B6B] truncate max-w-[240px]">
+                💬 “{customPrompt}”
+              </span>
             )}
           </div>
         </div>
 
-        {/* 하단 진행 바 */}
-        <div className="absolute bottom-10 left-6 right-6 h-1 bg-white/10 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#E60000] transition-all duration-700 ease-out"
-            style={{ width: loadingStage === 1 ? '35%' : loadingStage === 2 ? '75%' : '100%' }}
-          />
+        {/* 하단 진행도 게이지 & 3단계 스테퍼 */}
+        <div className="relative z-10 pb-8 space-y-3">
+          {/* 3단계 스텝 인디케이터 */}
+          <div className="flex items-center justify-between text-[11px] font-bold px-1">
+            <span className={loadingStage >= 1 ? 'text-[#E60000]' : 'text-white/30'}>
+              01 DB 스캔
+            </span>
+            <span className="text-white/20">──</span>
+            <span className={loadingStage >= 2 ? 'text-[#E60000]' : 'text-white/30'}>
+              02 미각 분석
+            </span>
+            <span className="text-white/20">──</span>
+            <span className={loadingStage >= 3 ? 'text-[#E60000]' : 'text-white/30'}>
+              03 매칭 완료
+            </span>
+          </div>
+
+          {/* 프로그레스 바 */}
+          <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
+            <div
+              className="h-full bg-gradient-to-r from-[#E60000] to-[#FF4D4D] rounded-full transition-all duration-700 ease-out shadow-[0_0_12px_rgba(230,0,0,0.8)]"
+              style={{ width: loadingStage === 1 ? '38%' : loadingStage === 2 ? '78%' : '100%' }}
+            />
+          </div>
         </div>
       </div>
     )

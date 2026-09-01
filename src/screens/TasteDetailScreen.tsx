@@ -312,71 +312,95 @@ export default function TasteDetailScreen({ onBack, recordCount }: Props) {
       )}
 
       {/* ======================================================== */}
-      {/* 🔄 Step 2: AI 리포트 실시간 분석 & 합성 로딩 화면 */}
+      {/* 🔄 Step 2: AI 리포트 실시간 분석 & 합성 로딩 화면 (Sensory Lab) */}
       {/* ======================================================== */}
       {isGenerating ? (
-        <div className="flex-1 flex flex-col justify-center items-center p-6 text-center space-y-6 anim-fade-in">
+        <div className="flex-1 flex flex-col justify-between items-center px-6 py-8 text-center anim-fade-in select-none bg-gradient-to-b from-white via-stone-50/60 to-[#F2F2F2]">
           
-          {/* AI 브레인 펄스 아이콘 */}
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-[#E60000]/10 border-2 border-[#E60000] flex items-center justify-center animate-pulse">
-              <svg className="w-10 h-10 text-[#E60000] animate-spin" style={{ animationDuration: '3s' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-              </svg>
-            </div>
-            <div className="absolute -bottom-1 -right-1 bg-[#25282B] text-white text-[10px] font-mono font-black px-2 py-0.5 rounded-full">
-              {progress}%
+          {/* 상단 라벨 */}
+          <div className="pt-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[32px] bg-[#25282B] text-white text-[10px] font-bold tracking-wider shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E60000] animate-ping" />
+              <span>RAOTA TASTE SYNTHESIS LAB</span>
             </div>
           </div>
 
-          {/* 단계 안내 텍스트 */}
-          <div className="space-y-1.5 max-w-xs">
-            <span className="text-[11px] font-mono font-black text-[#E60000] tracking-wider uppercase block">
-              STEP {stepIndex + 1} / 4
-            </span>
-            <h2 className="text-[18px] font-black text-[#25282B] tracking-tight">
-              {GENERATION_STEPS[stepIndex].title}
-            </h2>
-            <p className="text-[12px] text-[#7E7E7E] leading-snug">
-              {GENERATION_STEPS[stepIndex].desc}
-            </p>
-          </div>
+          {/* 중앙 AI 미각 코어 시각화 */}
+          <div className="flex flex-col items-center max-w-xs w-full my-auto">
+            {/* 회전 레이더 & 육각 미각 코어 */}
+            <div className="relative w-24 h-24 flex items-center justify-center mb-5">
+              {/* 바깥 동심원 */}
+              <div className="absolute inset-0 rounded-full border border-stone-200 anim-tracer-pulse" />
+              {/* 회전 트레이서 */}
+              <div className="absolute inset-1 rounded-full border-2 border-transparent border-t-[#E60000] border-r-[#E60000] animate-spin" style={{ animationDuration: '2.4s' }} />
+              {/* 내부 코어 */}
+              <div className="w-16 h-16 rounded-[14px] bg-[#25282B] text-white flex flex-col items-center justify-center shadow-lg border border-stone-700">
+                <span className="text-[10px] font-mono font-bold text-[#E60000] leading-none mb-0.5">DNA</span>
+                <span className="text-[16px] font-mono font-black text-white leading-none">{progress}%</span>
+              </div>
+            </div>
 
-          {/* 프로그레스 바 */}
-          <div className="w-full max-w-xs space-y-2">
-            <div className="w-full h-2 bg-stone-100 rounded-full overflow-hidden border border-stone-200">
+            {/* 단계별 타이틀 */}
+            <div className="space-y-1 mb-5">
+              <span className="text-[11px] font-mono font-black text-[#E60000] tracking-wider uppercase block">
+                STEP 0{stepIndex + 1} / 04
+              </span>
+              <h2 className="text-[19px] font-black text-[#25282B] tracking-tight">
+                {GENERATION_STEPS[stepIndex].title}
+              </h2>
+              <p className="text-[12px] text-[#7E7E7E] leading-snug">
+                {GENERATION_STEPS[stepIndex].desc}
+              </p>
+            </div>
+
+            {/* 실시간 프로그레스 바 */}
+            <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden mb-5">
               <div
-                className="h-full bg-[#E60000] rounded-full transition-all duration-500 ease-out"
+                className="h-full bg-gradient-to-r from-[#E60000] to-[#FF4D4D] rounded-full transition-all duration-500 ease-out shadow-xs"
                 style={{ width: `${progress}%` }}
               />
             </div>
+
+            {/* 4단계 정밀 분석 체크리스트 */}
+            <div className="w-full bg-white rounded-[8px] border border-[#E2E2E2] p-3.5 divide-y divide-stone-100 text-left shadow-xs">
+              {GENERATION_STEPS.map((s, idx) => {
+                const isDone = idx < stepIndex
+                const isCurrent = idx === stepIndex
+                return (
+                  <div key={idx} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                        isDone
+                          ? 'bg-[#E60000] text-white'
+                          : isCurrent
+                          ? 'bg-[#25282B] text-white animate-pulse'
+                          : 'bg-stone-100 text-stone-400'
+                      }`}>
+                        {isDone ? '✓' : idx + 1}
+                      </span>
+                      <span className={`font-bold ${isCurrent ? 'text-[#E60000]' : isDone ? 'text-[#25282B]' : 'text-stone-300'}`}>
+                        {s.title}
+                      </span>
+                    </div>
+                    {isDone ? (
+                      <span className="text-[#E60000] font-black text-[10px]">완료 ✓</span>
+                    ) : isCurrent ? (
+                      <span className="text-[#E60000] font-bold text-[10px] animate-pulse">합성 중...</span>
+                    ) : (
+                      <span className="text-stone-300 font-medium text-[10px]">대기</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
-          {/* 4단계 체크리스트 */}
-          <div className="w-full max-w-xs bg-stone-50 rounded-[8px] border border-stone-200 p-3.5 divide-y divide-stone-100 text-left">
-            {GENERATION_STEPS.map((s, idx) => {
-              const isDone = idx < stepIndex
-              const isCurrent = idx === stepIndex
-              return (
-                <div key={idx} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between text-[11px]">
-                  <span className={`font-bold ${isCurrent ? 'text-[#E60000]' : isDone ? 'text-[#25282B]' : 'text-stone-300'}`}>
-                    {s.title}
-                  </span>
-                  {isDone ? (
-                    <span className="text-[#E60000] font-black">✓ 완료</span>
-                  ) : isCurrent ? (
-                    <span className="text-[#E60000] font-bold animate-pulse">분석 중...</span>
-                  ) : (
-                    <span className="text-stone-300 font-medium">대기</span>
-                  )}
-                </div>
-              )
-            })}
+          {/* 하단 서브 메시지 */}
+          <div className="pb-2">
+            <p className="text-[11px] font-medium text-[#7E7E7E]">
+              나만의 고유 미각 DNA와 라멘 로그를 6각 레이더로 시각화하고 있습니다.
+            </p>
           </div>
-
-          <p className="text-[11px] text-stone-400">
-            잠시만 기다려주세요. 나만의 고유 미각 DNA를 시각화하고 있습니다.
-          </p>
         </div>
       ) : (
 

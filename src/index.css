@@ -130,6 +130,24 @@ body {
 .anim-pulse-once { animation: pulseOnce 0.9s ease forwards; }
 .anim-cascade    { animation: cascadeReveal 0.42s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .anim-blind      { animation: blindUnfold 0.48s cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: top center; backface-visibility: hidden; }
+.anim-radar-sweep { animation: radarSweep 3.5s linear infinite; }
+.anim-tracer-pulse { animation: tracerPulse 2.2s ease-in-out infinite; }
+.anim-glow-float { animation: glowFloat 2.6s ease-in-out infinite; }
+
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes tracerPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 0.3; }
+}
+
+@keyframes glowFloat {
+  0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 12px rgba(230,0,0,0.4)); }
+  50% { transform: translateY(-4px); filter: drop-shadow(0 0 20px rgba(230,0,0,0.7)); }
+}
 
 .ticket-border {
   border: 1.5px dashed var(--color-line-dark);
