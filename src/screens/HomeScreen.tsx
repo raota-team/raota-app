@@ -52,14 +52,13 @@ const NEARBY = [
   },
 ]
 
-const TRENDING_RANKINGS = [
+const POPULAR_SHOP_RANKINGS = [
   {
     rank: 1,
     name: '멘야준',
     branch: '망원 본점',
     style: '자가제면 특제 쇼유 라멘',
     badge: '인기 1위',
-    trend: '+15%',
     photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
@@ -67,8 +66,7 @@ const TRENDING_RANKINGS = [
     name: '하쿠텐',
     branch: '연남점',
     style: '진한 농후 이에케 라멘',
-    badge: '웨이팅 급상승',
-    trend: '+24%',
+    badge: '웨이팅 명소',
     photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
@@ -77,7 +75,6 @@ const TRENDING_RANKINGS = [
     branch: '마포 본점',
     style: '크리미 토리파이탄 (닭백탕)',
     badge: '미쉐린 빕구르망',
-    trend: '+8%',
     photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
@@ -86,7 +83,6 @@ const TRENDING_RANKINGS = [
     branch: '합정 본점',
     style: '깔끔한 유자 시오 라멘',
     badge: '유자 시오 명소',
-    trend: '+11%',
     photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
@@ -95,17 +91,8 @@ const TRENDING_RANKINGS = [
     branch: '합정점',
     style: '오사카식 블랙 쇼유 & 차슈',
     badge: '재방문율 1위',
-    trend: '+19%',
     photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=200&h=200&fit=crop&auto=format&q=80',
   },
-]
-
-const TRENDING_TAGS = [
-  { tag: '자가제면_쇼유', count: '1.2k 탐색', icon: '🔥' },
-  { tag: '농후_이에케', count: '980회 탐색', icon: '⚡' },
-  { tag: '유자_시오', count: '850회 탐색', icon: '🍋' },
-  { tag: '크리미_토리파이탄', count: '740회 탐색', icon: '🍜' },
-  { tag: '도미뼈_청탕', count: '620회 탐색', icon: '🐟' },
 ]
 
 export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, onAIRecommendClick }: Props) {
@@ -257,7 +244,7 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
         </article>
       </section>
 
-      {/* 5. 실시간 트렌딩 키워드 & 랭킹 (raota-front TrendingTagsRanking 기반) */}
+      {/* 5. 실시간 인기 라멘야 순위 (raota-front TrendingTagsRanking 기반) */}
       <section className="mb-7 px-5">
         <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
           <div className="flex items-center gap-1.5">
@@ -265,7 +252,7 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
               <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
             </svg>
             <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">
-              실시간 인기 라멘야 & 트렌드
+              실시간 인기 라멘야 순위
             </h2>
           </div>
           
@@ -296,12 +283,12 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
 
         {/* 실시간 인기 랭킹 카드 컨테이너 (촤르륵 순차 등장 애니메이션) */}
         <div key={`rankings-${refreshKey}`} className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden divide-y divide-stone-100 shadow-xs">
-          {TRENDING_RANKINGS.map((item, idx) => (
+          {POPULAR_SHOP_RANKINGS.map((item, idx) => (
             <div
               key={`${refreshKey}-${item.rank}`}
               onClick={onShopClick}
               style={{ animationDelay: `${idx * 75}ms` }}
-              className="anim-cascade flex items-center justify-between p-3 hover:bg-stone-50 active:bg-stone-100 cursor-pointer transition-colors group"
+              className="anim-cascade flex items-center justify-between p-3.5 hover:bg-stone-50 active:bg-stone-100 cursor-pointer transition-colors group"
             >
               <div className="flex items-center gap-3 min-w-0">
                 {/* 랭킹 번호 */}
@@ -320,49 +307,32 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
                 </div>
 
                 {/* 매장 썸네일 */}
-                <div className="w-10 h-10 rounded-[4px] overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
+                <div className="w-11 h-11 rounded-[4px] overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
                   <img src={item.photo} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                 </div>
 
                 {/* 매장 정보 */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[13px] font-black text-[#25282B] truncate group-hover:text-[#E60000] transition-colors">
+                    <span className="text-[14px] font-black text-[#25282B] truncate group-hover:text-[#E60000] transition-colors">
                       {item.name}
                     </span>
                     <span className="text-[10px] text-stone-400 font-bold shrink-0">{item.branch}</span>
                   </div>
-                  <p className="text-[11px] text-stone-500 truncate">{item.style}</p>
+                  <p className="text-[11px] text-stone-500 truncate mt-0.5">{item.style}</p>
                 </div>
               </div>
 
-              {/* 우측 뱃지 및 급상승 수치 */}
-              <div className="text-right shrink-0 pl-2">
+              {/* 우측 뱃지 및 바로가기 화살표 */}
+              <div className="flex items-center gap-2 shrink-0 pl-2">
                 <span className="text-[10px] font-bold text-[#E60000] bg-red-50 px-2 py-0.5 rounded-[32px] block">
                   {item.badge}
                 </span>
-                <span className="text-[9px] font-mono text-stone-400 font-bold block mt-0.5">
-                  {item.trend}
+                <span className="text-[12px] font-bold text-stone-300 group-hover:text-[#E60000] group-hover:translate-x-0.5 transition-all">
+                  →
                 </span>
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* 하단 실시간 인기 해시태그 칩 (촤르륵 순차 등장 애니메이션) */}
-        <div key={`tags-${refreshKey}`} className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-          {TRENDING_TAGS.map((t, idx) => (
-            <button
-              key={`${refreshKey}-${idx}`}
-              type="button"
-              onClick={onShopClick}
-              style={{ animationDelay: `${380 + idx * 50}ms` }}
-              className="anim-cascade flex items-center gap-1 px-2.5 py-1.5 rounded-[32px] border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] text-[11px] font-bold text-[#25282B] whitespace-nowrap transition-colors shrink-0"
-            >
-              <span>{t.icon}</span>
-              <span>#{t.tag}</span>
-              <span className="text-[10px] text-stone-400 font-normal">({t.count})</span>
-            </button>
           ))}
         </div>
       </section>
