@@ -83,7 +83,7 @@ const TRENDING_RANKINGS = [
     name: '담택',
     branch: '합정 본점',
     style: '깔끔한 유자 시오 라멘',
-    badge: '취향 만족 96%',
+    badge: '유자 시오 명소',
     trend: '+11%',
     photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80',
   },
@@ -205,7 +205,7 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
               className="w-full h-full object-cover"
             />
             <div className="absolute top-3 left-3 bg-[#E60000] text-white text-[10px] font-bold px-3 py-1 rounded-[32px]">
-              취향 일치 91%
+              오늘의 추천
             </div>
             <div className="absolute top-3 right-3 bg-[#25282B]/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-[32px]">
               420m · 망원동
@@ -228,7 +228,7 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
             {/* 인용구 */}
             <div className="p-3 bg-[#F2F2F2] rounded-[6px] text-[13px] leading-snug text-[#25282B]">
               <span className="text-[#E60000] font-black mr-1 text-sm">“</span>
-              진한 동물계 감칠맛과 단단한 면 식감을 즐기는 뿡님의 취향과 가장 일치하는 망원동의 대표 쇼유 명소입니다.
+              진한 동물계 감칠맛과 단단한 자가제면 식감이 일품인 망원동의 대표 쇼유 라멘 명소입니다.
               <span className="text-[#E60000] font-black ml-1 text-sm">”</span>
             </div>
 
@@ -372,8 +372,8 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <span className="inline-block text-[11px] font-bold text-[#E60000] bg-[#E60000]/10 px-2.5 py-0.5 rounded-[32px]">
-                  {item.score}
+                <span className="inline-block text-[11px] font-bold text-[#25282B] bg-[#F2F2F2] px-2.5 py-0.5 rounded-[32px]">
+                  {item.style.split(' ')[0]}
                 </span>
               </div>
             </div>

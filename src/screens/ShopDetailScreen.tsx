@@ -50,7 +50,7 @@ const DEFAULT_SHOP: Shop = {
     noodleRefill: '1회 무료 리필 가능',
     riceRefill: '요청 시 무료 제공',
   },
-  description: '최근 3회 기록된 진한 동물계 육수 및 단단한 면 식감 선호 패턴에 91% 부합하며, 맑은 쇼유 타레 특유의 높은 감칠맛을 보유하고 있습니다.',
+  description: '진한 동물계 육수 및 단단한 자가제면 식감을 자랑하며, 맑은 쇼유 타레 특유의 높은 감칠맛을 보유하고 있는 망원동의 대표 라멘야입니다.',
   reviews: [
     {
       author: '하니 (라멘마니아)',
@@ -175,9 +175,9 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
                 <p className="text-[12px] text-[#7E7E7E] mt-1">{shop.address}</p>
               </div>
 
-              <div className="bg-[#25282B] text-white text-center rounded-[6px] p-2.5 flex-shrink-0">
-                <span className="text-[9px] block text-white/70">취향 일치도</span>
-                <span className="text-[16px] font-black text-[#E60000]">{shop.matchScore}%</span>
+              <div className="bg-[#F2F2F2] border border-[#E2E2E2] text-center rounded-[6px] px-3 py-2 flex-shrink-0">
+                <span className="text-[9px] block text-[#7E7E7E] font-bold leading-tight">대표 계보</span>
+                <span className="text-[12px] font-black text-[#25282B] block mt-0.5">{shop.tags[0] || '쇼유 라멘'}</span>
               </div>
             </div>
 
