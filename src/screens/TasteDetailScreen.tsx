@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface Props {
   onBack: () => void
@@ -221,6 +221,14 @@ export default function TasteDetailScreen({ onBack, recordCount }: Props) {
   const [stepIndex, setStepIndex] = useState(0)
   const [progress, setProgress] = useState(0)
   const [lastGeneratedTime, setLastGeneratedTime] = useState('2026. 09. 01 15:48')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // 🌟 생성 완료 시 최상단으로 자동 스크롤
+  useEffect(() => {
+    if (!isGenerating && scrollRef.current) {
+      scrollRef.current.scrollTo({ top: 0, behavior: 'instant' })
+    }
+  }, [isGenerating])
 
   const handleShare = () => {
     setToastMessage('AI 리포트 공유 링크가 복사되었습니다.')
@@ -407,7 +415,7 @@ export default function TasteDetailScreen({ onBack, recordCount }: Props) {
         /* ======================================================== */
         /* ✨ Step 3: 리포트 결과 화면 (최신 데이터 렌더링) */
         /* ======================================================== */
-        <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4 anim-fade-in-up">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4 anim-fade-in-up">
           
           {/* AI 브리핑 히어로 카드 (보더폰 딥 잉크 & 레드 악센트) */}
           <section className="bg-gradient-to-br from-[#25282B] to-[#1A1C1E] text-white rounded-[8px] p-5 relative overflow-hidden shadow-md">
