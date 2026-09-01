@@ -66,9 +66,9 @@ export default function AIRecommendScreen({ onBack, onShopClick }: Props) {
 
   useEffect(() => {
     if (step === 'loading') {
-      const t1 = setTimeout(() => setLoadingStage(2), 700)
-      const t2 = setTimeout(() => setLoadingStage(3), 1500)
-      const t3 = setTimeout(() => setStep('result'), 2200)
+      const t1 = setTimeout(() => setLoadingStage(2), 1200)
+      const t2 = setTimeout(() => setLoadingStage(3), 2600)
+      const t3 = setTimeout(() => setStep('result'), 3800)
 
       return () => {
         clearTimeout(t1)

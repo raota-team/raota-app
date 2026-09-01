@@ -239,22 +239,22 @@ export default function TasteDetailScreen({ onBack, recordCount }: Props) {
   const handleReGenerate = () => {
     setIsGenerating(true)
     setStepIndex(0)
-    setProgress(20)
+    setProgress(15)
 
     const timer1 = setTimeout(() => {
       setStepIndex(1)
-      setProgress(50)
-    }, 600)
+      setProgress(45)
+    }, 1100)
 
     const timer2 = setTimeout(() => {
       setStepIndex(2)
-      setProgress(80)
-    }, 1300)
+      setProgress(75)
+    }, 2300)
 
     const timer3 = setTimeout(() => {
       setStepIndex(3)
       setProgress(100)
-    }, 1900)
+    }, 3400)
 
     const timer4 = setTimeout(() => {
       setIsGenerating(false)
@@ -263,7 +263,7 @@ export default function TasteDetailScreen({ onBack, recordCount }: Props) {
       setLastGeneratedTime(timeStr)
       setToastMessage('✨ 최신 완식 데이터가 반영된 AI 정밀 리포트가 발행되었습니다!')
       setTimeout(() => setToastMessage(null), 3000)
-    }, 2400)
+    }, 4300)
 
     return () => {
       clearTimeout(timer1)
