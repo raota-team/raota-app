@@ -1491,7 +1491,10 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
 
       {/* 상단 알림 토스트 */}
       {toastMessage && (
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-50 bg-[#25282B] text-white text-[12px] font-bold px-4 py-2.5 rounded-full shadow-xl anim-fade-in-up flex items-center gap-1.5 whitespace-nowrap border border-white/20">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-[#25282B]/95 backdrop-blur-md text-white text-[12px] font-bold px-4 py-2.5 rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.3)] anim-fade-in-up flex items-center gap-2 whitespace-nowrap border border-white/15 pointer-events-none">
+          <span className="w-4 h-4 rounded-full bg-[#E60000] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+            ✓
+          </span>
           <span>{toastMessage}</span>
         </div>
       )}

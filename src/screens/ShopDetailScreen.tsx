@@ -375,9 +375,12 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
 
       {/* 토스트 */}
       {showSavedToast && (
-        <div className="absolute bottom-24 left-0 right-0 flex justify-center pointer-events-none anim-fade-in-up z-50">
-          <div className="bg-[#25282B] text-white text-[12px] px-5 py-2.5 rounded-[60px] shadow-2xl">
-            가고 싶은 라멘야 목록에 저장되었습니다.
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 flex justify-center pointer-events-none anim-fade-in-up">
+          <div className="bg-[#25282B]/95 backdrop-blur-md text-white text-[12px] font-bold px-4 py-2.5 rounded-[32px] shadow-[0_8px_30px_rgba(0,0,0,0.3)] flex items-center gap-2 whitespace-nowrap border border-white/15">
+            <span className="w-4 h-4 rounded-full bg-[#E60000] text-white flex items-center justify-center text-[10px] font-black shrink-0">
+              ✓
+            </span>
+            <span>가고 싶은 라멘야 목록에 저장되었습니다.</span>
           </div>
         </div>
       )}

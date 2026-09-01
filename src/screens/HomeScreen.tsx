@@ -166,12 +166,23 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
 
       {/* 3. 기록 완료 알림 배너 */}
       {recordSaved && (
-        <div className="mx-5 mt-3 p-3.5 bg-[#F2F2F2] rounded-[6px] anim-fade-in-up flex items-start gap-3">
-          <div className="w-2 h-2 rounded-full bg-[#E60000] mt-1.5 flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-bold text-[#25282B]">새로운 라멘 시식 데이터가 취향 리포트에 기록되었습니다.</p>
-            <p className="text-[11px] text-[#7E7E7E] mt-0.5">최근 감정 데이터를 기반으로 망원·마포 일대 추천 지수가 갱신되었습니다.</p>
+        <div className="mx-5 mt-3 p-3.5 bg-white border border-[#E2E2E2] rounded-[6px] shadow-xs anim-fade-in-up flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-full bg-[#E60000]/10 text-[#E60000] flex items-center justify-center font-black text-[12px] shrink-0">
+              ✓
+            </div>
+            <div className="min-w-0">
+              <p className="text-[12.5px] font-bold text-[#25282B] truncate">
+                새로운 라멘로그가 취향 리포트에 반영되었습니다.
+              </p>
+              <p className="text-[10.5px] text-[#7E7E7E] truncate mt-0.5">
+                최신 완식 데이터를 기반으로 맞춤 추천이 갱신되었습니다.
+              </p>
+            </div>
           </div>
+          <span className="text-[11px] font-bold text-[#E60000] shrink-0">
+            기록 완료
+          </span>
         </div>
       )}
 
