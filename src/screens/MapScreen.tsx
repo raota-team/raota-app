@@ -25,8 +25,6 @@ interface Shop {
   spec: string
 }
 
-const FILTERS = ['전체', '영업 중', '쇼유(간장)', '돈코츠(돼지뼈)', '미소(된장)', '시오(소금)', '토리파이탄']
-
 const SHOPS: Shop[] = [
   {
     id: 0,
@@ -570,27 +568,6 @@ export default function MapScreen({ selectedPin, filter, onPinSelect, onFilterCh
               </>
             )}
           </button>
-        </div>
-
-        {/* 필터 칩 목록 (보더폰 32px 칩) */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-2.5">
-          {FILTERS.map(f => {
-            const raw = f.split('(')[0]
-            const active = filter === raw || (filter === '전체' && raw === '전체')
-            return (
-              <button
-                key={f}
-                onClick={() => onFilterChange(raw)}
-                className={`flex-shrink-0 h-7 px-3 rounded-[32px] text-[11px] font-bold border transition-all ${
-                  active
-                    ? 'bg-[#25282B] text-white border-[#25282B]'
-                    : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#25282B]'
-                }`}
-              >
-                {f}
-              </button>
-            )
-          })}
         </div>
       </header>
 
