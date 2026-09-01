@@ -3,9 +3,9 @@ import L from 'leaflet'
 
 interface Props {
   selectedPin: number
-  filter: string
+  filter?: string
   onPinSelect: (i: number) => void
-  onFilterChange: (f: string) => void
+  onFilterChange?: (f: string) => void
   onShopClick: () => void
 }
 
@@ -24,6 +24,22 @@ interface Shop {
   photo: string
   spec: string
 }
+
+const REGION_OPTIONS = [
+  { value: 'ALL', label: '전체 지역' },
+  { value: '망원', label: '마포 · 망원동' },
+  { value: '합정', label: '마포 · 합정/상수' },
+  { value: '연남', label: '마포 · 연남/홍대' },
+]
+
+const MENU_OPTIONS = [
+  { value: 'ALL', label: '모든 메뉴' },
+  { value: '쇼유', label: '쇼유 라멘 (간장)' },
+  { value: '돈코츠', label: '돈코츠/이에케 (돼지뼈)' },
+  { value: '시오', label: '시오 라멘 (소금)' },
+  { value: '미소', label: '미소 라멘 (된장)' },
+  { value: '토리파이탄', label: '토리파이탄 (닭백탕)' },
+]
 
 const SHOPS: Shop[] = [
   {
@@ -366,22 +382,64 @@ function clusterShops(shops: Shop[], map: L.Map, selectedPin: number): Array<{ t
   })
 }
 
-export default function MapScreen({ selectedPin, filter, onPinSelect, onFilterChange, onShopClick }: Props) {
+export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Props) {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
   const [search, setSearch] = useState('')
   const [searching, setSearching] = useState(false)
   const [sortBy, setSortBy] = useState<'dist' | 'popular' | 'name'>('dist')
   const [onlyOpen, setOnlyOpen] = useState(false)
+  
+  // 📍 지역 및 🍜 메뉴 필터 상태 (raota-front 스펙)
+  const [regionFilter, setRegionFilter] = useState('ALL')
+  const [menuFilter, setMenuFilter] = useState('ALL')
+  const [isRegionDropdownOpen, setIsRegionDropdownOpen] = useState(false)
+  const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false)
+  const regionDropdownRef = useRef<HTMLDivElement>(null)
+  const menuDropdownRef = useRef<HTMLDivElement>(null)
+
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const currentMarkersRef = useRef<L.Marker[]>([])
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (regionDropdownRef.current && !regionDropdownRef.current.contains(event.target as Node)) {
+        setIsRegionDropdownOpen(false)
+      }
+      if (menuDropdownRef.current && !menuDropdownRef.current.contains(event.target as Node)) {
+        setIsMenuDropdownOpen(false)
+      }
+    }
+    if (isRegionDropdownOpen || isMenuDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isRegionDropdownOpen, isMenuDropdownOpen])
+
   const selected = SHOPS.find(s => s.id === selectedPin) ?? SHOPS[0]
 
-  // 필터링 적용된 목록
+  // 필터링 적용된 목록 (지역 + 메뉴 + 영업상태 + 검색어)
   const filteredShops = SHOPS.filter(shop => {
+    // 1. 영업 중 필터
     if (onlyOpen && shop.status !== '영업 중') return false
 
+    // 2. 지역 필터
+    if (regionFilter !== 'ALL') {
+      const matchBranch = shop.branch.includes(regionFilter)
+      const matchSpec = shop.spec.includes(regionFilter)
+      if (!matchBranch && !matchSpec) return false
+    }
+
+    // 3. 메뉴(계통) 필터
+    if (menuFilter !== 'ALL') {
+      const matchStyle = shop.style.includes(menuFilter)
+      const matchSpec = shop.spec.includes(menuFilter)
+      if (!matchStyle && !matchSpec) return false
+    }
+
+    // 4. 키워드 검색
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       const matchName = shop.name.toLowerCase().includes(q)
@@ -391,16 +449,9 @@ export default function MapScreen({ selectedPin, filter, onPinSelect, onFilterCh
       if (!matchName && !matchStyle && !matchBranch && !matchSpec) return false
     }
 
-    if (filter === '전체' || filter === '') return true
-    if (filter === '영업 중') return shop.status === '영업 중'
-    if (filter.includes('쇼유')) return shop.style.includes('쇼유')
-    if (filter.includes('돈코츠')) return shop.style.includes('돈코츠')
-    if (filter.includes('미소')) return shop.style.includes('미소')
-    if (filter.includes('시오')) return shop.style.includes('시오')
-    if (filter.includes('토리파이탄')) return shop.style.includes('토리파이탄')
     return true
   }).sort((a, b) => {
-    if (sortBy === 'popular') return b.match - a.match
+    if (sortBy === 'popular') return parseFloat(a.dist) - parseFloat(b.dist)
     if (sortBy === 'name') return a.name.localeCompare(b.name)
     return parseFloat(a.dist) - parseFloat(b.dist)
   })
@@ -569,6 +620,160 @@ export default function MapScreen({ selectedPin, filter, onPinSelect, onFilterCh
             )}
           </button>
         </div>
+
+        {/* 📍 지역 & 🍜 메뉴 커스텀 드롭다운 필터 바 (raota-front 스펙) */}
+        <div className="flex items-center gap-2 pt-2.5">
+          {/* 지역 필터 드롭다운 */}
+          <div className="relative flex-1" ref={regionDropdownRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegionDropdownOpen(prev => !prev)
+                setIsMenuDropdownOpen(false)
+              }}
+              aria-expanded={isRegionDropdownOpen}
+              className={`w-full flex h-8 items-center justify-between gap-1 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                regionFilter !== 'ALL'
+                  ? 'bg-red-50 border-[#E60000] text-[#E60000]'
+                  : 'bg-[#F2F2F2] border-stone-200 text-[#25282B] hover:bg-[#EAEAEA]'
+              }`}
+            >
+              <div className="flex items-center gap-1 truncate">
+                <span className="text-[10px]">📍</span>
+                <span className="truncate">
+                  {REGION_OPTIONS.find(r => r.value === regionFilter)?.label || '전체 지역'}
+                </span>
+              </div>
+              <svg
+                className={`w-3 h-3 text-stone-400 shrink-0 transition-transform duration-200 ${
+                  isRegionDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
+                }`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+
+            {isRegionDropdownOpen && (
+              <div className="absolute left-0 top-full mt-1.5 z-40 w-44 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
+                <div className="py-1 divide-y divide-stone-50">
+                  {REGION_OPTIONS.map(reg => (
+                    <button
+                      key={reg.value}
+                      type="button"
+                      onClick={() => {
+                        setRegionFilter(reg.value)
+                        setIsRegionDropdownOpen(false)
+                      }}
+                      className={`w-full px-3 py-2 text-left text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-between ${
+                        regionFilter === reg.value ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                      }`}
+                    >
+                      <span>{reg.label}</span>
+                      {regionFilter === reg.value && <span className="text-[#E60000] font-bold">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 메뉴(계통) 필터 드롭다운 */}
+          <div className="relative flex-1" ref={menuDropdownRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsMenuDropdownOpen(prev => !prev)
+                setIsRegionDropdownOpen(false)
+              }}
+              aria-expanded={isMenuDropdownOpen}
+              className={`w-full flex h-8 items-center justify-between gap-1 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                menuFilter !== 'ALL'
+                  ? 'bg-red-50 border-[#E60000] text-[#E60000]'
+                  : 'bg-[#F2F2F2] border-stone-200 text-[#25282B] hover:bg-[#EAEAEA]'
+              }`}
+            >
+              <div className="flex items-center gap-1 truncate">
+                <span className="text-[10px]">🍜</span>
+                <span className="truncate">
+                  {MENU_OPTIONS.find(m => m.value === menuFilter)?.label || '모든 메뉴'}
+                </span>
+              </div>
+              <svg
+                className={`w-3 h-3 text-stone-400 shrink-0 transition-transform duration-200 ${
+                  isMenuDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
+                }`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+
+            {isMenuDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 z-40 w-48 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
+                <div className="py-1 divide-y divide-stone-50">
+                  {MENU_OPTIONS.map(menu => (
+                    <button
+                      key={menu.value}
+                      type="button"
+                      onClick={() => {
+                        setMenuFilter(menu.value)
+                        setIsMenuDropdownOpen(false)
+                      }}
+                      className={`w-full px-3 py-2 text-left text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-between ${
+                        menuFilter === menu.value ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                      }`}
+                    >
+                      <span>{menu.label}</span>
+                      {menuFilter === menu.value && <span className="text-[#E60000] font-bold">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 영업 중만 토글 버튼 */}
+          <button
+            type="button"
+            onClick={() => setOnlyOpen(prev => !prev)}
+            className={`h-8 px-2.5 rounded-sm border text-[11px] font-bold transition-all flex items-center gap-1 shrink-0 ${
+              onlyOpen
+                ? 'bg-[#2E7D32] text-white border-[#2E7D32]'
+                : 'bg-[#F2F2F2] border-stone-200 text-[#25282B] hover:bg-[#EAEAEA]'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${onlyOpen ? 'bg-white' : 'bg-[#2E7D32]'}`} />
+            <span>영업중</span>
+          </button>
+
+          {/* 필터 활성화 시 리셋 버튼 */}
+          {(regionFilter !== 'ALL' || menuFilter !== 'ALL' || onlyOpen) && (
+            <button
+              type="button"
+              onClick={() => {
+                setRegionFilter('ALL')
+                setMenuFilter('ALL')
+                setOnlyOpen(false)
+              }}
+              className="h-8 w-8 rounded-sm bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-[#25282B] flex items-center justify-center text-xs font-bold transition-colors shrink-0"
+              title="필터 초기화"
+              aria-label="필터 초기화"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </header>
 
       {/* 2. 본문 영역: [지도 뷰] vs [목록 뷰] */}
@@ -653,22 +858,9 @@ export default function MapScreen({ selectedPin, filter, onPinSelect, onFilterCh
           
           {/* 목록 상단 헤더 & 정렬 바 */}
           <div className="flex items-center justify-between pb-2 border-b border-[#E2E2E2]">
-            <div className="flex items-center gap-2">
-              <span className="text-[12px] font-bold text-[#7E7E7E]">
-                총 <span className="text-[#25282B] font-black">{filteredShops.length}곳</span>
-              </span>
-              <button
-                onClick={() => setOnlyOpen(!onlyOpen)}
-                className={`h-6 px-2 rounded-[32px] text-[10px] font-bold border transition-all flex items-center gap-1 ${
-                  onlyOpen
-                    ? 'bg-[#2E7D32] text-white border-[#2E7D32]'
-                    : 'bg-[#F2F2F2] text-[#4A4D52] border-transparent hover:border-[#25282B]'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${onlyOpen ? 'bg-white' : 'bg-[#2E7D32]'}`} />
-                영업 중만
-              </button>
-            </div>
+            <span className="text-[12px] font-bold text-[#7E7E7E]">
+              총 <span className="text-[#25282B] font-black">{filteredShops.length}곳</span>의 라멘야
+            </span>
 
             <div className="flex items-center gap-1 text-[11px] font-bold">
               <button
