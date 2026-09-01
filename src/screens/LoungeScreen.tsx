@@ -652,133 +652,110 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
 
       {/* 2. 카테고리 / 매장 필터 바 */}
       {loungeTab === 'logs' ? (
-        <div className="flex-shrink-0 bg-white border-b border-[#E2E2E2]">
-          {/* 매장별 모음 드롭다운 바 */}
-          <div className="px-5 py-2.5 flex items-center justify-between gap-3 border-b border-stone-100">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <IconStore className="w-4 h-4 text-[#E60000] flex-shrink-0" />
-              <span className="text-[12px] font-black text-[#25282B] whitespace-nowrap">매장별 모음</span>
-            </div>
-
-            {/* 매장 선택 커스텀 검색 드롭다운 (raota-front 스펙) */}
-            <div className="relative flex-1 max-w-[210px]" ref={shopDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsShopDropdownOpen(prev => !prev)}
-                aria-expanded={isShopDropdownOpen}
-                className="w-full flex h-8 items-center justify-between gap-1.5 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] px-2.5 py-1 text-[11px] font-bold text-[#25282B] transition-colors"
-              >
-                <span className="truncate">
-                  {shopFilter === 'ALL' ? '전체 매장' : shopFilter}
-                </span>
-                <svg
-                  className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-200 ${
-                    isShopDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
-                  }`}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m6 9 6 6 6-6"/>
-                </svg>
-              </button>
-
-              {/* 드롭다운 팝오버 메뉴 */}
-              {isShopDropdownOpen && (
-                <div className="absolute right-0 top-full mt-1.5 z-50 w-60 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
-                  {/* 검색창 인풋 바 */}
-                  <div className="p-2 border-b border-stone-100 bg-stone-50">
-                    <div className="relative">
-                      <svg
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <circle cx="11" cy="11" r="8"/>
-                        <path d="m21 21-4.35-4.35"/>
-                      </svg>
-                      <input
-                        type="text"
-                        placeholder="라멘집 검색..."
-                        value={shopSearchQuery}
-                        onChange={e => setShopSearchQuery(e.target.value)}
-                        className="w-full h-8 rounded-sm border border-stone-200 bg-white pl-8 pr-2.5 text-xs font-medium text-[#25282B] placeholder-stone-400 focus:border-[#E60000] outline-none"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                  {/* 매장 목록 리스트 */}
-                  <div className="max-h-52 overflow-y-auto no-scrollbar divide-y divide-stone-50">
-                    {/* 전체 매장 항목 */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShopFilter('ALL')
-                        setIsShopDropdownOpen(false)
-                        setShopSearchQuery('')
-                      }}
-                      className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 flex items-center justify-between transition-colors ${
-                        shopFilter === 'ALL' ? 'font-black text-[#E60000] bg-red-50' : 'text-[#25282B]'
-                      }`}
-                    >
-                      <span>전체 매장</span>
-                      <span className="text-[10px] text-stone-400">({allLogs.length}건)</span>
-                    </button>
-
-                    {/* 필터링된 개별 매장 리스트 */}
-                    {shopList
-                      .filter(s => s.value !== 'ALL')
-                      .filter(s => !shopSearchQuery.trim() || s.name.toLowerCase().includes(shopSearchQuery.toLowerCase()))
-                      .map(s => {
-                        const isSelected = shopFilter === s.value
-                        return (
-                          <button
-                            key={s.value}
-                            type="button"
-                            onClick={() => {
-                              setShopFilter(s.value)
-                              setIsShopDropdownOpen(false)
-                              setShopSearchQuery('')
-                            }}
-                            className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 flex items-center justify-between transition-colors ${
-                              isSelected ? 'font-black text-[#E60000] bg-red-50' : 'text-[#25282B]'
-                            }`}
-                          >
-                            <span className="truncate font-medium">{s.name}</span>
-                            <span className="text-[10px] text-stone-400 shrink-0 ml-2">({s.count}건)</span>
-                          </button>
-                        )
-                      })}
-                  </div>
-                </div>
-              )}
-            </div>
+        <div className="flex-shrink-0 bg-white border-b border-[#E2E2E2] px-5 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <IconStore className="w-4 h-4 text-[#E60000] flex-shrink-0" />
+            <span className="text-[12px] font-black text-[#25282B] whitespace-nowrap">매장별 모음</span>
           </div>
 
-          {/* 가로 스크롤 매장 퀵 필터 칩 */}
-          <div className="px-5 py-2 bg-stone-50 overflow-x-auto no-scrollbar flex items-center gap-1.5">
-            {shopList.map(s => {
-              const active = shopFilter === s.value
-              return (
-                <button
-                  key={s.value}
-                  onClick={() => setShopFilter(s.value)}
-                  className={`px-3 py-1 rounded-[32px] text-[11px] font-bold whitespace-nowrap transition-all ${
-                    active
-                      ? 'bg-[#25282B] text-white shadow-xs'
-                      : 'bg-white border border-stone-200 text-[#7E7E7E] hover:text-[#25282B] hover:border-stone-300'
-                  }`}
-                >
-                  {s.name} {s.count > 0 && <span className="opacity-70 text-[10px]">({s.count})</span>}
-                </button>
-              )
-            })}
+          {/* 매장 선택 커스텀 검색 드롭다운 (raota-front 스펙) */}
+          <div className="relative flex-1 max-w-[210px]" ref={shopDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsShopDropdownOpen(prev => !prev)}
+              aria-expanded={isShopDropdownOpen}
+              className="w-full flex h-8 items-center justify-between gap-1.5 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] px-2.5 py-1 text-[11px] font-bold text-[#25282B] transition-colors"
+            >
+              <span className="truncate">
+                {shopFilter === 'ALL' ? '전체 매장' : shopFilter}
+              </span>
+              <svg
+                className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-200 ${
+                  isShopDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
+                }`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+
+            {/* 드롭다운 팝오버 메뉴 */}
+            {isShopDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-60 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
+                {/* 검색창 인풋 바 */}
+                <div className="p-2 border-b border-stone-100 bg-stone-50">
+                  <div className="relative">
+                    <svg
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <circle cx="11" cy="11" r="8"/>
+                      <path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="라멘집 검색..."
+                      value={shopSearchQuery}
+                      onChange={e => setShopSearchQuery(e.target.value)}
+                      className="w-full h-8 rounded-sm border border-stone-200 bg-white pl-8 pr-2.5 text-xs font-medium text-[#25282B] placeholder-stone-400 focus:border-[#E60000] outline-none"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* 매장 목록 리스트 */}
+                <div className="max-h-52 overflow-y-auto no-scrollbar divide-y divide-stone-50">
+                  {/* 전체 매장 항목 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShopFilter('ALL')
+                      setIsShopDropdownOpen(false)
+                      setShopSearchQuery('')
+                    }}
+                    className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 flex items-center justify-between transition-colors ${
+                      shopFilter === 'ALL' ? 'font-black text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                    }`}
+                  >
+                    <span>전체 매장</span>
+                    <span className="text-[10px] text-stone-400">({allLogs.length}건)</span>
+                  </button>
+
+                  {/* 필터링된 개별 매장 리스트 */}
+                  {shopList
+                    .filter(s => s.value !== 'ALL')
+                    .filter(s => !shopSearchQuery.trim() || s.name.toLowerCase().includes(shopSearchQuery.toLowerCase()))
+                    .map(s => {
+                      const isSelected = shopFilter === s.value
+                      return (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => {
+                            setShopFilter(s.value)
+                            setIsShopDropdownOpen(false)
+                            setShopSearchQuery('')
+                          }}
+                          className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 flex items-center justify-between transition-colors ${
+                            isSelected ? 'font-black text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                          }`}
+                        >
+                          <span className="truncate font-medium">{s.name}</span>
+                          <span className="text-[10px] text-stone-400 shrink-0 ml-2">({s.count}건)</span>
+                        </button>
+                      )
+                    })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
