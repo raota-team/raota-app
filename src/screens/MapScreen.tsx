@@ -652,8 +652,8 @@ export default function MapScreen({ selectedPin, filter, onPinSelect, onFilterCh
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <span className="text-[15px] font-black text-[#25282B] truncate">{selected.name} · {selected.branch}</span>
-                  <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-2 py-0.5 rounded-[32px]">
-                    일치도 {selected.match}%
+                  <span className="text-[10px] font-bold text-[#25282B] bg-[#EAEAEA] px-2 py-0.5 rounded-[32px]">
+                    {selected.style}
                   </span>
                 </div>
                 <p className="text-[11px] text-[#7E7E7E] mt-0.5">{selected.spec}</p>
@@ -728,14 +728,9 @@ export default function MapScreen({ selectedPin, filter, onPinSelect, onFilterCh
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[15px] font-black text-[#25282B] truncate group-hover:text-[#E60000] transition-colors">
-                      {shop.name} · {shop.branch}
-                    </h3>
-                    <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-2 py-0.5 rounded-[32px] flex-shrink-0">
-                      {shop.match}% 일치
-                    </span>
-                  </div>
+                  <h3 className="text-[15px] font-black text-[#25282B] truncate group-hover:text-[#E60000] transition-colors">
+                    {shop.name} · {shop.branch}
+                  </h3>
 
                   <p className="text-[11px] text-[#7E7E7E] mt-0.5 truncate">{shop.spec}</p>
 
