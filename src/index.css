@@ -99,11 +99,37 @@ body {
   }
 }
 
+@keyframes blindUnfold {
+  0% {
+    opacity: 0;
+    transform: perspective(700px) rotateX(-85deg) translateY(-8px);
+    transform-origin: top center;
+    filter: brightness(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: perspective(700px) rotateX(10deg) translateY(0);
+    transform-origin: top center;
+    filter: brightness(1.02);
+  }
+  80% {
+    transform: perspective(700px) rotateX(-3deg);
+    transform-origin: top center;
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(700px) rotateX(0deg) translateY(0);
+    transform-origin: top center;
+    filter: brightness(1);
+  }
+}
+
 .anim-fade-in-up { animation: fadeInUp 0.32s ease forwards; }
 .anim-slide-up   { animation: slideUp 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
 .anim-fade-in    { animation: fadeIn 0.2s ease forwards; }
 .anim-pulse-once { animation: pulseOnce 0.9s ease forwards; }
 .anim-cascade    { animation: cascadeReveal 0.42s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.anim-blind      { animation: blindUnfold 0.48s cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: top center; backface-visibility: hidden; }
 
 .ticket-border {
   border: 1.5px dashed var(--color-line-dark);

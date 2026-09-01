@@ -281,14 +281,14 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
           </button>
         </div>
 
-        {/* 실시간 인기 랭킹 카드 컨테이너 (촤르륵 순차 등장 애니메이션) */}
-        <div key={`rankings-${refreshKey}`} className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden divide-y divide-stone-100 shadow-xs">
+        {/* 실시간 인기 랭킹 카드 컨테이너 (블라인드 촤르륵 3D 언폴드 애니메이션) */}
+        <div key={`rankings-${refreshKey}`} className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden divide-y divide-stone-100 shadow-xs [perspective:800px]">
           {POPULAR_SHOP_RANKINGS.map((item, idx) => (
             <div
               key={`${refreshKey}-${item.rank}`}
               onClick={onShopClick}
-              style={{ animationDelay: `${idx * 75}ms` }}
-              className="anim-cascade flex items-center justify-between p-3.5 hover:bg-stone-50 active:bg-stone-100 cursor-pointer transition-colors group"
+              style={{ animationDelay: `${idx * 80}ms` }}
+              className="anim-blind flex items-center justify-between p-3.5 hover:bg-stone-50 active:bg-stone-100 cursor-pointer transition-colors group origin-top"
             >
               <div className="flex items-center gap-3 min-w-0">
                 {/* 랭킹 번호 */}
