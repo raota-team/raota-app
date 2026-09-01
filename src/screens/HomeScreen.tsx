@@ -108,26 +108,32 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
   return (
     <div className="h-full overflow-y-auto no-scrollbar bg-[#FFFFFF] text-[#25282B]">
       
-      {/* 1. 상단 마스터 헤더 (공식 RAOTA 로고 및 스칼렛 레드 포인트) */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 pt-12 pb-3.5 border-b border-[#E2E2E2]">
+      {/* 1. 상단 마스터 헤더 (공식 RAOTA 로고 + 슬로건 & 유저 웰컴 인사) */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 pt-12 pb-3 border-b border-[#E2E2E2]">
         <div className="flex items-center justify-between">
+          {/* 좌측: 로고 + 하단 슬로건 */}
           <div className="flex items-center gap-2.5">
             <img
               src="/logo.png"
               alt="RAOTA Logo"
-              className="w-8 h-8 object-contain"
+              className="w-9 h-9 object-contain"
             />
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[20px] font-black tracking-tight text-[#25282B]">
-                RAOTA<span className="text-[#E60000]">.</span>
-              </span>
-              <span className="text-[11px] font-bold text-[#7E7E7E]">라오타</span>
+            <div>
+              <div className="flex items-baseline gap-1.5 leading-none">
+                <span className="text-[20px] font-black tracking-tight text-[#25282B]">
+                  RAOTA<span className="text-[#E60000]">.</span>
+                </span>
+              </div>
+              <p className="text-[10.5px] font-bold text-[#7E7E7E] tracking-tight mt-0.5">
+                나의 라멘 취향을 찾는 곳
+              </p>
             </div>
           </div>
 
+          {/* 우측: 닉네임 ~님 반갑습니다 */}
           <div className="text-right">
-            <span className="text-[11px] font-bold text-stone-500 tracking-tight bg-[#F2F2F2] px-2.5 py-1 rounded-[32px] border border-stone-200/60">
-              나의 라멘 취향을 찾는 곳
+            <span className="text-[12px] font-bold text-[#25282B]">
+              <span className="text-[#E60000] font-black">뿡</span>님, 반갑습니다
             </span>
           </div>
         </div>
