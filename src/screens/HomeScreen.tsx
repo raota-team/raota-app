@@ -50,21 +50,60 @@ const NEARBY = [
   },
 ]
 
-const THEME_DECKS = [
+const TRENDING_RANKINGS = [
   {
-    title: '극상의 진한 국물 탐방',
-    sub: '14시간 우려낸 돼지뼈 육수의 깊은 감칠맛',
-    count: '5곳 추천',
-    tag: '진한 농후 육수',
-    img: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=400&h=300&fit=crop&auto=format&q=80',
+    rank: 1,
+    name: '멘야준',
+    branch: '망원 본점',
+    style: '자가제면 특제 쇼유 라멘',
+    badge: '인기 1위',
+    trend: '+15%',
+    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
-    title: '맑고 깊은 청탕 쇼유 라멘',
-    sub: '첫 모금에 감칠맛이 퍼지는 깔끔함',
-    count: '4곳 추천',
-    tag: '맑은 간장 육수',
-    img: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=400&h=300&fit=crop&auto=format&q=80',
+    rank: 2,
+    name: '하쿠텐',
+    branch: '연남점',
+    style: '진한 농후 이에케 라멘',
+    badge: '웨이팅 급상승',
+    trend: '+24%',
+    photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=200&h=200&fit=crop&auto=format&q=80',
   },
+  {
+    rank: 3,
+    name: '오레노라멘',
+    branch: '마포 본점',
+    style: '크리미 토리파이탄 (닭백탕)',
+    badge: '미쉐린 빕구르망',
+    trend: '+8%',
+    photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=200&h=200&fit=crop&auto=format&q=80',
+  },
+  {
+    rank: 4,
+    name: '담택',
+    branch: '합정 본점',
+    style: '깔끔한 유자 시오 라멘',
+    badge: '취향 만족 96%',
+    trend: '+11%',
+    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80',
+  },
+  {
+    rank: 5,
+    name: '세상끝의라멘',
+    branch: '합정점',
+    style: '오사카식 블랙 쇼유 & 차슈',
+    badge: '재방문율 1위',
+    trend: '+19%',
+    photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=200&h=200&fit=crop&auto=format&q=80',
+  },
+]
+
+const TRENDING_TAGS = [
+  { tag: '자가제면_쇼유', count: '1.2k 탐색', icon: '🔥' },
+  { tag: '농후_이에케', count: '980회 탐색', icon: '⚡' },
+  { tag: '유자_시오', count: '850회 탐색', icon: '🍋' },
+  { tag: '크리미_토리파이탄', count: '740회 탐색', icon: '🍜' },
+  { tag: '도미뼈_청탕', count: '620회 탐색', icon: '🐟' },
 ]
 
 export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, onAIRecommendClick }: Props) {
@@ -207,35 +246,90 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
         </article>
       </section>
 
-      {/* 5. 테마 기획전 */}
-      <section className="mb-7">
-        <div className="px-5 flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
-          <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">
-            이달의 테마 컬렉션
-          </h2>
-          <span className="text-[11px] font-bold text-[#7E7E7E]">취향별 기획</span>
+      {/* 5. 실시간 트렌딩 키워드 & 랭킹 (raota-front TrendingTagsRanking 기반) */}
+      <section className="mb-7 px-5">
+        <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-[#E60000] fill-[#E60000]" viewBox="0 0 24 24">
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+            </svg>
+            <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">
+              실시간 인기 라멘야 & 트렌드
+            </h2>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#E60000] animate-pulse" />
+            <span className="text-[10px] font-black text-[#E60000]">LIVE</span>
+          </div>
         </div>
 
-        <div className="flex gap-3 px-5 overflow-x-auto no-scrollbar snap-x-mandatory pb-1">
-          {THEME_DECKS.map((d, i) => (
+        {/* 실시간 인기 랭킹 카드 컨테이너 */}
+        <div className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden divide-y divide-stone-100 shadow-xs">
+          {TRENDING_RANKINGS.map((item) => (
             <div
-              key={i}
+              key={item.rank}
               onClick={onShopClick}
-              className="flex-shrink-0 w-64 snap-start bg-white rounded-[6px] border border-[#E2E2E2] p-3.5 cursor-pointer hover:border-[#25282B] active:scale-98 transition-all group"
+              className="flex items-center justify-between p-3 hover:bg-stone-50 active:bg-stone-100 cursor-pointer transition-colors group"
             >
-              <div className="relative h-28 rounded-[6px] overflow-hidden bg-[#F2F2F2] mb-3">
-                <img src={d.img} alt={d.title} className="w-full h-full object-cover" />
-                <span className="absolute top-2 left-2 bg-[#25282B] text-white text-[9px] px-2.5 py-0.5 rounded-[32px] font-bold">
-                  {d.tag}
+              <div className="flex items-center gap-3 min-w-0">
+                {/* 랭킹 번호 */}
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 ${
+                    item.rank === 1
+                      ? 'bg-[#E60000] text-white shadow-xs'
+                      : item.rank === 2
+                      ? 'bg-[#25282B] text-white'
+                      : item.rank === 3
+                      ? 'bg-stone-600 text-white'
+                      : 'bg-stone-100 text-stone-500'
+                  }`}
+                >
+                  {item.rank}
+                </div>
+
+                {/* 매장 썸네일 */}
+                <div className="w-10 h-10 rounded-[4px] overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
+                  <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+                </div>
+
+                {/* 매장 정보 */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px] font-black text-[#25282B] truncate group-hover:text-[#E60000] transition-colors">
+                      {item.name}
+                    </span>
+                    <span className="text-[10px] text-stone-400 font-bold shrink-0">{item.branch}</span>
+                  </div>
+                  <p className="text-[11px] text-stone-500 truncate">{item.style}</p>
+                </div>
+              </div>
+
+              {/* 우측 뱃지 및 급상승 수치 */}
+              <div className="text-right shrink-0 pl-2">
+                <span className="text-[10px] font-bold text-[#E60000] bg-red-50 px-2 py-0.5 rounded-[32px] block">
+                  {item.badge}
+                </span>
+                <span className="text-[9px] font-mono text-stone-400 font-bold block mt-0.5">
+                  {item.trend}
                 </span>
               </div>
-              <p className="text-[14px] font-black text-[#25282B]">{d.title}</p>
-              <p className="text-[11px] text-[#7E7E7E] mt-0.5 line-clamp-1">{d.sub}</p>
-              <div className="mt-2.5 pt-2 border-t border-[#E2E2E2] flex items-center justify-between text-[11px] font-bold text-[#7E7E7E]">
-                <span>{d.count}</span>
-                <span className="text-[#E60000]">확인하기 →</span>
-              </div>
             </div>
+          ))}
+        </div>
+
+        {/* 하단 실시간 인기 해시태그 칩 */}
+        <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+          {TRENDING_TAGS.map((t, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={onShopClick}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-[32px] border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] text-[11px] font-bold text-[#25282B] whitespace-nowrap transition-colors shrink-0"
+            >
+              <span>{t.icon}</span>
+              <span>#{t.tag}</span>
+              <span className="text-[10px] text-stone-400 font-normal">({t.count})</span>
+            </button>
           ))}
         </div>
       </section>
