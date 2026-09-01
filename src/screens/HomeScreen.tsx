@@ -298,12 +298,8 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
 
               {/* 우측 조회수 및 바로가기 화살표 */}
               <div className="flex items-center gap-2 shrink-0 pl-2">
-                <span className="text-[11px] font-bold text-stone-500 bg-[#F2F2F2] px-2 py-0.5 rounded-[4px] flex items-center gap-1">
-                  <svg className="w-3 h-3 text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  <span>{item.views}</span>
+                <span className="text-[11px] font-medium text-[#7E7E7E]">
+                  {item.views}
                 </span>
                 <span className="text-[12px] font-bold text-stone-300 group-hover:text-[#E60000] group-hover:translate-x-0.5 transition-all">
                   →
