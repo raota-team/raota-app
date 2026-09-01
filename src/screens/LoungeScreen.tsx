@@ -270,9 +270,12 @@ const COMMUNITY_CATEGORIES = [
 export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props) {
   const [loungeTab, setLoungeTab] = useState<'logs' | 'community'>('logs')
   const [shopFilter, setShopFilter] = useState('ALL')
+  const [sortBy, setSortBy] = useState<'LATEST' | 'LIKES'>('LATEST')
   const [isShopDropdownOpen, setIsShopDropdownOpen] = useState(false)
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
   const [shopSearchQuery, setShopSearchQuery] = useState('')
   const shopDropdownRef = useRef<HTMLDivElement>(null)
+  const sortDropdownRef = useRef<HTMLDivElement>(null)
   const [communityCategory, setCommunityCategory] = useState('all')
   const [allLogs, setAllLogs] = useState<RamenLog[]>(logs)
   const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_COMMUNITY_POSTS)
@@ -286,14 +289,17 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
       if (shopDropdownRef.current && !shopDropdownRef.current.contains(event.target as Node)) {
         setIsShopDropdownOpen(false)
       }
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
+        setIsSortDropdownOpen(false)
+      }
     }
-    if (isShopDropdownOpen) {
+    if (isShopDropdownOpen || isSortDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isShopDropdownOpen])
+  }, [isShopDropdownOpen, isSortDropdownOpen])
 
   const handleToggleLogLike = (id: number) => {
     setAllLogs(prev =>
@@ -393,9 +399,18 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
     ]
   }, [allLogs])
 
-  const filteredLogs = shopFilter === 'ALL'
-    ? allLogs
-    : allLogs.filter(l => l.shop?.name === shopFilter)
+  const filteredLogs = useMemo(() => {
+    let result = shopFilter === 'ALL'
+      ? [...allLogs]
+      : allLogs.filter(l => l.shop?.name === shopFilter)
+
+    if (sortBy === 'LIKES') {
+      result.sort((a, b) => b.likes - a.likes)
+    } else {
+      result.sort((a, b) => b.id - a.id)
+    }
+    return result
+  }, [allLogs, shopFilter, sortBy])
 
   const filteredPosts = communityCategory === 'all'
     ? posts
@@ -650,25 +665,26 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
         </div>
       </header>
 
-      {/* 2. 카테고리 / 매장 필터 바 */}
+      {/* 2. 카테고리 / 매장 & 정렬 필터 바 */}
       {loungeTab === 'logs' ? (
-        <div className="flex-shrink-0 bg-white border-b border-[#E2E2E2] px-5 py-2.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <IconStore className="w-4 h-4 text-[#E60000] flex-shrink-0" />
-            <span className="text-[12px] font-black text-[#25282B] whitespace-nowrap">매장별 모음</span>
-          </div>
-
-          {/* 매장 선택 커스텀 검색 드롭다운 (raota-front 스펙) */}
-          <div className="relative flex-1 max-w-[210px]" ref={shopDropdownRef}>
+        <div className="flex-shrink-0 bg-white border-b border-[#E2E2E2] px-5 py-2.5 flex items-center justify-between gap-2.5">
+          {/* 좌측: 매장 선택 커스텀 검색 드롭다운 (raota-front 스펙) */}
+          <div className="relative flex-1 min-w-0" ref={shopDropdownRef}>
             <button
               type="button"
-              onClick={() => setIsShopDropdownOpen(prev => !prev)}
+              onClick={() => {
+                setIsShopDropdownOpen(prev => !prev)
+                setIsSortDropdownOpen(false)
+              }}
               aria-expanded={isShopDropdownOpen}
               className="w-full flex h-8 items-center justify-between gap-1.5 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] px-2.5 py-1 text-[11px] font-bold text-[#25282B] transition-colors"
             >
-              <span className="truncate">
-                {shopFilter === 'ALL' ? '전체 매장' : shopFilter}
-              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <IconStore className="w-3.5 h-3.5 text-[#E60000] shrink-0" />
+                <span className="truncate">
+                  {shopFilter === 'ALL' ? '전체 매장' : shopFilter}
+                </span>
+              </div>
               <svg
                 className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-200 ${
                   isShopDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
@@ -686,7 +702,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
 
             {/* 드롭다운 팝오버 메뉴 */}
             {isShopDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 z-50 w-60 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
+              <div className="absolute left-0 top-full mt-1.5 z-50 w-60 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
                 {/* 검색창 인풋 바 */}
                 <div className="p-2 border-b border-stone-100 bg-stone-50">
                   <div className="relative">
@@ -753,6 +769,67 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                         </button>
                       )
                     })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 우측: 정렬 커스텀 드롭다운 (최신순 / 좋아요순) */}
+          <div className="relative shrink-0" ref={sortDropdownRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSortDropdownOpen(prev => !prev)
+                setIsShopDropdownOpen(false)
+              }}
+              aria-expanded={isSortDropdownOpen}
+              className="flex h-8 items-center justify-between gap-1.5 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] px-2.5 py-1 text-[11px] font-bold text-[#25282B] transition-colors"
+            >
+              <span>{sortBy === 'LATEST' ? '최신순' : '좋아요순'}</span>
+              <svg
+                className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-200 ${
+                  isSortDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
+                }`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+
+            {isSortDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 z-50 w-28 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
+                <div className="py-1 divide-y divide-stone-50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('LATEST')
+                      setIsSortDropdownOpen(false)
+                    }}
+                    className={`w-full px-3 py-1.5 text-left text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-between ${
+                      sortBy === 'LATEST' ? 'font-black text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                    }`}
+                  >
+                    <span>최신순</span>
+                    {sortBy === 'LATEST' && <span className="text-[#E60000] font-bold">✓</span>}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSortBy('LIKES')
+                      setIsSortDropdownOpen(false)
+                    }}
+                    className={`w-full px-3 py-1.5 text-left text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-between ${
+                      sortBy === 'LIKES' ? 'font-black text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                    }`}
+                  >
+                    <span>좋아요순</span>
+                    {sortBy === 'LIKES' && <span className="text-[#E60000] font-bold">✓</span>}
+                  </button>
                 </div>
               </div>
             )}
