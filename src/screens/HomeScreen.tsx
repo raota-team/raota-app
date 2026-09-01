@@ -125,13 +125,10 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="text-right">
-              <span className="text-[9px] font-bold text-[#7E7E7E] block">나의 라멘 취향</span>
-              <span className="text-[11px] font-black text-[#E60000] bg-[#E60000]/10 px-2.5 py-0.5 rounded-[32px]">
-                진한 돈골파 9레벨
-              </span>
-            </div>
+          <div className="text-right">
+            <span className="text-[11px] font-bold text-stone-500 tracking-tight bg-[#F2F2F2] px-2.5 py-1 rounded-[32px] border border-stone-200/60">
+              나의 라멘 취향을 찾는 곳
+            </span>
           </div>
         </div>
       </header>
