@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 interface Props {
   recordSaved: boolean
   onShopClick: () => void
@@ -107,6 +109,15 @@ const TRENDING_TAGS = [
 ]
 
 export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, onAIRecommendClick }: Props) {
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    setRefreshKey(k => k + 1)
+    setTimeout(() => setIsRefreshing(false), 450)
+  }
+
   return (
     <div className="h-full overflow-y-auto no-scrollbar bg-[#FFFFFF] text-[#25282B]">
       
@@ -257,24 +268,45 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
               실시간 인기 라멘야 & 트렌드
             </h2>
           </div>
-          <div className="flex items-center gap-1">
+          
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-[32px] bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-[#25282B] active:scale-95 transition-all cursor-pointer"
+            title="실시간 랭킹 새로고침"
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-[#E60000] animate-pulse" />
             <span className="text-[10px] font-black text-[#E60000]">LIVE</span>
-          </div>
+            <svg
+              className={`w-3 h-3 text-stone-400 transition-transform duration-500 ${isRefreshing ? 'rotate-180 text-[#E60000]' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+              <path d="M16 21h5v-5" />
+            </svg>
+          </button>
         </div>
 
-        {/* 실시간 인기 랭킹 카드 컨테이너 */}
-        <div className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden divide-y divide-stone-100 shadow-xs">
-          {TRENDING_RANKINGS.map((item) => (
+        {/* 실시간 인기 랭킹 카드 컨테이너 (촤르륵 순차 등장 애니메이션) */}
+        <div key={`rankings-${refreshKey}`} className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden divide-y divide-stone-100 shadow-xs">
+          {TRENDING_RANKINGS.map((item, idx) => (
             <div
-              key={item.rank}
+              key={`${refreshKey}-${item.rank}`}
               onClick={onShopClick}
-              className="flex items-center justify-between p-3 hover:bg-stone-50 active:bg-stone-100 cursor-pointer transition-colors group"
+              style={{ animationDelay: `${idx * 75}ms` }}
+              className="anim-cascade flex items-center justify-between p-3 hover:bg-stone-50 active:bg-stone-100 cursor-pointer transition-colors group"
             >
               <div className="flex items-center gap-3 min-w-0">
                 {/* 랭킹 번호 */}
                 <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 ${
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 transition-transform group-hover:scale-110 ${
                     item.rank === 1
                       ? 'bg-[#E60000] text-white shadow-xs'
                       : item.rank === 2
@@ -289,7 +321,7 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
 
                 {/* 매장 썸네일 */}
                 <div className="w-10 h-10 rounded-[4px] overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
-                  <img src={item.photo} alt={item.name} className="w-full h-full object-cover" />
+                  <img src={item.photo} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                 </div>
 
                 {/* 매장 정보 */}
@@ -317,14 +349,15 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
           ))}
         </div>
 
-        {/* 하단 실시간 인기 해시태그 칩 */}
-        <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        {/* 하단 실시간 인기 해시태그 칩 (촤르륵 순차 등장 애니메이션) */}
+        <div key={`tags-${refreshKey}`} className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           {TRENDING_TAGS.map((t, idx) => (
             <button
-              key={idx}
+              key={`${refreshKey}-${idx}`}
               type="button"
               onClick={onShopClick}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-[32px] border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] text-[11px] font-bold text-[#25282B] whitespace-nowrap transition-colors shrink-0"
+              style={{ animationDelay: `${380 + idx * 50}ms` }}
+              className="anim-cascade flex items-center gap-1 px-2.5 py-1.5 rounded-[32px] border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] text-[11px] font-bold text-[#25282B] whitespace-nowrap transition-colors shrink-0"
             >
               <span>{t.icon}</span>
               <span>#{t.tag}</span>

@@ -81,10 +81,29 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(230,0,0,0); }
 }
 
+@keyframes cascadeReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+    filter: blur(2px);
+  }
+  65% {
+    opacity: 0.95;
+    transform: translateY(-2px) scale(1.005);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
 .anim-fade-in-up { animation: fadeInUp 0.32s ease forwards; }
 .anim-slide-up   { animation: slideUp 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
 .anim-fade-in    { animation: fadeIn 0.2s ease forwards; }
 .anim-pulse-once { animation: pulseOnce 0.9s ease forwards; }
+.anim-cascade    { animation: cascadeReveal 0.42s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 .ticket-border {
   border: 1.5px dashed var(--color-line-dark);
