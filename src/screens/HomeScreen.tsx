@@ -58,7 +58,7 @@ const POPULAR_SHOP_RANKINGS = [
     name: '멘야준',
     branch: '망원 본점',
     style: '자가제면 특제 쇼유 라멘',
-    badge: '인기 1위',
+    views: '1,420회',
     photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
@@ -66,7 +66,7 @@ const POPULAR_SHOP_RANKINGS = [
     name: '하쿠텐',
     branch: '연남점',
     style: '진한 농후 이에케 라멘',
-    badge: '웨이팅 명소',
+    views: '1,180회',
     photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
@@ -74,7 +74,7 @@ const POPULAR_SHOP_RANKINGS = [
     name: '오레노라멘',
     branch: '마포 본점',
     style: '크리미 토리파이탄 (닭백탕)',
-    badge: '미쉐린 빕구르망',
+    views: '960회',
     photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
@@ -82,7 +82,7 @@ const POPULAR_SHOP_RANKINGS = [
     name: '담택',
     branch: '합정 본점',
     style: '깔끔한 유자 시오 라멘',
-    badge: '유자 시오 명소',
+    views: '840회',
     photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80',
   },
   {
@@ -90,21 +90,12 @@ const POPULAR_SHOP_RANKINGS = [
     name: '세상끝의라멘',
     branch: '합정점',
     style: '오사카식 블랙 쇼유 & 차슈',
-    badge: '재방문율 1위',
+    views: '720회',
     photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=200&h=200&fit=crop&auto=format&q=80',
   },
 ]
 
 export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, onAIRecommendClick }: Props) {
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-
-  const handleRefresh = () => {
-    setIsRefreshing(true)
-    setRefreshKey(k => k + 1)
-    setTimeout(() => setIsRefreshing(false), 450)
-  }
-
   return (
     <div className="h-full overflow-y-auto no-scrollbar bg-[#FFFFFF] text-[#25282B]">
       
@@ -247,7 +238,7 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
         </article>
       </section>
 
-      {/* 5. 실시간 인기 라멘야 순위 (raota-front TrendingTagsRanking 기반) */}
+      {/* 5. 오늘 많이 본 라멘야 (raota-front 기반 실시간 조회순 랭킹) */}
       <section className="mb-7 px-5">
         <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
           <div className="flex items-center gap-1.5">
@@ -255,40 +246,19 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
               <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
             </svg>
             <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">
-              실시간 인기 라멘야 순위
+              오늘 많이 본 라멘야
             </h2>
           </div>
-          
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-[32px] bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-[#25282B] active:scale-95 transition-all cursor-pointer"
-            title="실시간 랭킹 새로고침"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#E60000] animate-pulse" />
-            <span className="text-[10px] font-black text-[#E60000]">LIVE</span>
-            <svg
-              className={`w-3 h-3 text-stone-400 transition-transform duration-500 ${isRefreshing ? 'rotate-180 text-[#E60000]' : ''}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-              <path d="M16 21h5v-5" />
-            </svg>
-          </button>
+          <span className="text-[10.5px] font-bold text-stone-400">
+            실시간 조회수 기준
+          </span>
         </div>
 
         {/* 실시간 인기 랭킹 카드 컨테이너 (블라인드 촤르륵 3D 언폴드 애니메이션) */}
-        <div key={`rankings-${refreshKey}`} className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden divide-y divide-stone-100 shadow-xs [perspective:800px]">
+        <div className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden divide-y divide-stone-100 shadow-xs [perspective:800px]">
           {POPULAR_SHOP_RANKINGS.map((item, idx) => (
             <div
-              key={`${refreshKey}-${item.rank}`}
+              key={item.rank}
               onClick={onShopClick}
               style={{ animationDelay: `${idx * 80}ms` }}
               className="anim-blind flex items-center justify-between p-3.5 hover:bg-stone-50 active:bg-stone-100 cursor-pointer transition-colors group origin-top"
@@ -326,10 +296,14 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
                 </div>
               </div>
 
-              {/* 우측 뱃지 및 바로가기 화살표 */}
+              {/* 우측 조회수 및 바로가기 화살표 */}
               <div className="flex items-center gap-2 shrink-0 pl-2">
-                <span className="text-[10px] font-bold text-[#E60000] bg-red-50 px-2 py-0.5 rounded-[32px] block">
-                  {item.badge}
+                <span className="text-[11px] font-bold text-stone-500 bg-[#F2F2F2] px-2 py-0.5 rounded-[4px] flex items-center gap-1">
+                  <svg className="w-3 h-3 text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span>{item.views}</span>
                 </span>
                 <span className="text-[12px] font-bold text-stone-300 group-hover:text-[#E60000] group-hover:translate-x-0.5 transition-all">
                   →
