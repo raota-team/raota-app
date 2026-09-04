@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import {
   Bell,
   Heart,
@@ -11,7 +11,6 @@ import {
   Check,
   CheckCheck,
   X,
-  Trash2,
   Sparkles,
 } from 'lucide-react'
 import type { AppNotification, NotificationSettings } from '../types'
@@ -22,7 +21,7 @@ interface Props {
   onBack: () => void
   onMarkAllAsRead: () => void
   onReadNotification: (id: string) => void
-  onDeleteNotification: (id: string) => void
+  onDeleteNotification?: (id: string) => void
   onUpdateSettings: (newSettings: NotificationSettings) => void
   onNavigateToShop?: (shopId: number) => void
   onNavigateToLounge?: () => void
@@ -65,188 +64,60 @@ function ToggleSwitch({
   )
 }
 
-// 👆 오른쪽으로 밀어서 삭제하는 스와이프 알림 아이템 컴포넌트
-interface SwipeableItemProps {
+// 📄 알림 아이템 컴포넌트 (삭제 기능 없이 탭하여 읽음/이동)
+interface NotificationItemProps {
   item: AppNotification
   onClick: () => void
-  onDelete: () => void
   icon: React.ReactNode
   typeBadge: React.ReactNode
 }
 
-function SwipeableNotificationItem({
+function NotificationItem({
   item,
   onClick,
-  onDelete,
   icon,
   typeBadge,
-}: SwipeableItemProps) {
-  const [offsetX, setOffsetX] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const startXRef = useRef<number>(0)
-  const startYRef = useRef<number>(0)
-  const isHorizontalSwipe = useRef<boolean | null>(null)
-  const hasMovedRef = useRef(false)
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    startXRef.current = e.touches[0].clientX
-    startYRef.current = e.touches[0].clientY
-    isHorizontalSwipe.current = null
-    hasMovedRef.current = false
-    setIsDragging(true)
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return
-    const touchX = e.touches[0].clientX
-    const touchY = e.touches[0].clientY
-    const deltaX = touchX - startXRef.current
-    const deltaY = touchY - startYRef.current
-
-    if (isHorizontalSwipe.current === null) {
-      if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
-        isHorizontalSwipe.current = Math.abs(deltaX) > Math.abs(deltaY)
-      }
-    }
-
-    if (isHorizontalSwipe.current) {
-      hasMovedRef.current = true
-      if (deltaX < 0) {
-        setOffsetX(deltaX)
-      } else {
-        setOffsetX(deltaX * 0.15) // 오른쪽으로는 약간의 저항감
-      }
-    }
-  }
-
-  const handleTouchEnd = () => {
-    setIsDragging(false)
-    if (offsetX < -90) {
-      // 90px 이상 왼쪽으로 밀었으면 삭제 확정 (iOS 표준)
-      setIsDeleting(true)
-      setOffsetX(-420)
-      setTimeout(() => {
-        onDelete()
-      }, 220)
-    } else {
-      setOffsetX(0)
-    }
-    isHorizontalSwipe.current = null
-  }
-
-  // PC 마우스 드래그 지원
-  const handleMouseDown = (e: React.MouseEvent) => {
-    startXRef.current = e.clientX
-    hasMovedRef.current = false
-    setIsDragging(true)
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return
-    const deltaX = e.clientX - startXRef.current
-    if (Math.abs(deltaX) > 5) hasMovedRef.current = true
-    if (deltaX < 0) {
-      setOffsetX(deltaX)
-    } else {
-      setOffsetX(deltaX * 0.15)
-    }
-  }
-
-  const handleMouseUp = () => {
-    if (!isDragging) return
-    setIsDragging(false)
-    if (offsetX < -90) {
-      setIsDeleting(true)
-      setOffsetX(-420)
-      setTimeout(() => {
-        onDelete()
-      }, 220)
-    } else {
-      setOffsetX(0)
-    }
-  }
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (hasMovedRef.current || Math.abs(offsetX) > 8) {
-      e.stopPropagation()
-      return
-    }
-    onClick()
-  }
-
+}: NotificationItemProps) {
   return (
     <div
-      className={`relative overflow-hidden transition-all duration-200 ${
-        isDeleting ? 'max-h-0 opacity-0' : 'max-h-[140px] opacity-100'
+      onClick={onClick}
+      className={`p-3.5 select-none transition-colors cursor-pointer flex items-start justify-between gap-3 border-b border-[#F0F0F2] last:border-b-0 active:scale-[0.99] ${
+        item.isRead
+          ? 'bg-white hover:bg-[#F7F7F8]'
+          : 'bg-[#FFEFEF] hover:bg-[#FFE5E5]'
       }`}
     >
-      {/* 🔴 왼쪽으로 밀었을 때 우측에 나타나는 iOS 표준 삭제 배경 (평상시에는 완전 은닉) */}
-      <div
-        className={`absolute inset-0 bg-[#E60000] flex items-center px-4.5 justify-end select-none transition-opacity duration-150 ${
-          offsetX < 0 || isDeleting ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        <div className="flex items-center gap-1.5 text-white font-black text-[12px]">
-          <span>삭제</span>
-          <Trash2 className="w-4 h-4 text-white" />
+      <div className="flex items-start gap-3 min-w-0 flex-1">
+        {icon}
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            {typeBadge}
+            <p
+              className={`text-[12.5px] truncate ${
+                item.isRead
+                  ? 'font-semibold text-stone-700'
+                  : 'font-black text-[#1C1D21]'
+              }`}
+            >
+              {item.title}
+            </p>
+          </div>
+
+          <p
+            className={`text-[11.5px] leading-snug break-keep line-clamp-2 ${
+              item.isRead ? 'text-stone-500' : 'text-stone-700'
+            }`}
+          >
+            {item.content}
+          </p>
         </div>
       </div>
 
-      {/* 📄 전면 알림 카드 컨텐츠 (완전 불투명 배경 적용) */}
-      <div
-        onClick={handleClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        style={{
-          transform: `translateX(${offsetX}px)`,
-          transition: isDragging
-            ? 'none'
-            : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
-        }}
-        className={`p-3.5 select-none transition-colors cursor-pointer flex items-start justify-between gap-3 relative ${
-          item.isRead
-            ? 'bg-white hover:bg-[#F7F7F8]'
-            : 'bg-[#FFEFEF] hover:bg-[#FFE5E5]'
-        }`}
-      >
-        <div className="flex items-start gap-3 min-w-0 flex-1 pointer-events-none">
-          {icon}
-          <div className="min-w-0 flex-1 pt-0.5">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              {typeBadge}
-              <p
-                className={`text-[12.5px] truncate ${
-                  item.isRead
-                    ? 'font-semibold text-stone-700'
-                    : 'font-black text-[#1C1D21]'
-                }`}
-              >
-                {item.title}
-              </p>
-            </div>
-
-            <p
-              className={`text-[11.5px] leading-snug break-keep line-clamp-2 ${
-                item.isRead ? 'text-stone-500' : 'text-stone-700'
-              }`}
-            >
-              {item.content}
-            </p>
-          </div>
-        </div>
-
-        {/* 우측 상단 타임스탬프 (X버튼 제거로 여유로운 공간) */}
-        <div className="flex flex-col items-end justify-between self-stretch shrink-0 pl-1 pointer-events-none">
-          <span className="text-[10px] text-stone-400 font-mono">
-            {item.time}
-          </span>
-        </div>
+      {/* 우측 상단 타임스탬프 */}
+      <div className="flex flex-col items-end justify-between self-stretch shrink-0 pl-1">
+        <span className="text-[10px] text-stone-400 font-mono">
+          {item.time}
+        </span>
       </div>
     </div>
   )
@@ -520,16 +391,12 @@ export default function NotificationScreen({
           </div>
         ) : (
           filteredNotifications.map(item => (
-            <SwipeableNotificationItem
+            <NotificationItem
               key={item.id}
               item={item}
               icon={getIconByType(item.type)}
               typeBadge={getTypeBadge(item.type, item.isRead)}
               onClick={() => handleNotificationClick(item)}
-              onDelete={() => {
-                onDeleteNotification(item.id)
-                showToast('알림이 삭제되었습니다.')
-              }}
             />
           ))
         )}
