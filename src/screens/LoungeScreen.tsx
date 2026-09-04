@@ -445,11 +445,13 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
     return result
   }, [allLogs, shopFilter, sortBy])
 
-  const filteredPosts = communityCategory === 'all'
-    ? posts
-    : communityCategory === 'POPULAR'
-    ? posts.filter(p => p.likeCount >= 30).sort((a, b) => b.likeCount - a.likeCount)
-    : posts.filter(p => p.category === communityCategory)
+  const filteredPosts = useMemo(() => {
+    if (communityCategory === 'all') return posts
+    if (communityCategory === 'POPULAR') {
+      return posts.filter(p => p.likeCount >= 30).slice().sort((a, b) => b.likeCount - a.likeCount)
+    }
+    return posts.filter(p => p.category === communityCategory)
+  }, [posts, communityCategory])
 
   // ==========================================
   // 🌟 raota-front 기반 커뮤니티 글쓰기 화면 (CommunityWritePage)
@@ -1121,8 +1123,9 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
             return (
               <button
                 key={cat.id}
+                type="button"
                 onClick={() => setCommunityCategory(cat.id)}
-                className={`px-3 py-1 rounded-[32px] text-[11px] font-bold whitespace-nowrap transition-all ${
+                className={`px-3 py-1 rounded-[32px] text-[11px] font-bold whitespace-nowrap outline-none focus:outline-none focus-visible:outline-none focus:ring-0 select-none transition-colors ${
                   active
                     ? 'bg-[#25282B] text-white'
                     : 'bg-[#F2F2F2] text-[#7E7E7E] hover:bg-[#EAEAEA]'
@@ -1345,12 +1348,12 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
         {/* 탭 2: 라멘러 커뮤니티 (Threads/Daangn 플랫 스트림 스타일) */}
         {loungeTab === 'community' && (
           <div>
-            <div className="divide-y divide-stone-100 bg-white">
+            <div className="bg-white">
               {filteredPosts.map(post => (
                 <article
                   key={post.postId}
                   onClick={() => setSelectedPost(post)}
-                  className="px-4 py-3 hover:bg-stone-50/70 active:bg-stone-100/60 transition-colors cursor-pointer group"
+                  className="px-4 py-3 hover:bg-stone-50/70 active:bg-stone-100/60 transition-colors cursor-pointer group border-b border-[#F0F0F2] last:border-b-0"
                 >
                   {/* 상단: 카테고리 뱃지 & 인기 뱃지만 단독 배치 */}
                   <div className="flex items-center gap-1.5 mb-1.5">
