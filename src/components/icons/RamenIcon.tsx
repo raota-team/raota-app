@@ -37,23 +37,8 @@ export default function RamenIcon({
       height={height}
       {...props}
     >
-      {/* 상단 젓가락 (Chopsticks) */}
-      <path d="M7 3l15 1.5" />
-      <path d="M7 5.8l15 1.5" />
-
-      {/* 좌측 사각 김 (Nori seaweed slice) */}
-      <path d="M3.5 13.5l1-5h3l-.5 5" />
-
-      {/* 젓가락에 걸쳐 높고 길게 흘러내리는 3줄 S자 웨이브 면발 (Lifting Noodles) */}
-      <path d="M11 4.5c-1.5 2 1.5 4.5 0 8.5" />
-      <path d="M14.5 5c-1.5 2 1.5 4.5 0 8" />
-      <path d="M18 5.5c-1.5 2 1.5 4.5 0 7.5" />
-
-      {/* 라멘 돈부리 그릇 (Ramen Bowl) */}
-      <path d="M2 13h20c0 4.8-3.8 8-10 8S2 17.8 2 13Z" />
-
-      {/* 그릇 굽 받침대 (Bowl Foot Ring) */}
-      <path d="M8 21v1.5h8V21" />
+      {/* Tabler Bowl Reference (정갈하고 선명한 라멘 돈부리 볼) */}
+      <path d="M4 8h16a1 1 0 0 1 1 1v.5c0 1.5-2.517 5.573-4 6.5v1a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-1c-1.687-1.054-4-5-4-6.5V9a1 1 0 0 1 1-1" />
     </svg>
   )
 }
