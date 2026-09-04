@@ -205,16 +205,16 @@ const WRITE_CATEGORIES = [
 ]
 
 const CATEGORY_COLORS: Record<string, string> = {
-  REVIEW: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
-  TIP: 'bg-blue-50 text-blue-700 border border-blue-200/80',
-  QUESTION: 'bg-amber-50 text-amber-800 border border-amber-200/80',
-  FREE: 'bg-stone-100 text-stone-600 border border-stone-200/80',
-  POPULAR: 'bg-red-50 text-[#E60000] border border-red-200/80',
+  REVIEW: 'bg-emerald-50 text-emerald-700',
+  TIP: 'bg-blue-50 text-blue-700',
+  QUESTION: 'bg-amber-50 text-amber-800',
+  FREE: 'bg-stone-100 text-stone-600',
+  POPULAR: 'bg-red-50 text-[#E60000]',
 }
 
 function getCategoryBadgeClass(category?: string) {
-  if (!category) return 'bg-stone-100 text-stone-600 border border-stone-200/80'
-  return CATEGORY_COLORS[category] || 'bg-stone-100 text-stone-600 border border-stone-200/80'
+  if (!category) return 'bg-stone-100 text-stone-600'
+  return CATEGORY_COLORS[category] || 'bg-stone-100 text-stone-600'
 }
 
 
@@ -727,7 +727,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
               {selectedPost.categoryLabel}
             </span>
             {selectedPost.likeCount >= 30 && (
-              <span className="text-[10.5px] font-black px-2 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] border border-red-200/80 flex items-center gap-0.5">
+              <span className="text-[10.5px] font-black px-2 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] flex items-center gap-0.5">
                 🔥 인기
               </span>
             )}
@@ -1359,7 +1359,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                         {post.categoryLabel}
                       </span>
                       {post.likeCount >= 30 && (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] border border-red-200/80 shrink-0 flex items-center gap-0.5">
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] shrink-0 flex items-center gap-0.5">
                           🔥 인기
                         </span>
                       )}
