@@ -37,8 +37,10 @@ export default function RamenIcon({
       height={height}
       {...props}
     >
-      {/* Tabler Bowl Reference (정갈하고 선명한 라멘 돈부리 볼) */}
-      <path d="M4 8h16a1 1 0 0 1 1 1v.5c0 1.5-2.517 5.573-4 6.5v1a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-1c-1.687-1.054-4-5-4-6.5V9a1 1 0 0 1 1-1" />
+      {/* Tabler Bowl-Chopsticks Reference (돈부리 그릇 + 젓가락 2개) */}
+      <path d="M4 11h16a1 1 0 0 1 1 1v.5c0 1.5-2.517 5.573-4 6.5v1a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1v-1c-1.687-1.054-4-5-4-6.5V12a1 1 0 0 1 1-1" />
+      <path d="M19 7L5 8" />
+      <path d="M19 1L5 5" />
     </svg>
   )
 }
