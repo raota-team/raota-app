@@ -126,7 +126,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: 3,
     category: 'TIP',
-    categoryLabel: '라멘꿀팁',
+    categoryLabel: '꿀팁',
     title: '라멘 먹을 때 염도 조절 실패하지 않는 완식 주문 꿀팁',
     content: '초심자분들이 자주 실수하는 간 조절법과 무료 와리스프(육수 추가) 요청 타이밍 총정리입니다.',
     detailedContent: [
@@ -157,7 +157,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: 4,
     category: 'FREE',
-    categoryLabel: '자유게시판',
+    categoryLabel: '자유',
     title: '올해 100그릇 달성했습니다! 취향 리포트 인증합니다',
     content: '상반기 동안 서울 시내 라멘집 60곳 돌면서 심어둔 잔디가 꽉 찼네요. 다들 이번 주도 즐거운 완식하세요.',
     detailedContent: [
@@ -190,18 +190,18 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
 const RAMEN_TYPE_FILTERS = ['전체', '쇼유', '돈코츠', '시오', '미소', '츠케멘', '기타']
 const COMMUNITY_CATEGORIES = [
   { id: 'all', label: '전체' },
-  { id: 'POPULAR', label: '인기글' },
+  { id: 'POPULAR', label: '인기' },
   { id: 'REVIEW', label: '맛집후기' },
-  { id: 'TIP', label: '라멘꿀팁' },
+  { id: 'TIP', label: '꿀팁' },
   { id: 'QUESTION', label: 'Q&A' },
-  { id: 'FREE', label: '자유게시판' },
+  { id: 'FREE', label: '자유' },
 ]
 
 const WRITE_CATEGORIES = [
   { id: 'REVIEW', name: '맛집후기' },
-  { id: 'TIP', name: '라멘꿀팁' },
+  { id: 'TIP', name: '꿀팁' },
   { id: 'QUESTION', name: 'Q&A' },
-  { id: 'FREE', name: '자유게시판' },
+  { id: 'FREE', name: '자유' },
 ]
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -1350,73 +1350,68 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                 <article
                   key={post.postId}
                   onClick={() => setSelectedPost(post)}
-                  className="px-4 py-3.5 hover:bg-stone-50/80 active:bg-stone-100/70 transition-colors cursor-pointer group"
+                  className="px-4 py-3 hover:bg-stone-50/70 active:bg-stone-100/60 transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-[4px] ${getCategoryBadgeClass(post.category)}`}>
+                  {/* 상단 메타 라인: [카테고리] [🔥 인기] · 작성자 · 날짜 */}
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-[4px] shrink-0 ${getCategoryBadgeClass(post.category)}`}>
                         {post.categoryLabel}
                       </span>
                       {post.likeCount >= 30 && (
-                        <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] border border-red-200/80 flex items-center gap-0.5">
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] border border-red-200/80 shrink-0 flex items-center gap-0.5">
                           🔥 인기
                         </span>
                       )}
+                      <span className="text-stone-300">·</span>
+                      <span className="font-bold text-stone-600 text-[11px] truncate max-w-[120px]">{post.authorName}</span>
                     </div>
-                    <span className="text-[10px] font-mono text-stone-400">{post.createdAt.split(' ')[0]}</span>
+                    <span className="text-[10px] font-mono text-stone-400 shrink-0">
+                      {post.createdAt.replace(/^\d{4}\.\s*/, '').split(' ')[0]}
+                    </span>
                   </div>
 
-                  <div className="flex gap-3 my-1.5">
+                  {/* 본문: 제목 (1줄) + 요약 (1줄) + 썸네일 */}
+                  <div className="flex items-center justify-between gap-3 my-1">
                     <div className="flex-1 min-w-0">
-                      <h2 className="text-[15px] font-black text-[#25282B] leading-snug mb-1 group-hover:text-[#E60000] transition-colors">
+                      <h2 className="text-[14px] font-bold text-[#25282B] leading-snug group-hover:text-[#E60000] transition-colors truncate">
                         {post.title}
                       </h2>
-                      <p className="text-[12px] text-stone-600 line-clamp-2 leading-relaxed">
+                      <p className="text-[12px] text-stone-500 truncate mt-0.5 leading-normal">
                         {post.content}
                       </p>
                     </div>
 
                     {post.imageUrl && (
-                      <div className="w-16 h-16 rounded-[8px] overflow-hidden bg-stone-100 border border-stone-200/80 flex-shrink-0">
+                      <div className="w-13 h-13 rounded-[6px] overflow-hidden bg-stone-100 border border-stone-200/60 shrink-0">
                         <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
                       </div>
                     )}
                   </div>
 
-                  {/* Engagement & Author bar */}
-                  <div className="flex items-center justify-between pt-1.5 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-[#25282B] text-xs">{post.authorName}</span>
-                      <span className="text-[10px] text-stone-400">({post.authorLevel})</span>
-                    </div>
-
-                    <div className="flex flex-shrink-0 items-center gap-3 text-xs font-bold text-stone-400">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleTogglePostLike(post.postId) }}
-                        className={`flex items-center gap-1 hover:text-[#E60000] transition-colors ${post.isLiked ? 'text-[#E60000]' : ''}`}
-                      >
-                        <Heart className={`h-3.5 w-3.5 ${post.isLiked ? 'fill-[#E60000] text-[#E60000]' : ''}`} />
-                        <span>{post.likeCount}</span>
-                      </button>
-                      <span className="flex items-center gap-1">
-                        <MessageCircle className="h-3.5 w-3.5" />
-                        <span>{post.commentCount}</span>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>{post.viewCount}</span>
-                      </span>
-                    </div>
+                  {/* 하단 반응: 좋아요 & 댓글 */}
+                  <div className="flex items-center justify-end gap-2.5 pt-1 text-[10.5px] font-bold text-stone-400">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleTogglePostLike(post.postId) }}
+                      className={`flex items-center gap-1 hover:text-[#E60000] transition-colors ${post.isLiked ? 'text-[#E60000]' : ''}`}
+                    >
+                      <Heart className={`h-3 w-3 ${post.isLiked ? 'fill-[#E60000] text-[#E60000]' : ''}`} />
+                      <span>{post.likeCount}</span>
+                    </button>
+                    <span className="flex items-center gap-1">
+                      <MessageCircle className="h-3 w-3" />
+                      <span>{post.commentCount}</span>
+                    </span>
                   </div>
                 </article>
               ))}
             </div>
 
             {/* 피드 끝 안내 문구 (커뮤니티) */}
-            <div className="pt-8 pb-3 text-center">
-              <p className="text-[10.5px] text-[#A0A0A0]">
-                더 궁금한 점이나 맛집 후기가 있다면 글쓰기로 라멘러들과 나눠보세요
+            <div className="py-6 text-center">
+              <p className="text-[11px] font-medium text-stone-400">
+                모든 글을 확인했습니다
               </p>
             </div>
           </div>
