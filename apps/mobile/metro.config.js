@@ -15,4 +15,9 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
+// 3. Polyfill Node.js standard library modules
+config.resolver.extraNodeModules = {
+  buffer: require.resolve('buffer'),
+};
+
 module.exports = config;

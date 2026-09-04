@@ -1,3 +1,5 @@
+import { Buffer } from 'buffer';
+(global as any).Buffer = (global as any).Buffer || Buffer;
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
