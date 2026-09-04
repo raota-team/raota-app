@@ -1,597 +1,800 @@
-# 🍜 RAOTA (라오타) RESTful API 명세서 (API Specification)
+# RAOTA 모바일 API 명세
 
-본 문서는 **라오타(RAOTA)** 모바일 웹/앱 클라이언트와 **Spring Boot 백엔드** 간의 통신 규격을 정의한 표준 RESTful API 명세서입니다.  
-[`docs/ERD.md`](./ERD.md)에 기술된 데이터베이스 엔티티 구조 및 프론트엔드 도메인 인터페이스를 100% 반영하여 설계되었습니다.
+> 상태: 모바일 프로토타입 기준 v2 계약 초안
+>
+> 서버: Spring Boot
+>
+> 데이터 모델: [`ERD.md`](./ERD.md)
 
----
+이 문서는 `src/App.tsx`에서 실제 진입 가능한 모바일 화면과 `src/types.ts`의 모델을 서버 계약으로 정리한 것이다. 기존 API와 데이터를 보존하기 위해 모바일 API는 `/api/v2`로 분리한다.
 
-## 1. 글로벌 통신 규칙 (Global Specifications)
+## 1. 확정한 계약
 
-### 1.1 기본 정보 (Base Info)
-- **Base URL**: `https://api.raota.app/api/v1` (개발 환경: `http://localhost:8080/api/v1`)
-- **데이터 포맷**: `application/json; charset=UTF-8`
-- **시간대 표기**: ISO-8601 UTC (`YYYY-MM-DDTHH:mm:ssZ`) 또는 현지 일자 (`YYYY-MM-DD`)
-- **문자 인코딩**: UTF-8
+- 운영 로그인: `KAKAO`, `GOOGLE`, `APPLE` OAuth + JWT access/refresh token
+- 기록 입력: 국물·면·양념·토핑의 4개 태그 그룹 + 재방문 의향
+- 취향 분석: 입력이 아니라 서버가 계산하는 5축 Taste DNA
+- 커뮤니티 카테고리: `REVIEW`, `TIP`, `QUESTION`, `FREE`
+- 뉴스 카테고리: `LIMITED_MENU`, `BUSINESS_NOTICE`, `EVENT`
+- 시간: 서버는 UTC ISO-8601을 반환하고 `10분 전` 같은 문구는 클라이언트가 만든다.
+- 날짜: 방문일과 리포트 기준일은 `YYYY-MM-DD`로 주고받는다.
+- ID: JSON에서는 정수형 ID를 사용한다. 외부 식별자는 `googlePlaceId`처럼 명시한다.
+- 좋아요·북마크·소식 구독은 모바일 재시도에 안전하도록 `PUT`/`DELETE`로 상태를 명시한다.
+- 피드성 목록은 `(createdAt, id)` 기반 불투명 cursor pagination을 사용한다.
 
-### 1.2 인증 방식 (Authentication)
-- **방식**: JWT (JSON Web Token) Bearer 인증
-- **헤더 규격**: `Authorization: Bearer <access_token>`
-- **공통 응답 헤더**:
-  - `X-Request-Id`: 트랜잭션 추적용 고유 UUID
+프로토타입의 이메일/비밀번호, 패스키, 데모 로그인은 제품 결정 전까지 v2 서버 범위에서 제외한다. 회원가입 화면은 OAuth 로그인 직후의 온보딩으로 해석한다.
 
-### 1.3 공통 표준 응답 포맷 (Standard Response Format)
+## 2. 공통 통신 규칙
 
-모든 API 응답은 일관된 래퍼(Wrapper) 객체로 반환됩니다.
+### 2.1 기본 정보
 
-#### 성공 응답 (HTTP 200 / 201)
+| 항목 | 값 |
+|---|---|
+| 운영 Base URL | `https://api.raota.app/api/v2` |
+| 개발 Base URL | `http://localhost:8080/api/v2` |
+| Content-Type | `application/json; charset=UTF-8` |
+| 인증 | `Authorization: Bearer {accessToken}` |
+| 요청 추적 | 응답 헤더 `X-Request-Id` |
+
+인증이 선택인 공개 조회는 토큰이 있으면 `viewerState`를 포함하고, 없으면 `viewerState`를 `null`로 반환한다.
+
+### 2.2 성공 응답
+
 ```json
 {
   "success": true,
-  "code": "SUCCESS",
-  "message": "요청이 성공적으로 처리되었습니다.",
-  "data": { ... }
-}
-```
-
-#### 페이징 성공 응답
-```json
-{
-  "success": true,
-  "code": "SUCCESS",
-  "message": "목록 조회가 완료되었습니다.",
-  "data": {
-    "content": [ ... ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 142,
-    "totalPages": 8,
-    "first": true,
-    "last": false
+  "data": {},
+  "meta": {
+    "requestId": "2ba8a8e2-51f6-4a1e-a77b-e21773ef2555"
   }
 }
 ```
 
-#### 실패/에러 응답 (HTTP 4xx / 5xx)
+`204 No Content` 응답에는 body를 두지 않는다.
+
+### 2.3 오류 응답
+
 ```json
 {
   "success": false,
-  "code": "INVALID_INPUT_VALUE",
-  "message": "입력값 검증에 실패하였습니다.",
-  "errors": [
-    {
-      "field": "menuName",
-      "value": "",
-      "reason": "라멘 메뉴명은 필수 입력값입니다."
-    }
-  ],
-  "timestamp": "2026-09-04T14:15:00Z"
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "요청 값을 확인해 주세요.",
+    "fields": [
+      { "field": "nickname", "reason": "2자 이상 12자 이하로 입력해 주세요." }
+    ]
+  },
+  "meta": {
+    "requestId": "2ba8a8e2-51f6-4a1e-a77b-e21773ef2555"
+  }
 }
 ```
 
----
+| HTTP | 대표 코드 | 의미 |
+|---:|---|---|
+| 400 | `VALIDATION_ERROR`, `INVALID_CURSOR` | 형식/검증 오류 |
+| 401 | `UNAUTHORIZED`, `TOKEN_EXPIRED` | 인증 필요 또는 만료 |
+| 403 | `FORBIDDEN`, `WITHDRAW_PENDING` | 권한 없음/탈퇴 처리 중 |
+| 404 | `RESOURCE_NOT_FOUND` | 대상 없음 또는 삭제됨 |
+| 409 | `DUPLICATE_NICKNAME`, `CONFLICT` | 현재 상태와 충돌 |
+| 410 | `UPLOAD_TICKET_EXPIRED` | 업로드 티켓 만료 |
+| 429 | `RATE_LIMITED` | 요청 한도 초과 |
+| 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
 
-## 2. API 엔드포인트 목록 요약 (Endpoint Index)
+### 2.4 Cursor pagination
 
-| 도메인 | 메서드 | 엔드포인트 | 설명 | 인증 |
-| :--- | :--- | :--- | :--- | :--- |
-| **인증 (Auth)** | `POST` | `/auth/login/oauth` | 소셜 로그인 & 자동 회원가입 | 불필요 |
-| | `POST` | `/auth/reissue` | Access Token 재발급 | RefreshToken |
-| | `POST` | `/auth/logout` | 로그아웃 및 토큰 무효화 | 필수 |
-| **회원 (Member)** | `GET` | `/members/me` | 내 프로필 및 활동 요약 조회 | 필수 |
-| | `PATCH` | `/members/me` | 내 프로필 정보(닉네임, 한줄소개 등) 수정 | 필수 |
-| | `GET` | `/members/{memberId}` | 타 회원 공개 프로필 조회 | 선택 |
-| | `GET` | `/members/me/badges` | 내 보유 뱃지 및 등급 달성 현황 조회 | 필수 |
-| | `GET` | `/members/me/taste-dna` | 내 라멘 5축 미각 DNA 리포트 조회 | 필수 |
-| **라멘로그 (Logs)** | `GET` | `/ramen-logs` | 라멘로그 피드 목록 조회 (페이징/정렬) | 선택 |
-| | `POST` | `/ramen-logs` | 라멘로그 신규 등록 (완식/미각 기록) | 필수 |
-| | `GET` | `/ramen-logs/{logId}` | 라멘로그 단건 상세 조회 | 선택 |
-| | `PUT` | `/ramen-logs/{logId}` | 라멘로그 수정 | 필수(작성자) |
-| | `DELETE` | `/ramen-logs/{logId}` | 라멘로그 삭제 | 필수(작성자) |
-| | `POST` | `/ramen-logs/{logId}/likes` | 라멘로그 공감(좋아요) 토글 | 필수 |
-| | `GET` | `/ramen-logs/calendar` | 유저 완식 캘린더 히트맵 데이터 조회 | 필수 |
-| | `GET` | `/ramen-logs/conquered-shops`| 라멘로그 정복 라멘집 목록 조회 | 필수 |
-| **라멘 매장 (Shops)** | `GET` | `/shops` | 위치 기반 라멘집 검색 및 필터 목록 | 불필요 |
-| | `GET` | `/shops/{shopId}` | 라멘집 상세 정보 조회 (영업시간, 혜택 등) | 불필요 |
-| | `POST` | `/shops/{shopId}/bookmarks` | 매장 북마크 저장/취소 (토글) | 필수 |
-| | `GET` | `/shops/bookmarks` | 내가 저장한 라멘집 목록 조회 | 필수 |
-| **커뮤니티 (Lounge)** | `GET` | `/community/posts` | 라운지 게시글 목록 조회 (카테고리 필터) | 선택 |
-| | `POST` | `/community/posts` | 라운지 게시글 작성 | 필수 |
-| | `GET` | `/community/posts/{postId}` | 게시글 상세 및 댓글 목록 조회 | 선택 |
-| | `POST` | `/community/posts/{postId}/likes` | 게시글 좋아요 토글 | 필수 |
-| | `POST` | `/community/posts/{postId}/comments` | 댓글/대댓글 작성 | 필수 |
-| | `DELETE` | `/community/comments/{commentId}` | 댓글 삭제 | 필수(작성자) |
-| **AI 추천 (Recommend)**| `POST` | `/recommendations/ai` | 5축 취향 벡터 기반 맞춤 라멘집 추천 | 선택 |
-| **알림 (Notification)**| `GET` | `/notifications` | 알림 센터 내 알림 목록 조회 | 필수 |
-| | `PATCH` | `/notifications/{id}/read` | 알림 단건 읽음 처리 | 필수 |
-| | `PATCH` | `/notifications/read-all` | 알림 전체 읽음 처리 | 필수 |
-| | `GET` | `/notifications/subscribe` | 실시간 SSE 알림 스트림 구독 | 필수 |
-| | `GET` | `/notifications/settings` | 알림 환경설정 조회 | 필수 |
-| | `PUT` | `/notifications/settings` | 알림 환경설정 수정 | 필수 |
+요청:
 
----
+```http
+GET /ramen-logs?cursor=eyJjcmVhdGVkQXQiOiIuLi4ifQ&size=20
+```
 
-## 3. 상세 API 명세 (Detailed Specifications)
+- `size`: 기본 20, 최대 50
+- `cursor`: 서버가 발급한 불투명 문자열. 클라이언트가 해석하거나 생성하지 않는다.
 
-### 3.1 인증 & 회원 (Auth & Member)
+응답:
 
-#### [POST] `/auth/login/oauth` - 소셜 로그인 / 회원가입
-- **설명**: 카카오, 애플, 구글 소셜 인가 코드를 받아 검증 후 JWT 토큰을 발급합니다. 미가입 유저일 경우 자동으로 회원가입 처리됩니다.
-- **Request Body**:
+```json
+{
+  "success": true,
+  "data": {
+    "items": [],
+    "nextCursor": "eyJjcmVhdGVkQXQiOiIuLi4ifQ",
+    "hasNext": true
+  },
+  "meta": { "requestId": "..." }
+}
+```
+
+### 2.5 멱등성
+
+라멘 기록, 게시글, 댓글 생성에는 선택 헤더 `Idempotency-Key`를 지원한다. 같은 사용자와 키로 같은 요청이 재전송되면 최초 응답을 돌려주며, 다른 payload면 `409 CONFLICT`를 반환한다.
+
+## 3. Endpoint 목록
+
+`인증` 열의 `선택`은 비로그인도 조회 가능하지만 로그인 사용자의 상태가 추가되는 API다.
+
+### 3.1 홈과 인증
+
+| Method | Path | 인증 | 용도 |
+|---|---|---|---|
+| GET | `/home` | 선택 | 홈 큐레이션, 인기/주변 매장, 내 요약, 미확인 알림 수 |
+| POST | `/auth/oauth/login` | 불필요 | OAuth code 검증 및 로그인/가입 시작 |
+| POST | `/auth/token/reissue` | refresh | access/refresh token rotation |
+| POST | `/auth/logout` | 필요 | 현재 세션 폐기 |
+| POST | `/auth/logout-all` | 필요 | 모든 세션과 기기 토큰 폐기 |
+
+### 3.2 회원과 활동
+
+| Method | Path | 인증 | 용도 |
+|---|---|---|---|
+| GET | `/members/me` | 필요 | 내 프로필과 활동 요약 |
+| PATCH | `/members/me` | 필요 | 이메일, 프로필, 선호 라멘 수정 |
+| PUT | `/members/me/onboarding` | 필요 | 닉네임·프로필·약관 동의 완료 |
+| GET | `/members/nickname-availability?nickname=` | 필요 | 닉네임 사용 가능 여부 |
+| POST | `/members/me/withdrawal` | 필요 | 탈퇴 요청 및 즉시 세션 폐기 |
+| GET | `/members/{memberId}` | 선택 | 공개 프로필 |
+| GET | `/members/{memberId}/ramen-logs` | 선택 | 공개 로그 목록 |
+| GET | `/members/me/calendar?from=&to=` | 필요 | 방문일별 기록 수/매장 요약 |
+| GET | `/members/me/visited-shops` | 필요 | 방문한 매장 목록 |
+| GET | `/members/me/bookmarked-shops` | 필요 | 저장한 매장 목록 |
+| GET | `/members/me/community-posts` | 필요 | 내가 쓴 글 |
+| GET | `/members/me/community-comments` | 필요 | 내가 쓴 댓글 |
+
+### 3.3 취향 리포트와 AI 추천
+
+| Method | Path | 인증 | 용도 |
+|---|---|---|---|
+| GET | `/taste-reports/current` | 필요 | 최신 전체 기간 Taste DNA |
+| POST | `/taste-reports/current/refresh` | 필요 | 전체 기간 리포트 재계산 요청 |
+| GET | `/taste-reports/monthly` | 필요 | 월간 리포트 아카이브 |
+| GET | `/taste-reports/{reportId}` | 필요 | 보존된 리포트 상세 |
+| GET | `/taste-note-definitions` | 선택 | 기록 폼의 4개 태그 그룹 정의 |
+| POST | `/ai/recommendations` | 필요 | 취향·상황·위치 기반 추천 |
+
+### 3.4 파일
+
+| Method | Path | 인증 | 용도 |
+|---|---|---|---|
+| POST | `/files/upload-tickets` | 필요 | 프로필/로그/게시글 이미지 업로드 URL 발급 |
+
+### 3.5 매장과 소식
+
+| Method | Path | 인증 | 용도 |
+|---|---|---|---|
+| GET | `/shops` | 선택 | 지도/목록 검색, 필터, 정렬 |
+| GET | `/shops/{shopId}` | 선택 | 매장 상세 |
+| GET | `/shops/{shopId}/menus` | 선택 | 판매 메뉴 목록 |
+| PUT | `/shops/{shopId}/bookmark` | 필요 | 북마크 상태를 저장으로 지정 |
+| DELETE | `/shops/{shopId}/bookmark` | 필요 | 북마크 해제 |
+| GET | `/shop-news` | 선택 | 매장 소식 피드 |
+| PUT | `/shops/{shopId}/news-subscription` | 필요 | 매장 소식 알림 구독 |
+| DELETE | `/shops/{shopId}/news-subscription` | 필요 | 매장 소식 알림 해제 |
+
+### 3.6 라멘 로그
+
+| Method | Path | 인증 | 용도 |
+|---|---|---|---|
+| GET | `/ramen-logs` | 선택 | 공개 로그 피드 |
+| POST | `/ramen-logs` | 필요 | 기록 생성 |
+| GET | `/ramen-logs/{logId}` | 선택 | 기록 상세 |
+| PATCH | `/ramen-logs/{logId}` | 필요 | 내 기록 수정 |
+| DELETE | `/ramen-logs/{logId}` | 필요 | 내 기록 삭제 |
+| PUT | `/ramen-logs/{logId}/like` | 필요 | 공감 상태를 활성화 |
+| DELETE | `/ramen-logs/{logId}/like` | 필요 | 공감 해제 |
+
+### 3.7 커뮤니티
+
+| Method | Path | 인증 | 용도 |
+|---|---|---|---|
+| GET | `/community/posts` | 선택 | 글 목록/카테고리/인기 정렬 |
+| POST | `/community/posts` | 필요 | 글 생성 |
+| GET | `/community/posts/{postId}` | 선택 | 글과 댓글 상세 |
+| PATCH | `/community/posts/{postId}` | 필요 | 내 글 수정 |
+| DELETE | `/community/posts/{postId}` | 필요 | 내 글 삭제 |
+| PUT | `/community/posts/{postId}/like` | 필요 | 좋아요 활성화 |
+| DELETE | `/community/posts/{postId}/like` | 필요 | 좋아요 해제 |
+| POST | `/community/posts/{postId}/comments` | 필요 | 댓글 또는 답글 생성 |
+| DELETE | `/community/comments/{commentId}` | 필요 | 내 댓글 삭제 |
+
+### 3.8 알림과 기기
+
+| Method | Path | 인증 | 용도 |
+|---|---|---|---|
+| GET | `/notifications` | 필요 | 알림 목록과 탭 필터 |
+| PUT | `/notifications/{notificationId}/read` | 필요 | 한 건 읽음 처리 |
+| PUT | `/notifications/read-all` | 필요 | 전체 또는 탭별 읽음 처리 |
+| GET | `/notification-settings` | 필요 | 알림 설정 조회 |
+| PATCH | `/notification-settings` | 필요 | 알림 설정 변경 |
+| PUT | `/devices/{installationId}` | 필요 | 푸시 토큰과 앱 설치 정보 upsert |
+| DELETE | `/devices/{installationId}` | 필요 | 로그아웃/토큰 폐기 |
+| POST | `/notifications/stream-ticket` | 필요 | 단기 SSE 접속 티켓 발급 |
+| GET | `/notifications/subscribe?ticket=` | ticket | 알림 SSE 구독 |
+
+## 4. 핵심 계약 상세
+
+### 4.1 홈
+
+#### `GET /home`
+
+Query:
+
+| 이름 | 필수 | 설명 |
+|---|---|---|
+| `latitude`, `longitude` | 선택 | 둘을 함께 전달. 주변 매장 거리/정렬에 사용 |
+| `timezone` | 선택 | 예: `Asia/Seoul`, 기본은 사용자 설정 |
+
+```json
+{
+  "success": true,
+  "data": {
+    "me": {
+      "nickname": "라멘헌터",
+      "levelNumber": 30,
+      "levelName": "라멘집 단골",
+      "publicLogCount": 34
+    },
+    "unreadNotificationCount": 3,
+    "todayCuration": {
+      "id": 81,
+      "title": "오늘은 진한 돈코츠",
+      "description": "비 오는 날 어울리는 한 그릇",
+      "shop": { "id": 12, "name": "멘야 하루", "thumbnailUrl": "https://..." }
+    },
+    "mostViewedShops": [],
+    "nearbyShops": [],
+    "aiRecommendationAvailable": true
+  },
+  "meta": { "requestId": "..." }
+}
+```
+
+비로그인 응답의 `me`와 개인 알림 수는 `null`이다.
+
+### 4.2 OAuth 로그인과 토큰 회전
+
+#### `POST /auth/oauth/login`
+
 ```json
 {
   "provider": "KAKAO",
-  "authCode": "oauth_authorization_code_sample_string",
-  "redirectUri": "https://raota.app/oauth/callback/kakao"
+  "authorizationCode": "provider-issued-code",
+  "redirectUri": "raota://oauth/callback",
+  "codeVerifier": "pkce-code-verifier",
+  "installationId": "01J7...",
+  "platform": "IOS"
 }
 ```
-- **Response (200 OK)**:
+
 ```json
 {
   "success": true,
-  "code": "SUCCESS",
-  "message": "로그인되었습니다.",
   "data": {
-    "isNewMember": false,
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5...",
-    "expiresIn": 7200,
-    "member": {
-      "id": 1,
-      "nickname": "합정라멘마스터",
-      "membershipNo": "ROT-2026-0042",
-      "levelTitle": "라멘 미식가",
-      "levelNumber": 4,
-      "avatarUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120"
+    "accessToken": "...",
+    "accessTokenExpiresAt": "2026-09-04T09:30:00Z",
+    "refreshToken": "...",
+    "refreshTokenExpiresAt": "2026-10-04T09:00:00Z",
+    "onboardingRequired": true,
+    "member": { "id": 101, "status": "ONBOARDING" }
+  },
+  "meta": { "requestId": "..." }
+}
+```
+
+refresh token은 매 재발급 시 회전한다. 이미 사용된 token family가 다시 제출되면 해당 family 전체를 폐기한다.
+
+### 4.3 온보딩과 내 프로필
+
+#### `PUT /members/me/onboarding`
+
+```json
+{
+  "nickname": "라멘헌터",
+  "avatarObjectKey": "users/101/avatar/01J7.jpg",
+  "favoriteRamenType": "돈코츠",
+  "bio": "진한 국물을 좋아해요",
+  "consents": [
+    { "type": "TERMS", "version": "2026-08-01", "granted": true },
+    { "type": "PRIVACY", "version": "2026-08-01", "granted": true },
+    { "type": "MARKETING", "version": "2026-08-01", "granted": false }
+  ]
+}
+```
+
+- 닉네임은 trim 후 2~12자이며 정규화 값이 유일해야 한다.
+- `TERMS`, `PRIVACY`의 현재 버전 동의가 필수다.
+- 업로드 이미지에는 서버가 발급한 `objectKey`만 허용한다.
+
+#### `GET /members/me`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 101,
+    "nickname": "라멘헌터",
+    "email": "user@example.com",
+    "avatarUrl": "https://...",
+    "bio": "진한 국물을 좋아해요",
+    "favoriteRamenType": "돈코츠",
+    "level": { "number": 30, "name": "라멘집 단골", "nextThreshold": 50 },
+    "stats": {
+      "visitedCount": 34,
+      "visitedShopCount": 21,
+      "revisitCount": 13,
+      "longestStreakDays": 5,
+      "publicLogCount": 34
     }
-  }
+  },
+  "meta": { "requestId": "..." }
 }
 ```
 
----
+#### `POST /members/me/withdrawal`
 
-#### [GET] `/members/me` - 내 프로필 및 활동 통계 조회
-- **설명**: 마이페이지에 필요한 회원 기본 정보, 총 완식 그릇수, 정복 매장수, 재방문 횟수를 한 번에 반환합니다.
-- **Headers**: `Authorization: Bearer <token>`
-- **Response (200 OK)**:
+```json
+{
+  "reasonCode": "NO_LONGER_NEEDED",
+  "confirmation": "WITHDRAW"
+}
+```
+
+성공 시 모든 세션과 기기를 폐기한 뒤 `204`를 반환한다. 같은 OAuth 계정은 요청 시점부터 30일 동안 재가입할 수 없다.
+
+### 4.4 이미지 업로드
+
+#### `POST /files/upload-tickets`
+
+```json
+{
+  "purpose": "RAMEN_LOG",
+  "files": [
+    { "contentType": "image/jpeg", "size": 1839204, "extension": "jpg" }
+  ]
+}
+```
+
+`purpose`: `PROFILE`, `RAMEN_LOG`, `COMMUNITY_POST`
+
 ```json
 {
   "success": true,
-  "code": "SUCCESS",
-  "message": "내 프로필 조회가 완료되었습니다.",
   "data": {
-    "id": 1,
-    "nickname": "합정라멘마스터",
-    "membershipNo": "ROT-2026-0042",
-    "email": "master@raota.com",
-    "avatarUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120",
-    "levelTitle": "라멘 미식가",
-    "levelNumber": 4,
-    "bio": "망원/합정/상수 라멘 격전지 정복 중 🍜",
-    "favoriteRamenType": "쇼유",
-    "totalLogCount": 43,
-    "conqueredShopCount": 28,
-    "revisitCount": 15,
-    "longestStreakDays": 12,
-    "thisMonthLogCount": 8
-  }
+    "uploads": [
+      {
+        "objectKey": "ramen-logs/101/01J7.jpg",
+        "uploadUrl": "https://storage.example/signed-url",
+        "method": "PUT",
+        "headers": { "Content-Type": "image/jpeg" },
+        "expiresAt": "2026-09-04T09:10:00Z"
+      }
+    ]
+  },
+  "meta": { "requestId": "..." }
 }
 ```
 
----
+클라이언트는 스토리지 업로드 성공 후 `objectKey`를 도메인 생성/수정 API에 넘긴다. URL 임의 주입은 허용하지 않는다.
 
-### 3.2 라멘로그 (RamenLog)
+### 4.5 매장 검색과 상세
 
-#### [POST] `/ramen-logs` - 라멘로그 작성 (한 그릇 완식 & 5축 미각 기록)
-- **설명**: 방문한 매장의 주문 메뉴, 5축 미각 노트(국물, 면, 간, 토핑), 국물 완식 여부, 사진 목록을 기록합니다.
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
+#### `GET /shops`
+
+| Query | 값/설명 |
+|---|---|
+| `query` | 이름/주소 검색어 |
+| `region` | 지역 코드 |
+| `ramenType` | 라멘 유형 |
+| `openNow` | `true`면 현재 영업 중만 |
+| `latitude`, `longitude` | 거리 계산 기준점 |
+| `radiusMeters` | 기본 3000, 최대 20000 |
+| `sort` | `DISTANCE`, `POPULAR`, `NAME` |
+| `cursor`, `size` | cursor pagination |
+
 ```json
 {
-  "shopId": 101,
-  "menuName": "특제 쇼유 라멘",
-  "ramenType": "쇼유",
-  "visitedAt": "2026-09-04",
-  "isSoupFinished": true,
-  "revisit": "자주 감",
-  "note": "닭육수 베이스의 맑고 깊은 감칠맛. 얇은 스트레이트 면의 익힘 정도가 완벽함.",
-  "isPublic": true,
-  "imageUrls": [
-    "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800"
+  "id": 12,
+  "name": "멘야 하루",
+  "branchName": "성수점",
+  "address": "서울 ...",
+  "location": { "latitude": 37.544, "longitude": 127.056 },
+  "distanceMeters": 480,
+  "ramenTypes": ["돈코츠"],
+  "thumbnailUrl": "https://...",
+  "externalRating": 4.6,
+  "externalReviewCount": 211,
+  "logCount": 38,
+  "isOpenNow": true,
+  "viewerState": { "bookmarked": true, "newsSubscribed": false }
+}
+```
+
+`POPULAR`은 `viewCount`, `bookmarkCount`, `logCount`에 최근성 보정을 적용한 서버 점수다. 지도 클러스터링은 현재 프로토타입처럼 클라이언트에서 수행하며, 데이터 규모가 커지면 viewport/cluster API를 별도 버전으로 추가한다.
+
+#### `GET /shops/{shopId}`
+
+목록 필드에 다음을 추가한다.
+
+```json
+{
+  "phone": "02-000-0000",
+  "priceLevel": 2,
+  "businessStatus": "OPERATIONAL",
+  "businessHours": [
+    { "dayOfWeek": 1, "periods": [{ "opensAt": "11:30", "closesAt": "21:00" }] }
   ],
-  "tasteNotes": {
-    "broth": ["진해요", "감칠맛 좋아요"],
-    "noodle": ["탄력 있어요", "단단해요"],
-    "seasoning": ["딱 좋아요"],
-    "topping": ["차슈 좋아요", "멘마 좋아요"]
-  }
-}
-```
-- **Response (201 Created)**:
-```json
-{
-  "success": true,
-  "code": "LOG_CREATED",
-  "message": "라멘로그가 성공적으로 기록되었습니다.",
-  "data": {
-    "id": 501,
-    "logNumber": 44,
-    "isLevelUp": false,
-    "createdAt": "2026-09-04T14:10:00Z"
-  }
+  "serviceOptions": {
+    "dineIn": true,
+    "delivery": false,
+    "reservable": true,
+    "parkingAvailable": false
+  },
+  "images": [{ "url": "https://...", "width": 1200, "height": 900 }],
+  "aiReviewSummary": "진한 국물과 단단한 면이 자주 언급됩니다.",
+  "externalLinks": {
+    "instagram": "https://...",
+    "reservation": "https://..."
+  },
+  "externalReviews": []
 }
 ```
 
----
+### 4.6 매장 소식
 
-#### [GET] `/ramen-logs/calendar` - 완식 캘린더 히트맵 데이터 조회
-- **설명**: GitHub 스타일의 활동 캘린더를 렌더링하기 위해 연도별/월별 날짜별 완식 횟수와 상세 로그 요약을 조회합니다.
-- **Headers**: `Authorization: Bearer <token>`
-- **Query Params**:
-  - `year`: 조회 연도 (기본값: 현재 연도, 예: `2026`)
-- **Response (200 OK)**:
+#### `GET /shop-news`
+
+Query: `category`, `shopId`, `subscribedOnly`, `cursor`, `size`
+
+```json
+{
+  "id": 501,
+  "category": "LIMITED_MENU",
+  "shop": { "id": 12, "name": "멘야 하루", "branchName": "성수점" },
+  "title": "가을 한정 츠케멘 출시",
+  "summary": "9월 한 달 동안 한정 판매합니다.",
+  "imageUrl": "https://...",
+  "source": { "name": "@menya_haru", "url": "https://instagram.com/..." },
+  "publishedAt": "2026-09-04T08:30:00Z",
+  "viewerState": { "newsSubscribed": true }
+}
+```
+
+소식 알림 설정은 개별 소식이 아니라 매장 단위 구독이다.
+
+### 4.7 라멘 로그
+
+#### `GET /taste-note-definitions`
+
 ```json
 {
   "success": true,
-  "code": "SUCCESS",
-  "message": "캘린더 데이터 조회가 완료되었습니다.",
   "data": {
-    "totalCount": 43,
-    "activities": [
+    "groups": [
       {
-        "date": "2026-09-01",
-        "count": 1,
-        "level": 1,
-        "logs": [
-          { "id": 489, "shopName": "멘야준", "menuName": "시오라멘" }
+        "category": "BROTH",
+        "label": "국물",
+        "options": [
+          { "code": "RICH", "label": "진한 국물" },
+          { "code": "LIGHT", "label": "깔끔한 국물" }
         ]
-      },
-      {
-        "date": "2026-09-03",
-        "count": 2,
-        "level": 2,
-        "logs": [
-          { "id": 495, "shopName": "세상끝의라멘", "menuName": "끝라멘" },
-          { "id": 496, "shopName": "라무라", "menuName": "녹(닭라멘)" }
-        ]
-      }
-    ]
-  }
-}
-```
-
----
-
-#### [POST] `/ramen-logs/{logId}/likes` - 라멘로그 공감(좋아요) 토글
-- **설명**: 라멘로그에 공감을 누르거나 취소합니다. 공감 시 작성자에게 실시간 알림이 발송됩니다.
-- **Headers**: `Authorization: Bearer <token>`
-- **Response (200 OK)**:
-```json
-{
-  "success": true,
-  "code": "SUCCESS",
-  "message": "공감 상태가 변경되었습니다.",
-  "data": {
-    "logId": 501,
-    "isLiked": true,
-    "likeCount": 18
-  }
-}
-```
-
----
-
-### 3.3 라멘 매장 & 지도 (Shop)
-
-#### [GET] `/shops` - 라멘집 검색 및 필터 목록 조회
-- **설명**: 사용자 현 위치(위도/경도)를 기준으로 거리순/평점순 정렬 및 라멘 계열(쇼유, 돈코츠 등), 영업 여부 필터를 적용하여 목록을 반환합니다.
-- **Query Params**:
-  - `lat`: 위도 (예: `37.5563`)
-  - `lng`: 경도 (예: `126.9224`)
-  - `radius`: 검색 반경 미터 (기본: `5000`)
-  - `ramenType`: 계열 필터 (예: `쇼유`, `돈코츠`, `ALL`)
-  - `onlyOpen`: 영업 중 매장만 보기 여부 (`true` / `false`)
-  - `keyword`: 상호명 또는 지역 검색 키워드 (예: `망원`, `멘야`)
-  - `page`: 페이지 번호 (0부터 시작)
-  - `size`: 페이지당 건수 (기본: `20`)
-- **Response (200 OK)**:
-```json
-{
-  "success": true,
-  "code": "SUCCESS",
-  "message": "매장 목록 조회가 완료되었습니다.",
-  "data": {
-    "content": [
-      {
-        "id": 101,
-        "name": "멘야준",
-        "branch": "망원 본점",
-        "address": "서울 마포구 월드컵로13길 19-23",
-        "lat": 37.55628,
-        "lng": 126.90731,
-        "phone": "070-1234-5678",
-        "rating": 4.8,
-        "reviewCount": 384,
-        "isOpen": true,
-        "openingHours": ["11:00 - 20:00 (브레이크타임 15:00 - 17:00)"],
-        "priceRange": "1~2만원대",
-        "dineIn": true,
-        "delivery": false,
-        "matchScore": 96,
-        "distanceM": 320,
-        "tags": ["닭육수", "시오라멘", "자가제면"],
-        "photos": [
-          "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600"
-        ],
-        "servicePerks": {
-          "noodleRefill": "면 추가 1회 무료",
-          "riceRefill": "공깃밥 요청 시 무료",
-          "soupRefill": "와리스프 제공"
-        },
-        "isBookmarked": true
       }
     ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 84,
-    "totalPages": 5,
-    "last": false
-  }
+    "version": "2026-09-01"
+  },
+  "meta": { "requestId": "..." }
 }
 ```
 
----
+응답은 장기 캐시할 수 있으며 `version`이 바뀌면 기록 폼의 로컬 캐시를 갱신한다. 비활성 태그는 신규 선택지에서 제외하되 과거 로그 조회에서는 label 스냅샷 또는 정의 이력으로 계속 표시해야 한다.
 
-#### [POST] `/shops/{shopId}/bookmarks` - 매장 북마크 토글
-- **설명**: 관심 매장 저장 / 해제 토글
-- **Headers**: `Authorization: Bearer <token>`
-- **Response (200 OK)**:
+#### `POST /ramen-logs`
+
+```json
+{
+  "shopId": 12,
+  "visitedAt": "2026-09-04",
+  "menuName": "특제 돈코츠 라멘",
+  "ramenType": "돈코츠",
+  "revisitIntention": "OFTEN",
+  "note": "국물이 진하지만 느끼하지 않았고 면 식감이 좋았다.",
+  "tasteNoteCodes": {
+    "broth": ["RICH", "CREAMY"],
+    "noodle": ["FIRM"],
+    "seasoning": ["UMAMI"],
+    "topping": ["TENDER_CHASHU"]
+  },
+  "visibility": "PUBLIC",
+  "imageObjectKeys": ["ramen-logs/101/01J7.jpg"]
+}
+```
+
+검증:
+
+- `shopId`, `visitedAt`, `menuName`, `revisitIntention`, `note`, `visibility` 필수
+- `note` 최대 1,000자
+- `visitedAt`은 사용자의 현지 미래 날짜일 수 없음
+- 태그는 선택 입력이며 각 code의 카테고리가 요청 key와 일치해야 함
+- 현재 화면은 이미지 1개를 사용한다. API/스키마는 향후 확장을 위해 최대 5개까지 허용한다.
+
+`revisitIntention`: `OFTEN`, `SOMETIMES`, `ONCE_IS_ENOUGH`
+
+생성 성공 시 `201`과 생성된 상세를 반환한다. 공개 로그 수, 등급, 매장 로그 수, 전체 취향 리포트 갱신 이벤트는 같은 요청에서 유실되지 않도록 트랜잭션/outbox로 처리한다.
+
+#### `GET /ramen-logs`
+
+Query: `shopId`, `memberId`, `sort=LATEST|LIKES`, `cursor`, `size`
+
+```json
+{
+  "id": 9001,
+  "author": { "id": 101, "nickname": "라멘헌터", "avatarUrl": "https://..." },
+  "shop": { "id": 12, "name": "멘야 하루" },
+  "visitedAt": "2026-09-04",
+  "menuName": "특제 돈코츠 라멘",
+  "ramenType": "돈코츠",
+  "revisitIntention": "OFTEN",
+  "note": "국물이 진하지만 느끼하지 않았다.",
+  "tasteNotes": [
+    { "category": "BROTH", "code": "RICH", "label": "진한 국물" }
+  ],
+  "images": [{ "url": "https://...", "width": 1200, "height": 1200 }],
+  "likeCount": 8,
+  "createdAt": "2026-09-04T09:00:00Z",
+  "viewerState": { "liked": false, "editable": false }
+}
+```
+
+비공개 로그는 작성자 본인의 `/members/me` 계열 조회에서만 반환한다.
+
+### 4.8 Taste DNA 리포트
+
+#### `GET /taste-reports/current`
+
 ```json
 {
   "success": true,
-  "code": "SUCCESS",
-  "message": "북마크 상태가 변경되었습니다.",
   "data": {
-    "shopId": 101,
-    "isBookmarked": true
-  }
-}
-```
-
----
-
-### 3.4 커뮤니티 라운지 (Community)
-
-#### [GET] `/community/posts` - 라운지 피드 게시글 목록 조회
-- **Query Params**:
-  - `category`: `ALL` | `REVIEW` | `QUESTION` | `INFO` | `DAILY`
-  - `shopId`: 특정 매장 태그 필터링 (선택)
-  - `sort`: `LATEST` (최신순) | `POPULAR` (인기순)
-  - `page`: 페이지 번호 (기본: 0)
-- **Response (200 OK)**:
-```json
-{
-  "success": true,
-  "code": "SUCCESS",
-  "message": "게시글 목록이 조회되었습니다.",
-  "data": {
-    "content": [
-      {
-        "id": 201,
-        "category": "REVIEW",
-        "title": "망원 멘야준 특제 시오라멘 인생 라멘 등극",
-        "content": "맑은 닭육수에 감칠맛 터지는 소금 타래 조합이 예술입니다. 멘마 퀄리티도 미쳤네요.",
-        "author": {
-          "id": 1,
-          "nickname": "합정라멘마스터",
-          "levelTitle": "라멘 미식가",
-          "avatarUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120"
-        },
-        "shop": {
-          "id": 101,
-          "name": "멘야준",
-          "branch": "망원 본점"
-        },
-        "images": [
-          "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800"
-        ],
-        "likeCount": 38,
-        "commentCount": 7,
-        "isLiked": false,
-        "createdAt": "2026-09-04T12:30:00Z"
-      }
-    ],
-    "page": 0,
-    "size": 15,
-    "totalElements": 156,
-    "totalPages": 11,
-    "last": false
-  }
-}
-```
-
----
-
-#### [POST] `/community/posts/{postId}/comments` - 댓글 / 대댓글 작성
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-```json
-{
-  "parentId": null,
-  "content": "저도 저번 주에 다녀왔는데 차슈 추가는 무조건 필수입니다 ㅎㅎ"
-}
-```
-- **Response (201 Created)**:
-```json
-{
-  "success": true,
-  "code": "COMMENT_CREATED",
-  "message": "댓글이 등록되었습니다.",
-  "data": {
-    "id": 802,
-    "postId": 201,
-    "parentId": null,
-    "content": "저도 저번 주에 다녀왔는데 차슈 추가는 무조건 필수입니다 ㅎㅎ",
-    "author": {
-      "id": 2,
-      "nickname": "홍대라멘러버",
-      "levelTitle": "라멘 탐험가",
-      "avatarUrl": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120"
+    "id": 7001,
+    "reportType": "ALL_TIME",
+    "title": "진한 국물의 면 식감 탐험가",
+    "level": { "number": 30, "name": "라멘집 단골" },
+    "quote": "묵직한 국물 속에서도 면의 존재감을 찾는 취향",
+    "sourceLogCount": 34,
+    "metrics": {
+      "brothConcentration": 86,
+      "noodleFirmness": 72,
+      "salinityBalance": 61,
+      "tareUmami": 79,
+      "oilRichness": 68
     },
-    "createdAt": "2026-09-04T14:12:00Z"
-  }
+    "tags": ["진한 국물", "단단한 면"],
+    "insights": [],
+    "topShops": [],
+    "styleBreakdown": [],
+    "comparison": null,
+    "generatedAt": "2026-09-04T09:00:05Z"
+  },
+  "meta": { "requestId": "..." }
 }
 ```
 
----
+- 월간 리포트는 해당 월 로그가 3개 이상이면 다음 달 1일 생성한다.
+- 월간 리포트는 생성 당시 결과를 영구 보존한다.
+- 전체 리포트 refresh는 동시 중복 실행을 합치며 `202 Accepted`와 작업 상태를 반환할 수 있다.
+- 공유 링크가 필요하면 별도의 만료형 share-token API로 추가하며 내부 report ID만 공개 링크로 사용하지 않는다.
 
-### 3.5 AI 맞춤 추천 (AI Recommendation)
+### 4.9 커뮤니티
 
-#### [POST] `/recommendations/ai` - AI 취향 벡터 기반 맞춤 라멘집 추천
-- **설명**: 유저가 선택한 육수 농도, 면 굵기, 간, 선호 분위기 조건 및 과거 완식 데이터를 조합하여 가장 일치율이 높은 매장 3곳을 매칭해 반환합니다.
-- **Request Body**:
+#### `GET /community/posts`
+
+Query:
+
+- `category=REVIEW|TIP|QUESTION|FREE`
+- `shopId`
+- `sort=LATEST|POPULAR`
+- `cursor`, `size`
+
+`POPULAR`은 필터/정렬 옵션이며 저장 category가 아니다.
+
+#### `POST /community/posts`
+
 ```json
 {
-  "preferredSoup": "쇼유 (간장)",
-  "preferredDensity": "진한 농도",
-  "preferredNoodle": "단단한 카타메(固め)",
-  "vibe": "혼밥하기 편한 바 테이블",
-  "userLat": 37.5563,
-  "userLng": 126.9224
+  "category": "REVIEW",
+  "title": "성수에서 찾은 진한 돈코츠",
+  "content": "면과 국물의 밸런스가 좋았습니다.",
+  "shopId": 12,
+  "imageObjectKey": "community/101/01J8.jpg"
 }
 ```
-- **Response (200 OK)**:
+
+- `REVIEW`만 `shopId`를 받을 수 있으며 선택 입력이다.
+- 게시글 이미지는 현재 프로토타입 기준 최대 1개다.
+- 댓글 좋아요는 현재 화면에 동작이 없어 v2에서 제공하지 않는다.
+
+#### `POST /community/posts/{postId}/comments`
+
+```json
+{
+  "content": "저도 다음에 가봐야겠어요.",
+  "parentCommentId": null
+}
+```
+
+답글은 한 단계까지만 허용한다. 답글에 답글을 요청하면 원댓글을 parent로 정규화하거나 `VALIDATION_ERROR`를 반환하는 정책 중 하나로 구현 전에 고정한다. v2 기본 계약은 `VALIDATION_ERROR`다.
+
+### 4.10 AI 추천
+
+#### `POST /ai/recommendations`
+
+```json
+{
+  "selectedSoup": "진한 국물",
+  "selectedMood": "혼밥",
+  "selectedPriority": "가까운 거리",
+  "customPrompt": "웨이팅이 너무 길지 않았으면 좋겠어",
+  "location": { "latitude": 37.544, "longitude": 127.056 }
+}
+```
+
 ```json
 {
   "success": true,
-  "code": "SUCCESS",
-  "message": "AI 취향 분석 추천 결과가 생성되었습니다.",
   "data": {
-    "tasteVectorSummary": "진한 감칠맛 쇼유 & 탄력 카타메면 선호형",
-    "recommendedShops": [
+    "summary": "현재 위치에서 가까우며 진한 국물 평가가 많은 매장을 골랐어요.",
+    "recommendations": [
       {
-        "shopId": 101,
-        "name": "멘야준",
-        "branch": "망원 본점",
-        "matchRate": 98,
-        "matchReason": "회원님의 84% 쇼유 선호 DNA와 단단한 면 취향에 98% 부합하는 망원 대표 맛집",
-        "recommendedMenu": "특제 쇼유라멘 (차슈 추가)",
-        "distanceM": 320
-      },
-      {
-        "shopId": 105,
-        "name": "세상끝의라멘",
-        "branch": "합정점",
-        "matchRate": 94,
-        "matchReason": "오사카 다카이다풍의 진하고 묵직한 간장 풍미를 자랑하는 혼밥 최적화 매장",
-        "recommendedMenu": "끝라멘 (흑간장)",
-        "distanceM": 750
+        "shop": { "id": 12, "name": "멘야 하루", "distanceMeters": 480 },
+        "matchScore": 92,
+        "reasons": ["진한 국물 취향 일치", "혼밥 좌석 언급이 많음"]
       }
     ]
-  }
+  },
+  "meta": { "requestId": "..." }
 }
 ```
 
----
+추천 결과는 저장된 취향과 요청 조건을 함께 사용한다. 위치 미동의 시 `location`을 생략할 수 있고 거리 우선 조건은 비활성화한다.
 
-### 3.6 실시간 알림 (Notification)
+### 4.11 알림, 설정, 실시간 구독
 
-#### [GET] `/notifications` - 내 알림 목록 조회
-- **Headers**: `Authorization: Bearer <token>`
-- **Response (200 OK)**:
+#### `GET /notifications`
+
+Query: `tab=ALL|ACTIVITY|SHOP|SYSTEM`, `unreadOnly`, `cursor`, `size`
+
+탭 매핑:
+
+| tab | notification type |
+|---|---|
+| `ACTIVITY` | `LIKE`, `COMMENT`, `LEVEL` |
+| `SHOP` | `SHOP_NEWS` |
+| `SYSTEM` | `NOTICE` |
+
 ```json
 {
-  "success": true,
-  "code": "SUCCESS",
-  "message": "알림 목록이 조회되었습니다.",
-  "data": {
-    "unreadCount": 3,
-    "notifications": [
-      {
-        "id": "notif-101",
-        "type": "like",
-        "title": "라멘로그 공감",
-        "content": "홍대라멘러버님이 회원님의 [멘야준] 라멘로그에 공감했습니다 🍜",
-        "time": "10분 전",
-        "isRead": false,
-        "targetScreen": "MY",
-        "senderName": "홍대라멘러버",
-        "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120"
-      },
-      {
-        "id": "notif-102",
-        "type": "shop",
-        "title": "단골 라멘집 소식",
-        "content": "[세상끝의라멘] 가을 한정 바지락 시오라멘 출시!",
-        "time": "1시간 전",
-        "isRead": false,
-        "targetScreen": "MAP",
-        "targetShopId": 105,
-        "shopName": "세상끝의라멘"
-      }
-    ]
-  }
+  "id": 301,
+  "type": "COMMENT",
+  "title": "새 댓글이 달렸어요",
+  "body": "라멘고수님이 회원님의 글에 댓글을 남겼습니다.",
+  "actor": { "id": 55, "nickname": "라멘고수", "avatarUrl": "https://..." },
+  "target": {
+    "type": "COMMUNITY_POST",
+    "id": 701,
+    "deepLink": "raota://community/posts/701"
+  },
+  "readAt": null,
+  "createdAt": "2026-09-04T08:50:00Z"
 }
 ```
 
----
+알림 삭제는 현재 화면에 없으므로 v2에서 제공하지 않는다.
 
-#### [GET] `/notifications/subscribe` - SSE(Server-Sent Events) 실시간 알림 구독
-- **설명**: 클라이언트 접속 시 백엔드와 연결을 유지하여 신규 공감, 댓글, 레벨업 알림을 실시간 Push로 수신합니다.
-- **Headers**:
-  - `Authorization: Bearer <token>`
-  - `Accept: text/event-stream`
-- **Stream Event Example**:
-```
-event: notification
-id: notif-103
-data: {"id":"notif-103","type":"like","title":"라멘로그 공감","content":"새로운 공감이 도착했습니다!","time":"방금 전","isRead":false}
+#### `PATCH /notification-settings`
 
-: ping
-```
-
----
-
-#### [PUT] `/notifications/settings` - 알림 수신 설정 변경
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
 ```json
 {
   "pushEnabled": true,
-  "likesEnabled": true,
-  "commentsEnabled": true,
-  "levelUpEnabled": true,
-  "shopNewsEnabled": false
+  "likeEnabled": true,
+  "commentEnabled": true,
+  "levelEnabled": false,
+  "shopNewsEnabled": true
 }
 ```
-- **Response (200 OK)**:
+
+#### `PUT /devices/{installationId}`
+
 ```json
 {
-  "success": true,
-  "code": "SUCCESS",
-  "message": "알림 설정이 성공적으로 저장되었습니다.",
-  "data": {
-    "pushEnabled": true,
-    "likesEnabled": true,
-    "commentsEnabled": true,
-    "levelUpEnabled": true,
-    "shopNewsEnabled": false
-  }
+  "platform": "IOS",
+  "pushToken": "fcm-or-apns-token",
+  "appVersion": "1.0.0",
+  "locale": "ko-KR",
+  "timezone": "Asia/Seoul",
+  "pushPermission": "GRANTED"
 }
 ```
 
----
+#### SSE 연결
 
-## 4. 에러 코드 정의표 (Error Codes)
+브라우저 `EventSource`는 임의 Authorization 헤더 사용이 제한적이므로 access token을 query string에 넣지 않는다.
 
-| HTTP Status | 에러 코드 | 메시지 설명 |
-| :--- | :--- | :--- |
-| `400 Bad Request` | `INVALID_INPUT_VALUE` | 입력 필드 유효성 검증(Validation) 실패 |
-| `401 Unauthorized` | `INVALID_AUTH_TOKEN` | 인증 토큰이 유효하지 않거나 만료됨 |
-| `401 Unauthorized` | `EXPIRED_ACCESS_TOKEN` | Access Token 만료 (Reissue 필요) |
-| `403 Forbidden` | `ACCESS_DENIED` | 본인이 작성하지 않은 글/로그 수정/삭제 시도 |
-| `404 Not Found` | `MEMBER_NOT_FOUND` | 존재하지 않는 회원 ID |
-| `404 Not Found` | `SHOP_NOT_FOUND` | 존재하지 않는 라멘 매장 ID |
-| `404 Not Found` | `LOG_NOT_FOUND` | 존재하지 않는 라멘로그 ID |
-| `404 Not Found` | `POST_NOT_FOUND` | 존재하지 않는 라운지 게시글 ID |
-| `409 Conflict` | `DUPLICATE_NICKNAME` | 이미 사용 중인 닉네임 |
-| `500 Internal Error` | `INTERNAL_SERVER_ERROR` | 서버 내부 로직 처리 오류 |
+1. `POST /notifications/stream-ticket`에 Bearer token을 보내 60초 이내 만료되는 일회용 ticket을 받는다.
+2. `GET /notifications/subscribe?ticket={ticket}`로 연결한다.
+3. 연결 후 ticket은 즉시 소비한다.
+
+이벤트 예:
+
+```text
+event: notification.created
+id: 301
+data: {"notificationId":301,"unreadCount":4}
+```
+
+푸시 알림은 앱이 background/offline일 때의 전달 수단이고 SSE는 foreground 갱신 수단이다. 둘은 같은 `notificationId`로 중복 제거한다.
+
+## 5. 화면별 API 매핑
+
+| 프로토타입 화면 | 주요 API |
+|---|---|
+| Home | `/home`, `/ai/recommendations` |
+| Map | `/shops` |
+| Shop detail | `/shops/{id}`, `/shops/{id}/menus`, bookmark |
+| Record / Complete | upload ticket, `/taste-note-definitions`, `/ramen-logs`, `/taste-reports/current` |
+| Lounge - Logs | `/ramen-logs`, log like |
+| Lounge - Community | `/community/posts`, comments, post like |
+| News feed | `/shop-news`, news subscription |
+| My | `/members/me`, calendar, logs/visited/bookmarked/posts/comments |
+| Taste detail | current/monthly taste reports |
+| Notifications | notifications, settings, device, SSE |
+| Login / Register | OAuth login, onboarding |
+
+## 6. 구현 규칙
+
+### 6.1 권한
+
+- 기록/글/댓글 수정·삭제는 작성자 또는 관리자만 가능하다.
+- 다른 사용자는 `PRIVATE` 로그를 ID로 직접 요청해도 `404`를 받는다.
+- 정지/탈퇴 처리 중 회원은 공개 읽기 외 쓰기 API를 사용할 수 없다.
+- `viewerState.editable`은 편의를 위한 값일 뿐 서버 권한 검사를 대체하지 않는다.
+
+### 6.2 카운터와 이벤트
+
+좋아요 수, 댓글 수, 매장 로그 수, 공개 로그 수는 원본 관계가 기준이고 화면용 컬럼은 캐시다. 관계 변경과 카운터 갱신은 같은 트랜잭션으로 처리하며, 취향 재계산·알림·푸시는 transactional outbox 이벤트로 연결한다.
+
+### 6.3 개인정보와 로그
+
+- OAuth token, JWT, refresh token, upload signed URL, push token을 애플리케이션 로그에 남기지 않는다.
+- refresh token은 원문 저장하지 않고 해시만 저장한다.
+- 위치는 추천/검색 요청 처리에만 사용하며 저장하려면 별도 동의와 보존 정책이 필요하다.
+- 탈퇴 purge와 익명화 작업은 처리 건수와 결과만 감사 로그에 남긴다.
+
+### 6.4 캐시
+
+- 공개 매장 상세/홈 큐레이션은 짧은 TTL 캐시를 사용할 수 있다.
+- `viewerState`, 미확인 알림 수, 내 프로필은 공유 캐시에 섞지 않는다.
+- 좋아요/북마크 응답은 멱등 상태 변경 후 확정된 `active`와 최신 count를 반환한다.
+
+## 7. 기존 초안에서 제외하거나 변경한 항목
+
+| 항목 | v2 결정 |
+|---|---|
+| `/api/v1`에 모바일 기능 추가 | 기존 호환을 위해 `/api/v2`로 분리 |
+| 사용자가 5축 점수를 직접 입력 | 4개 태그 그룹을 입력하고 5축은 파생 분석 |
+| `isSoupFinished` | 실제 기록 화면에 없어 제외 |
+| `INFO`, `DAILY` 게시판 | 실제 화면의 `TIP`, `FREE`로 교체 |
+| `POPULAR` 게시판 카테고리 | 저장값이 아닌 정렬 옵션 |
+| badge API/테이블 | 실제 화면에 배지 컬렉션이 없어 제외 |
+| POST 방식 toggle API | 재시도 안전한 `PUT`/`DELETE`로 분리 |
+| 서버의 `10분 전` 문자열 | ISO UTC 시각 반환 후 클라이언트 포맷 |
+| Authorization 헤더 기반 `EventSource` | 단기 일회용 stream ticket 방식 |
+| 댓글 좋아요 | 실제 동작이 없어 제외 |
+| 이메일/패스키/데모 로그인 | 제품 결정 전 프로토타입 전용으로 분류 |
+
+## 8. 버전 전환
+
+1. v2 DB migration과 백필을 먼저 배포한다.
+2. v1/v2 데이터 비교 지표와 카운터 재계산 검증을 통과시킨다.
+3. 모바일 앱은 `/api/v2`만 사용하고 구버전 클라이언트는 `/api/v1`을 유지한다.
+4. 안정화 기간 동안 v1 테이블과 API는 삭제하지 않는다.
+5. 제거 시점은 구버전 활성 사용자, 데이터 보존 기간, 롤백 가능성을 확인한 뒤 별도 ADR로 승인한다.
+
+구체적인 테이블, FK 삭제 정책, 데이터 이관 조건은 [`ERD.md`](./ERD.md)를 기준으로 한다.
