@@ -20,3 +20,12 @@ logs/
 /.opencode-skills/
 scratch/
 .DS_Store
+
+# Expo & Mobile
+.expo/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision

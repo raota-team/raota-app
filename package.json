@@ -7,7 +7,11 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "mobile": "pnpm --filter @raota/mobile start",
+    "mobile:ios": "pnpm --filter @raota/mobile ios",
+    "mobile:android": "pnpm --filter @raota/mobile android",
+    "mobile:web": "pnpm --filter @raota/mobile web"
   },
   "dependencies": {
     "@seed-design/css": "^2.6.1",
