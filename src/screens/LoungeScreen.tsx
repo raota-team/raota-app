@@ -546,173 +546,167 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
           </button>
         </header>
 
-        {/* 글쓰기 본문 폼 */}
-        <form onSubmit={handleCreateCommunityPost} className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 pb-12">
+        {/* 글쓰기 본문 폼: 경계선 박스를 걷어낸 보더리스 클린 에디터 */}
+        <form onSubmit={handleCreateCommunityPost} className="flex-1 overflow-y-auto no-scrollbar px-4 py-3 space-y-4 pb-12 bg-white">
           
-          {/* 1. 카테고리 칩 선택 */}
-          <div>
-            <label className="text-[11px] font-bold text-stone-500 mb-1.5 block">카테고리</label>
-            <div className="flex gap-2">
-              {WRITE_CATEGORIES.map(t => {
-                const isSelected = writeCategory === t.id
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setWriteCategory(t.id as any)}
-                    className={`flex-1 py-2 px-2.5 rounded-sm text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
-                      isSelected
-                        ? 'bg-[#25282B] text-white border-[#25282B] shadow-xs'
-                        : 'bg-white border-stone-200 text-stone-600 hover:border-stone-400'
-                    }`}
-                  >
-                    {t.id === 'REVIEW' && <Soup className="w-3.5 h-3.5 text-[#E60000]" />}
-                    {t.id === 'TIP' && <Lightbulb className="w-3.5 h-3.5 text-amber-500" />}
-                    {t.id === 'QUESTION' && <HelpCircle className="w-3.5 h-3.5 text-blue-500" />}
-                    {t.id === 'FREE' && <Sparkles className="w-3.5 h-3.5 text-stone-500" />}
-                    <span>{t.name}</span>
-                  </button>
-                )
-              })}
-            </div>
+          {/* 1. 카테고리 칩 선택 (보더 제거, 톤온톤 태그 스타일) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {WRITE_CATEGORIES.map(t => {
+              const isSelected = writeCategory === t.id
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setWriteCategory(t.id as any)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${
+                    isSelected
+                      ? 'bg-[#25282B] text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  {t.id === 'REVIEW' && <Soup className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#E60000]'}`} />}
+                  {t.id === 'TIP' && <Lightbulb className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-amber-500'}`} />}
+                  {t.id === 'QUESTION' && <HelpCircle className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-blue-500'}`} />}
+                  {t.id === 'FREE' && <Sparkles className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-stone-500'}`} />}
+                  <span>{t.name}</span>
+                </button>
+              )
+            })}
           </div>
 
           {/* 2. 연관 라멘집 선택 (선택 사항) */}
-          <div>
-            <label className="text-[11px] font-bold text-stone-500 mb-1.5 block">연관 라멘집 (선택)</label>
-            <div className="relative" ref={writeShopDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsWriteShopDropdownOpen(prev => !prev)}
-                className={`w-full flex h-10 items-center justify-between rounded-sm border px-3 text-xs font-bold transition-all ${
-                  writeSelectedShop
-                    ? 'border-[#E60000] bg-red-50/50 text-[#25282B]'
-                    : 'border-stone-200 bg-stone-50 text-stone-500 hover:border-stone-400'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Store className="w-4 h-4 text-[#E60000]" />
-                  <span>{writeSelectedShop?.name || '매장 태그 추가하기 (선택)'}</span>
-                </div>
-                <ChevronDown
-                  className={`w-4 h-4 text-stone-400 transition-transform ${
-                    isWriteShopDropdownOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-
-              {/* 매장 검색 팝오버 */}
-              {isWriteShopDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
-                  <div className="p-2 border-b border-stone-100 bg-stone-50">
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
-                      <input
-                        type="text"
-                        placeholder="라멘집 검색..."
-                        value={writeShopSearchQuery}
-                        onChange={e => setWriteShopSearchQuery(e.target.value)}
-                        className="w-full h-8 rounded-sm border border-stone-200 bg-white pl-8 pr-2.5 text-xs font-medium text-[#25282B] placeholder-stone-400 focus:border-[#E60000] outline-none"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                    <div className="max-h-48 overflow-y-auto no-scrollbar divide-y divide-stone-50">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setWriteSelectedShop(null)
-                          setIsWriteShopDropdownOpen(false)
-                        }}
-                        className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 ${
-                          !writeSelectedShop ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
-                        }`}
-                      >
-                        선택 안함 (직접 작성)
-                      </button>
-                      {WRITE_SHOP_OPTIONS
-                        .filter(s => !writeShopSearchQuery.trim() || s.name.toLowerCase().includes(writeShopSearchQuery.toLowerCase()))
-                        .map(s => {
-                          const isSelected = writeSelectedShop?.name === s.name
-                          return (
-                            <button
-                              key={s.name}
-                              type="button"
-                              onClick={() => {
-                                setWriteSelectedShop(s)
-                                setIsWriteShopDropdownOpen(false)
-                                setWriteShopSearchQuery('')
-                              }}
-                              className={`w-full px-3.5 py-2.5 text-left text-xs hover:bg-stone-50 transition-colors flex items-center justify-between ${
-                                isSelected ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
-                              }`}
-                            >
-                              <div className="font-bold">{s.name}</div>
-                              <div className="text-[11px] text-stone-400">{s.location}</div>
-                            </button>
-                          )
-                        })}
-                    </div>
-                  </div>
-                )}
+          <div className="relative" ref={writeShopDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsWriteShopDropdownOpen(prev => !prev)}
+              className={`w-full flex h-9 items-center justify-between rounded-[8px] px-3 text-xs font-bold transition-all ${
+                writeSelectedShop
+                  ? 'bg-red-50 text-[#E60000]'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200/80'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Store className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{writeSelectedShop ? `${writeSelectedShop.name} (${writeSelectedShop.location})` : '연관 라멘집 태그 (선택)'}</span>
               </div>
-            </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 shrink-0 transition-transform ${
+                  isWriteShopDropdownOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
 
-          {/* 제목 입력 */}
-          <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2">
+            {/* 매장 검색 팝오버 */}
+            {isWriteShopDropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-[10px] bg-white shadow-xl overflow-hidden border border-stone-200 anim-fade-in-up">
+                <div className="p-2 border-b border-stone-100 bg-stone-50">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
+                    <input
+                      type="text"
+                      placeholder="라멘집 검색..."
+                      value={writeShopSearchQuery}
+                      onChange={e => setWriteShopSearchQuery(e.target.value)}
+                      className="w-full h-8 rounded-[6px] border border-stone-200 bg-white pl-8 pr-2.5 text-xs font-medium text-[#25282B] placeholder-stone-400 focus:border-[#E60000] outline-none"
+                      autoFocus
+                    />
+                  </div>
+                </div>
 
-            <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
-              글 제목
-            </label>
+                <div className="max-h-48 overflow-y-auto no-scrollbar divide-y divide-stone-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWriteSelectedShop(null)
+                      setIsWriteShopDropdownOpen(false)
+                    }}
+                    className={`w-full px-3.5 py-2 text-left text-xs hover:bg-stone-50 ${
+                      !writeSelectedShop ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                    }`}
+                  >
+                    선택 안함 (직접 작성)
+                  </button>
+                  {WRITE_SHOP_OPTIONS
+                    .filter(s => !writeShopSearchQuery.trim() || s.name.toLowerCase().includes(writeShopSearchQuery.toLowerCase()))
+                    .map(s => {
+                      const isSelected = writeSelectedShop?.name === s.name
+                      return (
+                        <button
+                          key={s.name}
+                          type="button"
+                          onClick={() => {
+                            setWriteSelectedShop(s)
+                            setIsWriteShopDropdownOpen(false)
+                            setWriteShopSearchQuery('')
+                          }}
+                          className={`w-full px-3.5 py-2.5 text-left text-xs hover:bg-stone-50 transition-colors flex items-center justify-between ${
+                            isSelected ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
+                          }`}
+                        >
+                          <div className="font-bold">{s.name}</div>
+                          <div className="text-[11px] text-stone-400">{s.location}</div>
+                        </button>
+                      )
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3. 제목 & 본문 입력 (박스 없이 매끄러운 캔버스 스타일) */}
+          <div className="pt-2 border-b border-stone-100 pb-3">
             <input
               type="text"
               value={writeTitle}
               onChange={e => setWriteTitle(e.target.value)}
-              placeholder="제목을 입력하세요 (예: 멘야준 신메뉴 먹고 왔습니다)"
+              placeholder="제목을 입력하세요"
               maxLength={100}
-              className="w-full h-11 px-3.5 rounded-sm border border-stone-200 bg-stone-50 text-sm font-bold text-[#25282B] placeholder-stone-400 outline-none focus:border-[#E60000] focus:bg-white transition-colors"
+              className="w-full text-[17px] font-black text-[#25282B] placeholder-stone-400 outline-none bg-transparent"
             />
           </div>
 
-          {/* 본문 내용 입력 */}
-          <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2">
-            <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
-              본문 내용
-            </label>
+          <div className="min-h-[160px]">
             <textarea
-              rows={7}
+              rows={8}
               value={writeContent}
               onChange={e => setWriteContent(e.target.value)}
-              placeholder="라멘에 대한 이야기를 들려주세요... (육수 농도, 면 삶기, 웨이팅 팁, 추가 토핑 추천 등)"
-              className="w-full p-3.5 rounded-sm border border-stone-200 bg-stone-50 text-sm text-[#25282B] placeholder-stone-400 outline-none focus:border-[#E60000] focus:bg-white transition-colors leading-relaxed resize-none"
+              placeholder="라멘에 대한 생생한 이야기를 들려주세요 (육수 농도, 면 삶기, 웨이팅 팁 등)"
+              className="w-full text-[14px] text-[#25282B] placeholder-stone-400 outline-none bg-transparent leading-relaxed resize-none"
             />
           </div>
 
-          {/* 대표 사진 첨부 (파일 업로드 + 원클릭 프리셋) */}
-          <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-3">
-            <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
-              대표 사진 (선택)
-            </label>
-
-            {writeImagePreview ? (
-              <div className="relative inline-block rounded-[6px] overflow-hidden border border-stone-200 w-full">
-                <img src={writeImagePreview} alt="Preview" className="h-44 w-full object-cover rounded-[4px]" />
+          {/* 4. 대표 사진 첨부 (박스 제거, 인라인 썸네일 & 버튼 형태) */}
+          <div className="pt-3 border-t border-stone-100 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-stone-400">사진 첨부 (선택)</span>
+              {writeImagePreview && (
                 <button
                   type="button"
                   onClick={() => setWriteImagePreview(null)}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[#25282B]/80 hover:bg-[#25282B] text-white flex items-center justify-center text-xs font-bold backdrop-blur-xs transition-colors"
+                  className="text-[11px] font-bold text-[#E60000] hover:underline"
+                >
+                  사진 삭제
+                </button>
+              )}
+            </div>
+
+            {writeImagePreview ? (
+              <div className="relative rounded-[12px] overflow-hidden bg-stone-100 max-h-52 w-full">
+                <img src={writeImagePreview} alt="Preview" className="w-full max-h-52 object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setWriteImagePreview(null)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center text-xs font-bold transition-colors"
                   aria-label="사진 제거"
                 >
                   ✕
                 </button>
               </div>
             ) : (
-              <div className="space-y-2.5">
-                <label className="flex flex-col items-center justify-center h-28 rounded-sm border border-dashed border-stone-300 hover:border-[#E60000] bg-stone-50 cursor-pointer transition-colors group">
-                  <ImageIcon className="w-7 h-7 text-stone-400 group-hover:text-[#E60000] transition-colors mb-1.5" />
-                  <span className="text-xs font-bold text-stone-500 group-hover:text-[#25282B]">사진 파일 선택하여 업로드</span>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 px-3.5 py-2.5 rounded-[8px] bg-stone-50 hover:bg-stone-100 cursor-pointer transition-colors group w-fit">
+                  <ImageIcon className="w-4 h-4 text-stone-500 group-hover:text-[#E60000] transition-colors" />
+                  <span className="text-xs font-bold text-stone-600 group-hover:text-[#25282B]">기기에서 사진 선택</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -729,15 +723,15 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                 </label>
 
                 {/* 빠른 추천 사진 프리셋 칩 */}
-                <div>
-                  <span className="text-[10px] text-stone-400 font-bold block mb-1.5">또는 샘플 사진으로 바로 첨부:</span>
-                  <div className="flex gap-2">
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-stone-400 font-medium shrink-0">샘플:</span>
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
                     {SAMPLE_IMAGE_PRESETS.map((preset, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => setWriteImagePreview(preset.url)}
-                        className="flex-1 py-1 px-2 rounded-sm border border-stone-200 hover:border-[#E60000] bg-white text-[10px] font-bold text-stone-600 truncate hover:text-[#E60000] transition-colors"
+                        className="py-1 px-2 rounded-full bg-stone-100 hover:bg-red-50 hover:text-[#E60000] text-[10px] font-medium text-stone-600 truncate transition-colors"
                       >
                         {preset.name}
                       </button>
@@ -748,17 +742,19 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
             )}
           </div>
 
-          {/* 하단 글 작성 완료 버튼 */}
-          <button
-            type="submit"
-            disabled={!writeTitle.trim() || !writeContent.trim()}
-            className="w-full h-12 rounded-[6px] bg-[#E60000] hover:bg-[#CC0000] text-white font-bold text-sm disabled:opacity-40 disabled:pointer-events-none active:scale-98 transition-all shadow-md flex items-center justify-center gap-2"
-          >
-            <PenSquare className="w-4 h-4" />
-            <span>글 작성 완료</span>
-          </button>
+          {/* 5. 하단 등록 버튼 */}
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={!writeTitle.trim() || !writeContent.trim()}
+              className="w-full h-12 rounded-[12px] bg-[#E60000] hover:bg-[#CC0000] text-white font-bold text-sm disabled:opacity-30 disabled:pointer-events-none active:scale-98 transition-all shadow-md flex items-center justify-center gap-2"
+            >
+              <PenSquare className="w-4 h-4" />
+              <span>글 작성 완료</span>
+            </button>
+          </div>
 
-          <div className="h-8" />
+          <div className="h-6" />
         </form>
       </div>
     )
