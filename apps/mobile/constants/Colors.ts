@@ -1,23 +1,30 @@
-const tintColorLight = '#FF6B00';
-const tintColorDark = '#FFA05C';
+export const BRAND_RED = '#e60000';
+export const DARK_RED = '#ac1811';
+export const CHARCOAL = '#25282b';
+export const SECONDARY_GREY = '#7e7e7e';
+export const LIGHT_BG = '#f8f9fa';
+export const CARD_BG = '#ffffff';
+export const BORDER_COLOR = '#ebebeb';
 
 export default {
   light: {
-    text: '#191F28',
-    background: '#FFFFFF',
-    tint: tintColorLight,
-    tabIconDefault: '#8B95A1',
-    tabIconSelected: tintColorLight,
-    border: '#F2F4F6',
-    card: '#F9FAFB',
+    text: CHARCOAL,
+    background: '#ffffff',
+    tint: BRAND_RED,
+    tabIconDefault: '#9e9e9e',
+    tabIconSelected: BRAND_RED,
+    border: '#f0f0f0',
+    card: CARD_BG,
+    secondaryText: SECONDARY_GREY,
   },
   dark: {
-    text: '#FFFFFF',
-    background: '#121212',
-    tint: tintColorDark,
+    text: '#ffffff',
+    background: '#1a1c1e',
+    tint: BRAND_RED,
     tabIconDefault: '#6B7280',
-    tabIconSelected: tintColorDark,
-    border: '#27272A',
-    card: '#1E1E1E',
+    tabIconSelected: BRAND_RED,
+    border: '#2a2d31',
+    card: '#25282b',
+    secondaryText: '#a0a0a0',
   },
 };
