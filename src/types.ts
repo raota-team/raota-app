@@ -121,3 +121,45 @@ export const TASTE_FIELDS: Array<{ key: TasteNoteKey; label: string; options: st
 
 export const RAMEN_TYPES = ['쇼유', '돈코츠', '시오', '미소', '츠케멘', '탄탄멘', '마제소바', '아부라소바', '기타']
 export const REVISIT_OPTIONS: RevisitOption[] = ['자주 감', '가끔 생각남', '한번이면 충분']
+
+export interface UserProfile {
+  id: string
+  name: string
+  nickname: string
+  email?: string
+  avatar: string | null
+  level: string
+  levelNumber: number
+  membershipNo: string
+  bio?: string
+  favoriteRamenType?: string
+  visitedCount: number
+  revisitCount: number
+  isLoggedIn: boolean
+}
+
+export type NotificationType = 'like' | 'comment' | 'level' | 'shop' | 'notice'
+
+export interface AppNotification {
+  id: string
+  type: NotificationType
+  title: string
+  content: string
+  time: string
+  isRead: boolean
+  targetScreen?: string
+  targetShopId?: number
+  avatar?: string
+  senderName?: string
+  shopName?: string
+}
+
+export interface NotificationSettings {
+  pushEnabled: boolean
+  likesEnabled: boolean
+  commentsEnabled: boolean
+  levelUpEnabled: boolean
+  shopNewsEnabled: boolean
+}
+
+

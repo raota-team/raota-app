@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Camera, Zap, MapPin } from 'lucide-react'
+
 
 interface Props {
   onShopClick?: () => void
@@ -86,18 +88,19 @@ export default function NewsFeedScreen({ onShopClick }: Props) {
     : NEWS_POSTS.filter(p => p.type.startsWith(activeFilter))
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#FFFFFF] text-[#25282B]">
+    <div className="h-full overflow-y-auto no-scrollbar bg-[#FFFFFF] text-[#25282B]">
       
       {/* 1. 상단 바 */}
-      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-5 pt-12 pb-3.5 border-b border-[#E2E2E2]">
+      <header className="bg-white px-5 pt-3.5 pb-3.5 border-b border-[#E2E2E2]">
         <div className="flex items-center gap-2.5 mb-3">
           <img src="/logo.png" alt="RAOTA" className="w-8 h-8 object-contain" />
           <div>
             <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">
-              라멘야 인스타 속보
+              라멘집 인스타 속보
             </h1>
-            <p className="text-[10px] text-[#7E7E7E]">전국 라멘야 공식 인스타그램 실시간 피드</p>
+            <p className="text-[10px] text-[#7E7E7E]">전국 라멘집 공식 인스타그램 실시간 피드</p>
           </div>
+
         </div>
 
         {/* 필터 탭 */}
@@ -111,7 +114,7 @@ export default function NewsFeedScreen({ onShopClick }: Props) {
                 className={`flex-shrink-0 h-7 px-3 rounded-[32px] text-[11px] font-bold border transition-all ${
                   active
                     ? 'bg-[#25282B] text-white border-[#25282B]'
-                    : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#25282B]'
+                    : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#BEBEBE]'
                 }`}
               >
                 {f}
@@ -122,15 +125,15 @@ export default function NewsFeedScreen({ onShopClick }: Props) {
       </header>
 
       {/* 2. 속보 목록 */}
-      <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+      <div className="p-4 space-y-4">
         {filtered.map(post => (
           <article key={post.id} className="bg-white rounded-[6px] overflow-hidden border border-[#E2E2E2]">
             
             {/* 상단 인스타 계정 & 시간 정보 */}
             <div className="p-3.5 pb-2.5 flex items-center justify-between border-b border-[#E2E2E2]">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#FF512F] to-[#DD2476] text-white flex items-center justify-center text-[10px] font-black shadow-xs">
-                  📸
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#FF512F] to-[#DD2476] text-white flex items-center justify-center shadow-xs">
+                  <Camera className="w-3.5 h-3.5 text-white" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -169,7 +172,8 @@ export default function NewsFeedScreen({ onShopClick }: Props) {
               {/* AI 3줄 요약 블록 */}
               <div className="p-3 bg-[#F2F2F2] rounded-[6px] space-y-1 mb-3.5">
                 <span className="text-[10px] font-black text-[#25282B] flex items-center gap-1 block mb-1">
-                  <span className="text-[#E60000]">⚡</span> 핵심 요약
+                  <Zap className="w-3 h-3 fill-[#E60000] text-[#E60000]" />
+                  <span>핵심 요약</span>
                 </span>
                 {post.summary.map((line, idx) => (
                   <p key={idx} className="text-[11px] text-[#4A4D52] leading-relaxed flex items-start gap-1">
@@ -186,26 +190,33 @@ export default function NewsFeedScreen({ onShopClick }: Props) {
                   className="flex-1 h-9 rounded-[6px] bg-[#F2F2F2] hover:bg-[#E2E2E2] text-[11px] font-bold text-[#25282B] flex items-center justify-center gap-1 transition-colors"
                 >
                   <span>매장 정보 보기</span>
-                  <span>📍</span>
+                  <MapPin className="w-3 h-3 text-stone-500" />
                 </button>
                 <a
                   href={post.instagramUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 h-9 rounded-[6px] border border-[#25282B] hover:bg-[#25282B] hover:text-white text-[11px] font-bold text-[#25282B] flex items-center justify-center gap-1 transition-colors"
+                  className="flex-1 h-9 rounded-[6px] border border-[#E2E2E2] hover:border-[#BEBEBE] bg-white hover:bg-[#F9F9F9] text-[11px] font-bold text-[#25282B] flex items-center justify-center gap-1 transition-colors shadow-2xs"
                 >
                   <span>인스타 원문 보기</span>
                   <span>↗</span>
                 </a>
               </div>
             </div>
+
           </article>
         ))}
 
-        <div className="p-4 text-center text-[10px] text-[#7E7E7E] font-medium">
-          서울 및 전국 120여 개 라멘야의 공식 인스타그램을 주기적으로 자동 수집합니다.
+        {/* 피드 끝 안내 문구 (라멘속보) */}
+        <div className="pt-8 pb-3 text-center">
+          <p className="text-[10.5px] text-[#A0A0A0]">
+            모든 라멘속보를 확인했습니다. 새로운 소식이 올라오면 바로 알려드릴게요
+          </p>
         </div>
+
+
         <div className="h-6" />
+
       </div>
     </div>
   )

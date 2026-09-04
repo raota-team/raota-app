@@ -1,102 +1,29 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import {
+  HelpCircle,
+  Heart,
+  MessageCircle,
+  Eye,
+  CornerDownRight,
+  Send,
+  Store,
+  Soup,
+  Lightbulb,
+  Sparkles,
+  MapPin,
+  Search,
+  PenSquare,
+  ChevronLeft,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  MessageSquare,
+  Flame,
+  Image as ImageIcon,
+  X,
+} from 'lucide-react'
 import type { RamenLog } from '../types'
 
-interface Props {
-  logs: RamenLog[]
-  onRecordClick: () => void
-  onShopClick?: (shopName: string) => void
-}
-
-export interface PostComment {
-  id: number
-  authorId?: number
-  authorNickname: string
-  authorImageUrl?: string
-  createdAt: string
-  content: string
-  isReply?: boolean
-  parentAuthorNickname?: string
-  likes: number
-  isLiked?: boolean
-}
-
-export interface CommunityPost {
-  postId: number
-  category: 'REVIEW' | 'TIP' | 'QUESTION' | 'FREE' | 'POPULAR'
-  categoryLabel: string
-  title: string
-  content: string
-  detailedContent?: string[]
-  authorId: number
-  authorName: string
-  authorImageUrl?: string
-  authorLevel: string
-  createdAt: string
-  likeCount: number
-  commentCount: number
-  viewCount: number
-  isLiked: boolean
-  shopName?: string
-  imageUrl?: string
-  comments: PostComment[]
-}
-
-// ----------------------------------------------------
-// 🌟 raota-front 공식 Lucide Icons SVG 컴포넌트
-// ----------------------------------------------------
-export function IconMessageCircle({ className = 'w-3.5 h-3.5' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-    </svg>
-  )
-}
-
-export function IconHeart({ className = 'w-3.5 h-3.5', filled = false }: { className?: string; filled?: boolean }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-    </svg>
-  )
-}
-
-export function IconEye({ className = 'w-3.5 h-3.5' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  )
-}
-
-export function IconCornerDownRight({ className = 'w-3.5 h-3.5' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="15 10 20 15 15 20" />
-      <path d="M4 4v7a4 4 0 0 0 4 4h12" />
-    </svg>
-  )
-}
-
-export function IconSend({ className = 'w-4 h-4' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m22 2-7 20-4-9-9-4Z" />
-      <path d="M22 2 11 13" />
-    </svg>
-  )
-}
-
-export function IconStore({ className = 'w-3.5 h-3.5' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
-      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-      <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
-      <path d="M2 7h20" />
-    </svg>
-  )
-}
 
 // ----------------------------------------------------
 // 🌟 raota-front 커뮤니티 Mock 데이터
@@ -109,11 +36,12 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     title: '망원·합정 일대 인생 쇼유 라멘 3곳 추천합니다',
     content: '자가제면과 동물계 육수의 밸런스가 완벽한 곳들만 엄선했습니다. 1위는 역시 멘야준, 2위는 세상끝의라멘, 3위는 묘코입니다.',
     detailedContent: [
-      '지난 3년간 마포구 일대 쇼유 라멘야 40여 곳을 투어하며 선별한 베스트 3곳을 공유합니다.',
+      '지난 3년간 마포구 일대 쇼유 라멘집 40여 곳을 투어하며 선별한 베스트 3곳을 공유합니다.',
       '🥇 1위. 멘야준 (망원)\n닭과 오리 육수의 더블 블렌딩 감칠맛이 폭발적입니다. 특히 1.5mm 자가제면의 씹는 맛과 차슈의 부드러움이 일품입니다.',
       '🥈 2위. 세상끝의라멘 (합정)\n진한 오사카 블랙풍의 끝라멘과 맑은 첫라멘 모두 개성이 뚜렷합니다. 닭가슴살 수비드 토핑이 예술입니다.',
       '🥉 3위. 묘코 (연남)\n오리 기름(오리기름 치유)의 향이 은은하게 퍼지며 끝맛이 매우 깔끔합니다.',
     ],
+
     authorId: 101,
     authorName: '쇼유장인',
     authorLevel: '라멘 미식가 (Lv.5)',
@@ -202,7 +130,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     title: '라멘 먹을 때 염도 조절 실패하지 않는 완식 주문 꿀팁',
     content: '초심자분들이 자주 실수하는 간 조절법과 무료 와리스프(육수 추가) 요청 타이밍 총정리입니다.',
     detailedContent: [
-      '1. 일본 정통 라멘야는 기본 염도가 한국인 입맛에 다소 짤 수 있으므로 첫 방문 시 "싱겁게" 또는 "보통"으로 주문하세요.',
+      '1. 일본 정통 라멘집은 기본 염도가 한국인 입맛에 다소 짤 수 있으므로 첫 방문 시 "싱겁게" 또는 "보통"으로 주문하세요.',
       '2. 식사 중간에 너무 짜다고 느껴지면 주저하지 말고 "와리스프(연한 육수)"를 요청하시면 염도를 맞춰주십니다.',
       '3. 밥이나 면 리필이 무료인 곳(라오타 완식 가이드 참고)은 국물을 1/3 이상 남겨두시는 것이 좋습니다.',
     ],
@@ -231,11 +159,12 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     category: 'FREE',
     categoryLabel: '자유게시판',
     title: '올해 100그릇 달성했습니다! 취향 리포트 인증합니다',
-    content: '상반기 동안 서울 시내 라멘야 60곳 돌면서 심어둔 잔디가 꽉 찼네요. 다들 이번 주도 즐거운 완식하세요.',
+    content: '상반기 동안 서울 시내 라멘집 60곳 돌면서 심어둔 잔디가 꽉 찼네요. 다들 이번 주도 즐거운 완식하세요.',
     detailedContent: [
       '드디어 오늘 점심 완식으로 2026년 누적 100그릇 돌파했습니다.',
-      '활동 등급도 최고 등급인 Lv.6 라멘 마스터로 승급했네요! 라오타 커뮤니티 덕분에 좋은 라멘야 많이 알아갑니다.',
+      '활동 등급도 최고 등급인 Lv.6 라멘 마스터로 승급했네요! 라오타 커뮤니티 덕분에 좋은 라멘집 많이 알아갑니다.',
     ],
+
     authorId: 104,
     authorName: '차슈폭격기',
     authorLevel: '라멘 마스터 (Lv.6)',
@@ -269,11 +198,25 @@ const COMMUNITY_CATEGORIES = [
 ]
 
 const WRITE_CATEGORIES = [
-  { id: 'REVIEW', name: '맛집후기', icon: '🍜' },
-  { id: 'TIP', name: '라멘꿀팁', icon: '💡' },
-  { id: 'QUESTION', name: 'Q&A', icon: '❓' },
-  { id: 'FREE', name: '자유게시판', icon: '✨' },
+  { id: 'REVIEW', name: '맛집후기' },
+  { id: 'TIP', name: '라멘꿀팁' },
+  { id: 'QUESTION', name: 'Q&A' },
+  { id: 'FREE', name: '자유게시판' },
 ]
+
+const CATEGORY_COLORS: Record<string, string> = {
+  REVIEW: 'bg-emerald-50 text-emerald-700 border border-emerald-200/80',
+  TIP: 'bg-blue-50 text-blue-700 border border-blue-200/80',
+  QUESTION: 'bg-amber-50 text-amber-800 border border-amber-200/80',
+  FREE: 'bg-stone-100 text-stone-600 border border-stone-200/80',
+  POPULAR: 'bg-red-50 text-[#E60000] border border-red-200/80',
+}
+
+function getCategoryBadgeClass(category?: string) {
+  if (!category) return 'bg-stone-100 text-stone-600 border border-stone-200/80'
+  return CATEGORY_COLORS[category] || 'bg-stone-100 text-stone-600 border border-stone-200/80'
+}
+
 
 const WRITE_SHOP_OPTIONS = [
   { name: '멘야준', location: '망원 본점' },
@@ -505,7 +448,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
   const filteredPosts = communityCategory === 'all'
     ? posts
     : communityCategory === 'POPULAR'
-    ? [...posts].sort((a, b) => b.likeCount - a.likeCount)
+    ? posts.filter(p => p.likeCount >= 30).sort((a, b) => b.likeCount - a.likeCount)
     : posts.filter(p => p.category === communityCategory)
 
   // ==========================================
@@ -515,7 +458,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
     return (
       <div className="h-full flex flex-col bg-[#FFFFFF] text-[#25282B] relative">
         {/* 1. 상단 헤더: 취소 + 타이틀 + 등록 버튼 */}
-        <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-4 pt-12 pb-3.5 border-b border-[#E2E2E2] flex items-center justify-between">
+        <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-4 pt-3.5 pb-3.5 border-b border-[#E2E2E2] flex items-center justify-between">
           <button
             type="button"
             onClick={() => {
@@ -528,9 +471,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
             }}
             className="flex items-center gap-1 text-xs font-bold text-stone-500 hover:text-[#25282B] transition-colors py-1 px-1.5 -ml-1 rounded-sm"
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <ChevronLeft className="h-4 w-4" />
             <span>취소</span>
           </button>
 
@@ -546,88 +487,77 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
           </button>
         </header>
 
-        {/* 2. 글 작성 폼 스크롤 영역 */}
-        <form onSubmit={handleCreateCommunityPost} className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4">
+        {/* 글쓰기 본문 폼 */}
+        <form onSubmit={handleCreateCommunityPost} className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4 pb-12">
           
-          {/* 카테고리 선택 바 (raota-front 스펙) */}
-          <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2.5">
-            <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
-              카테고리
-            </label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {WRITE_CATEGORIES.map(cat => {
-                const isSelected = writeCategory === cat.id
+          {/* 1. 카테고리 칩 선택 */}
+          <div>
+            <label className="text-[11px] font-bold text-stone-500 mb-1.5 block">카테고리</label>
+            <div className="flex gap-2">
+              {CATEGORY_TABS.filter(t => t.key !== 'ALL').map(t => {
+                const isSelected = writeCategory === t.key
                 return (
                   <button
-                    key={cat.id}
+                    key={t.key}
                     type="button"
-                    onClick={() => setWriteCategory(cat.id)}
-                    className={`py-2.5 px-3 rounded-[6px] border text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    onClick={() => setWriteCategory(t.key as any)}
+                    className={`flex-1 py-2 px-2.5 rounded-sm text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                       isSelected
-                        ? 'bg-[#25282B] border-[#25282B] text-white shadow-xs'
-                        : 'bg-[#F2F2F2] border-stone-200 text-[#25282B] hover:bg-[#EAEAEA]'
+                        ? 'bg-[#25282B] text-white border-[#25282B] shadow-xs'
+                        : 'bg-white border-stone-200 text-stone-600 hover:border-stone-400'
                     }`}
                   >
-                    <span>{cat.icon}</span>
-                    <span>{cat.name}</span>
+                    {t.key === 'REVIEW' && <Soup className="w-3.5 h-3.5 text-[#E60000]" />}
+                    {t.key === 'TIP' && <Lightbulb className="w-3.5 h-3.5 text-amber-500" />}
+                    {t.key === 'FREE' && <Sparkles className="w-3.5 h-3.5 text-blue-500" />}
+                    <span>{t.label}</span>
                   </button>
                 )
               })}
             </div>
           </div>
 
-          {/* 맛집후기일 때: 라멘집 선택 (커스텀 검색 드롭다운) */}
-          {writeCategory === 'REVIEW' && (
-            <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2.5">
-              <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
-                라멘집 선택
-              </label>
+          {/* 2. 연관 라멘집 선택 (선택 사항) */}
+          <div>
+            <label className="text-[11px] font-bold text-stone-500 mb-1.5 block">연관 라멘집 (선택)</label>
+            <div className="relative" ref={writeShopDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsWriteShopDropdownOpen(prev => !prev)}
+                className={`w-full flex h-10 items-center justify-between rounded-sm border px-3 text-xs font-bold transition-all ${
+                  writeSelectedShop
+                    ? 'border-[#E60000] bg-red-50/50 text-[#25282B]'
+                    : 'border-stone-200 bg-stone-50 text-stone-500 hover:border-stone-400'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Store className="w-4 h-4 text-[#E60000]" />
+                  <span>{writeSelectedShop?.name || '매장 태그 추가하기 (선택)'}</span>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-stone-400 transition-transform ${
+                    isWriteShopDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
 
-              <div className="relative" ref={writeShopDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsWriteShopDropdownOpen(prev => !prev)}
-                  className="flex w-full items-center justify-between gap-2 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] px-3.5 py-2.5 text-xs font-bold text-[#25282B] transition-colors hover:border-[#E60000]"
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <IconStore className="w-4 h-4 text-[#E60000] shrink-0" />
-                    <span className="truncate">
-                      {writeSelectedShop ? `${writeSelectedShop.name} (${writeSelectedShop.location})` : '라멘집을 선택하세요'}
-                    </span>
-                  </div>
-                  <svg
-                    className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-200 ${
-                      isWriteShopDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
-                    }`}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
 
-                {/* 매장 검색 팝오버 */}
-                {isWriteShopDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
-                    <div className="p-2 border-b border-stone-100 bg-stone-50">
-                      <div className="relative">
-                        <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-                        </svg>
-                        <input
-                          type="text"
-                          placeholder="라멘집 검색..."
-                          value={writeShopSearchQuery}
-                          onChange={e => setWriteShopSearchQuery(e.target.value)}
-                          className="w-full h-8 rounded-sm border border-stone-200 bg-white pl-8 pr-2.5 text-xs font-medium text-[#25282B] placeholder-stone-400 focus:border-[#E60000] outline-none"
-                          autoFocus
-                        />
-                      </div>
+              {/* 매장 검색 팝오버 */}
+              {isWriteShopDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-40 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
+                  <div className="p-2 border-b border-stone-100 bg-stone-50">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
+                      <input
+                        type="text"
+                        placeholder="라멘집 검색..."
+                        value={writeShopSearchQuery}
+                        onChange={e => setWriteShopSearchQuery(e.target.value)}
+                        className="w-full h-8 rounded-sm border border-stone-200 bg-white pl-8 pr-2.5 text-xs font-medium text-[#25282B] placeholder-stone-400 focus:border-[#E60000] outline-none"
+                        autoFocus
+                      />
                     </div>
+                  </div>
 
                     <div className="max-h-48 overflow-y-auto no-scrollbar divide-y divide-stone-50">
                       <button
@@ -669,10 +599,10 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                 )}
               </div>
             </div>
-          )}
 
           {/* 제목 입력 */}
           <div className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-2">
+
             <label className="block text-[11px] font-black text-stone-400 tracking-wider uppercase">
               글 제목
             </label>
@@ -721,11 +651,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
             ) : (
               <div className="space-y-2.5">
                 <label className="flex flex-col items-center justify-center h-28 rounded-sm border border-dashed border-stone-300 hover:border-[#E60000] bg-stone-50 cursor-pointer transition-colors group">
-                  <svg className="w-7 h-7 text-stone-400 group-hover:text-[#E60000] transition-colors mb-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                    <circle cx="9" cy="9" r="2" />
-                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                  </svg>
+                  <ImageIcon className="w-7 h-7 text-stone-400 group-hover:text-[#E60000] transition-colors mb-1.5" />
                   <span className="text-xs font-bold text-stone-500 group-hover:text-[#25282B]">사진 파일 선택하여 업로드</span>
                   <input
                     type="file"
@@ -768,9 +694,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
             disabled={!writeTitle.trim() || !writeContent.trim()}
             className="w-full h-12 rounded-[6px] bg-[#E60000] hover:bg-[#CC0000] text-white font-bold text-sm disabled:opacity-40 disabled:pointer-events-none active:scale-98 transition-all shadow-md flex items-center justify-center gap-2"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
+            <PenSquare className="w-4 h-4" />
             <span>글 작성 완료</span>
           </button>
 
@@ -788,42 +712,48 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
       <div className="h-full flex flex-col bg-[#FFFFFF] text-[#25282B] relative">
         
         {/* 1. 상단 헤더: 뒤로가기 + 카테고리 뱃지 */}
-        <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-4 pt-12 pb-3.5 border-b border-stone-200 flex items-center justify-between">
+        <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-4 pt-3.5 pb-3.5 border-b border-stone-200 flex items-center justify-between">
           <button
             onClick={() => { setSelectedPost(null); setReplyToAuthor(null) }}
             className="flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-[#25282B] transition-colors active:scale-95 py-1 px-1.5 -ml-1 rounded-sm"
           >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <ChevronLeft className="h-4 w-4" />
             <span>목록으로</span>
           </button>
 
-          <span className="text-[11px] font-bold text-[#E60000] bg-[#E60000]/10 px-2.5 py-0.5 rounded-sm">
-            {selectedPost.categoryLabel}
-          </span>
+
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-[4px] ${getCategoryBadgeClass(selectedPost.category)}`}>
+              {selectedPost.categoryLabel}
+            </span>
+            {selectedPost.likeCount >= 30 && (
+              <span className="text-[10.5px] font-black px-2 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] border border-red-200/80 flex items-center gap-0.5">
+                🔥 인기
+              </span>
+            )}
+          </div>
         </header>
 
-        {/* 2. 게시글 본문 & 댓글 영역 스크롤 */}
-        <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+        {/* 2. 게시글 본문 & 댓글 영역 스크롤 (보더리스 스트림) */}
+        <div className="flex-1 overflow-y-auto no-scrollbar bg-white">
           
-          {/* 게시글 메인 카드 */}
-          <article className="bg-white rounded-[6px] border border-stone-200 p-4 space-y-4">
+          {/* 게시글 메인 아티클 */}
+          <article className="px-5 py-4 space-y-3.5 border-b-8 border-[#F6F6F8]">
             
             {/* 작성자 정보 바 */}
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center text-[13px] font-black text-[#25282B]">
-                  🍜
+                <div className="w-9 h-9 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center">
+                  <Soup className="w-4 h-4 text-[#E60000]" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[13px] font-bold text-[#25282B]">{selectedPost.authorName}</span>
+                    <span className="text-[13.5px] font-bold text-[#25282B]">{selectedPost.authorName}</span>
                     <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-sm">
                       {selectedPost.authorLevel}
                     </span>
                   </div>
-                  <p className="font-mono text-[10px] text-stone-500">{selectedPost.createdAt}</p>
+                  <p className="font-mono text-[10px] text-stone-400">{selectedPost.createdAt}</p>
                 </div>
               </div>
 
@@ -831,28 +761,28 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
               {selectedPost.shopName && (
                 <button
                   onClick={() => onShopClick && onShopClick(selectedPost.shopName!)}
-                  className="flex items-center gap-1 text-[11px] font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 px-2 py-1 rounded-sm transition-colors"
+                  className="flex items-center gap-1 text-[11px] font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 px-2.5 py-1 rounded-[6px] transition-colors"
                 >
-                  <IconStore className="w-3 h-3 text-[#E60000]" />
+                  <Store className="w-3.5 h-3.5 text-[#E60000]" />
                   <span>{selectedPost.shopName}</span>
                 </button>
               )}
             </div>
 
             {/* 글 제목 & 본문 */}
-            <div className="space-y-3">
-              <h1 className="text-[17px] font-black text-[#25282B] leading-snug">
+            <div className="space-y-3 pt-1">
+              <h1 className="text-[18px] font-black text-[#25282B] leading-snug tracking-tight">
                 {selectedPost.title}
               </h1>
 
-              <div className="text-[13px] text-[#25282B] leading-relaxed space-y-2.5">
+              <div className="text-[13.5px] text-[#25282B] leading-relaxed space-y-2.5">
                 {selectedPost.detailedContent ? (
                   selectedPost.detailedContent.map((para, i) => (
                     <div
                       key={i}
                       className={
                         para.startsWith('🥇') || para.startsWith('🥈') || para.startsWith('🥉')
-                          ? 'p-3 bg-stone-50 rounded-[6px] border border-stone-200 text-[12px]'
+                          ? 'p-3 bg-stone-50 rounded-[8px] border border-stone-200 text-[12.5px]'
                           : ''
                       }
                     >
@@ -866,58 +796,59 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
 
               {/* 첨부된 대표 사진 */}
               {selectedPost.imageUrl && (
-                <div className="rounded-[6px] overflow-hidden border border-stone-200 aspect-[16/10] bg-stone-100">
+                <div className="rounded-[10px] overflow-hidden border border-stone-200 aspect-[16/10] bg-stone-100 mt-2">
                   <img src={selectedPost.imageUrl} alt={selectedPost.title} className="w-full h-full object-cover" />
                 </div>
               )}
             </div>
 
-            {/* 하단 좋아요/댓글/조회수 Engagement 바 (raota-front 공식) */}
+            {/* 하단 좋아요/댓글/조회수 Engagement 바 */}
             <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
               <button
                 onClick={() => handleTogglePostLike(selectedPost.postId)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-bold border transition-all active:scale-95 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold border transition-all active:scale-95 ${
                   selectedPost.isLiked
                     ? 'bg-[#E60000]/10 border-[#E60000] text-[#E60000]'
                     : 'bg-white border-stone-200 text-stone-600 hover:border-stone-400'
                 }`}
               >
-                <IconHeart className="w-4 h-4" filled={selectedPost.isLiked} />
+                <Heart className={`w-4 h-4 ${selectedPost.isLiked ? 'fill-[#E60000] text-[#E60000]' : ''}`} />
                 <span>좋아요 {selectedPost.likeCount}</span>
               </button>
 
-              <div className="flex items-center gap-3 text-xs font-black text-stone-400">
+              <div className="flex items-center gap-3 text-xs font-bold text-stone-400">
                 <span className="flex items-center gap-1">
-                  <IconMessageCircle className="w-3.5 h-3.5" />
+                  <MessageCircle className="w-3.5 h-3.5" />
                   {selectedPost.commentCount}
                 </span>
                 <span className="flex items-center gap-1">
-                  <IconEye className="w-3.5 h-3.5" />
+                  <Eye className="w-3.5 h-3.5" />
                   {selectedPost.viewCount}
                 </span>
               </div>
             </div>
           </article>
 
-          {/* 댓글 목록 섹션 (raota-front CommentItem 스타일) */}
-          <div className="bg-white rounded-[6px] border border-stone-200 overflow-hidden">
-            <div className="p-3.5 bg-stone-50 border-b border-stone-200 flex items-center justify-between">
-              <span className="text-[13px] font-bold text-[#25282B]">
+          {/* 댓글 목록 섹션 (보더리스 스트림) */}
+          <div className="px-5 py-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <span className="text-[13.5px] font-black text-[#25282B]">
                 댓글 <span className="text-[#E60000]">{selectedPost.comments.length}</span>
               </span>
-              <span className="text-[10px] text-stone-500">등록순</span>
+              <span className="text-[10.5px] text-stone-400 font-mono">등록순</span>
             </div>
 
             <div className="divide-y divide-stone-100">
               {selectedPost.comments.map((comment) => (
                 <div
                   key={comment.id}
-                  className={`p-3.5 ${comment.isReply ? 'bg-stone-50/80 pl-8' : ''}`}
+                  className={`py-3.5 ${comment.isReply ? 'pl-7 bg-stone-50/50' : ''}`}
                 >
                   <div className="flex items-start gap-2.5">
                     {comment.isReply && (
-                      <IconCornerDownRight className="mt-1 w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
+                      <CornerDownRight className="mt-1 w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                     )}
+
                     <div className="w-7 h-7 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center text-[10px] font-bold text-[#25282B] flex-shrink-0">
                       {comment.authorNickname[0]}
                     </div>
@@ -925,22 +856,22 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[12px] font-bold text-[#25282B]">{comment.authorNickname}</span>
-                          <span className="font-mono text-[9px] text-stone-400">{comment.createdAt}</span>
+                          <span className="text-[12.5px] font-bold text-[#25282B]">{comment.authorNickname}</span>
+                          <span className="font-mono text-[9.5px] text-stone-400">{comment.createdAt}</span>
                         </div>
                         
                         {!comment.isReply && (
                           <button
                             type="button"
                             onClick={() => setReplyToAuthor(comment.authorNickname)}
-                            className="text-[10px] font-bold text-stone-500 hover:text-[#E60000] transition-colors"
+                            className="text-[10.5px] font-bold text-stone-500 hover:text-[#E60000] transition-colors"
                           >
                             답글
                           </button>
                         )}
                       </div>
 
-                      <p className="text-[12px] text-[#25282B] leading-relaxed">
+                      <p className="text-[12.5px] text-[#25282B] leading-relaxed">
                         {comment.parentAuthorNickname && (
                           <span className="mr-1.5 rounded-sm bg-stone-200 px-1 py-0.2 text-[10px] font-bold text-[#25282B]">
                             @{comment.parentAuthorNickname}
@@ -982,7 +913,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
               disabled={!newCommentText.trim()}
               className="h-10 px-4 rounded-sm bg-[#25282B] text-white font-bold text-[12px] disabled:opacity-40 disabled:pointer-events-none active:scale-95 hover:bg-[#1A1C1E] transition-all flex items-center gap-1.5"
             >
-              <IconSend className="w-3.5 h-3.5" />
+              <Send className="w-3.5 h-3.5" />
               <span>등록</span>
             </button>
           </div>
@@ -995,10 +926,11 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
   // 🌟 라운지 메인 피드 (라멘로그 & 커뮤니티 탭)
   // ==========================================
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#FFFFFF] text-[#25282B] relative">
-      
-      {/* 1. 상단 라운지 마스터 헤더 */}
-      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-5 pt-12 pb-3.5 border-b border-[#E2E2E2]">
+    <div className="h-full relative overflow-hidden bg-[#FFFFFF] text-[#25282B]">
+      <div className="h-full overflow-y-auto no-scrollbar">
+        
+        {/* 1. 상단 라운지 마스터 헤더 */}
+        <header className="bg-white px-5 pt-3.5 pb-3.5 border-b border-[#E2E2E2]">
         <div className="flex items-center gap-2.5 mb-3">
           <img src="/logo.png" alt="RAOTA" className="w-8 h-8 object-contain" />
           <div>
@@ -1049,25 +981,18 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
               className="w-full flex h-8 items-center justify-between gap-1.5 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] px-2.5 py-1 text-[11px] font-bold text-[#25282B] transition-colors"
             >
               <div className="flex items-center gap-1.5 min-w-0">
-                <IconStore className="w-3.5 h-3.5 text-[#E60000] shrink-0" />
+                <Store className="w-3.5 h-3.5 text-[#E60000] shrink-0" />
                 <span className="truncate">
                   {shopFilter === 'ALL' ? '전체 매장' : shopFilter}
                 </span>
               </div>
-              <svg
+              <ChevronDown
                 className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-200 ${
                   isShopDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
                 }`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m6 9 6 6 6-6"/>
-              </svg>
+              />
             </button>
+
 
             {/* 드롭다운 팝오버 메뉴 */}
             {isShopDropdownOpen && (
@@ -1075,16 +1000,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                 {/* 검색창 인풋 바 */}
                 <div className="p-2 border-b border-stone-100 bg-stone-50">
                   <div className="relative">
-                    <svg
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="11" cy="11" r="8"/>
-                      <path d="m21 21-4.35-4.35"/>
-                    </svg>
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
                     <input
                       type="text"
                       placeholder="라멘집 검색..."
@@ -1095,6 +1011,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                     />
                   </div>
                 </div>
+
 
                 {/* 매장 목록 리스트 */}
                 <div className="max-h-52 overflow-y-auto no-scrollbar divide-y divide-stone-50">
@@ -1155,20 +1072,13 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
               className="flex h-8 items-center justify-between gap-1.5 rounded-sm border border-stone-200 bg-[#F2F2F2] hover:bg-[#EAEAEA] hover:border-[#E60000] px-2.5 py-1 text-[11px] font-bold text-[#25282B] transition-colors"
             >
               <span>{sortBy === 'LATEST' ? '최신순' : '좋아요순'}</span>
-              <svg
+              <ChevronDown
                 className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-200 ${
                   isSortDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
                 }`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m6 9 6 6 6-6"/>
-              </svg>
+              />
             </button>
+
 
             {isSortDropdownOpen && (
               <div className="absolute right-0 top-full mt-1.5 z-50 w-28 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
@@ -1225,19 +1135,19 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
         </div>
       )}
 
-      {/* 3. 메인 피드 컨텐츠 스크롤 영역 */}
-      <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4">
+      {/* 3. 메인 피드 컨텐츠 영역 */}
+      <div className="flex-1">
         
-        {/* 탭 1: 라멘로그 (완식 후기 피드) */}
+        {/* 탭 1: 라멘로그 (인스타그램 스타일 풀-와이드 포토 피드) */}
         {loungeTab === 'logs' && (
-          <div className="space-y-4">
+          <div>
             {/* 선택된 매장 정보 배너 */}
             {shopFilter !== 'ALL' && (
-              <div className="p-3 bg-stone-50 rounded-[6px] border border-stone-200 flex items-center justify-between">
+              <div className="p-3 mx-4 my-3 bg-stone-50 rounded-[8px] border border-stone-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <IconStore className="w-4 h-4 text-[#E60000]" />
+                  <Store className="w-4 h-4 text-[#E60000]" />
                   <span className="text-[13px] font-black text-[#25282B]">
-                    {shopFilter} 완식 기록 ({filteredLogs.length}건)
+                    {shopFilter} 라멘로그 ({filteredLogs.length}건)
                   </span>
                 </div>
                 <button
@@ -1249,244 +1159,271 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                 </button>
               </div>
             )}
-            {filteredLogs.map(log => {
-              const allTags = [
-                ...log.tasteNotes.broth,
-                ...log.tasteNotes.noodle,
-                ...log.tasteNotes.seasoning,
-                ...log.tasteNotes.topping,
-              ]
 
-              const photos = log.photos && log.photos.length > 0 ? log.photos : log.imageUrl ? [log.imageUrl] : []
-              const curIdx = activePhotoIdx[log.id] ?? 0
+            <div>
+              {filteredLogs.map(log => {
+                const allTags = [
+                  ...log.tasteNotes.broth,
+                  ...log.tasteNotes.noodle,
+                  ...log.tasteNotes.seasoning,
+                  ...log.tasteNotes.topping,
+                ]
 
-              return (
-                <article key={log.id} className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden">
-                  
-                  {/* 상단 작성자 및 매장 정보 */}
-                  <div className="p-3.5 pb-2.5 flex items-center justify-between border-b border-[#E2E2E2]">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-[#25282B] text-white flex items-center justify-center text-[10px] font-black">
-                        {log.author.name[0]}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[12px] font-black text-[#25282B]">{log.author.name}</span>
-                          <span className="text-[9px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-[32px]">
-                            {log.author.level}
-                          </span>
+                const photos = log.photos && log.photos.length > 0 ? log.photos : log.imageUrl ? [log.imageUrl] : []
+                const curIdx = activePhotoIdx[log.id] ?? 0
+
+                return (
+                  <article key={log.id} className="bg-white border-b-8 border-[#F6F6F8] last:border-b-0">
+                    
+                    {/* 상단 작성자 및 매장 정보 */}
+                    <div className="px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-[#25282B] text-white flex items-center justify-center text-[11px] font-black shrink-0">
+                          {log.author.name[0]}
                         </div>
-                        <p className="text-[10px] text-[#7E7E7E]">{log.visitedAt} 방문</p>
-                      </div>
-                    </div>
-
-                    <span className="text-[11px] font-bold text-[#25282B] bg-[#F2F2F2] px-2.5 py-1 rounded-[32px]">
-                      {log.revisit}
-                    </span>
-                  </div>
-
-                  {/* 라멘 다중 사진 스와이프 캐러셀 */}
-                  {photos.length > 0 && (
-                    <div className="relative aspect-[16/10] bg-[#F2F2F2] overflow-hidden group select-none">
-                      <div
-                        id={`log-photos-${log.id}`}
-                        className="flex h-full w-full overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth"
-                        onScroll={e => {
-                          const el = e.currentTarget
-                          const idx = Math.round(el.scrollLeft / (el.clientWidth || 1))
-                          if (idx !== (activePhotoIdx[log.id] ?? 0)) {
-                            setActivePhotoIdx(prev => ({ ...prev, [log.id]: idx }))
-                          }
-                        }}
-                      >
-                        {photos.map((img, i) => (
-                          <div key={i} className="w-full h-full flex-shrink-0 snap-start relative">
-                            <img src={img} alt={`${log.menuName} 사진 ${i + 1}`} className="w-full h-full object-cover" />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[12.5px] font-black text-[#25282B]">{log.author.name}</span>
+                            <span className="text-[9.5px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-full">
+                              {log.author.level}
+                            </span>
                           </div>
-                        ))}
+                          <p className="text-[10px] text-stone-400 font-mono">{log.visitedAt} 방문</p>
+                        </div>
                       </div>
 
-                      {/* 좌측 상단 라멘 계통 뱃지 */}
-                      <div className="absolute top-2.5 left-2.5 bg-[#25282B]/85 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-[32px] pointer-events-none">
-                        {log.ramenType}
-                      </div>
-
-                      {/* 우측 상단 사진 장수 인디케이터 (2장 이상일 때) */}
-                      {photos.length > 1 && (
-                        <div className="absolute top-2.5 right-2.5 bg-[#25282B]/85 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-[32px] pointer-events-none flex items-center gap-1">
-                          <span>{curIdx + 1}</span>
-                          <span className="text-white/60">/</span>
-                          <span>{photos.length}</span>
-                        </div>
-                      )}
-
-                      {/* 좌우 이동 화살표 버튼 (2장 이상일 때) */}
-                      {photos.length > 1 && curIdx > 0 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleScrollPhoto(log.id, 'prev', photos.length)
-                          }}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs active:scale-90 transition-all z-10"
-                          aria-label="이전 사진"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="m15 18-6-6 6-6"/>
-                          </svg>
-                        </button>
-                      )}
-
-                      {photos.length > 1 && curIdx < photos.length - 1 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleScrollPhoto(log.id, 'next', photos.length)
-                          }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs active:scale-90 transition-all z-10"
-                          aria-label="다음 사진"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="m9 18 6-6-6-6"/>
-                          </svg>
-                        </button>
-                      )}
-
-                      {/* 하단 점(dot) 인디케이터 */}
-                      {photos.length > 1 && (
-                        <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
-                          {photos.map((_, i) => (
-                            <span
-                              key={i}
-                              className={`h-1.5 rounded-full transition-all ${
-                                curIdx === i
-                                  ? 'w-4 bg-white'
-                                  : 'w-1.5 bg-white/50'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 본문 내용 */}
-                  <div className="p-4">
-                    <div className="flex items-baseline justify-between mb-1.5">
-                      <h2 className="text-[16px] font-black text-[#25282B]">
-                        {log.menuName}
-                      </h2>
-                      <span className="text-[11px] font-bold text-[#7E7E7E]">
-                        {log.shop.name} {log.shop.branch && `· ${log.shop.branch}`}
+                      <span className="text-[10.5px] font-bold text-[#25282B] bg-stone-100 px-2.5 py-1 rounded-full">
+                        {log.revisit}
                       </span>
                     </div>
 
-                    {/* 기억해둘 점 인용 */}
-                    <div className="p-3 bg-[#F2F2F2] rounded-[6px] text-[12px] text-[#25282B] leading-relaxed mb-3">
-                      “{log.note}”
-                    </div>
+                    {/* 라멘 다중 사진 스와이프 캐러셀 (풀-와이드 Edge-to-Edge) */}
+                    {photos.length > 0 && (
+                      <div className="relative aspect-[16/10] bg-stone-100 overflow-hidden group select-none w-full">
+                        <div
+                          id={`log-photos-${log.id}`}
+                          className="flex h-full w-full overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth"
+                          onScroll={e => {
+                            const el = e.currentTarget
+                            const idx = Math.round(el.scrollLeft / (el.clientWidth || 1))
+                            if (idx !== (activePhotoIdx[log.id] ?? 0)) {
+                              setActivePhotoIdx(prev => ({ ...prev, [log.id]: idx }))
+                            }
+                          }}
+                        >
+                          {photos.map((img, i) => (
+                            <div key={i} className="w-full h-full flex-shrink-0 snap-start relative">
+                              <img src={img} alt={`${log.menuName} 사진 ${i + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
 
-                    {/* 맛 상세 태그 칩 */}
-                    {allTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {allTags.map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className="bg-white border border-[#E2E2E2] text-[#4A4D52] text-[10px] font-bold px-2 py-0.5 rounded-[32px]"
+                        {/* 좌측 상단 라멘 계통 뱃지 */}
+                        <div className="absolute top-2.5 left-2.5 bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full pointer-events-none">
+                          {log.ramenType}
+                        </div>
+
+                        {/* 우측 상단 사진 장수 인디케이터 */}
+                        {photos.length > 1 && (
+                          <div className="absolute top-2.5 right-2.5 bg-black/70 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none flex items-center gap-1 font-mono">
+                            <span>{curIdx + 1}</span>
+                            <span className="text-white/60">/</span>
+                            <span>{photos.length}</span>
+                          </div>
+                        )}
+
+                        {/* 좌우 이동 화살표 버튼 */}
+                        {photos.length > 1 && curIdx > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleScrollPhoto(log.id, 'prev', photos.length)
+                            }}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs active:scale-90 transition-all z-10"
+                            aria-label="이전 사진"
                           >
-                            #{tag}
-                          </span>
-                        ))}
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {photos.length > 1 && curIdx < photos.length - 1 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleScrollPhoto(log.id, 'next', photos.length)
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/45 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-xs active:scale-90 transition-all z-10"
+                            aria-label="다음 사진"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* 하단 점(dot) 인디케이터 */}
+                        {photos.length > 1 && (
+                          <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
+                            {photos.map((_, i) => (
+                              <span
+                                key={i}
+                                className={`h-1.5 rounded-full transition-all ${
+                                  curIdx === i
+                                    ? 'w-4 bg-white'
+                                    : 'w-1.5 bg-white/50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* 하단 좋아요 토글 및 시간 */}
-                    <div className="flex items-center justify-between pt-2.5 border-t border-[#E2E2E2] text-[11px]">
-                      <span className="text-[#7E7E7E]">{log.createdAt}</span>
-                      <button
-                        onClick={() => handleToggleLogLike(log.id)}
-                        className={`flex items-center gap-1.5 px-3 py-1 rounded-[60px] font-bold border transition-all active:scale-95 ${
-                          log.isLiked
-                            ? 'bg-[#E60000]/10 border-[#E60000] text-[#E60000]'
-                            : 'bg-white border-[#E2E2E2] text-[#7E7E7E] hover:border-[#25282B]'
-                        }`}
-                      >
-                        <span>{log.isLiked ? '♥' : '♡'}</span>
-                        <span>{log.likes}</span>
-                      </button>
+                    {/* 본문 내용 */}
+                    <div className="px-4 pt-3 pb-3.5 space-y-2.5">
+                      <div className="flex items-baseline justify-between">
+                        <h2 className="text-[16px] font-black text-[#25282B] tracking-tight">
+                          {log.menuName}
+                        </h2>
+                        <span className="text-[11.5px] font-bold text-stone-500">
+                          {log.shop.name} {log.shop.branch && `· ${log.shop.branch}`}
+                        </span>
+                      </div>
+
+                      {/* 한줄 미각 평 */}
+                      <div className="px-3.5 py-2.5 bg-[#F7F7F8] rounded-[8px] text-[12.5px] leading-relaxed">
+                        <span className="font-bold text-stone-400 text-[10.5px] mr-1.5 font-mono">
+                          한줄평
+                        </span>
+                        <span className="text-[#25282B] font-medium">
+                          {log.note}
+                        </span>
+                      </div>
+
+                      {/* 맛 상세 태그 칩 */}
+                      {allTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {allTags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className="bg-stone-100 text-stone-600 text-[10px] font-bold px-2 py-0.5 rounded-[4px]"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 하단 좋아요 토글 및 시간 */}
+                      <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-[11px]">
+                        <span className="text-stone-400 font-mono">{log.createdAt}</span>
+                        <button
+                          onClick={() => handleToggleLogLike(log.id)}
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold border transition-all active:scale-95 ${
+                            log.isLiked
+                              ? 'bg-[#E60000]/10 border-[#E60000] text-[#E60000]'
+                              : 'bg-white border-stone-200 text-stone-600 hover:border-stone-400'
+                          }`}
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${log.isLiked ? 'fill-[#E60000] text-[#E60000]' : 'text-stone-400'}`} />
+                          <span>{log.likes}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              )
-            })}
+                  </article>
+                )
+              })}
+            </div>
+
+            {/* 피드 끝 안내 문구 (라멘 로그) */}
+            <div className="pt-8 pb-3 text-center">
+              <p className="text-[10.5px] text-[#A0A0A0]">
+                오늘 방문한 라멘집이 있다면 우측 하단 버튼으로 라멘로그를 남겨보세요
+              </p>
+            </div>
           </div>
         )}
 
-        {/* 탭 2: 라멘러 커뮤니티 (raota-front PostListCard 스타일) */}
+        {/* 탭 2: 라멘러 커뮤니티 (Threads/Daangn 플랫 스트림 스타일) */}
         {loungeTab === 'community' && (
-          <div className="space-y-3">
-            {filteredPosts.map(post => (
-              <article
-                key={post.postId}
-                onClick={() => setSelectedPost(post)}
-                className="bg-white rounded-[6px] border border-stone-200 p-4 hover:border-[#25282B] active:scale-99 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-2 py-0.5 rounded-sm">
-                    {post.categoryLabel}
-                  </span>
-                  <span className="text-[10px] font-mono text-stone-400">{post.createdAt.split(' ')[0]}</span>
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-[15px] font-black text-[#25282B] leading-snug mb-1 group-hover:text-[#E60000] transition-colors">
-                      {post.title}
-                    </h2>
-                    <p className="text-[12px] text-stone-600 line-clamp-2 leading-relaxed mb-3">
-                      {post.content}
-                    </p>
-                  </div>
-
-                  {post.imageUrl && (
-                    <div className="w-16 h-16 rounded-[6px] overflow-hidden bg-stone-100 border border-stone-200 flex-shrink-0">
-                      <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+          <div>
+            <div className="divide-y divide-stone-100 bg-white">
+              {filteredPosts.map(post => (
+                <article
+                  key={post.postId}
+                  onClick={() => setSelectedPost(post)}
+                  className="px-4 py-3.5 hover:bg-stone-50/80 active:bg-stone-100/70 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-[4px] ${getCategoryBadgeClass(post.category)}`}>
+                        {post.categoryLabel}
+                      </span>
+                      {post.likeCount >= 30 && (
+                        <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] border border-red-200/80 flex items-center gap-0.5">
+                          🔥 인기
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-
-                {/* raota-front Engagement & Author bar */}
-                <div className="flex items-center justify-between pt-2.5 border-t border-stone-100 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-[#25282B] text-xs">{post.authorName}</span>
-                    <span className="text-[10px] text-stone-400">({post.authorLevel})</span>
+                    <span className="text-[10px] font-mono text-stone-400">{post.createdAt.split(' ')[0]}</span>
                   </div>
 
-                  {/* Engagement cluster: Heart | MessageCircle | Eye */}
-                  <div className="flex flex-shrink-0 items-center gap-3 text-xs font-black text-stone-400">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleTogglePostLike(post.postId) }}
-                      className={`flex items-center gap-1 hover:text-[#E60000] transition-colors ${post.isLiked ? 'text-[#E60000]' : ''}`}
-                    >
-                      <IconHeart className="h-3.5 w-3.5" filled={post.isLiked} />
-                      <span>{post.likeCount}</span>
-                    </button>
-                    <span className="flex items-center gap-1">
-                      <IconMessageCircle className="h-3.5 w-3.5" />
-                      <span>{post.commentCount}</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <IconEye className="h-3.5 w-3.5" />
-                      <span>{post.viewCount}</span>
-                    </span>
+                  <div className="flex gap-3 my-1.5">
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-[15px] font-black text-[#25282B] leading-snug mb-1 group-hover:text-[#E60000] transition-colors">
+                        {post.title}
+                      </h2>
+                      <p className="text-[12px] text-stone-600 line-clamp-2 leading-relaxed">
+                        {post.content}
+                      </p>
+                    </div>
+
+                    {post.imageUrl && (
+                      <div className="w-16 h-16 rounded-[8px] overflow-hidden bg-stone-100 border border-stone-200/80 flex-shrink-0">
+                        <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+                      </div>
+                    )}
                   </div>
-                </div>
-              </article>
-            ))}
+
+                  {/* Engagement & Author bar */}
+                  <div className="flex items-center justify-between pt-1.5 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-[#25282B] text-xs">{post.authorName}</span>
+                      <span className="text-[10px] text-stone-400">({post.authorLevel})</span>
+                    </div>
+
+                    <div className="flex flex-shrink-0 items-center gap-3 text-xs font-bold text-stone-400">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleTogglePostLike(post.postId) }}
+                        className={`flex items-center gap-1 hover:text-[#E60000] transition-colors ${post.isLiked ? 'text-[#E60000]' : ''}`}
+                      >
+                        <Heart className={`h-3.5 w-3.5 ${post.isLiked ? 'fill-[#E60000] text-[#E60000]' : ''}`} />
+                        <span>{post.likeCount}</span>
+                      </button>
+                      <span className="flex items-center gap-1">
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        <span>{post.commentCount}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>{post.viewCount}</span>
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {/* 피드 끝 안내 문구 (커뮤니티) */}
+            <div className="pt-8 pb-3 text-center">
+              <p className="text-[10.5px] text-[#A0A0A0]">
+                더 궁금한 점이나 맛집 후기가 있다면 글쓰기로 라멘러들과 나눠보세요
+              </p>
+            </div>
           </div>
         )}
 
         <div className="h-14" />
+      </div>
       </div>
 
       {/* 상단 알림 토스트 */}
@@ -1513,21 +1450,17 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
       >
         {loungeTab === 'logs' ? (
           <>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
+            <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>기록하기</span>
           </>
         ) : (
           <>
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
+            <PenSquare className="w-4 h-4" />
             <span>글쓰기</span>
           </>
         )}
       </button>
+
     </div>
   )
 }

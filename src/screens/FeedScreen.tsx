@@ -131,7 +131,7 @@ export default function FeedScreen({ logs = INITIAL_LOGS }: Props) {
     <div className="h-full flex flex-col overflow-hidden bg-[#FFFFFF] text-[#25282B]">
       
       {/* 1. 상단 바 */}
-      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-5 pt-12 pb-3.5 border-b border-[#E2E2E2]">
+      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-5 pt-3.5 pb-3.5 border-b border-[#E2E2E2]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="RAOTA" className="w-8 h-8 object-contain" />
@@ -147,7 +147,7 @@ export default function FeedScreen({ logs = INITIAL_LOGS }: Props) {
           </span>
         </div>
 
-        {/* 세그먼트 탭: [라멘러들의 기록] | [라멘야 속보] */}
+        {/* 세그먼트 탭: [라멘러들의 기록] | [라멘집 속보] */}
         <div className="flex bg-[#F2F2F2] p-1 rounded-[6px]">
           <button
             onClick={() => setActiveTab('logs')}
@@ -167,9 +167,10 @@ export default function FeedScreen({ logs = INITIAL_LOGS }: Props) {
                 : 'text-[#7E7E7E] hover:text-[#25282B]'
             }`}
           >
-            라멘야 속보 ({SHOP_NEWS.length})
+            라멘집 속보 ({SHOP_NEWS.length})
           </button>
         </div>
+
 
         {/* 라멘 계보 필터 칩 (logs 탭일 때) */}
         {activeTab === 'logs' && (
@@ -183,7 +184,7 @@ export default function FeedScreen({ logs = INITIAL_LOGS }: Props) {
                   className={`flex-shrink-0 h-7 px-3 rounded-[32px] text-[11px] font-bold border transition-all ${
                     active
                       ? 'bg-[#25282B] text-white border-[#25282B]'
-                      : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#25282B]'
+                      : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#BEBEBE]'
                   }`}
                 >
                   {f}
@@ -300,7 +301,7 @@ export default function FeedScreen({ logs = INITIAL_LOGS }: Props) {
                         className={`flex items-center gap-1.5 px-3 py-1 rounded-[60px] font-bold border transition-all active:scale-95 ${
                           log.isLiked
                             ? 'bg-[#E60000]/10 border-[#E60000] text-[#E60000]'
-                            : 'bg-white border-[#E2E2E2] text-[#7E7E7E] hover:border-[#25282B]'
+                            : 'bg-white border-[#E2E2E2] text-[#7E7E7E] hover:border-[#BEBEBE]'
                         }`}
                       >
                         <span>{log.isLiked ? '♥' : '♡'}</span>
@@ -314,8 +315,9 @@ export default function FeedScreen({ logs = INITIAL_LOGS }: Props) {
           </div>
         )}
 
-        {/* 탭 2: 라멘야 속보 (기존 공지/이벤트) */}
+        {/* 탭 2: 라멘집 속보 (기존 공지/이벤트) */}
         {activeTab === 'news' && (
+
           <div className="space-y-4">
             {SHOP_NEWS.map((item, i) => (
               <article key={i} className="bg-white rounded-[6px] overflow-hidden border border-[#E2E2E2]">

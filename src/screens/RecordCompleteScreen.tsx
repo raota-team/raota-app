@@ -40,7 +40,7 @@ export default function RecordCompleteScreen({ recordCount, lastLog, onViewTaste
     <div className="h-full overflow-y-auto no-scrollbar bg-[#FFFFFF] flex flex-col justify-between text-[#25282B]">
       
       {/* 1. 상단 축하 배너 (보더폰 딥 잉크 히어로) */}
-      <header className="flex-shrink-0 bg-[#25282B] text-white pt-12 pb-7 px-5 flex flex-col items-center text-center border-b border-[#1A1C1E]">
+      <header className="flex-shrink-0 bg-[#25282B] text-white pt-5 pb-7 px-5 flex flex-col items-center text-center border-b border-[#1A1C1E]">
         {step >= 1 && (
           <div className="anim-fade-in-up flex flex-col items-center">
             <div className="w-12 h-12 rounded-[6px] bg-white p-1.5 border border-white/20 flex items-center justify-center mb-2.5">
@@ -75,7 +75,7 @@ export default function RecordCompleteScreen({ recordCount, lastLog, onViewTaste
           <div className="anim-fade-in-up bg-white rounded-[6px] border border-[#E2E2E2] p-4">
             <div className="flex justify-between items-center pb-2 mb-2 border-b border-dashed border-[#E2E2E2] text-[10px] font-bold text-[#7E7E7E]">
               <span>기록 티켓 번호 2026-0901-{recordCount}</span>
-              <span className="text-[#E60000]">완식 인증 완료 ✓</span>
+              <span className="text-[#E60000]">라멘로그 기록 완료 ✓</span>
             </div>
 
             <div className="flex items-center gap-3.5">
@@ -146,7 +146,7 @@ export default function RecordCompleteScreen({ recordCount, lastLog, onViewTaste
           </button>
           <button
             onClick={onHome}
-            className="w-full h-11 rounded-[60px] border border-[#25282B] text-[13px] font-bold text-[#25282B] bg-white hover:bg-[#F2F2F2] transition-all"
+            className="w-full h-11 rounded-[60px] border border-[#E2E2E2] hover:border-[#BEBEBE] text-[13px] font-bold text-[#25282B] bg-white hover:bg-[#F9F9F9] transition-all shadow-2xs"
           >
             홈으로 돌아가기
           </button>

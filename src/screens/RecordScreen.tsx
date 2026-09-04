@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { TASTE_FIELDS, RAMEN_TYPES, REVISIT_OPTIONS, type TasteNoteKey, type TasteNotes, type RevisitOption, type RamenLog } from '../types'
+import { ChevronLeft, Camera } from 'lucide-react'
+import { TASTE_FIELDS, REVISIT_OPTIONS, type TasteNoteKey, type TasteNotes, type RevisitOption, type RamenLog } from '../types'
+
 
 interface Props {
   recordStatus: 'idle' | 'saving' | 'error' | 'success'
@@ -23,8 +25,12 @@ interface Props {
 const AVAILABLE_SHOPS = [
   { name: '멘야준', branch: '망원 본점', type: '쇼유', menus: ['특제 쇼유 라멘', '반숙 쇼유 라멘', '시오 라멘'] },
   { name: '후쿠 라멘', branch: '합정점', type: '미소', menus: ['특제 미소 라멘', '매운 미소 라멘', '차슈 미소 라멘'] },
+  { name: '하쿠텐', branch: '연남점', type: '돈코츠', menus: ['농후 이에케 라멘', '매운 이에케 라멘', '특제 이에케 라멘'] },
   { name: '오레노라멘', branch: '마포 본점', type: '돈코츠', menus: ['토리파이탄 라멘', '카라파이탄 라멘', '쇼유 라멘'] },
+  { name: '세상끝의라멘', branch: '합정점', type: '쇼유', menus: ['첫라멘 (연한간장)', '끝라멘 (진한간장)', '미소라멘'] },
+  { name: '담택', branch: '합정 본점', type: '시오', menus: ['유자 시오 라멘', '시오 라멘', '와사비 시오 라멘'] },
   { name: '묘코', branch: '연남점', type: '시오', menus: ['특제 오리 시오 라멘', '오리 쇼유 라멘'] },
+  { name: '이리에라멘', branch: '합정점', type: '시오', menus: ['도미시오라멘', '진한 도미시오라멘', '아부라소바'] },
 ]
 
 export default function RecordScreen({
@@ -34,9 +40,16 @@ export default function RecordScreen({
   onRetry,
   initialShopName = '멘야준',
 }: Props) {
-  const [selectedShop, setSelectedShop] = useState(
-    AVAILABLE_SHOPS.find(s => s.name === initialShopName) || AVAILABLE_SHOPS[0]
-  )
+  const [selectedShop, setSelectedShop] = useState(() => {
+    const found = AVAILABLE_SHOPS.find(s => s.name === initialShopName)
+    if (found) return found
+    return {
+      name: initialShopName,
+      branch: '본점',
+      type: '쇼유',
+      menus: ['대표 시그니처 라멘', '특제 라멘', '기본 라멘'],
+    }
+  })
   const [menuName, setMenuName] = useState(selectedShop.menus[0])
   const [isCustomMenu, setIsCustomMenu] = useState(false)
   const [customMenuInput, setCustomMenuInput] = useState('')
@@ -116,17 +129,15 @@ export default function RecordScreen({
   return (
     <div className="h-full flex flex-col overflow-hidden bg-[#FFFFFF] text-[#25282B]">
       
-      {/* 1. 상단 마스터 헤더 */}
-      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md border-b border-[#E2E2E2] px-4 pt-12 pb-3.5 flex items-center justify-between">
+      {/* 1. 상단 바 */}
+      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md border-b border-[#E2E2E2] px-4 pt-3.5 pb-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
             className="w-9 h-9 rounded-full flex items-center justify-center text-[#25282B] hover:bg-[#F2F2F2] active:scale-95 transition-all"
             aria-label="뒤로가기"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6"/>
-            </svg>
+            <ChevronLeft className="w-5 h-5" />
           </button>
           <div>
             <span className="text-[10px] font-bold text-[#7E7E7E] block">RAOTA 라멘로그</span>
@@ -171,9 +182,7 @@ export default function RecordScreen({
               onClick={() => setImageUrl('https://images.unsplash.com/photo-1742633882713-593c13e90231?w=800&h=600&fit=crop&auto=format&q=80')}
               className="w-full py-8 rounded-[6px] border border-dashed border-[#E2E2E2] bg-[#F2F2F2] flex flex-col items-center justify-center gap-1.5 text-[#7E7E7E] hover:border-[#E60000] hover:text-[#E60000] transition-colors"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
-              </svg>
+              <Camera className="w-6 h-6" />
               <span className="text-[12px] font-bold">터치하여 라멘 사진 불러오기</span>
             </button>
           )}
@@ -223,30 +232,6 @@ export default function RecordScreen({
               className="w-full h-11 px-3.5 rounded-[6px] bg-[#F2F2F2] border border-[#E2E2E2] text-[13px] font-bold text-[#25282B] placeholder-[#8A8A8A] outline-none focus:border-[#25282B]"
             />
           </div>
-
-          {/* 라멘 종류/계보 */}
-          <div>
-            <label className="block text-[11px] font-bold text-[#7E7E7E] mb-1.5">라멘 계보/종류</label>
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-              {RAMEN_TYPES.map(t => {
-                const active = ramenType === t
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setRamenType(t)}
-                    className={`flex-shrink-0 h-8 px-3 rounded-[32px] text-[11px] font-bold border transition-all ${
-                      active
-                        ? 'bg-[#E60000] text-white border-[#E60000]'
-                        : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#25282B]'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
         </section>
 
         {/* 재방문 의사 (3단계) */}
@@ -264,12 +249,12 @@ export default function RecordScreen({
                   key={opt}
                   type="button"
                   onClick={() => setRevisit(opt)}
-                  className={`h-11 rounded-[60px] border text-[12px] font-bold transition-all active:scale-98 ${
+                  className={`h-11 rounded-[60px] text-[12px] font-bold transition-all active:scale-98 cursor-pointer ${
                     active
                       ? opt === '자주 감'
-                        ? 'bg-[#E60000] border-[#E60000] text-white'
-                        : 'bg-[#25282B] border-[#25282B] text-white'
-                      : 'bg-[#F2F2F2] border-[#E2E2E2] text-[#7E7E7E] hover:border-[#25282B]'
+                        ? 'bg-[#E60000] text-white shadow-xs'
+                        : 'bg-[#25282B] text-white shadow-xs'
+                      : 'bg-[#F2F2F2] text-[#7E7E7E] hover:text-[#25282B]'
                   }`}
                 >
                   {opt}
@@ -286,14 +271,14 @@ export default function RecordScreen({
               <span className="text-[10px] font-black uppercase text-[#E60000]">필수</span>
               <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">기억해둘 점</h2>
             </div>
-            <span className="text-[11px] font-mono text-[#7E7E7E]">{note.length} / 200</span>
+            <span className="text-[11px] font-mono text-[#7E7E7E]">{note.length} / 1000</span>
           </div>
 
           <textarea
             value={note}
-            onChange={e => setNote(e.target.value.slice(0, 200))}
+            onChange={e => setNote(e.target.value.slice(0, 1000))}
             placeholder="예: 카라이 변경이 잘 어울렸고 다음엔 면을 단단하게 부탁하기"
-            className="w-full h-24 text-[13px] text-[#25282B] placeholder-[#8A8A8A] bg-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] p-3.5 resize-none outline-none focus:border-[#25282B] transition-all leading-relaxed"
+            className="w-full h-32 text-[13px] text-[#25282B] placeholder-[#8A8A8A] bg-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] p-3.5 resize-none outline-none focus:border-[#25282B] transition-all leading-relaxed"
           />
         </section>
 
@@ -332,7 +317,7 @@ export default function RecordScreen({
                           className={`h-7 px-3 rounded-[32px] text-[11px] font-bold border transition-all ${
                             selected
                               ? 'bg-[#E60000] text-white border-[#E60000]'
-                              : 'bg-white text-[#4A4D52] border-[#E2E2E2] hover:border-[#25282B]'
+                              : 'bg-white text-[#4A4D52] border-[#E2E2E2] hover:border-[#BEBEBE]'
                           }`}
                         >
                           {opt}
@@ -427,7 +412,7 @@ export default function RecordScreen({
             <div className="flex gap-2">
               <button
                 onClick={() => setShowLeaveConfirm(false)}
-                className="flex-1 h-11 rounded-[60px] border border-[#25282B] text-[13px] font-bold text-[#25282B]"
+                className="flex-1 h-11 rounded-[60px] border border-[#E2E2E2] hover:border-[#BEBEBE] text-[13px] font-bold text-[#25282B] bg-white hover:bg-[#F9F9F9] transition-all shadow-2xs"
               >
                 계속 작성
               </button>

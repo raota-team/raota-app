@@ -1,11 +1,27 @@
 import { useState } from 'react'
+import { Bell, Flame, PenLine, X, Crosshair, Bookmark, Search } from 'lucide-react'
+import type { UserProfile } from '../types'
+
+
+
+
 
 interface Props {
+  user: UserProfile | null
   recordSaved: boolean
+  unreadNotificationsCount?: number
+  onNotificationClick?: () => void
   onShopClick: () => void
-  onRecordClick?: () => void
+  onRecordClick?: (mode?: 'nearby' | 'saved' | 'search') => void
   onAIRecommendClick?: () => void
+  onViewTaste?: () => void
+  onLoginClick?: () => void
+  onRegisterClick?: () => void
+  onUserClick?: () => void
+  onMapClick?: () => void
+  onNewsFeedClick?: () => void
 }
+
 
 const RAMEN_PHOTOS = [
   'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=800&h=600&fit=crop&auto=format&q=80',
@@ -95,37 +111,91 @@ const POPULAR_SHOP_RANKINGS = [
   },
 ]
 
-export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, onAIRecommendClick }: Props) {
+export default function HomeScreen({
+  user,
+  recordSaved,
+  unreadNotificationsCount,
+  onNotificationClick,
+  onShopClick,
+  onRecordClick,
+  onAIRecommendClick,
+  onViewTaste,
+  onLoginClick,
+  onRegisterClick,
+  onUserClick,
+  onMapClick,
+  onNewsFeedClick,
+}: Props) {
+  const [fabOpen, setFabOpen] = useState(false)
+
   return (
+    <div className="h-full relative">
     <div className="h-full overflow-y-auto no-scrollbar bg-[#FFFFFF] text-[#25282B]">
       
-      {/* 1. 상단 마스터 헤더 (공식 RAOTA 로고 + 슬로건 & 유저 웰컴 인사) */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 pt-12 pb-3 border-b border-[#E2E2E2]">
-        <div className="flex items-center justify-between">
+      {/* 1. 상단 마스터 헤더 (공식 RAOTA 로고 + 슬로건 & 유저 웰컴 인사 + 알림 센터) */}
+      <header className="bg-white px-5 pt-3.5 pb-3.5 border-b border-[#E2E2E2]">
+        <div className="flex items-center justify-between gap-2">
           {/* 좌측: 로고 + 하단 슬로건 */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <img
               src="/logo.png"
               alt="RAOTA Logo"
-              className="w-9 h-9 object-contain"
+              className="w-9 h-9 object-contain shrink-0"
             />
-            <div>
-              <div className="flex items-baseline gap-1.5 leading-none">
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-1 leading-none">
                 <span className="text-[20px] font-black tracking-tight text-[#25282B]">
                   RAOTA<span className="text-[#E60000]">.</span>
                 </span>
               </div>
-              <p className="text-[10.5px] font-bold text-[#7E7E7E] tracking-tight mt-0.5">
+              <p className="text-[10px] font-bold text-[#7E7E7E] tracking-tight mt-0.5 truncate">
                 나의 라멘 취향을 찾는 곳
               </p>
             </div>
           </div>
 
-          {/* 우측: 닉네임 ~님 반갑습니다 */}
-          <div className="text-right">
-            <span className="text-[12px] font-bold text-[#25282B]">
-              <span className="text-[#E60000] font-black">뿡</span>님, 반갑습니다
-            </span>
+          {/* 우측: 유저 인사 문구 + 알림 센터 벨 버튼 (자연스러운 우측 정렬 결합) */}
+          <div className="flex items-center gap-2 shrink-0">
+            {user && user.isLoggedIn ? (
+              <button
+                type="button"
+                onClick={onUserClick}
+                className="text-[12px] font-bold text-[#25282B] hover:text-[#E60000] transition-colors active:scale-95 text-right flex items-center gap-0.5 cursor-pointer"
+              >
+                <span className="text-[#E60000] font-black">{user.nickname}</span>님, 반갑습니다
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={onLoginClick}
+                  className="px-2 py-1 text-[11.5px] font-black text-[#25282B] hover:text-[#E60000] transition-all active:scale-95"
+                >
+                  로그인
+                </button>
+                <button
+                  type="button"
+                  onClick={onRegisterClick}
+                  className="px-2.5 py-1 text-[11px] font-black text-white bg-[#E60000] hover:bg-[#CC0000] rounded-[4px] transition-all active:scale-95 shadow-xs"
+                >
+                  회원가입
+                </button>
+              </div>
+            )}
+
+            {/* 🔔 슬림하고 세련된 알림 센터 벨 버튼 */}
+            <button
+              type="button"
+              onClick={onNotificationClick}
+              className="relative p-1 text-[#25282B] hover:text-[#E60000] active:scale-90 transition-all flex items-center justify-center cursor-pointer -mr-0.5"
+              aria-label="알림센터 열기"
+              title="알림센터"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadNotificationsCount !== undefined && unreadNotificationsCount > 0 && (
+                <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#E60000] rounded-full ring-2 ring-white" />
+              )}
+            </button>
           </div>
         </div>
       </header>
@@ -139,26 +209,26 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[6px] bg-[#E60000] flex items-center justify-center text-white flex-shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C12 7.52285 7.52285 12 2 12C7.52285 12 12 16.4772 12 22C12 16.4772 16.4772 12 22 12C16.4772 12 12 7.52285 12 2Z" />
-                <path d="M19 3C19 5.20914 17.2091 7 15 7C17.2091 7 19 8.79086 19 11C19 8.79086 20.7909 7 23 7C20.7909 7 19 5.20914 19 3Z" opacity="0.8" />
+                {/* 메인 4각 별 */}
+                <path d="M11 2C11 6.97 6.97 11 2 11C6.97 11 11 15.03 11 20C11 15.03 15.03 11 20 11C15.03 11 11 6.97 11 2Z" />
+                {/* 우상단 보조 4각 별 */}
+                <path d="M19 2C19 4.21 17.21 6 15 6C17.21 6 19 7.79 19 10C19 7.79 20.79 6 23 6C20.79 6 19 4.21 19 2Z" opacity="0.9" />
               </svg>
             </div>
+
+
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[14px] font-black tracking-tight text-white">
-                  오늘 뭐 먹지? AI 라멘 큐레이터
-                </span>
-                <span className="text-[9px] font-bold text-[#E60000] bg-white px-1.5 py-0.2 rounded-[32px]">
-                  3초 매칭
-                </span>
-              </div>
+              <h3 className="text-[14px] font-black tracking-tight text-white">
+                오늘 뭐 먹지? AI 라멘 큐레이터
+              </h3>
               <p className="text-[11px] text-white/70 mt-0.5">
-                국물·상황·선호 3가지만 고르면 딱 맞는 1곳을 추천해요
+                육수 농도 · 면 굵기 · 타레 맞춤 라멘 추천
               </p>
             </div>
+
           </div>
 
-          <span className="text-[14px] text-white/80 group-hover:translate-x-1 group-hover:text-[#E60000] transition-all ml-2">
+          <span className="text-[12px] font-bold text-white/80 group-hover:translate-x-1 transition-transform">
             →
           </span>
         </div>
@@ -166,7 +236,7 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
 
       {/* 3. 기록 완료 알림 배너 */}
       {recordSaved && (
-        <div className="mx-5 mt-3 p-3.5 bg-white border border-[#E2E2E2] rounded-[6px] shadow-xs anim-fade-in-up flex items-center justify-between gap-3">
+        <div className="mx-5 mt-3 p-3.5 bg-white border border-[#E2E2E2] hover:border-[#BEBEBE] rounded-[8px] shadow-xs anim-fade-in-up flex items-center justify-between gap-3 transition-all">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-full bg-[#E60000]/10 text-[#E60000] flex items-center justify-center font-black text-[12px] shrink-0">
               ✓
@@ -176,7 +246,7 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
                 새로운 라멘로그가 취향 리포트에 반영되었습니다.
               </p>
               <p className="text-[10.5px] text-[#7E7E7E] truncate mt-0.5">
-                최신 완식 데이터를 기반으로 맞춤 추천이 갱신되었습니다.
+                최신 라멘로그 데이터를 기반으로 맞춤 추천이 갱신되었습니다.
               </p>
             </div>
           </div>
@@ -186,62 +256,62 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
         </div>
       )}
 
-      {/* 4. 오늘의 큐레이션 라멘야 */}
+      {/* 4. 오늘의 큐레이션 라멘집 */}
       <section className="px-5 pt-4 pb-6">
         <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
           <h2 className="text-[13px] font-black tracking-tight text-[#E60000]">
-            오늘의 큐레이션 라멘야
+            오늘의 큐레이션 라멘집
           </h2>
-          <span className="text-[11px] font-bold text-[#7E7E7E]">망원동 권역</span>
+          <span className="text-[11px] font-bold text-[#7E7E7E]">420m · 망원동</span>
         </div>
 
-        {/* 큐레이션 카드 (보더폰 6px 라운드 + 클린 헤어라인) */}
+        {/* 큐레이션 카드 (클린 1px 보더 + 부드러운 호버 전환) */}
         <article
           onClick={onShopClick}
-          className="group cursor-pointer bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden hover:border-[#25282B] active:scale-99 transition-all duration-200"
+          className="group cursor-pointer bg-white rounded-[8px] border border-[#E2E2E2] overflow-hidden shadow-sm hover:border-[#BEBEBE] active:scale-[0.99] transition-all duration-200"
         >
-          {/* 대표 사진 */}
+          {/* 대표 사진 + 뱃지 오버레이 */}
           <div className="relative aspect-[16/10] bg-[#F2F2F2] overflow-hidden">
             <img
               src={RAMEN_PHOTOS[0]}
               alt="멘야준 특제 쇼유 라멘"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            <div className="absolute top-3 left-3 bg-[#E60000] text-white text-[10px] font-bold px-3 py-1 rounded-[32px]">
-              오늘의 추천
-            </div>
-            <div className="absolute top-3 right-3 bg-[#25282B]/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-[32px]">
-              420m · 망원동
+            {/* 좌상단 큐레이터 뱃지 */}
+            <div className="absolute top-2.5 left-2.5 bg-[#E60000] text-white text-[10.5px] font-black px-2.5 py-1 rounded-[4px] shadow-xs flex items-center gap-1 tracking-wider">
+              <span>★ TODAY&apos;S PICK</span>
             </div>
           </div>
 
           {/* 본문 내용 */}
-          <div className="p-4">
-            <div className="flex items-baseline justify-between mb-1">
-              <h3 className="text-[20px] font-black text-[#25282B] tracking-tight group-hover:text-[#E60000] transition-colors">
-                멘야준
-              </h3>
-              <span className="text-[14px] font-bold text-[#25282B]">13,000원</span>
-            </div>
-
-            <p className="text-[12px] text-[#7E7E7E] mb-3">
-              특제 쇼유 라멘 · 자가제면 스트레이트 면 · 닭과 오리 더블 육수
-            </p>
-
-            {/* 인용구 */}
-            <div className="p-3 bg-[#F2F2F2] rounded-[6px] text-[13px] leading-snug text-[#25282B]">
-              <span className="text-[#E60000] font-black mr-1 text-sm">“</span>
-              진한 동물계 감칠맛과 단단한 자가제면 식감이 일품인 망원동의 대표 쇼유 라멘 명소입니다.
-              <span className="text-[#E60000] font-black ml-1 text-sm">”</span>
-            </div>
-
-            {/* 태그 및 바로가기 */}
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#E2E2E2] text-[11px] text-[#7E7E7E]">
-              <div className="flex gap-1.5">
-                <span className="bg-[#F2F2F2] px-2 py-0.5 rounded-[32px] font-bold text-[#25282B]">#자가제면</span>
-                <span className="bg-[#F2F2F2] px-2 py-0.5 rounded-[32px] font-bold text-[#25282B]">#맑은육수</span>
+          <div className="p-4 space-y-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-[20px] font-black text-[#25282B] tracking-tight group-hover:text-[#E60000] transition-colors">
+                  멘야준
+                </h3>
+                <span className="text-[11px] font-bold text-[#7E7E7E] bg-[#F2F2F2] px-2 py-0.5 rounded-[4px]">
+                  망원 본점
+                </span>
               </div>
-              <span className="font-bold text-[#E60000] group-hover:translate-x-0.5 transition-transform">
+
+              <p className="text-[12px] font-bold text-[#7E7E7E] mt-1">
+                특제 쇼유 라멘 · 자가제면 스트레이트 면 · 닭과 오리 더블 육수
+              </p>
+            </div>
+
+            {/* 에디터 인용구 (좌측 레드 악센트 바) */}
+            <div className="p-3 bg-[#F8F8F8] border-l-3 border-[#E60000] rounded-r-[6px] text-[12.5px] leading-snug text-[#25282B] font-medium">
+              “진한 동물계 감칠맛과 단단한 자가제면 식감이 일품인 망원동의 대표 쇼유 라멘 명소입니다.”
+            </div>
+
+            {/* 태그 및 바로가기 CTA 버튼 */}
+            <div className="flex items-center justify-between pt-2 border-t border-[#E2E2E2]">
+              <div className="flex gap-1.5">
+                <span className="bg-[#F2F2F2] px-2.5 py-1 rounded-[4px] font-bold text-[11px] text-[#25282B]">#자가제면</span>
+                <span className="bg-[#F2F2F2] px-2.5 py-1 rounded-[4px] font-bold text-[11px] text-[#25282B]">#맑은육수</span>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11.5px] font-black text-white bg-[#E60000] group-hover:bg-[#CC0000] px-3 py-1.5 rounded-[4px] transition-colors shadow-xs">
                 매장 상세 보기 →
               </span>
             </div>
@@ -249,15 +319,13 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
         </article>
       </section>
 
-      {/* 5. 오늘 많이 본 라멘야 (raota-front 기반 실시간 조회순 랭킹) */}
+      {/* 5. 오늘 많이 본 라멘집 (raota-front 기반 실시간 조회순 랭킹) */}
       <section className="mb-7 px-5">
         <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
           <div className="flex items-center gap-1.5">
-            <svg className="w-4 h-4 text-[#E60000] fill-[#E60000]" viewBox="0 0 24 24">
-              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-            </svg>
+            <Flame className="w-4 h-4 text-[#E60000] fill-[#E60000]" />
             <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">
-              오늘 많이 본 라멘야
+              오늘 많이 본 라멘집
             </h2>
           </div>
           <span className="text-[10.5px] font-bold text-stone-400">
@@ -321,11 +389,11 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
         </div>
       </section>
 
-      {/* 6. 내 주변 권역 라멘야 목록 */}
+      {/* 6. 내 주변 권역 라멘집 목록 */}
       <section className="px-5 pb-8">
         <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
           <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">
-            거리순 라멘야 목록
+            거리순 라멘집 목록
           </h2>
           <span className="text-[11px] font-bold text-[#7E7E7E]">가까운 순서</span>
         </div>
@@ -358,31 +426,97 @@ export default function HomeScreen({ recordSaved, onShopClick, onRecordClick, on
                   <span className="text-[#2E7D32] font-bold">● {item.status}</span>
                 </div>
               </div>
-              <div className="text-right flex-shrink-0">
-                <span className="inline-block text-[11px] font-bold text-[#25282B] bg-[#F2F2F2] px-2.5 py-0.5 rounded-[32px]">
-                  {item.style.split(' ')[0]}
-                </span>
-              </div>
             </div>
           ))}
         </div>
       </section>
 
-      <div className="h-14" />
+      {/* 7. 초슬림 미니멀 푸터 (구분선 없이 자연스럽게 안착) */}
+      <footer className="px-5 pt-2 pb-4 text-center space-y-1">
+        <div className="flex items-center justify-center gap-3 text-[10.5px] font-bold text-[#7E7E7E]">
 
-      {/* 우측 하단 플로팅 기록 버튼 (FAB) */}
-      {onRecordClick && (
-        <button
-          onClick={onRecordClick}
-          className="absolute bottom-4 right-4 z-30 h-12 px-4 rounded-[60px] bg-[#E60000] text-white font-bold text-[13px] shadow-lg flex items-center gap-2 active:scale-95 hover:bg-[#CC0000] transition-all"
-          aria-label="라멘로그 쓰기"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          <span>기록하기</span>
-        </button>
+          <span className="hover:text-[#25282B] cursor-pointer transition-colors">이용약관</span>
+          <span className="text-[#E2E2E2]">·</span>
+          <span className="hover:text-[#25282B] cursor-pointer transition-colors">개인정보처리방침</span>
+          <span className="text-[#E2E2E2]">·</span>
+          <a href="mailto:contact@raota.net" className="hover:text-[#25282B] transition-colors">문의하기</a>
+        </div>
+        <p className="text-[9.5px] text-[#A0A0A0] font-medium">
+          © 2026 RAOTA · 라멘에 진심인 사람들
+        </p>
+      </footer>
+    </div>
+
+      {/* 플로팅 스피드 다이얼 메뉴 */}
+      {fabOpen && (
+        <div
+          className="absolute inset-0 z-30 bg-black/40 backdrop-blur-[2px] anim-fade-in"
+          onClick={() => setFabOpen(false)}
+        />
       )}
+      <div className="absolute bottom-3 right-3 z-40 flex flex-col items-end gap-2.5 max-w-[calc(100%-24px)]">
+        {/* 펼쳐지는 메뉴 아이템들 */}
+        {fabOpen && (
+          <div className="flex flex-col items-end gap-2 pr-0.5">
+            <button
+              type="button"
+              onClick={() => { setFabOpen(false); onRecordClick?.('nearby') }}
+              className="flex items-center gap-2 animate-[fadeSlideUp_0.15s_ease-out_both] cursor-pointer group active:scale-95 transition-transform"
+            >
+              <span className="text-[11.5px] font-black text-[#25282B] bg-white px-3 py-1.5 rounded-full shadow-md border border-[#E2E2E2] whitespace-nowrap group-hover:text-[#E60000] transition-colors">
+                주변 라멘집 기록하기
+              </span>
+              <div className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center border border-[#E2E2E2] group-hover:border-[#E60000] transition-colors shrink-0">
+                <Crosshair className="w-4 h-4 text-[#E60000]" />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setFabOpen(false); onRecordClick?.('saved') }}
+              className="flex items-center gap-2 animate-[fadeSlideUp_0.15s_ease-out_0.05s_both] cursor-pointer group active:scale-95 transition-transform"
+            >
+              <span className="text-[11.5px] font-black text-[#25282B] bg-white px-3 py-1.5 rounded-full shadow-md border border-[#E2E2E2] whitespace-nowrap group-hover:text-[#E60000] transition-colors">
+                저장 목록에서 기록하기
+              </span>
+              <div className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center border border-[#E2E2E2] group-hover:border-[#E60000] transition-colors shrink-0">
+                <Bookmark className="w-4 h-4 text-[#E60000]" />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setFabOpen(false); onRecordClick?.('search') }}
+              className="flex items-center gap-2 animate-[fadeSlideUp_0.15s_ease-out_0.1s_both] cursor-pointer group active:scale-95 transition-transform"
+            >
+              <span className="text-[11.5px] font-black text-[#25282B] bg-white px-3 py-1.5 rounded-full shadow-md border border-[#E2E2E2] whitespace-nowrap group-hover:text-[#E60000] transition-colors">
+                직접 검색해서 기록하기
+              </span>
+              <div className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center border border-[#E2E2E2] group-hover:border-[#E60000] transition-colors shrink-0">
+                <Search className="w-4 h-4 text-[#E60000]" />
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* 메인 토글 버튼 */}
+        <button
+          type="button"
+          onClick={() => setFabOpen(prev => !prev)}
+          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-md ${
+            fabOpen ? 'bg-[#25282B] text-white' : 'bg-[#E60000] hover:bg-[#CC0000] text-white'
+          }`}
+          aria-label="기록하기"
+        >
+          {fabOpen ? (
+            <X className="w-[18px] h-[18px] stroke-[2.5]" />
+          ) : (
+            <PenLine className="w-[18px] h-[18px] stroke-[2.5]" />
+          )}
+        </button>
+      </div>
     </div>
   )
 }
+
+

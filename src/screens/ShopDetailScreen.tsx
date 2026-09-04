@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { ChevronLeft, Bookmark, Sparkles } from 'lucide-react'
 import type { Shop } from '../types'
+
 
 interface Props {
   savedShop: boolean
@@ -50,7 +52,8 @@ const DEFAULT_SHOP: Shop = {
     noodleRefill: '1회 무료 리필 가능',
     riceRefill: '요청 시 무료 제공',
   },
-  description: '진한 동물계 육수 및 단단한 자가제면 식감을 자랑하며, 맑은 쇼유 타레 특유의 높은 감칠맛을 보유하고 있는 망원동의 대표 라멘야입니다.',
+  description: '진한 동물계 육수 및 단단한 자가제면 식감을 자랑하며, 맑은 쇼유 타레 특유의 높은 감칠맛을 보유하고 있는 망원동의 대표 라멘집입니다.',
+
   reviews: [
     {
       author: '하니 (라멘마니아)',
@@ -117,15 +120,13 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
 
           {/* 상단 뒤로가기 & 저장 */}
-          <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-12 pb-3 z-10">
+          <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-3.5 pb-3 z-10">
             <button
               onClick={onBack}
               className="w-10 h-10 bg-[#25282B]/60 backdrop-blur-md rounded-full flex items-center justify-center text-white active:scale-95 transition-all"
               aria-label="뒤로가기"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m15 18-6-6 6-6"/>
-              </svg>
+              <ChevronLeft className="w-5 h-5" />
             </button>
 
             <button
@@ -133,9 +134,7 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
               className="w-10 h-10 bg-[#25282B]/60 backdrop-blur-md rounded-full flex items-center justify-center text-white active:scale-95 transition-all"
               aria-label="가고 싶어요"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill={savedShop ? '#E60000' : 'none'} stroke={savedShop ? '#E60000' : 'currentColor'} strokeWidth="2.3">
-                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
-              </svg>
+              <Bookmark className="w-4.5 h-4.5" fill={savedShop ? '#E60000' : 'none'} color={savedShop ? '#E60000' : 'currentColor'} />
             </button>
           </div>
 
@@ -157,55 +156,35 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
 
         {/* 2. 매장 헤드라인 정보 */}
         <section className="px-5 pt-4 space-y-4">
-          
           <div className="bg-white rounded-[6px] border border-[#E2E2E2] p-5">
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#E2E2E2] text-[10px] font-bold text-[#7E7E7E]">
               <span className="text-[#2E7D32] font-bold">● {shop.isOpen ? '영업 중' : '영업 종료'}</span>
               <span>라멘로그 {shop.reviewCount}개</span>
             </div>
 
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <span className="text-[11px] text-[#E60000] font-bold tracking-wider block">
-                  {shop.tags[0] || '라멘 전문점'}
-                </span>
-                <h1 className="text-[24px] font-black text-[#25282B] tracking-tight leading-tight mt-0.5">
-                  {shop.name} {shop.branch && `· ${shop.branch}`}
-                </h1>
-                <p className="text-[12px] text-[#7E7E7E] mt-1">{shop.address}</p>
-              </div>
-
-              <div className="bg-[#F2F2F2] border border-[#E2E2E2] text-center rounded-[6px] px-3 py-2 flex-shrink-0">
-                <span className="text-[9px] block text-[#7E7E7E] font-bold leading-tight">대표 계보</span>
-                <span className="text-[12px] font-black text-[#25282B] block mt-0.5">{shop.tags[0] || '쇼유 라멘'}</span>
-              </div>
+            <div>
+              <span className="text-[11px] text-[#E60000] font-bold tracking-wider block">
+                {shop.tags[0] || '라멘 전문점'}
+              </span>
+              <h1 className="text-[24px] font-black text-[#25282B] tracking-tight leading-tight mt-0.5">
+                {shop.name} {shop.branch && `· ${shop.branch}`}
+              </h1>
+              <p className="text-[12px] text-[#7E7E7E] mt-1">{shop.address}</p>
             </div>
 
-            {/* 🍜 라오타 완식 가이드 (면 리필 / 공깃밥 등 매장 혜택) */}
-            <div className="mt-4 pt-3 border-t border-[#E2E2E2] space-y-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <div className="flex items-center gap-1 font-black text-[#25282B]">
-                  <span className="text-[#E60000]">🍜</span>
-                  <span>라오타 완식 가이드</span>
-                </div>
-                <span className="text-[10px] text-[#7E7E7E] font-medium">
-                  2026.09 확인 기준
+            {/* 리필 및 매장 제공 혜택 정보 */}
+            <div className="mt-3.5 pt-3 border-t border-[#E2E2E2] grid grid-cols-2 gap-2">
+              <div className="bg-[#F2F2F2] py-2 px-2.5 rounded-[4px] border border-[#E2E2E2]">
+                <span className="text-[10px] text-[#7E7E7E] font-bold block">면 리필 (카에다마)</span>
+                <span className="text-[11.5px] font-black text-[#E60000] block mt-0.5">
+                  {shop.servicePerks?.noodleRefill || '1회 무료 제공 ✓'}
                 </span>
               </div>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                <div className="bg-[#F2F2F2] py-1.5 px-2.5 rounded-[4px] border border-[#E2E2E2]">
-                  <span className="text-[9px] text-[#7E7E7E] block leading-none">면 리필 (카에다마)</span>
-                  <span className="text-[11px] font-bold text-[#E60000] block mt-1 leading-tight">
-                    {shop.servicePerks?.noodleRefill || '1회 무료 제공 ✓'}
-                  </span>
-                </div>
-                <div className="bg-[#F2F2F2] py-1.5 px-2.5 rounded-[4px] border border-[#E2E2E2]">
-                  <span className="text-[9px] text-[#7E7E7E] block leading-none">공깃밥</span>
-                  <span className="text-[11px] font-bold text-[#25282B] block mt-1 leading-tight">
-                    {shop.servicePerks?.riceRefill || '요청 시 무료 제공 ✓'}
-                  </span>
-                </div>
+              <div className="bg-[#F2F2F2] py-2 px-2.5 rounded-[4px] border border-[#E2E2E2]">
+                <span className="text-[10px] text-[#7E7E7E] font-bold block">공깃밥 리필</span>
+                <span className="text-[11.5px] font-black text-[#25282B] block mt-0.5">
+                  {shop.servicePerks?.riceRefill || '요청 시 무료 제공 ✓'}
+                </span>
               </div>
             </div>
           </div>
@@ -214,10 +193,7 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
           {shop.description && (
             <div className="bg-[#F2F2F2] rounded-[6px] p-4">
               <div className="flex items-center gap-1.5 mb-1.5">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="#E60000">
-                  <path d="M12 2C12 7.52285 7.52285 12 2 12C7.52285 12 12 16.4772 12 22C12 16.4772 16.4772 12 22 12C16.4772 12 12 7.52285 12 2Z" />
-                  <path d="M19 3C19 5.20914 17.2091 7 15 7C17.2091 7 19 8.79086 19 11C19 8.79086 20.7909 7 23 7C20.7909 7 19 5.20914 19 3Z" opacity="0.8" />
-                </svg>
+                <Sparkles className="w-3.5 h-3.5 fill-[#E60000] text-[#E60000]" />
                 <span className="text-[10px] text-[#E60000] font-black uppercase tracking-wider">
                   AI 리뷰 분석 요약
                 </span>
@@ -227,6 +203,7 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
               </p>
             </div>
           )}
+
 
           {/* 4. 정형화된 가게 상세 정보 카드 (raota-front 다크 에디토리얼 스타일) */}
           <div className="rounded-[6px] bg-[#25282B] p-5 text-white">
@@ -294,27 +271,34 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
               )}
             </div>
 
-            {/* 외부 링크 버튼 그룹 (Instagram & CatchTable) */}
+            {/* 외부 링크 버튼 그룹 (Instagram & CatchTable 공식 로고) */}
             <div className="mt-4 pt-3 border-t border-white/10 flex gap-2">
               <a
                 href={instagramLink}
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 h-10 rounded-[6px] bg-white/10 hover:bg-[#E60000] text-white text-[12px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-98"
+                className="flex-1 h-10 rounded-[6px] bg-white/10 hover:bg-[#FF385C] border border-white/10 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-all active:scale-98"
               >
-                <span>Instagram</span>
-                <span>📸</span>
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                </svg>
+                <span>인스타그램</span>
               </a>
               <a
                 href={catchTableLink}
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 h-10 rounded-[6px] bg-white/10 hover:bg-white hover:text-[#25282B] text-white text-[12px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-98"
+                className="flex-1 h-10 rounded-[6px] bg-white/10 hover:bg-[#E60000] border border-white/10 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-all active:scale-98"
               >
-                <span>CatchTable</span>
-                <span>🍽️</span>
+                <svg className="w-4 h-4 shrink-0 rounded-[3px] overflow-hidden" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="24" height="24" fill="#FF385C"/>
+                  <path d="M16 8.5C14.8 7.3 13.4 6.8 11.8 6.8C8.6 6.8 6.2 9.2 6.2 12C6.2 14.8 8.6 17.2 11.8 17.2C13.4 17.2 14.8 16.7 16 15.5" stroke="white" strokeWidth="2.6" strokeLinecap="round"/>
+                </svg>
+                <span>캐치테이블</span>
               </a>
             </div>
+
+
           </div>
 
           {/* 5. 구글 인증 방문자 리뷰 (google_reviews) */}
@@ -355,14 +339,13 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
             className={`flex-1 h-13 rounded-[60px] border flex items-center justify-center gap-2 text-[14px] font-bold active:scale-98 transition-all ${
               savedShop
                 ? 'border-[#E60000] bg-[#E60000]/10 text-[#E60000]'
-                : 'border-[#25282B] bg-white text-[#25282B]'
+                : 'border-[#E2E2E2] hover:border-[#BEBEBE] bg-white hover:bg-[#F9F9F9] text-[#25282B] shadow-2xs'
             }`}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill={savedShop ? '#E60000' : 'none'} stroke={savedShop ? '#E60000' : 'currentColor'} strokeWidth="2.3">
-              <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
-            </svg>
+            <Bookmark className="w-4.5 h-4.5" fill={savedShop ? '#E60000' : 'none'} color={savedShop ? '#E60000' : 'currentColor'} />
             {savedShop ? '저장됨 ✓' : '가고 싶어요'}
           </button>
+
           
           <button
             onClick={onRecord}
@@ -380,7 +363,8 @@ export default function ShopDetailScreen({ savedShop, shop = DEFAULT_SHOP, onSav
             <span className="w-4 h-4 rounded-full bg-[#E60000] text-white flex items-center justify-center text-[10px] font-black shrink-0">
               ✓
             </span>
-            <span>가고 싶은 라멘야 목록에 저장되었습니다.</span>
+            <span>가고 싶은 라멘집 목록에 저장되었습니다.</span>
+
           </div>
         </div>
       )}

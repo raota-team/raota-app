@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Home, MapPin, MessageSquare, Flame, User } from 'lucide-react'
 import HomeScreen from './screens/HomeScreen'
+
 import MapScreen from './screens/MapScreen'
 import ShopDetailScreen from './screens/ShopDetailScreen'
-import RecordSheet from './screens/RecordSheet'
+import RecordSheet, { type RecordSheetMode } from './screens/RecordSheet'
 import RecordScreen from './screens/RecordScreen'
 import RecordCompleteScreen from './screens/RecordCompleteScreen'
 import MyScreen from './screens/MyScreen'
@@ -10,10 +12,15 @@ import TasteDetailScreen from './screens/TasteDetailScreen'
 import LoungeScreen from './screens/LoungeScreen'
 import NewsFeedScreen from './screens/NewsFeedScreen'
 import AIRecommendScreen from './screens/AIRecommendScreen'
-import type { RamenLog, RevisitOption, TasteNotes } from './types'
+import LoginScreen from './screens/LoginScreen'
+import RegisterScreen from './screens/RegisterScreen'
+import NotificationScreen from './screens/NotificationScreen'
+import type { AppNotification, NotificationSettings, RamenLog, RevisitOption, TasteNotes, UserProfile } from './types'
 
-type Screen = 'home' | 'map' | 'shopDetail' | 'record' | 'recordComplete' | 'my' | 'tasteDetail' | 'lounge' | 'newsFeed' | 'aiRecommend'
+type Screen = 'home' | 'map' | 'shopDetail' | 'record' | 'recordComplete' | 'my' | 'tasteDetail' | 'lounge' | 'newsFeed' | 'aiRecommend' | 'login' | 'register' | 'notifications'
 type Tab = 'home' | 'map' | 'lounge' | 'newsFeed' | 'my'
+
+
 
 const INITIAL_LOGS: RamenLog[] = [
   {
@@ -98,7 +105,9 @@ interface State {
   screen: Screen
   activeTab: Tab
   fromScreen: Screen
+  user: UserProfile | null
   showRecordSheet: boolean
+  recordSheetMode: RecordSheetMode
   recordCount: number
   recordSaved: boolean
   savedShop: boolean
@@ -108,13 +117,88 @@ interface State {
   mapFilter: string
   logs: RamenLog[]
   lastLog: RamenLog | null
+  notifications: AppNotification[]
+  notificationSettings: NotificationSettings
+}
+
+const DEFAULT_USER: UserProfile = {
+  id: 'user-demo',
+  name: '뿡',
+  nickname: '뿡',
+  email: 'bbung@raota.net',
+  avatar: null,
+  level: '라멘 미식가',
+  levelNumber: 5,
+  membershipNo: '#RT-0842',
+  bio: '12시간 농축 동물계 육수와 꼬들한 면을 애호합니다.',
+  favoriteRamenType: '돈코츠',
+  visitedCount: 42,
+  revisitCount: 28,
+  isLoggedIn: true,
+}
+
+const INITIAL_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'noti-1',
+    type: 'like',
+    title: '멘마수집가님의 공감',
+    content: '회원님의 [멘야준] 라멘로그에 공감했습니다: "닭과 오리 더블 육수의 첫 모금 감칠맛..."',
+    time: '10분 전',
+    isRead: false,
+    senderName: '멘마수집가',
+  },
+  {
+    id: 'noti-2',
+    type: 'comment',
+    title: '새로운 댓글이 달렸습니다',
+    content: '쇼유러버: "여기 면 꼬들하게 주문하면 국물 흡착이 진짜 예술이에요!"',
+    time: '1시간 전',
+    isRead: false,
+    senderName: '쇼유러버',
+  },
+  {
+    id: 'noti-3',
+    type: 'level',
+    title: '활동 등급 승급 축하!',
+    content: '라멘로그 40그릇을 돌파하여 [라멘 미식가 (Lv.5)]로 공식 승급되었습니다 🏆',
+    time: '어제',
+    isRead: false,
+  },
+  {
+    id: 'noti-4',
+    type: 'shop',
+    title: '관심 라멘집 신메뉴 소식',
+    content: '[세상끝의라멘]에서 가을 한정 특제 "바지락 시오 라멘"을 개시했습니다.',
+    time: '2일 전',
+    isRead: true,
+    targetShopId: 2,
+  },
+  {
+    id: 'noti-5',
+    type: 'notice',
+    title: '라오타 v1.1 업데이트 안내',
+    content: '라멘집 상세 페이지에서 면 리필 및 공깃밥 혜택 정보가 추가되었습니다.',
+    time: '3일 전',
+    isRead: true,
+  },
+
+]
+
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  pushEnabled: true,
+  likesEnabled: true,
+  commentsEnabled: true,
+  levelUpEnabled: true,
+  shopNewsEnabled: true,
 }
 
 const INIT: State = {
   screen: 'home',
   activeTab: 'home',
   fromScreen: 'home',
+  user: DEFAULT_USER,
   showRecordSheet: false,
+  recordSheetMode: 'nearby',
   recordCount: 22,
   recordSaved: false,
   savedShop: false,
@@ -124,52 +208,32 @@ const INIT: State = {
   mapFilter: '전체',
   logs: INITIAL_LOGS,
   lastLog: null,
+  notifications: INITIAL_NOTIFICATIONS,
+  notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
 }
 
+
+
 function IconHome({ active }: { active: boolean }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#E60000' : '#7E7E7E'} strokeWidth={active ? '2.3' : '1.8'} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-      <path d="M9 21V12h6v9"/>
-    </svg>
-  )
+  return <Home className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
 }
 
 function IconMap({ active }: { active: boolean }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#E60000' : '#7E7E7E'} strokeWidth={active ? '2.3' : '1.8'} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-      <circle cx="12" cy="9" r="2.5"/>
-    </svg>
-  )
+  return <MapPin className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
 }
 
 function IconLounge({ active }: { active: boolean }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#E60000' : '#7E7E7E'} strokeWidth={active ? '2.3' : '1.8'} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      <path d="M8 9h8M8 13h5"/>
-    </svg>
-  )
+  return <MessageSquare className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
 }
 
 function IconNewsFeed({ active }: { active: boolean }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#E60000' : '#7E7E7E'} strokeWidth={active ? '2.3' : '1.8'} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-    </svg>
-  )
+  return <Flame className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
 }
 
 function IconMy({ active }: { active: boolean }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#E60000' : '#7E7E7E'} strokeWidth={active ? '2.3' : '1.8'} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="4"/>
-      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-    </svg>
-  )
+  return <User className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
 }
+
 
 const TAB_DEFS: { id: Tab; label: string; Icon: React.FC<{ active: boolean }> }[] = [
   { id: 'home', label: '홈', Icon: IconHome },
@@ -256,12 +320,45 @@ export default function App() {
       case 'home':
         return (
           <HomeScreen
+            user={s.user}
             recordSaved={s.recordSaved}
+            unreadNotificationsCount={s.notifications.filter(n => !n.isRead).length}
+            onNotificationClick={() => nav('notifications', { fromScreen: 'home' })}
             onShopClick={() => nav('shopDetail', { fromScreen: 'home' })}
-            onRecordClick={() => patch({ showRecordSheet: true })}
+            onRecordClick={(mode) => patch({ showRecordSheet: true, recordSheetMode: mode || 'nearby' })}
             onAIRecommendClick={() => nav('aiRecommend', { fromScreen: 'home' })}
+            onViewTaste={() => nav('tasteDetail', { fromScreen: 'home' })}
+            onLoginClick={() => nav('login', { fromScreen: 'home' })}
+            onRegisterClick={() => nav('register', { fromScreen: 'home' })}
+            onUserClick={() => nav('my', { activeTab: 'my' })}
+            onMapClick={() => nav('map', { activeTab: 'map' })}
+            onNewsFeedClick={() => nav('newsFeed', { activeTab: 'newsFeed' })}
           />
         )
+
+      case 'login':
+        return (
+          <LoginScreen
+            onBack={() => nav(s.fromScreen || 'home')}
+            onRegisterClick={() => nav('register', { fromScreen: s.fromScreen || 'home' })}
+            onLoginSuccess={(user) => {
+              patch({ user })
+              nav(s.fromScreen || 'home')
+            }}
+          />
+        )
+      case 'register':
+        return (
+          <RegisterScreen
+            onBack={() => nav(s.fromScreen || 'home')}
+            onLoginClick={() => nav('login', { fromScreen: s.fromScreen || 'home' })}
+            onRegisterSuccess={(user) => {
+              patch({ user, activeTab: 'home' })
+              nav('home', { activeTab: 'home' })
+            }}
+          />
+        )
+
       case 'map':
         return (
           <MapScreen
@@ -325,11 +422,30 @@ export default function App() {
       case 'my':
         return (
           <MyScreen
+            user={s.user}
             recordSaved={s.recordSaved}
             recordCount={s.recordCount}
+            unreadNotificationsCount={s.notifications.filter(n => !n.isRead).length}
+            onNotificationClick={() => nav('notifications', { fromScreen: 'my' })}
+            onShopClick={(_shopId) => nav('shopDetail', { fromScreen: 'my' })}
             onViewTaste={() => nav('tasteDetail', { fromScreen: 'my' })}
+            onLoginClick={() => nav('login', { fromScreen: 'my' })}
+            onRegisterClick={() => nav('register', { fromScreen: 'my' })}
+            onLogout={() => {
+              patch({ user: null })
+              nav('login', { fromScreen: 'home' })
+            }}
+            onUpdateUser={(updated) => {
+              patch({ user: s.user ? { ...s.user, ...updated } : null })
+            }}
+            onLoungeClick={() => nav('lounge', { activeTab: 'lounge' })}
           />
         )
+
+
+
+
+
       case 'tasteDetail':
         return (
           <TasteDetailScreen
@@ -337,21 +453,67 @@ export default function App() {
               if (s.fromScreen === 'recordComplete') {
                 nav('home', { activeTab: 'home' })
               } else {
-                nav(s.fromScreen)
+                nav(s.fromScreen || 'my')
               }
             }}
             recordCount={s.recordCount}
           />
         )
+      case 'notifications':
+        return (
+          <NotificationScreen
+            notifications={s.notifications}
+            settings={s.notificationSettings}
+            onBack={() => nav(s.fromScreen || 'home')}
+            onMarkAllAsRead={() => {
+              patch({
+                notifications: s.notifications.map(n => ({ ...n, isRead: true })),
+              })
+            }}
+            onReadNotification={(id) => {
+              patch({
+                notifications: s.notifications.map(n => n.id === id ? { ...n, isRead: true } : n),
+              })
+            }}
+            onDeleteNotification={(id) => {
+              patch({
+                notifications: s.notifications.filter(n => n.id !== id),
+              })
+            }}
+            onUpdateSettings={(newSettings) => {
+              patch({ notificationSettings: newSettings })
+            }}
+            onNavigateToShop={(_shopId) => {
+              nav('shopDetail', { fromScreen: 'notifications' })
+            }}
+            onNavigateToLounge={() => {
+              nav('lounge', { activeTab: 'lounge' })
+            }}
+            onNavigateToMy={() => {
+              nav('my', { activeTab: 'my' })
+            }}
+          />
+        )
+
       default:
         return (
           <HomeScreen
+            user={s.user}
             recordSaved={s.recordSaved}
+            unreadNotificationsCount={s.notifications.filter(n => !n.isRead).length}
+            onNotificationClick={() => nav('notifications', { fromScreen: 'home' })}
             onShopClick={() => nav('shopDetail', { fromScreen: 'home' })}
-            onRecordClick={() => patch({ showRecordSheet: true })}
+            onRecordClick={(mode) => patch({ showRecordSheet: true, recordSheetMode: mode || 'nearby' })}
             onAIRecommendClick={() => nav('aiRecommend', { fromScreen: 'home' })}
+            onLoginClick={() => nav('login', { fromScreen: 'home' })}
+            onRegisterClick={() => nav('register', { fromScreen: 'home' })}
+            onUserClick={() => nav('my', { activeTab: 'my' })}
+            onMapClick={() => nav('map', { activeTab: 'map' })}
+            onNewsFeedClick={() => nav('newsFeed', { activeTab: 'newsFeed' })}
           />
         )
+
+
     }
   }
 
@@ -364,20 +526,59 @@ export default function App() {
     my: 'my',
   }
   const displayTab = tabForScreen[s.screen] ?? s.activeTab
+  const isDarkStatusBar = s.screen === 'my'
 
   return (
     <main className="w-full h-full min-h-screen max-h-screen overflow-hidden bg-[#121316] flex items-center justify-center p-0 sm:p-3 selection:bg-brand selection:text-white">
-      <div className="relative w-full max-w-[380px] h-full sm:h-[min(812px,calc(100vh-28px))] bg-white sm:rounded-[32px] sm:shadow-2xl sm:border-[6px] sm:border-[#22242A] flex flex-col overflow-hidden">
+      {/* iPhone 16 Pro Style Shell Container */}
+      <div className="relative w-full max-w-[390px] h-full sm:h-[min(844px,calc(100vh-20px))] bg-white sm:rounded-[48px] sm:shadow-[0_25px_70px_rgba(0,0,0,0.5)] sm:border-[8px] sm:border-[#1C1D21] flex flex-col overflow-hidden">
+
+        {/* iPhone Top Status Bar + Dynamic Island */}
+        <div className={`relative z-50 h-11 px-6 flex items-center justify-between select-none pointer-events-none shrink-0 transition-colors duration-200 ${
+          isDarkStatusBar ? 'bg-[#25282B]' : 'bg-white border-b border-[#F2F2F2]'
+        }`}>
+          {/* Status Bar Clock */}
+          <span className={`text-[13.5px] font-black tracking-tight ${isDarkStatusBar ? 'text-white' : 'text-[#25282B]'}`}>
+            9:41
+          </span>
+
+          {/* Dynamic Island Notch */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-2 w-[92px] h-[26px] bg-black rounded-full flex items-center justify-end pr-2.5 shadow-xs">
+            {/* Front Camera Lens */}
+            <div className="w-2.5 h-2.5 rounded-full bg-[#1A1A1C] border border-stone-800 flex items-center justify-center">
+              <div className="w-1 h-1 rounded-full bg-[#0D1B2A]" />
+            </div>
+          </div>
+
+          {/* Status Bar Icons (Signal + WiFi + Battery) */}
+          <div className={`flex items-center gap-1.5 ${isDarkStatusBar ? 'text-white' : 'text-[#25282B]'}`}>
+            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <rect x="2" y="16" width="3" height="6" rx="1" />
+              <rect x="7" y="12" width="3" height="10" rx="1" />
+              <rect x="12" y="8" width="3" height="14" rx="1" />
+              <rect x="17" y="4" width="3" height="18" rx="1" />
+            </svg>
+            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z" />
+            </svg>
+            <div className={`w-5 h-2.5 border rounded-[3px] p-0.5 flex items-center relative ${
+              isDarkStatusBar ? 'border-white/70' : 'border-[#25282B]'
+            }`}>
+              <div className={`w-full h-full rounded-[1px] ${isDarkStatusBar ? 'bg-white' : 'bg-[#25282B]'}`} />
+              <div className={`absolute -right-1 w-0.5 h-1 rounded-r-xs ${isDarkStatusBar ? 'bg-white/70' : 'bg-[#25282B]'}`} />
+            </div>
+          </div>
+        </div>
 
         {/* Screen area */}
-        <div className={`relative overflow-hidden ${showTabBar ? 'flex-1' : 'h-full'} bg-white`}>
+        <div className="relative overflow-hidden flex-1 min-h-0 flex flex-col bg-white">
           {renderScreen()}
         </div>
 
         {/* 5-Tab Navigation Bar */}
         {showTabBar && (
-          <nav className="relative z-40 flex-shrink-0 bg-white border-t border-[#E2E2E2] overflow-visible" style={{ paddingBottom: 'env(safe-area-inset-bottom, 6px)' }}>
-            <div className="flex items-center h-14 px-1">
+          <nav className="relative z-40 flex-shrink-0 bg-white border-t border-[#E2E2E2] overflow-visible">
+            <div className="flex items-center h-13 px-1">
               {TAB_DEFS.map(({ id, label, Icon }) => {
                 const active = displayTab === id
                 return (
@@ -402,11 +603,17 @@ export default function App() {
           </nav>
         )}
 
+        {/* iPhone Bottom Home Indicator Bar */}
+        <div className="shrink-0 bg-white pt-1 pb-2 flex justify-center items-center pointer-events-none">
+          <div className="w-32 h-1 bg-black/60 rounded-full" />
+        </div>
+
         {/* Record sheet overlay */}
         {s.showRecordSheet && (
           <RecordSheet
+            initialMode={s.recordSheetMode || 'nearby'}
             onClose={() => patch({ showRecordSheet: false })}
-            onSelectShop={() => startRecord('멘야준')}
+            onSelectShop={(shopName) => startRecord(shopName || '멘야준')}
           />
         )}
       </div>

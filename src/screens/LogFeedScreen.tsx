@@ -35,7 +35,7 @@ export default function LogFeedScreen({ logs, onRecordClick }: Props) {
     <div className="h-full flex flex-col overflow-hidden bg-[#FFFFFF] text-[#25282B] relative">
       
       {/* 1. 상단 바 */}
-      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-5 pt-12 pb-3.5 border-b border-[#E2E2E2]">
+      <header className="flex-shrink-0 bg-white/95 backdrop-blur-md px-5 pt-3.5 pb-3.5 border-b border-[#E2E2E2]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="RAOTA" className="w-8 h-8 object-contain" />
@@ -62,7 +62,7 @@ export default function LogFeedScreen({ logs, onRecordClick }: Props) {
                 className={`flex-shrink-0 h-7 px-3 rounded-[32px] text-[11px] font-bold border transition-all ${
                   active
                     ? 'bg-[#25282B] text-white border-[#25282B]'
-                    : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#25282B]'
+                    : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#BEBEBE]'
                 }`}
               >
                 {f}
@@ -178,7 +178,7 @@ export default function LogFeedScreen({ logs, onRecordClick }: Props) {
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-[60px] font-bold border transition-all active:scale-95 ${
                         log.isLiked
                           ? 'bg-[#E60000]/10 border-[#E60000] text-[#E60000]'
-                          : 'bg-white border-[#E2E2E2] text-[#7E7E7E] hover:border-[#25282B]'
+                          : 'bg-white border-[#E2E2E2] text-[#7E7E7E] hover:border-[#BEBEBE]'
                       }`}
                     >
                       <span>{log.isLiked ? '♥' : '♡'}</span>
