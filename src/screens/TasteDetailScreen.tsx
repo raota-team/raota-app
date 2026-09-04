@@ -34,10 +34,11 @@ interface PastReportItem {
     name: string
     branch: string
     style: string
-    matchPct: number
+    matchPct?: number
     mustTry: string
     reason: string
     image: string
+    visitCount?: number
   }[]
   styleRows: {
     name: string

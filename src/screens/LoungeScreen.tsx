@@ -25,6 +25,55 @@ import {
 import type { RamenLog } from '../types'
 
 
+export interface PostComment {
+  id: number
+  authorId?: number
+  authorNickname: string
+  authorLevel?: string
+  createdAt: string
+  content: string
+  isReply?: boolean
+  parentAuthorNickname?: string
+  likes: number
+  isLiked: boolean
+}
+
+export interface CommunityPost {
+  postId: number
+  category: 'REVIEW' | 'TIP' | 'QUESTION' | 'FREE' | 'POPULAR'
+  categoryLabel: string
+  title: string
+  content: string
+  detailedContent?: string[]
+  authorId: number
+  authorName: string
+  authorLevel: string
+  createdAt: string
+  likeCount: number
+  commentCount: number
+  viewCount: number
+  isLiked: boolean
+  shopName?: string
+  imageUrl?: string
+  comments: PostComment[]
+}
+
+export interface Props {
+  logs: RamenLog[]
+  onRecordClick: () => void
+  onShopClick?: (shopName: string) => void
+}
+
+/** 등급 문자열에서 Lv.X, (Lv.X), X레벨 등을 제거하고 순수 등급명만 반환 */
+export function cleanGradeTitle(levelStr?: string) {
+  if (!levelStr) return '라멘 탐험가'
+  return levelStr
+    .replace(/\s*\(Lv\.\s*\d+\)/gi, '')
+    .replace(/Lv\.\s*\d+\s*/gi, '')
+    .replace(/\s*\d+레벨/gi, '')
+    .trim()
+}
+
 // ----------------------------------------------------
 // 🌟 raota-front 커뮤니티 Mock 데이터
 // ----------------------------------------------------
@@ -56,6 +105,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         id: 1,
         authorId: 201,
         authorNickname: '멘마수집가',
+        authorLevel: '라멘 미식가',
         createdAt: '2026. 09. 01 12:45',
         content: '멘야준 특제 쇼유는 진짜 반박 불가 1위죠! 닭 육수 첫 모금의 염도 밸런스가 완벽합니다.',
         likes: 5,
@@ -65,6 +115,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         id: 2,
         authorId: 202,
         authorNickname: '라린이',
+        authorLevel: '라멘 입문자',
         createdAt: '2026. 09. 01 12:50',
         content: '세상끝의라멘 처음 가보려는데 첫라멘이랑 끝라멘 중에 어떤 걸 먼저 먹어봐야 할까요?',
         likes: 2,
@@ -74,6 +125,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         id: 3,
         authorId: 101,
         authorNickname: '쇼유장인',
+        authorLevel: '라멘 미식가',
         createdAt: '2026. 09. 01 12:55',
         content: '쇼유 본연의 깊은 풍미를 원하시면 첫 방문엔 무조건 "끝라멘" 추천드립니다!',
         isReply: true,
@@ -107,6 +159,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         id: 4,
         authorId: 203,
         authorNickname: '돈골파마스터',
+        authorLevel: '돈골파 장인',
         createdAt: '2026. 09. 01 11:35',
         content: '하쿠텐 가셔서 "간 보통, 기름 보통, 면 꼬들하게"로 시작하시면 부담 없이 농후한 맛을 즐기실 수 있습니다.',
         likes: 4,
@@ -116,6 +169,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         id: 5,
         authorId: 204,
         authorNickname: '오레노매니아',
+        authorLevel: '라멘집 단골',
         createdAt: '2026. 09. 01 11:50',
         content: '크리미한 파이탄 느낌 좋아하시면 오레노라멘 토리파이탄도 훌륭한 징검다리가 됩니다!',
         likes: 3,
@@ -147,6 +201,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         id: 6,
         authorId: 205,
         authorNickname: '차슈폭격기',
+        authorLevel: '라멘 마스터',
         createdAt: '2026. 09. 01 09:30',
         content: '와리스프 팁 진짜 유용하네요! 처음 갔을 때 모르고 다 먹느라 물 3컵 마셨던 기억이 납니다.',
         likes: 8,
@@ -178,6 +233,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         id: 7,
         authorId: 206,
         authorNickname: '라멘러버',
+        authorLevel: '라멘 미식가',
         createdAt: '2026. 09. 01 08:30',
         content: '100그릇 대단하십니다 축하드려요! 👏',
         likes: 6,
@@ -339,6 +395,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
     const newComment: PostComment = {
       id: Date.now(),
       authorNickname: '뿡',
+      authorLevel: '라멘집 단골',
       createdAt: '방금 전',
       content: newCommentText.trim(),
       isReply: !!replyToAuthor,
@@ -380,7 +437,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
       detailedContent: [writeContent.trim()],
       authorId: 1,
       authorName: '뿡',
-      authorLevel: 'Lv.4 라멘집 단골',
+      authorLevel: '라멘집 단골',
       createdAt: '방금 전',
       likeCount: 0,
       commentCount: 0,
@@ -496,23 +553,24 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
           <div>
             <label className="text-[11px] font-bold text-stone-500 mb-1.5 block">카테고리</label>
             <div className="flex gap-2">
-              {CATEGORY_TABS.filter(t => t.key !== 'ALL').map(t => {
-                const isSelected = writeCategory === t.key
+              {WRITE_CATEGORIES.map(t => {
+                const isSelected = writeCategory === t.id
                 return (
                   <button
-                    key={t.key}
+                    key={t.id}
                     type="button"
-                    onClick={() => setWriteCategory(t.key as any)}
+                    onClick={() => setWriteCategory(t.id as any)}
                     className={`flex-1 py-2 px-2.5 rounded-sm text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                       isSelected
                         ? 'bg-[#25282B] text-white border-[#25282B] shadow-xs'
                         : 'bg-white border-stone-200 text-stone-600 hover:border-stone-400'
                     }`}
                   >
-                    {t.key === 'REVIEW' && <Soup className="w-3.5 h-3.5 text-[#E60000]" />}
-                    {t.key === 'TIP' && <Lightbulb className="w-3.5 h-3.5 text-amber-500" />}
-                    {t.key === 'FREE' && <Sparkles className="w-3.5 h-3.5 text-blue-500" />}
-                    <span>{t.label}</span>
+                    {t.id === 'REVIEW' && <Soup className="w-3.5 h-3.5 text-[#E60000]" />}
+                    {t.id === 'TIP' && <Lightbulb className="w-3.5 h-3.5 text-amber-500" />}
+                    {t.id === 'QUESTION' && <HelpCircle className="w-3.5 h-3.5 text-blue-500" />}
+                    {t.id === 'FREE' && <Sparkles className="w-3.5 h-3.5 text-stone-500" />}
+                    <span>{t.name}</span>
                   </button>
                 )
               })}
@@ -752,7 +810,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                   <div className="flex items-center gap-1.5">
                     <span className="text-[13.5px] font-bold text-[#25282B]">{selectedPost.authorName}</span>
                     <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-sm">
-                      {selectedPost.authorLevel}
+                      {cleanGradeTitle(selectedPost.authorLevel)}
                     </span>
                   </div>
                   <p className="font-mono text-[10px] text-stone-400">{selectedPost.createdAt}</p>
@@ -859,6 +917,11 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[12.5px] font-bold text-[#25282B]">{comment.authorNickname}</span>
+                          {comment.authorLevel && (
+                            <span className="text-[9.5px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-full">
+                              {cleanGradeTitle(comment.authorLevel)}
+                            </span>
+                          )}
                           <span className="font-mono text-[9.5px] text-stone-400">{comment.createdAt}</span>
                         </div>
                         
@@ -1188,7 +1251,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                           <div className="flex items-center gap-1.5">
                             <span className="text-[12.5px] font-black text-[#25282B]">{log.author.name}</span>
                             <span className="text-[9.5px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-full">
-                              {log.author.level}
+                              {cleanGradeTitle(log.author.level)}
                             </span>
                           </div>
                           <p className="text-[10px] text-stone-400 font-mono">{log.visitedAt} 방문</p>
@@ -1389,6 +1452,11 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                   <div className="flex items-center justify-between pt-1.5 text-[11px] font-medium text-stone-400">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="font-bold text-stone-600 text-[11px] truncate max-w-[140px]">{post.authorName}</span>
+                      {post.authorLevel && (
+                        <span className="text-[9px] font-bold text-[#E60000] bg-[#E60000]/10 px-1.5 py-0.2 rounded-full shrink-0">
+                          {cleanGradeTitle(post.authorLevel)}
+                        </span>
+                      )}
                       <span className="text-stone-300">·</span>
                       <span className="font-mono text-[10.5px] text-stone-400">
                         {post.createdAt.replace(/^\d{4}\.\s*/, '').split(' ')[0]}
