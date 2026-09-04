@@ -1352,29 +1352,22 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                   onClick={() => setSelectedPost(post)}
                   className="px-4 py-3 hover:bg-stone-50/70 active:bg-stone-100/60 transition-colors cursor-pointer group"
                 >
-                  {/* 상단 메타 라인: [카테고리] [🔥 인기] · 작성자 · 날짜 */}
-                  <div className="flex items-center justify-between text-[11px] mb-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-[4px] shrink-0 ${getCategoryBadgeClass(post.category)}`}>
-                        {post.categoryLabel}
-                      </span>
-                      {post.likeCount >= 30 && (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] shrink-0 flex items-center gap-0.5">
-                          🔥 인기
-                        </span>
-                      )}
-                      <span className="text-stone-300">·</span>
-                      <span className="font-bold text-stone-600 text-[11px] truncate max-w-[120px]">{post.authorName}</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-stone-400 shrink-0">
-                      {post.createdAt.replace(/^\d{4}\.\s*/, '').split(' ')[0]}
+                  {/* 상단: 카테고리 뱃지 & 인기 뱃지만 단독 배치 */}
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-[4px] shrink-0 ${getCategoryBadgeClass(post.category)}`}>
+                      {post.categoryLabel}
                     </span>
+                    {post.likeCount >= 30 && (
+                      <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded-[4px] bg-red-50 text-[#E60000] shrink-0 flex items-center gap-0.5">
+                        🔥 인기
+                      </span>
+                    )}
                   </div>
 
-                  {/* 본문: 제목 (1줄) + 요약 (1줄) + 썸네일 */}
+                  {/* 중앙 본문: 제목 (1줄) + 요약 (1줄) + 썸네일 */}
                   <div className="flex items-center justify-between gap-3 my-1">
                     <div className="flex-1 min-w-0">
-                      <h2 className="text-[14px] font-bold text-[#25282B] leading-snug group-hover:text-[#E60000] transition-colors truncate">
+                      <h2 className="text-[14.5px] font-bold text-[#25282B] leading-snug group-hover:text-[#E60000] transition-colors truncate">
                         {post.title}
                       </h2>
                       <p className="text-[12px] text-stone-500 truncate mt-0.5 leading-normal">
@@ -1389,20 +1382,30 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                     )}
                   </div>
 
-                  {/* 하단 반응: 좋아요 & 댓글 */}
-                  <div className="flex items-center justify-end gap-2.5 pt-1 text-[10.5px] font-bold text-stone-400">
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleTogglePostLike(post.postId) }}
-                      className={`flex items-center gap-1 hover:text-[#E60000] transition-colors ${post.isLiked ? 'text-[#E60000]' : ''}`}
-                    >
-                      <Heart className={`h-3 w-3 ${post.isLiked ? 'fill-[#E60000] text-[#E60000]' : ''}`} />
-                      <span>{post.likeCount}</span>
-                    </button>
-                    <span className="flex items-center gap-1">
-                      <MessageCircle className="h-3 w-3" />
-                      <span>{post.commentCount}</span>
-                    </span>
+                  {/* 하단: 좌측(작성자 · 날짜) vs 우측(좋아요 & 댓글) */}
+                  <div className="flex items-center justify-between pt-1.5 text-[11px] font-medium text-stone-400">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-bold text-stone-600 text-[11px] truncate max-w-[140px]">{post.authorName}</span>
+                      <span className="text-stone-300">·</span>
+                      <span className="font-mono text-[10.5px] text-stone-400">
+                        {post.createdAt.replace(/^\d{4}\.\s*/, '').split(' ')[0]}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 font-bold text-stone-400 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleTogglePostLike(post.postId) }}
+                        className={`flex items-center gap-1 hover:text-[#E60000] transition-colors ${post.isLiked ? 'text-[#E60000]' : ''}`}
+                      >
+                        <Heart className={`h-3 w-3 ${post.isLiked ? 'fill-[#E60000] text-[#E60000]' : ''}`} />
+                        <span>{post.likeCount}</span>
+                      </button>
+                      <span className="flex items-center gap-1">
+                        <MessageCircle className="h-3 w-3" />
+                        <span>{post.commentCount}</span>
+                      </span>
+                    </div>
                   </div>
                 </article>
               ))}
