@@ -74,6 +74,25 @@ export function cleanGradeTitle(levelStr?: string) {
     .trim()
 }
 
+/** 날짜 문자열을 'YYYY.MM.DD' 형식으로 정규화 */
+export function formatDateYMD(dateStr?: string) {
+  if (!dateStr) return ''
+  if (dateStr === '방금 전') {
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const d = String(now.getDate()).padStart(2, '0')
+    return `${y}.${m}.${d}`
+  }
+  // 정규식으로 YYYY, MM, DD 추출 (예: '2026. 09. 01 12:40' -> '2026.09.01')
+  const match = dateStr.match(/(\d{4})[.\-/]\s*(\d{1,2})[.\-/]\s*(\d{1,2})/)
+  if (match) {
+    const [, y, m, d] = match
+    return `${y}.${m.padStart(2, '0')}.${d.padStart(2, '0')}`
+  }
+  return dateStr.split(' ')[0]
+}
+
 // ----------------------------------------------------
 // 🌟 raota-front 커뮤니티 Mock 데이터
 // ----------------------------------------------------
@@ -1455,7 +1474,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                       )}
                       <span className="text-stone-300">·</span>
                       <span className="font-mono text-[10.5px] text-stone-400">
-                        {post.createdAt.replace(/^\d{4}\.\s*/, '').split(' ')[0]}
+                        {formatDateYMD(post.createdAt)}
                       </span>
                     </div>
 
