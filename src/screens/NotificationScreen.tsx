@@ -4,7 +4,6 @@ import {
   Heart,
   MessageSquare,
   Megaphone,
-  Soup,
   Trophy,
   Settings,
   ChevronLeft,
@@ -13,6 +12,7 @@ import {
   X,
   Sparkles,
 } from 'lucide-react'
+import RamenIcon from '../components/icons/RamenIcon'
 import type { AppNotification, NotificationSettings } from '../types'
 
 interface Props {
@@ -199,7 +199,7 @@ export default function NotificationScreen({
       case 'shop':
         return (
           <div className="w-8 h-8 rounded-[8px] bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
-            <Soup className="w-4 h-4 text-amber-600" />
+            <RamenIcon className="w-4 h-4 text-amber-600" />
           </div>
         )
       case 'level':

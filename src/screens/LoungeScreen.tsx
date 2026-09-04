@@ -7,7 +7,6 @@ import {
   CornerDownRight,
   Send,
   Store,
-  Soup,
   Lightbulb,
   Sparkles,
   MapPin,
@@ -23,6 +22,7 @@ import {
   X,
 } from 'lucide-react'
 import type { RamenLog } from '../types'
+import RamenIcon from '../components/icons/RamenIcon'
 
 
 export interface PostComment {
@@ -583,7 +583,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
                       : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                   }`}
                 >
-                  {t.id === 'REVIEW' && <Soup className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#E60000]'}`} />}
+                  {t.id === 'REVIEW' && <RamenIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#E60000]'}`} />}
                   {t.id === 'TIP' && <Lightbulb className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-amber-500'}`} />}
                   {t.id === 'QUESTION' && <HelpCircle className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-blue-500'}`} />}
                   {t.id === 'FREE' && <Sparkles className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-stone-500'}`} />}
@@ -819,7 +819,7 @@ export default function LoungeScreen({ logs, onRecordClick, onShopClick }: Props
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center">
-                  <Soup className="w-4 h-4 text-[#E60000]" />
+                  <RamenIcon className="w-4 h-4 text-[#E60000]" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">

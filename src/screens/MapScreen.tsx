@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import L from 'leaflet'
-import { Soup, ChevronDown, Search, X, SlidersHorizontal, MapPin, List, Navigation, Map } from 'lucide-react'
+import { ChevronDown, Search, X, SlidersHorizontal, MapPin, List, Navigation, Map } from 'lucide-react'
+import RamenIcon from '../components/icons/RamenIcon'
 
 
 
@@ -687,7 +688,7 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
               }`}
             >
               <div className="flex items-center gap-1.5 truncate">
-                <Soup className="w-3.5 h-3.5 text-[#E60000] shrink-0" />
+                <RamenIcon className="w-3.5 h-3.5 text-[#E60000] shrink-0" />
                 <span className="truncate">
                   {MENU_OPTIONS.find(m => m.value === menuFilter)?.label || '모든 메뉴'}
                 </span>

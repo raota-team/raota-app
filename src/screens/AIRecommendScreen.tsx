@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Target, MessageSquare, RotateCcw, Soup, ChevronLeft } from 'lucide-react'
+import { Target, MessageSquare, RotateCcw, ChevronLeft } from 'lucide-react'
+import RamenIcon from '../components/icons/RamenIcon'
 
 export function AISparkleIcon({ className = 'w-5 h-5' }: { className?: string }) {
   return (
@@ -170,7 +171,7 @@ export default function AIRecommendScreen({ onBack, onShopClick }: Props) {
           {/* 선택 조건 칩 (불필요한 장식 배제, 절제된 디스틸드 뱃지) */}
           <div className="flex flex-wrap items-center justify-center gap-1.5 mt-6 max-w-[300px]">
             <span className="px-2.5 py-1 rounded-[6px] bg-white/5 border border-white/10 text-[11px] font-bold text-stone-300 flex items-center gap-1.5">
-              <Soup className="w-3 h-3 text-[#E60000] shrink-0" />
+              <RamenIcon className="w-3 h-3 text-[#E60000] shrink-0" />
               <span>{selectedSoup.split(' ')[0]}</span>
             </span>
 

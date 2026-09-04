@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   Award,
   Bookmark,
-  Soup,
   Bell,
   Trophy,
   Lightbulb,
@@ -20,6 +19,7 @@ import {
   ChevronDown,
   Medal,
 } from 'lucide-react'
+import RamenIcon from '../components/icons/RamenIcon'
 
 
 
@@ -835,7 +835,7 @@ export default function MyScreen({
                 : 'bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:bg-stone-50'
             }`}
           >
-            <Soup className="w-3.5 h-3.5 shrink-0" />
+            <RamenIcon className="w-3.5 h-3.5 shrink-0" />
             <span>라멘로그</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
               activityTab === 'logs' ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'
@@ -934,7 +934,7 @@ export default function MyScreen({
               {/* 헤더 & 기간 선택 드롭다운 & 통계 뱃지 */}
               <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
                 <div className="flex items-center gap-1.5">
-                  <Soup className="w-4 h-4 text-[#E60000]" />
+                  <RamenIcon className="w-4 h-4 text-[#E60000]" />
                   <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">
                     라멘로그 캘린더
                   </h2>
@@ -1926,7 +1926,7 @@ export default function MyScreen({
       {toastMsg && (
         <div className="absolute bottom-3.5 left-1/2 -translate-x-1/2 z-50 pointer-events-none anim-fade-in-up">
           <div className="bg-[#25282B]/95 backdrop-blur-md text-white text-[12px] font-bold px-4 py-2.5 rounded-[32px] shadow-[0_8px_24px_rgba(0,0,0,0.25)] flex items-center gap-2 whitespace-nowrap border border-white/15">
-            <Soup className="w-4 h-4 text-[#E60000] shrink-0" />
+            <RamenIcon className="w-4 h-4 text-[#E60000] shrink-0" />
             <span>{toastMsg}</span>
           </div>
         </div>

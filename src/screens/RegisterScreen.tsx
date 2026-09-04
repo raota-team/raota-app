@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Check, Soup, X, RotateCw, Camera, MapPin, Sparkles, BookOpen, Compass } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, X, RotateCw, Camera, MapPin, Sparkles, BookOpen, Compass } from 'lucide-react'
+import RamenIcon from '../components/icons/RamenIcon'
 import type { UserProfile } from '../types'
 
 interface Props {
@@ -170,7 +171,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                   : 'text-[#7E7E7E] hover:text-[#25282B]'
               }`}
             >
-              <Soup className={`w-3.5 h-3.5 ${onboardingTab === 'log' ? 'text-[#E60000]' : 'text-[#7E7E7E]'}`} />
+              <RamenIcon className={`w-3.5 h-3.5 ${onboardingTab === 'log' ? 'text-[#E60000]' : 'text-[#7E7E7E]'}`} />
               <span>라멘로그</span>
             </button>
 
@@ -747,7 +748,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
       {toastMessage && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none anim-fade-in-up">
           <div className="bg-[#25282B]/95 backdrop-blur-md text-white text-[12px] font-bold px-4 py-2.5 rounded-[32px] shadow-[0_8px_24px_rgba(0,0,0,0.25)] flex items-center gap-2 whitespace-nowrap border border-white/15">
-            <Soup className="w-4 h-4 text-[#E60000] shrink-0" />
+            <RamenIcon className="w-4 h-4 text-[#E60000] shrink-0" />
             <span>{toastMessage}</span>
           </div>
         </div>
