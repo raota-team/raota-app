@@ -9,7 +9,7 @@ import type {
   TasteReport,
   UserProfile,
 } from "@raota/shared"
-import { SHOP_CATALOG } from "@raota/shared"
+import { DEMO_USER, SHOP_CATALOG } from "@raota/shared"
 
 const RAMEN_PHOTO_1 =
   "https://images.unsplash.com/photo-1742633882713-593c13e90231?w=1000&h=760&fit=crop&auto=format&q=82"
@@ -27,7 +27,8 @@ export const SHOPS: Shop[] = SHOP_CATALOG
 export const INITIAL_LOGS: RamenLog[] = [
   {
     id: 1,
-    author: { id: "user-demo", name: "뿡", level: "라멘 미식가 (Lv.5)" },
+    // 데모 계정의 기록은 공유 원장(DEMO_BOWLS)에 있다. 여기 넣으면 42그릇이 두 번 세어진다.
+    author: { id: "user-201", name: "멘마수집가", level: "라멘 미식가 (Lv.5)" },
     shop: {
       id: 1,
       name: "멘야준",
@@ -161,21 +162,8 @@ export const INITIAL_LOGS: RamenLog[] = [
   },
 ]
 
-export const DEFAULT_USER: UserProfile = {
-  id: "user-demo",
-  name: "뿡",
-  nickname: "뿡",
-  email: "bbung@raota.net",
-  avatar: null,
-  level: "라멘 미식가",
-  levelNumber: 5,
-  membershipNo: "#RT-0842",
-  bio: "12시간 농축 동물계 육수와 꼬들한 면을 애호합니다.",
-  favoriteRamenType: "돈코츠",
-  visitedCount: 42,
-  revisitCount: 28,
-  isLoggedIn: true,
-}
+/** 데모 계정은 웹과 같은 공유 원장의 DEMO_USER를 쓴다(42그릇, Lv.4 라멘집 단골). */
+export const DEFAULT_USER: UserProfile = DEMO_USER
 
 export const INITIAL_NOTIFICATIONS: AppNotification[] = [
   {
@@ -591,7 +579,8 @@ export const INITIAL_PERSISTED_STATE: PersistedAppStateV1 = {
   user: DEFAULT_USER,
   onboardingCompleted: true,
   logs: INITIAL_LOGS,
-  bookmarkedShopIds: [1, 3],
+  // 웹과 같은 데모 찜 목록(DEMO_SAVED_SHOP_NAMES: 멘야준·오레노라멘·묘코·세상끝의라멘)
+  bookmarkedShopIds: [1, 3, 5, 4],
   subscribedShopIds: [1, 3],
   communityPosts: INITIAL_COMMUNITY_POSTS,
   notifications: INITIAL_NOTIFICATIONS,

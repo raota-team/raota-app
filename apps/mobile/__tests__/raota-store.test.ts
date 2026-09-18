@@ -49,6 +49,7 @@ describe("raotaReducer", () => {
     const source = state.logs[0]
     const created = {
       ...source,
+      author: { ...source.author, id: state.user?.id },
       id: 9999,
       revisit: "자주 감" as const,
       createdAt: "2026-09-04T00:00:00.000Z",

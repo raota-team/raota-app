@@ -21,6 +21,7 @@ const validRecord: CreateRamenLogInput = {
     seasoning: ["딱 좋아요"],
     topping: ["차슈 좋아요"],
   },
+  scores: { satisfaction: 4, brothDensity: 5, noodleFirmness: 4, topping: 3, revisit: 5 },
   revisit: "자주 감",
   isPublic: true,
 }
@@ -36,15 +37,37 @@ describe("record validation", () => {
       ...validRecord,
       shopId: null,
       menuName: " ",
-      tasteNotes: { ...validRecord.tasteNotes, broth: [] },
-      note: "짧음",
+      scores: { satisfaction: 4, topping: 3 },
     })
 
-    expect(errors.map((error) => error.field)).toEqual([
+    expect(errors.map((error) => error.axis ?? error.field)).toEqual([
       "shopId",
       "menuName",
-      "tasteNotes",
-      "note",
+      "brothDensity",
+      "noodleFirmness",
+    ])
+    expect(errors[3].message).toBe("면 삶기를 골라주세요.")
+  })
+
+  it("treats memo and taste tags as optional", () => {
+    expect(
+      validateRecordDraft({
+        ...validRecord,
+        note: "",
+        tasteNotes: { broth: [], noodle: [], seasoning: [], topping: [] },
+      }),
+    ).toEqual([])
+    expect(validateRecordDraft({ ...validRecord, note: "라".repeat(501) })[0].field).toBe("note")
+  })
+
+  it("asks for the revisit answer and uses the right particle for 토핑", () => {
+    const errors = validateRecordDraft({ ...validRecord, scores: {}, revisit: null })
+    expect(errors.map((error) => error.message)).toEqual([
+      "전체 만족도를 골라주세요.",
+      "육수 농도를 골라주세요.",
+      "면 삶기를 골라주세요.",
+      "토핑을 골라주세요.",
+      "재방문 의사를 골라주세요.",
     ])
   })
 

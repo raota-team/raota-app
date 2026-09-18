@@ -1,25 +1,47 @@
 import {
   RAMEN_TYPES,
+  TASTE_AXES,
   TASTE_FIELDS,
   type CreateRamenLogInput,
+  type TasteAxisKey,
   type TasteNoteKey,
   type TasteNotes,
+  type TasteScores,
 } from "@raota/shared"
 
-export type RecordValidationField = "shopId" | "menuName" | "ramenType" | "visitedAt" | "tasteNotes" | "note"
+export type RecordValidationField =
+  | "shopId"
+  | "menuName"
+  | "ramenType"
+  | "visitedAt"
+  | "scores"
+  | "tasteNotes"
+  | "note"
 
 export interface RecordValidationError {
   field: RecordValidationField
+  /** field가 scores일 때 비어 있는 축 */
+  axis?: TasteAxisKey
   message: string
 }
 
 export interface RecordDraft
-  extends Omit<CreateRamenLogInput, "shopId" | "menuName" | "ramenType" | "note"> {
+  extends Omit<
+    CreateRamenLogInput,
+    "shopId" | "menuName" | "ramenType" | "note" | "tasteNotes" | "scores" | "revisit"
+  > {
   shopId?: number | null
   menuName?: string | null
   ramenType?: string | null
   note?: string | null
+  tasteNotes?: TasteNotes | null
+  /** 아직 고르지 않은 축은 비어 있다 */
+  scores?: Partial<TasteScores> | null
+  revisit?: CreateRamenLogInput["revisit"] | null
 }
+
+/** 메모 최대 길이. 메모는 선택이다. */
+export const RECORD_NOTE_MAX_LENGTH = 500
 
 export interface RecordValidationOptions {
   validShopIds?: Iterable<number>
@@ -36,21 +58,39 @@ const TASTE_OPTIONS = new Map(
   TASTE_FIELDS.map((field) => [field.key, new Set(field.options)] as const),
 )
 
-export function hasCompleteTasteNotes(
-  tasteNotes: TasteNotes | unknown,
-): tasteNotes is TasteNotes {
-  if (!tasteNotes || typeof tasteNotes !== "object") return false
+/** 맛 태그는 선택이다. 고른 태그가 모두 허용된 보기인지만 확인한다. */
+export function hasValidTasteNotes(tasteNotes: TasteNotes | null | undefined): boolean {
+  if (!tasteNotes) return true
+  if (typeof tasteNotes !== "object") return false
   return TASTE_NOTE_KEYS.every((key) => {
     const notes = (tasteNotes as Partial<TasteNotes>)[key]
+    if (notes === undefined) return true
     const allowed = TASTE_OPTIONS.get(key)
     return (
       Array.isArray(notes) &&
-      notes.length > 0 &&
-      notes.every(
-        (note) => typeof note === "string" && Boolean(allowed?.has(note)),
-      )
+      notes.every((note) => typeof note === "string" && Boolean(allowed?.has(note)))
     )
   })
+}
+
+/** 받침이 있으면 "을", 없으면 "를" */
+export function withObjectParticle(word: string): string {
+  const last = word.charCodeAt(word.length - 1)
+  if (last < 0xac00 || last > 0xd7a3) return `${word}를`
+  return (last - 0xac00) % 28 === 0 ? `${word}를` : `${word}을`
+}
+
+const isScore = (value: unknown) =>
+  typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5
+
+/**
+ * 아직 고르지 않은 5축. 재방문 의사는 revisit 답으로 채워지므로 revisit이 없을 때만 빠진 것으로 본다.
+ * 순서는 화면 순서(TASTE_AXES)와 같아 첫 항목으로 바로 스크롤할 수 있다.
+ */
+export function missingScoreAxes(draft: Pick<RecordDraft, "scores" | "revisit">): TasteAxisKey[] {
+  return TASTE_AXES.filter(({ key }) =>
+    key === "revisit" ? !draft.revisit : !isScore(draft.scores?.[key]),
+  ).map(({ key }) => key)
 }
 
 function isValidCalendarDate(value: string): boolean {
@@ -117,16 +157,17 @@ export function validateRecordDraft(
       message: "방문일을 오늘 이전의 올바른 날짜로 선택해주세요.",
     })
   }
-  if (!hasCompleteTasteNotes(draft.tasteNotes)) {
-    errors.push({
-      field: "tasteNotes",
-      message: "국물·면·간·토핑에서 느낌을 하나 이상 골라주세요.",
-    })
+  for (const axis of missingScoreAxes(draft)) {
+    const label = TASTE_AXES.find(({ key }) => key === axis)?.label ?? axis
+    errors.push({ field: "scores", axis, message: `${withObjectParticle(label)} 골라주세요.` })
   }
-  if ((draft.note?.trim().length ?? 0) < 5) {
+  if (!hasValidTasteNotes(draft.tasteNotes)) {
+    errors.push({ field: "tasteNotes", message: "맛 태그는 보기에서만 고를 수 있어요." })
+  }
+  if ((draft.note?.length ?? 0) > RECORD_NOTE_MAX_LENGTH) {
     errors.push({
       field: "note",
-      message: "다음의 나를 위해 5자 이상 시식 메모를 남겨주세요.",
+      message: `메모는 ${RECORD_NOTE_MAX_LENGTH}자까지 남길 수 있어요. 지금 ${draft.note?.length}자예요.`,
     })
   }
 

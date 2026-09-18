@@ -27,6 +27,7 @@ const logInput: CreateRamenLogInput = {
     seasoning: ["딱 좋아요"],
     topping: ["계란 좋아요"],
   },
+  scores: { satisfaction: 4, brothDensity: 5, noodleFirmness: 4, topping: 3, revisit: 5 },
   revisit: "자주 감",
   isPublic: false,
 }
@@ -103,9 +104,9 @@ describe("persistent store actions", () => {
       </RaotaProvider>,
     )
 
-    expect(view.getByText("42:42:1")).toBeTruthy()
+    expect(view.getByText("42:42:0")).toBeTruthy()
     await fireEvent.press(view.getByRole("button", { name: "기록 생성" }))
-    expect(await view.findByText("43:43:2")).toBeTruthy()
+    expect(await view.findByText("43:43:1")).toBeTruthy()
   })
 
   it("creates a clean level-one account after local withdrawal", async () => {

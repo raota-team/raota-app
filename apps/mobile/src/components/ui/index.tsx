@@ -12,17 +12,16 @@ import {
   type PressableProps,
   type ScrollViewProps,
   type StyleProp,
-  type TextStyle,
-  type ViewProps,
-  type ViewStyle,
   type TextProps,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native"
-import { SafeAreaView, type Edge } from "react-native-safe-area-context"
-import { useEffect, type PropsWithChildren, type ReactNode } from "react"
+import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context"
+import { forwardRef, useEffect, type PropsWithChildren, type ReactNode } from "react"
 
 import {
   colors,
-  fonts,
+  maxFontScale,
   radii,
   shadows,
   spacing,
@@ -30,9 +29,60 @@ import {
   typography,
 } from "../../theme"
 
-function Text({ style, ...props }: TextProps) {
-  return <NativeText {...props} style={[{ fontFamily: fonts.body }, style]} />
+/*
+ * RAOTA 공통 부품. 모양은 apps/mobile/DESIGN.md와 웹 프로토타입(src/)을 따른다.
+ * 새 화면은 hex나 임의 크기 대신 여기 부품과 src/theme 토큰만 쓴다.
+ */
+
+// ---------------------------------------------------------------------------
+// 글씨
+// ---------------------------------------------------------------------------
+
+export type TextVariant =
+  | "counter"
+  | "headline"
+  | "screenTitle"
+  | "sectionTitle"
+  | "cardTitle"
+  | "body"
+  | "bodyStrong"
+  | "secondary"
+  | "meta"
+
+export type TextTone = "ink" | "sub" | "muted" | "brand" | "onDark" | "onDarkMuted" | "positive" | "critical"
+
+const toneColor: Record<TextTone, string> = {
+  ink: colors.ink,
+  sub: colors.inkSub,
+  muted: colors.textMuted,
+  brand: colors.brand,
+  onDark: colors.onDark,
+  onDarkMuted: colors.onDarkMuted,
+  positive: colors.positive,
+  critical: colors.critical,
 }
+
+export interface AppTextProps extends TextProps {
+  variant?: TextVariant
+  tone?: TextTone
+  /** 한 줄 메타·탭 라벨처럼 넘치면 안 되는 글씨는 Dynamic Type 확대를 제한한다 */
+  capScale?: boolean
+}
+
+/** 역할(variant)과 색(tone)으로 쓰는 글씨. 12pt 하한이 들어 있다. */
+export function AppText({ variant = "body", tone = "ink", capScale = false, style, ...props }: AppTextProps) {
+  return (
+    <NativeText
+      maxFontSizeMultiplier={capScale ? maxFontScale : undefined}
+      {...props}
+      style={[typography[variant], { color: toneColor[tone] }, style]}
+    />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 화면 틀
+// ---------------------------------------------------------------------------
 
 export interface ScreenProps extends PropsWithChildren {
   style?: StyleProp<ViewStyle>
@@ -58,6 +108,7 @@ export function Screen({
 }: ScreenProps) {
   const content = scroll ? (
     <ScrollView
+      keyboardDismissMode="interactive"
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       {...scrollViewProps}
@@ -66,9 +117,7 @@ export function Screen({
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.screenContent, contentContainerStyle]}>
-      {children}
-    </View>
+    <View style={[styles.screenContent, contentContainerStyle]}>{children}</View>
   )
 
   return (
@@ -95,10 +144,13 @@ export interface HeaderProps {
   backLabel?: string
   left?: ReactNode
   right?: ReactNode
+  /** 웹과 같은 왼쪽 정렬이 기본. 가운데 정렬은 모달 헤더에만 쓴다 */
+  align?: "left" | "center"
   style?: StyleProp<ViewStyle>
   titleStyle?: StyleProp<TextStyle>
 }
 
+/** 스택 헤더 56pt: 44pt 뒤로가기 · 제목(screen-title) · 44pt 행동 슬롯 · hairline */
 export function Header({
   title,
   subtitle,
@@ -106,40 +158,37 @@ export function Header({
   backLabel = "뒤로",
   left,
   right,
+  align = "left",
   style,
   titleStyle,
 }: HeaderProps) {
+  const back =
+    left ??
+    (onBack ? (
+      <Pressable
+        accessibilityLabel={backLabel}
+        accessibilityRole="button"
+        onPress={onBack}
+        style={({ pressed }) => [styles.iconButton, pressed && styles.pressedWash]}
+      >
+        <ChevronLeft color={colors.ink} size={24} strokeWidth={2.2} />
+      </Pressable>
+    ) : null)
   return (
     <View style={[styles.header, style]}>
-      <View style={styles.headerSide}>
-        {left ??
-          (onBack ? (
-            <Pressable
-              accessibilityLabel={backLabel}
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={onBack}
-              style={({ pressed }) => [
-                styles.iconButton,
-                pressed && styles.transparentPressed,
-              ]}
-            >
-              <ChevronLeft color={colors.text} size={24} strokeWidth={2.2} />
-            </Pressable>
-          ) : null)}
-      </View>
-      <View style={styles.headerTitles}>
-        <Text
+      {align === "center" || back ? <View style={styles.headerSide}>{back}</View> : null}
+      <View style={[styles.headerTitles, align === "center" && styles.headerTitlesCenter]}>
+        <NativeText
           accessibilityRole="header"
-          numberOfLines={2}
-          style={[styles.headerTitle, titleStyle]}
+          numberOfLines={1}
+          style={[typography.screenTitle, { color: colors.ink }, align === "center" && styles.textCenter, titleStyle]}
         >
           {title}
-        </Text>
+        </NativeText>
         {subtitle ? (
-          <Text numberOfLines={1} style={styles.headerSubtitle}>
+          <AppText capScale numberOfLines={1} tone="muted" variant="meta">
             {subtitle}
-          </Text>
+          </AppText>
         ) : null}
       </View>
       <View style={[styles.headerSide, styles.headerRight]}>{right}</View>
@@ -147,11 +196,42 @@ export function Header({
   )
 }
 
-export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger"
+export interface SectionHeaderProps {
+  title: string
+  /** 오른쪽의 짧은 보조 정보 ("필수", "최근 5그릇") */
+  meta?: string
+  metaTone?: TextTone
+  style?: StyleProp<ViewStyle>
+}
+
+/** 섹션 제목(section-title) + 오른쪽 메타. 제목 위 eyebrow 라벨은 쓰지 않는다 */
+export function SectionHeader({ title, meta, metaTone = "muted", style }: SectionHeaderProps) {
+  return (
+    <View style={[styles.sectionHeader, style]}>
+      <AppText accessibilityRole="header" style={styles.flex} variant="sectionTitle">
+        {title}
+      </AppText>
+      {meta ? (
+        <AppText capScale tone={metaTone} variant="meta">
+          {meta}
+        </AppText>
+      ) : null}
+    </View>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 버튼
+// ---------------------------------------------------------------------------
+
+/**
+ * primary 빨강 알약 · secondary 잉크 알약 · outline 흰 면 + 경계 알약 ·
+ * utility 2pt 사각형 · ghost 글씨만 · danger 되돌릴 수 없는 행동(빨강)
+ */
+export type ButtonVariant = "primary" | "secondary" | "outline" | "utility" | "ghost" | "danger"
 export type ButtonSize = "small" | "medium" | "large"
 
-export interface ButtonProps
-  extends Omit<PressableProps, "children" | "style"> {
+export interface ButtonProps extends Omit<PressableProps, "children" | "style"> {
   title: string
   variant?: ButtonVariant
   size?: ButtonSize
@@ -164,31 +244,27 @@ export interface ButtonProps
 }
 
 const buttonVariants: Record<ButtonVariant, ViewStyle> = {
-  primary: { backgroundColor: colors.brand, borderColor: colors.brand },
-  secondary: { backgroundColor: colors.text, borderColor: colors.text },
-  outline: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
-  },
-  ghost: {
-    backgroundColor: colors.transparent,
-    borderColor: colors.transparent,
-  },
-  danger: { backgroundColor: colors.critical, borderColor: colors.critical },
+  primary: { backgroundColor: colors.brand, borderColor: colors.brand, borderRadius: radii.pill },
+  secondary: { backgroundColor: colors.ink, borderColor: colors.ink, borderRadius: radii.pill },
+  outline: { backgroundColor: colors.canvas, borderColor: colors.border, borderRadius: radii.pill },
+  utility: { backgroundColor: colors.canvas, borderColor: colors.ink, borderRadius: radii.xs },
+  ghost: { backgroundColor: colors.transparent, borderColor: colors.transparent, borderRadius: radii.pill },
+  danger: { backgroundColor: colors.brand, borderColor: colors.brand, borderRadius: radii.pill },
 }
 
-const buttonTextVariants: Record<ButtonVariant, TextStyle> = {
-  primary: { color: colors.textInverted },
-  secondary: { color: colors.textInverted },
-  outline: { color: colors.text },
-  ghost: { color: colors.brand },
-  danger: { color: colors.textInverted },
+const buttonTextColor: Record<ButtonVariant, string> = {
+  primary: colors.onDark,
+  secondary: colors.onDark,
+  outline: colors.ink,
+  utility: colors.ink,
+  ghost: colors.brand,
+  danger: colors.onDark,
 }
 
 const buttonSizes: Record<ButtonSize, ViewStyle> = {
-  small: { minHeight: touchTarget, paddingHorizontal: spacing.x3 },
-  medium: { minHeight: 48, paddingHorizontal: spacing.x4 },
-  large: { minHeight: 54, paddingHorizontal: spacing.x5 },
+  small: { minHeight: touchTarget, paddingHorizontal: spacing.x4 },
+  medium: { minHeight: 48, paddingHorizontal: spacing.x5 },
+  large: { minHeight: 52, paddingHorizontal: spacing.x6 },
 }
 
 export function Button({
@@ -206,6 +282,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const unavailable = disabled || loading
+  const color = buttonTextColor[variant]
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
@@ -218,26 +295,54 @@ export function Button({
         buttonVariants[variant],
         buttonSizes[size],
         fullWidth && styles.fullWidth,
-        pressed && !unavailable && styles.buttonPressed,
+        pressed && !unavailable && (variant === "outline" || variant === "utility" || variant === "ghost" ? styles.pressedWash : styles.pressedDim),
         unavailable && styles.disabled,
         style,
       ]}
     >
-      {loading ? (
-        <ActivityIndicator
-          color={buttonTextVariants[variant].color}
-          size="small"
-        />
-      ) : (
-        leftIcon
-      )}
-      <Text style={[styles.buttonText, buttonTextVariants[variant], textStyle]}>
+      {loading ? <ActivityIndicator color={color} size="small" /> : leftIcon}
+      <NativeText
+        maxFontSizeMultiplier={maxFontScale}
+        numberOfLines={1}
+        style={[variant === "utility" ? typography.secondary : typography.bodyStrong, styles.buttonText, { color }, variant === "utility" && styles.bold, textStyle]}
+      >
         {title}
-      </Text>
+      </NativeText>
       {!loading ? rightIcon : null}
     </Pressable>
   )
 }
+
+export interface IconButtonProps extends Omit<PressableProps, "children" | "style"> {
+  /** VoiceOver가 읽을 이름. 아이콘 전용 버튼에는 필수 */
+  accessibilityLabel: string
+  icon: ReactNode
+  /** 사진 위처럼 어두운 면에 올릴 때 */
+  onImage?: boolean
+  style?: StyleProp<ViewStyle>
+}
+
+/** 44pt 원형 아이콘 버튼 */
+export function IconButton({ icon, onImage = false, style, ...props }: IconButtonProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      {...props}
+      style={({ pressed }) => [
+        styles.iconButton,
+        onImage && styles.iconButtonOnImage,
+        pressed && (onImage ? styles.pressedDim : styles.pressedWash),
+        style,
+      ]}
+    >
+      {icon}
+    </Pressable>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 칩, 태그, 5축 입력
+// ---------------------------------------------------------------------------
 
 export interface ChipProps extends Omit<PressableProps, "children" | "style"> {
   label: string
@@ -247,6 +352,7 @@ export interface ChipProps extends Omit<PressableProps, "children" | "style"> {
   textStyle?: StyleProp<TextStyle>
 }
 
+/** 흰 면 + 경계 알약, 선택은 빨강. 선택 상태를 VoiceOver에 알린다 */
 export function Chip({
   label,
   selected = false,
@@ -267,24 +373,117 @@ export function Chip({
       style={({ pressed }) => [
         styles.chip,
         selected && styles.chipSelected,
-        pressed && styles.transparentPressed,
+        pressed && !selected && styles.pressedWash,
         disabled && styles.disabled,
         style,
       ]}
     >
       {leading}
-      <Text
-        style={[
-          styles.chipText,
-          selected && styles.chipTextSelected,
-          textStyle,
-        ]}
+      <NativeText
+        maxFontSizeMultiplier={maxFontScale}
+        style={[typography.secondary, styles.bold, { color: selected ? colors.onDark : colors.ink }, textStyle]}
       >
         {label}
-      </Text>
+      </NativeText>
     </Pressable>
   )
 }
+
+/** 읽기 전용 태그. 2pt 모서리, 회색 면 */
+export function Tag({ label, style }: { label: string; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[styles.tag, style]}>
+      <AppText capScale variant="meta">
+        {label}
+      </AppText>
+    </View>
+  )
+}
+
+export interface ScoreSegmentProps {
+  /** 축 이름 ("육수 농도") */
+  label: string
+  /** 1점 쪽 설명 ("맑음") */
+  low: string
+  /** 5점 쪽 설명 ("진함") */
+  high: string
+  value: number | null
+  onChange: (value: number) => void
+  /** 제출을 시도했는데 비어 있으면 빨간 테두리와 안내를 보여준다 */
+  invalid?: boolean
+  /** 화면 순서 번호(1~5). 축 이름 앞에 붙는다 */
+  index?: number
+  style?: StyleProp<ViewStyle>
+}
+
+/**
+ * 5축 평가 한 줄. 1~5 세그먼트, 각 칸 44pt 이상, 선택은 빨강.
+ * VoiceOver: radiogroup + radio(checked), 라벨은 "육수 농도 4점, 진함 쪽".
+ * ref는 첫 번째 칸에 걸려 빠진 항목으로 포커스를 옮길 때 쓴다.
+ */
+export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSegment(
+  { label, low, high, value, onChange, invalid = false, index, style },
+  ref,
+) {
+  const lean = (score: number) => (score <= 2 ? `${low} 쪽` : score >= 4 ? `${high} 쪽` : "보통")
+  return (
+    <View style={style}>
+      <View style={styles.scoreHead}>
+        <AppText variant="bodyStrong">
+          {index ? <AppText tone="muted" variant="bodyStrong">{`${index}  `}</AppText> : null}
+          {label}
+        </AppText>
+        <AppText capScale tone={invalid ? "critical" : value ? "ink" : "muted"} variant="meta">
+          {value ? `${value}점` : invalid ? "골라주세요" : "미선택"}
+        </AppText>
+      </View>
+      <View
+        accessibilityLabel={label}
+        accessibilityRole="radiogroup"
+        ref={ref}
+        style={[styles.segment, invalid && styles.segmentInvalid]}
+      >
+        {[1, 2, 3, 4, 5].map((score) => {
+          const selected = value === score
+          return (
+            <Pressable
+              accessibilityLabel={`${label} ${score}점, ${lean(score)}`}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              key={score}
+              onPress={() => onChange(score)}
+              style={({ pressed }) => [
+                styles.segmentCell,
+                score > 1 && styles.segmentDivider,
+                selected && styles.segmentSelected,
+                pressed && !selected && styles.pressedWashBg,
+              ]}
+            >
+              <NativeText
+                maxFontSizeMultiplier={maxFontScale}
+                style={[typography.bodyStrong, { color: selected ? colors.onDark : colors.ink }]}
+              >
+                {score}
+              </NativeText>
+            </Pressable>
+          )
+        })}
+      </View>
+      <View style={styles.scoreEnds}>
+        <AppText capScale tone="muted" variant="meta">
+          {low}
+        </AppText>
+        <AppText capScale tone="muted" variant="meta">
+          {high}
+        </AppText>
+      </View>
+    </View>
+  )
+})
+
+// ---------------------------------------------------------------------------
+// 카드, 상태
+// ---------------------------------------------------------------------------
 
 export interface CardProps extends PropsWithChildren {
   onPress?: () => void
@@ -294,25 +493,15 @@ export interface CardProps extends PropsWithChildren {
   testID?: string
 }
 
-export function Card({
-  children,
-  onPress,
-  accessibilityLabel,
-  style,
-  contentStyle,
-  testID,
-}: CardProps) {
+/** 흰 면, 6pt, 1pt 경계, 그림자 없음. 카드 안에 카드를 넣지 않는다 */
+export function Card({ children, onPress, accessibilityLabel, style, contentStyle, testID }: CardProps) {
   if (onPress) {
     return (
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         onPress={onPress}
-        style={({ pressed }) => [
-          styles.card,
-          pressed && styles.cardPressed,
-          style,
-        ]}
+        style={({ pressed }) => [styles.card, pressed && styles.pressedWashBg, style]}
         testID={testID}
       >
         <View style={contentStyle}>{children}</View>
@@ -340,17 +529,18 @@ export interface ToastProps {
 }
 
 const toastColors: Record<FeedbackVariant, string> = {
-  neutral: colors.text,
-  positive: colors.positive,
+  neutral: colors.ink,
+  positive: colors.ink,
   critical: colors.critical,
-  informative: colors.informative,
+  informative: colors.ink,
 }
 
+/** 잉크 알약 토스트. 성공·실패를 색만으로 구분하지 않도록 문구에 결과를 쓴다 */
 export function Toast({
   visible,
   message,
   variant = "neutral",
-  duration = 2800,
+  duration = 2500,
   onDismiss,
   actionLabel,
   onAction,
@@ -369,15 +559,14 @@ export function Toast({
       accessibilityRole="alert"
       style={[styles.toast, { backgroundColor: toastColors[variant] }, style]}
     >
-      <Text style={styles.toastMessage}>{message}</Text>
+      <AppText style={styles.flex} tone="onDark" variant="secondary">
+        {message}
+      </AppText>
       {actionLabel && onAction ? (
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={onAction}
-          style={styles.toastAction}
-        >
-          <Text style={styles.toastActionText}>{actionLabel}</Text>
+        <Pressable accessibilityRole="button" onPress={onAction} style={styles.toastAction}>
+          <AppText style={styles.underline} tone="onDark" variant="secondary">
+            {actionLabel}
+          </AppText>
         </Pressable>
       ) : null}
     </View>
@@ -393,29 +582,21 @@ export interface EmptyStateProps {
   style?: StyleProp<ViewStyle>
 }
 
-export function EmptyState({
-  title,
-  description,
-  icon,
-  actionLabel,
-  onAction,
-  style,
-}: EmptyStateProps) {
+/** 아이콘 → 짧은 제목 → 해결 방법 → 필요할 때만 CTA */
+export function EmptyState({ title, description, icon, actionLabel, onAction, style }: EmptyStateProps) {
   return (
     <View style={[styles.stateContainer, style]}>
       {icon ? <View style={styles.stateIcon}>{icon}</View> : null}
-      <Text style={styles.stateTitle}>{title}</Text>
+      <AppText style={styles.textCenter} variant="cardTitle">
+        {title}
+      </AppText>
       {description ? (
-        <Text style={styles.stateDescription}>{description}</Text>
+        <AppText style={[styles.textCenter, styles.stateDescription]} tone="muted" variant="secondary">
+          {description}
+        </AppText>
       ) : null}
       {actionLabel && onAction ? (
-        <Button
-          onPress={onAction}
-          size="small"
-          style={styles.stateAction}
-          title={actionLabel}
-          variant="outline"
-        />
+        <Button onPress={onAction} size="small" style={styles.stateAction} title={actionLabel} variant="outline" />
       ) : null}
     </View>
   )
@@ -431,12 +612,7 @@ export interface LoadingStateProps {
   style?: StyleProp<ViewStyle>
 }
 
-export function LoadingState({
-  label = "불러오는 중…",
-  fullScreen = false,
-  color = colors.brand,
-  style,
-}: LoadingStateProps) {
+export function LoadingState({ label = "불러오는 중…", fullScreen = false, color = colors.brand, style }: LoadingStateProps) {
   return (
     <View
       accessibilityLabel={label}
@@ -445,13 +621,50 @@ export function LoadingState({
       style={[styles.loading, fullScreen && styles.flex, style]}
     >
       <ActivityIndicator color={color} size="small" />
-      {label ? <Text style={styles.loadingText}>{label}</Text> : null}
+      {label ? (
+        <AppText tone="muted" variant="secondary">
+          {label}
+        </AppText>
+      ) : null}
     </View>
   )
 }
 
 /** Short alias for compact call sites. */
 export const Loading = LoadingState
+
+// ---------------------------------------------------------------------------
+// 하단 고정 행동 바
+// ---------------------------------------------------------------------------
+
+export interface StickyActionBarProps extends PropsWithChildren {
+  /** 버튼 위 한 줄 안내. 비활성 이유("육수 농도를 골라주세요")를 여기 쓴다 */
+  hint?: string
+  hintTone?: TextTone
+  style?: StyleProp<ViewStyle>
+}
+
+/**
+ * 화면 하단에 고정되는 행동 영역. 하단 inset을 더해 홈 인디케이터와 겹치지 않는다.
+ * 320×568 화면에서도 스크롤 없이 보여야 하는 CTA(기록 저장, 완료, 다음 단계)에 쓴다.
+ */
+export function StickyActionBar({ hint, hintTone = "muted", style, children }: StickyActionBarProps) {
+  const insets = useSafeAreaInsets()
+  return (
+    <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, spacing.x3) }, style]}>
+      {hint ? (
+        <AppText accessibilityLiveRegion="polite" capScale numberOfLines={2} tone={hintTone} variant="meta">
+          {hint}
+        </AppText>
+      ) : null}
+      <View style={styles.stickyActions}>{children}</View>
+    </View>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 시트와 확인창
+// ---------------------------------------------------------------------------
 
 export interface BottomSheetProps extends PropsWithChildren {
   visible: boolean
@@ -464,13 +677,14 @@ export interface BottomSheetProps extends PropsWithChildren {
   footer?: ReactNode
 }
 
+/** 입력이 필요한 짧은 과제용. 12pt 윗모서리, 36×4 손잡이, 검정 50% 뒤판 */
 export function BottomSheet({
   visible,
   onClose,
   title,
   description,
   closeLabel = "닫기",
-  maxHeight = "88%",
+  maxHeight = "85%",
   dismissOnBackdropPress = true,
   footer,
   children,
@@ -484,38 +698,30 @@ export function BottomSheet({
       transparent
       visible={visible}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.modalRoot}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalRoot}>
         <Pressable
-          accessibilityLabel="시트 바깥 영역"
+          accessibilityLabel={`${title ?? "시트"} 닫기`}
           accessibilityRole="button"
           onPress={dismissOnBackdropPress ? onClose : undefined}
           style={styles.backdrop}
         />
-        <SafeAreaView edges={["bottom"]} style={[styles.sheet, { maxHeight }]}>
+        <SafeAreaView accessibilityViewIsModal edges={["bottom"]} style={[styles.sheet, { maxHeight }]}>
           <View style={styles.sheetHandle} />
           {title || description ? (
             <View style={styles.sheetHeader}>
-              <View style={styles.sheetTitles}>
-                {title ? <Text style={styles.sheetTitle}>{title}</Text> : null}
+              <View style={styles.flex}>
+                {title ? (
+                  <AppText accessibilityRole="header" variant="sectionTitle">
+                    {title}
+                  </AppText>
+                ) : null}
                 {description ? (
-                  <Text style={styles.sheetDescription}>{description}</Text>
+                  <AppText style={styles.sheetDescription} tone="muted" variant="secondary">
+                    {description}
+                  </AppText>
                 ) : null}
               </View>
-              <Pressable
-                accessibilityLabel={closeLabel}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={onClose}
-                style={({ pressed }) => [
-                  styles.iconButton,
-                  pressed && styles.transparentPressed,
-                ]}
-              >
-                <X color={colors.text} size={22} />
-              </Pressable>
+              <IconButton accessibilityLabel={closeLabel} icon={<X color={colors.ink} size={22} />} onPress={onClose} />
             </View>
           ) : null}
           <View style={styles.sheetContent}>{children}</View>
@@ -532,12 +738,14 @@ export interface ConfirmDialogProps {
   message?: string
   confirmLabel?: string
   cancelLabel?: string
+  /** 탈퇴처럼 되돌릴 수 없는 행동이면 확인 버튼이 빨강 */
   destructive?: boolean
   loading?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
 
+/** 되돌리기 어려운 행동의 확인. 가운데, 최대 320pt, [취소 · 확인] */
 export function ConfirmDialog({
   visible,
   title,
@@ -550,36 +758,26 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <Modal
-      animationType="fade"
-      onRequestClose={onCancel}
-      presentationStyle="overFullScreen"
-      transparent
-      visible={visible}
-    >
+    <Modal animationType="fade" onRequestClose={onCancel} presentationStyle="overFullScreen" transparent visible={visible}>
       <View style={styles.dialogRoot}>
-        <Pressable
-          accessibilityLabel="대화상자 닫기"
-          accessibilityRole="button"
-          onPress={onCancel}
-          style={styles.backdrop}
-        />
-        <View accessibilityRole="alert" style={styles.dialog}>
-          <Text style={styles.dialogTitle}>{title}</Text>
-          {message ? <Text style={styles.dialogMessage}>{message}</Text> : null}
+        <Pressable accessibilityLabel={`${title} 닫기`} accessibilityRole="button" onPress={onCancel} style={styles.backdrop} />
+        <View accessibilityRole="alert" accessibilityViewIsModal style={styles.dialog}>
+          <AppText accessibilityRole="header" style={styles.textCenter} variant="sectionTitle">
+            {title}
+          </AppText>
+          {message ? (
+            <AppText style={[styles.textCenter, styles.dialogMessage]} tone="sub" variant="body">
+              {message}
+            </AppText>
+          ) : null}
           <View style={styles.dialogActions}>
-            <Button
-              fullWidth
-              onPress={onCancel}
-              title={cancelLabel}
-              variant="outline"
-            />
+            <Button disabled={loading} fullWidth onPress={onCancel} title={cancelLabel} variant="outline" />
             <Button
               fullWidth
               loading={loading}
               onPress={onConfirm}
               title={confirmLabel}
-              variant={destructive ? "danger" : "primary"}
+              variant={destructive ? "danger" : "secondary"}
             />
           </View>
         </View>
@@ -593,38 +791,26 @@ export const Dialog = ConfirmDialog
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: colors.background },
+  textCenter: { textAlign: "center" },
+  bold: { fontWeight: "700" },
+  underline: { textDecorationLine: "underline" },
+  screen: { flex: 1, backgroundColor: colors.canvas },
   screenContent: { flexGrow: 1 },
   header: {
     minHeight: 56,
-    paddingHorizontal: spacing.gutter,
+    paddingLeft: spacing.x2,
+    paddingRight: spacing.x2,
     flexDirection: "row",
     alignItems: "center",
     borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.canvas,
   },
-  headerSide: {
-    width: touchTarget,
-    minHeight: touchTarget,
-    justifyContent: "center",
-  },
+  headerSide: { minWidth: touchTarget, minHeight: touchTarget, justifyContent: "center" },
   headerRight: { alignItems: "flex-end" },
-  headerTitles: {
-    flex: 1,
-    alignItems: "center",
-    paddingHorizontal: spacing.x1,
-  },
-  headerTitle: {
-    ...typography.sectionTitle,
-    color: colors.text,
-    textAlign: "center",
-  },
-  headerSubtitle: {
-    ...typography.small,
-    color: colors.textMuted,
-    marginTop: spacing.x0_5,
-  },
+  headerTitles: { flex: 1, paddingHorizontal: spacing.x2 },
+  headerTitlesCenter: { alignItems: "center" },
+  sectionHeader: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2 },
   iconButton: {
     width: touchTarget,
     height: touchTarget,
@@ -632,24 +818,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radii.pill,
   },
-  transparentPressed: { opacity: 0.58 },
+  iconButtonOnImage: { backgroundColor: "rgba(0, 0, 0, 0.5)" },
+  pressedWash: { backgroundColor: colors.canvasSoft },
+  pressedWashBg: { backgroundColor: colors.canvasSoft },
+  pressedDim: { opacity: 0.85 },
   button: {
     borderWidth: 1,
-    borderRadius: radii.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.x2,
   },
-  buttonText: { ...typography.label, textAlign: "center" },
-  buttonPressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
+  buttonText: { textAlign: "center" },
   fullWidth: { alignSelf: "stretch", flex: 1 },
-  disabled: { opacity: 0.42 },
+  disabled: { opacity: 0.4 },
   chip: {
     minHeight: touchTarget,
-    paddingHorizontal: spacing.x3,
+    paddingHorizontal: spacing.x4,
     borderRadius: radii.pill,
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.canvas,
     borderColor: colors.border,
     borderWidth: 1,
     flexDirection: "row",
@@ -657,20 +844,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.x1_5,
   },
-  chipSelected: { backgroundColor: colors.text, borderColor: colors.text },
-  chipText: { ...typography.captionStrong, color: colors.textMuted },
-  chipTextSelected: { color: colors.textInverted },
+  chipSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
+  tag: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.canvasSoft,
+    borderRadius: radii.xs,
+    paddingHorizontal: spacing.x2,
+    paddingVertical: spacing.x1,
+  },
+  scoreHead: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    marginBottom: spacing.x2,
+  },
+  segment: {
+    flexDirection: "row",
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+  },
+  segmentInvalid: { borderColor: colors.brand },
+  segmentCell: {
+    flex: 1,
+    minHeight: touchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.canvas,
+  },
+  segmentDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
+  segmentSelected: { backgroundColor: colors.brand },
+  scoreEnds: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.x1_5 },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
+    backgroundColor: colors.canvas,
+    borderRadius: radii.sm,
     borderColor: colors.border,
     borderWidth: 1,
     padding: spacing.x4,
-    ...shadows.card,
-  },
-  cardPressed: {
-    backgroundColor: colors.surfacePressed,
-    transform: [{ scale: 0.995 }],
   },
   toast: {
     position: "absolute",
@@ -678,46 +889,18 @@ const styles = StyleSheet.create({
     right: spacing.gutter,
     bottom: spacing.x6,
     minHeight: touchTarget,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.x4,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.x5,
     paddingVertical: spacing.x3,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.x3,
     ...shadows.floating,
   },
-  toastMessage: {
-    ...typography.captionStrong,
-    color: colors.textInverted,
-    flex: 1,
-  },
-  toastAction: {
-    minHeight: touchTarget,
-    justifyContent: "center",
-    paddingHorizontal: spacing.x1,
-  },
-  toastActionText: {
-    ...typography.captionStrong,
-    color: colors.textInverted,
-    textDecorationLine: "underline",
-  },
-  stateContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.x8,
-  },
+  toastAction: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x1 },
+  stateContainer: { alignItems: "center", justifyContent: "center", padding: spacing.x8 },
   stateIcon: { marginBottom: spacing.x3 },
-  stateTitle: {
-    ...typography.sectionTitle,
-    color: colors.text,
-    textAlign: "center",
-  },
-  stateDescription: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: "center",
-    marginTop: spacing.x1_5,
-  },
+  stateDescription: { marginTop: spacing.x1_5 },
   stateAction: { marginTop: spacing.x5 },
   loading: {
     flexDirection: "row",
@@ -726,76 +909,60 @@ const styles = StyleSheet.create({
     gap: spacing.x2,
     padding: spacing.x5,
   },
-  loadingText: { ...typography.caption, color: colors.textMuted },
-  modalRoot: { flex: 1, justifyContent: "flex-end" },
-  backdrop: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: colors.overlay,
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    overflow: "hidden",
-  },
-  sheetHandle: {
-    width: 36,
-    height: 5,
-    borderRadius: radii.pill,
-    backgroundColor: colors.borderStrong,
-    alignSelf: "center",
-    marginTop: spacing.x2,
-  },
-  sheetHeader: {
-    minHeight: 64,
+  stickyBar: {
+    paddingTop: spacing.x3,
     paddingHorizontal: spacing.gutter,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  sheetTitles: { flex: 1, paddingRight: spacing.x2 },
-  sheetTitle: { ...typography.title, color: colors.text },
-  sheetDescription: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: spacing.x0_5,
-  },
-  sheetContent: {
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: spacing.x4,
-  },
-  sheetFooter: {
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.x3,
+    gap: spacing.x2,
+    backgroundColor: colors.canvas,
     borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  dialogRoot: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.x6,
-  },
-  dialog: {
-    width: "100%",
-    maxWidth: 380,
-    borderRadius: radii.lg,
-    backgroundColor: colors.surface,
-    padding: spacing.x5,
+  stickyActions: { flexDirection: "row", gap: spacing.x2 },
+  modalRoot: { flex: 1, justifyContent: "flex-end" },
+  backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.overlay },
+  sheet: {
+    backgroundColor: colors.canvas,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    overflow: "hidden",
     ...shadows.floating,
   },
-  dialogTitle: { ...typography.title, color: colors.text },
-  dialogMessage: {
-    ...typography.body,
-    color: colors.textMuted,
-    marginTop: spacing.x2,
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.border,
+    alignSelf: "center",
+    marginTop: spacing.x3,
   },
-  dialogActions: {
+  sheetHeader: {
+    minHeight: 56,
+    paddingLeft: spacing.gutter,
+    paddingRight: spacing.x2,
     flexDirection: "row",
-    gap: spacing.x2,
-    marginTop: spacing.x6,
+    alignItems: "center",
+    borderBottomColor: colors.canvasSoft,
+    borderBottomWidth: 1,
   },
+  sheetDescription: { marginTop: spacing.x0_5 },
+  sheetContent: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.x4 },
+  sheetFooter: {
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.x3,
+    borderTopColor: colors.canvasSoft,
+    borderTopWidth: 1,
+  },
+  dialogRoot: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.x8 },
+  dialog: {
+    width: "100%",
+    maxWidth: 320,
+    borderRadius: radii.lg,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: spacing.x5,
+    paddingTop: spacing.x6,
+    paddingBottom: spacing.x5,
+    ...shadows.floating,
+  },
+  dialogMessage: { marginTop: spacing.x2 },
+  dialogActions: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x5 },
 })

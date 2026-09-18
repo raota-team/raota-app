@@ -17,6 +17,7 @@ import type {
   TasteReport,
   UserProfile,
 } from "@raota/shared"
+import { REVISIT_SCORE } from "@raota/shared"
 import {
   createContext,
   useCallback,
@@ -855,6 +856,8 @@ export function RaotaProvider({
         photos: persistedPhotos,
         note: input.note,
         tasteNotes: input.tasteNotes,
+        // 재방문 의사 점수는 revisit 답에서 다시 계산해 둘이 어긋나지 않게 한다.
+        scores: { ...input.scores, revisit: REVISIT_SCORE[input.revisit] },
         revisit: input.revisit,
         likes: 0,
         isLiked: false,
