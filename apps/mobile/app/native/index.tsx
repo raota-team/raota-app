@@ -4,9 +4,8 @@ import { ChevronRight, Sparkles } from "lucide-react-native"
 import { useEffect, useMemo, useState } from "react"
 import { Image, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg"
 
-import type { Shop, ShopCatalogItem, TasteIdentity, TasteProfile } from "@raota/shared"
+import { seoulToday, type Shop, type ShopCatalogItem, type TasteIdentity, type TasteProfile } from "@raota/shared"
 import RecordFab from "@/src/components/RecordFab"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, LoadingState } from "@/src/components/ui"
@@ -32,6 +31,39 @@ function formatDistance(meters: number) {
 function statusOf(shop: Shop): { label: string; open: boolean } {
   if (shop.businessStatus !== "OPERATIONAL") return { label: "영업 정보 확인 필요", open: false }
   return shop.isOpen ? { label: "영업 중", open: true } : { label: "준비 중", open: false }
+}
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
+
+/** "2026-09-19" → "9월 19일 (토)" */
+function formatPickDate(isoDate: string) {
+  const [year, month, day] = isoDate.split("-").map(Number)
+  const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()]
+  return `${month}월 ${day}일 (${weekday})`
+}
+
+/** "₩10,000 ~ ₩15,000" → "1만~1.5만원". 모양이 다르면 원문 그대로 */
+function compactPriceRange(range: string) {
+  const amounts = range.match(/[\d,]+/g)?.map((part) => Number(part.replace(/,/g, "")))
+  if (!amounts?.length || amounts.some((amount) => !Number.isFinite(amount) || amount < 1000)) return range
+  const man = (amount: number) => `${Number((amount / 10000).toFixed(1))}만`
+  return `${amounts.map(man).join("~")}원`
+}
+
+/**
+ * 오늘의 픽을 고른 이유. 원장에 있는 값만 쓰고 없는 칸은 만들지 않는다.
+ * TODO(API): 서버 HomeResponse.curations가 오면 큐레이터 코멘트·선정 이유로 바꾼다
+ */
+function pickFactsOf(shop: Shop): Array<{ label: string; value: string }> {
+  const catalog = shop as Partial<ShopCatalogItem>
+  const status = statusOf(shop)
+  const facts = [
+    { label: "영업", value: status.open && catalog.lastOrder ? `${status.label} · 라스트오더 ${catalog.lastOrder}` : status.label },
+    { label: "거리", value: formatDistance(shop.distanceM) },
+    { label: "가격대", value: shop.priceRange ? compactPriceRange(shop.priceRange) : undefined },
+    { label: "서비스", value: shop.servicePerks?.noodleRefill ? `면 ${shop.servicePerks.noodleRefill}` : undefined },
+  ]
+  return facts.filter((fact): fact is { label: string; value: string } => Boolean(fact.value))
 }
 
 function openShop(shopId: number) {
@@ -174,19 +206,25 @@ export default function HomeScreen() {
 
   /** 오늘의 픽: 원장에서 소개글과 사진이 있는 첫 매장 (웹과 같은 에디터 픽) */
   const todayPick = useMemo(() => shops.find((shop) => shop.description && shop.photos[0]) ?? shops[0] ?? null, [shops])
-  /** 가까운 순 상위 5곳 */
-  const nearby = useMemo(() => [...shops].sort((a, b) => a.distanceM - b.distanceM).slice(0, 5), [shops])
+  /** 가까운 순 상위 5곳. 바로 위 오늘의 픽과 겹치지 않게 뺀다 */
+  const nearby = useMemo(
+    () => shops.filter((shop) => shop.id !== todayPick?.id).sort((a, b) => a.distanceM - b.distanceM).slice(0, 5),
+    [shops, todayPick?.id],
+  )
   /** 추천: 기록이 있는 로그인 사용자는 취향 기반 랭킹, 그 외에는 라멘로그·거리 기준 */
   const personal = loggedIn && tasteProfile.data.profile.count > 0 && Boolean(tasteIdentity.data.leader)
-  const recommendations = useMemo(
-    () => (personal ? personalRecommendations(shops, tasteIdentity.data, tasteProfile.data.profile) : fallbackRecommendations(shops)),
-    [personal, shops, tasteIdentity.data, tasteProfile.data.profile],
-  )
+  /** 오늘의 픽으로 이미 소개한 매장은 아래 목록에서 다시 보여주지 않는다 */
+  const recommendations = useMemo(() => {
+    const pool = shops.filter((shop) => shop.id !== todayPick?.id)
+    return personal ? personalRecommendations(pool, tasteIdentity.data, tasteProfile.data.profile) : fallbackRecommendations(pool)
+  }, [personal, shops, tasteIdentity.data, tasteProfile.data.profile, todayPick?.id])
   const recommendTitle = personal && currentUser ? `${currentUser.nickname}님이 좋아할 라멘집` : "처음이라면 여기부터"
   const recommendMeta = personal ? `${tasteIdentity.data.total}그릇 취향 기준` : "라멘로그 · 거리 기준"
 
   const compactHeader = width < 360
   const pickCatalog = todayPick ? catalogOf(todayPick) : {}
+  const pickFacts = todayPick ? pickFactsOf(todayPick) : []
+  const pickDateLabel = formatPickDate(seoulToday())
 
   return (
     <View style={styles.root}>
@@ -284,22 +322,22 @@ export default function HomeScreen() {
 
         {shopsQuery.isLoading ? <LoadingState label="라멘집을 불러오는 중…" /> : null}
 
-        {/* 3. 오늘의 픽 */}
+        {/* 3. 오늘의 픽: 목록 카드와 다르게 잡지 한 면처럼 보인다(날짜 · 사진 · 이름 · 소개 인용 · 고른 이유) */}
         {todayPick ? (
           <View style={styles.sectionFirst}>
             <SectionHead
               right={
                 <AppText capScale style={styles.bold} tone="muted" variant="meta">
-                  {[formatDistance(todayPick.distanceM), pickCatalog.style].filter(Boolean).join(" · ")}
+                  {pickDateLabel}
                 </AppText>
               }
-              title="오늘의 큐레이션 라멘집"
+              title="오늘의 큐레이션"
             />
             <Pressable
               accessibilityLabel={`오늘의 픽, ${todayPick.name}${todayPick.branch ? ` ${todayPick.branch}` : ""}, ${pickCatalog.spec ?? ""}, 매장 상세 보기`}
               accessibilityRole="button"
               onPress={() => openShop(todayPick.id)}
-              style={({ pressed }) => [styles.pickCard, pressed && styles.pressedWash]}
+              style={({ pressed }) => pressed && styles.pressedDim}
             >
               <View style={styles.pickPhoto}>
                 <ResilientUriImage
@@ -307,60 +345,65 @@ export default function HomeScreen() {
                   style={StyleSheet.absoluteFill}
                   uri={todayPick.photos[0]}
                 />
-                {/* 사진 위 글씨를 읽히게 하는 아래쪽 스크림(허용된 유일한 그라디언트) */}
-                <Svg height="67%" pointerEvents="none" style={styles.scrim} width="100%">
-                  <Defs>
-                    <LinearGradient id="pickScrim" x1="0" x2="0" y1="0" y2="1">
-                      <Stop offset="0" stopColor={colors.black} stopOpacity="0" />
-                      <Stop offset="1" stopColor={colors.black} stopOpacity="0.75" />
-                    </LinearGradient>
-                  </Defs>
-                  <Rect fill="url(#pickScrim)" height="100%" width="100%" x="0" y="0" />
-                </Svg>
                 <View style={styles.pickBadge}>
-                  <AppText capScale style={styles.bold} variant="meta">
+                  <AppText capScale style={styles.bold} tone="onDark" variant="meta">
                     오늘의 픽
                   </AppText>
                 </View>
-                <View style={styles.pickCaption}>
-                  {pickCatalog.spec ? (
-                    <AppText numberOfLines={1} style={styles.bold} tone="onDarkMuted" variant="secondary">
-                      {pickCatalog.spec}
+              </View>
+
+              <View style={styles.pickTitle}>
+                {pickCatalog.style ? (
+                  <AppText capScale style={styles.bold} tone="brand" variant="meta">
+                    {pickCatalog.style}
+                  </AppText>
+                ) : null}
+                <AppText numberOfLines={2} variant="headline">
+                  {todayPick.name}
+                  {todayPick.branch ? (
+                    <AppText tone="muted" variant="cardTitle">
+                      {`  ${todayPick.branch}`}
                     </AppText>
                   ) : null}
-                  <AppText numberOfLines={2} tone="onDark" variant="screenTitle">
-                    {todayPick.name}
-                    {todayPick.branch ? (
-                      <AppText style={styles.pickBranch} tone="onDarkMuted" variant="cardTitle">
-                        {` · ${todayPick.branch}`}
-                      </AppText>
-                    ) : null}
+                </AppText>
+                {pickCatalog.spec ? (
+                  <AppText tone="sub" variant="secondary">
+                    {pickCatalog.spec}
+                  </AppText>
+                ) : null}
+              </View>
+
+              {todayPick.description ? (
+                <View style={styles.pickQuote}>
+                  <AppText accessible={false} style={styles.quoteMark} tone="brand">
+                    {"\u201C"}
+                  </AppText>
+                  <AppText numberOfLines={3} style={styles.quoteText} variant="body">
+                    {todayPick.description}
                   </AppText>
                 </View>
-              </View>
-              <View style={styles.pickBody}>
-                {todayPick.description ? (
-                  <View style={styles.quote}>
-                    <AppText variant="body">{todayPick.description}</AppText>
-                  </View>
-                ) : null}
-                <View style={styles.pickFoot}>
-                  <View style={styles.pickTags}>
-                    {todayPick.tags.slice(0, 2).map((tag) => (
-                      <View key={tag} style={styles.tag}>
-                        <AppText capScale numberOfLines={1} style={styles.bold} variant="meta">
-                          {tag}
-                        </AppText>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={styles.inline}>
-                    <AppText capScale style={styles.bold} tone="brand" variant="secondary">
-                      매장 상세 보기
-                    </AppText>
-                    <ChevronRight color={colors.brand} size={16} />
-                  </View>
+              ) : null}
+
+              {pickFacts.length ? (
+                <View style={styles.facts}>
+                  {pickFacts.map((fact) => (
+                    <View key={fact.label} style={styles.fact}>
+                      <AppText capScale tone="muted" variant="meta">
+                        {fact.label}
+                      </AppText>
+                      <AppText numberOfLines={2} variant="bodyStrong">
+                        {fact.value}
+                      </AppText>
+                    </View>
+                  ))}
                 </View>
+              ) : null}
+
+              <View style={styles.pickCta}>
+                <AppText capScale style={styles.bold} tone="brand" variant="secondary">
+                  매장 상세 보기
+                </AppText>
+                <ChevronRight color={colors.brand} size={16} />
               </View>
             </Pressable>
           </View>
@@ -502,7 +545,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1, minWidth: 0 },
   bold: { fontWeight: "700" },
-  inline: { flexDirection: "row", alignItems: "center", gap: spacing.x0_5 },
   pressedDim: { opacity: 0.7 },
   pressedWash: { backgroundColor: colors.canvasSoft },
 
@@ -564,9 +606,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
 
-  pickCard: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvas },
-  pickPhoto: { width: "100%", aspectRatio: 4 / 3, backgroundColor: colors.canvasSoft },
-  scrim: { position: "absolute", left: 0, right: 0, bottom: 0 },
+  pickPhoto: { width: "100%", aspectRatio: 16 / 9, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvasSoft },
   pickBadge: {
     position: "absolute",
     top: spacing.x3,
@@ -574,30 +614,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x2_5,
     paddingVertical: spacing.x1,
     borderRadius: radii.xs,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.brand,
   },
-  pickCaption: { position: "absolute", left: 0, right: 0, bottom: 0, padding: spacing.x4, gap: spacing.x0_5 },
-  pickBranch: { fontWeight: "700" },
-  pickBody: { padding: spacing.x4 },
-  quote: { borderLeftWidth: 1, borderLeftColor: colors.ink, paddingLeft: spacing.x3 },
-  pickFoot: {
+  pickTitle: { marginTop: spacing.x4, gap: spacing.x1 },
+  pickQuote: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x4 },
+  // 여는 따옴표는 글자 크기로만 강조한다(장식 도형 없이)
+  quoteMark: { fontSize: 36, lineHeight: 36, fontWeight: "800", marginTop: -spacing.x1 },
+  quoteText: { flex: 1, lineHeight: 23 },
+  facts: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.x3,
+    flexWrap: "wrap",
     marginTop: spacing.x4,
-    paddingTop: spacing.x3,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.ink,
   },
-  pickTags: { flexDirection: "row", gap: spacing.x1_5, flexShrink: 1, overflow: "hidden" },
-  tag: {
-    backgroundColor: colors.canvasSoft,
-    borderRadius: radii.xs,
-    paddingHorizontal: spacing.x2_5,
-    paddingVertical: spacing.x1,
-    flexShrink: 1,
+  fact: {
+    width: "50%",
+    paddingVertical: spacing.x3,
+    paddingRight: spacing.x3,
+    gap: spacing.x0_5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
+  pickCta: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: spacing.x0_5, minHeight: touchTarget },
 
   listCard: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvas },
   row: {

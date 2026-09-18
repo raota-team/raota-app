@@ -1024,7 +1024,7 @@ const styles = StyleSheet.create({
   pressedDim: { opacity: 0.7 },
   linkText: { color: colors.inkSub, ...typography.secondary },
   // 비회원
-  guest: { flexGrow: 1, paddingHorizontal: spacing.gutter, paddingTop: spacing.x10, paddingBottom: spacing.x2 },
+  guest: { flexGrow: 1, paddingHorizontal: spacing.gutter, paddingTop: spacing.x10, paddingBottom: spacing.x4 },
   guestBody: { flex: 1, justifyContent: "center" },
   guestLogo: { width: 64, height: 64, alignSelf: "center" },
   guestActions: { marginTop: spacing.x7, gap: spacing.x2_5 },

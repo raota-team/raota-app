@@ -99,6 +99,10 @@ describe("home", () => {
     expect(await view.findByText(/님, 반갑습니다/)).toBeTruthy()
     expect(view.getByRole("button", { name: "오늘 뭐 먹지? AI 라멘 큐레이터" })).toBeTruthy()
     expect(view.getByText("오늘의 픽")).toBeTruthy()
+    // 오늘의 픽은 원장에 있는 값으로만 고른 이유를 보여주고, 아래 목록에 같은 매장을 다시 넣지 않는다
+    expect(view.getByText("1만~1.5만원")).toBeTruthy()
+    expect(view.getByText("영업 중 · 라스트오더 20:30")).toBeTruthy()
+    expect(view.getAllByText(/^멘야준/)).toHaveLength(1)
     // 데모 계정은 돈코츠를 가장 많이 먹었고 육수 농도 평균이 진한 쪽이다. 이유는 그 근거만 쓴다
     expect(view.getByText(`${NICKNAME}님이 좋아할 라멘집`)).toBeTruthy()
     expect(view.getAllByText(/돈코츠를 가장 자주 드셔서/).length).toBeGreaterThan(0)
