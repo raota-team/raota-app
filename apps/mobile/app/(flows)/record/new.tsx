@@ -1,63 +1,90 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams, useNavigation } from "expo-router"
+import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as ImagePicker from "expo-image-picker"
 import DateTimePicker from "@react-native-community/datetimepicker"
+import { AlertCircle, CalendarDays, ChevronDown, ImagePlus, LogIn, X } from "lucide-react-native"
 import {
-  Camera,
-  ChevronDown,
-  ImagePlus,
-  MapPin,
-  Trash2,
-} from "lucide-react-native"
-import {
+  AccessibilityInfo,
+  ActionSheetIOS,
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   View,
+  findNodeHandle,
 } from "react-native"
+import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
+import { SafeAreaView } from "react-native-safe-area-context"
 
 import {
   RAMEN_TYPES,
   REVISIT_OPTIONS,
+  REVISIT_SCORE,
+  TASTE_AXES,
   TASTE_FIELDS,
   type CreateRamenLogInput,
   type RevisitOption,
+  type Shop,
+  type ShopCatalogItem,
+  type TasteAxisKey,
   type TasteNoteKey,
   type TasteNotes,
+  type TasteScores,
 } from "@raota/shared"
-import { useRaota } from "@/src/state/RaotaStore"
-import { firstRecordValidationMessage } from "@/src/domain"
+import { useShop, useShops } from "@/src/data"
 import {
-  ActionButton,
-  FlowHeader,
-  FlowPage,
-  FlowScroll,
-  InlineNotice,
-  SelectChip,
-  flowStyles,
-  palette,
-} from "../_layout"
+  RECORD_NOTE_MAX_LENGTH,
+  missingScoreAxes,
+  validateRecordDraft,
+  withObjectParticle,
+  type RecordDraft,
+} from "@/src/domain"
+import { useRaota } from "@/src/state/RaotaStore"
+import {
+  AppText,
+  Button,
+  Chip,
+  ConfirmDialog,
+  EmptyState,
+  Header,
+  LoadingState,
+  ScoreSegment,
+  SectionHeader,
+  StickyActionBar,
+} from "@/src/components/ui"
+import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 
-const MENU_OPTIONS: Record<number, string[]> = {
-  1: ["특제 쇼유 라멘", "반숙 쇼유 라멘", "시오 라멘"],
-  2: ["특제 삿포로 미소 라멘", "매운 미소 라멘", "차슈 미소 라멘"],
-  3: ["토리파이탄 라멘", "카라파이탄 라멘", "쇼유 라멘"],
-  4: ["농후 이에케 라멘", "매운 이에케 라멘", "특제 이에케 라멘"],
-}
+/*
+ * 라멘 기록하기. 웹 RecordScreen과 같은 순서다.
+ * 한 그릇 정보 → 5축 평가 → 사진 → 메모 → 맛 태그(접힘) → 공개 여부, 하단 고정 저장 바.
+ * 저장 버튼은 항상 누를 수 있고, 빠진 항목이 있으면 첫 항목으로 스크롤하며 VoiceOver 포커스를 옮긴다.
+ */
 
-const EMPTY_TASTE: TasteNotes = {
-  broth: [],
-  noodle: [],
-  seasoning: [],
-  topping: [],
+type ScoreAxisKey = Exclude<TasteAxisKey, "revisit">
+type FieldKey = "shop" | "menu" | "ramenType" | "visitedAt" | "note" | TasteAxisKey
+type MissingField = { key: FieldKey; label: string; kind: "text" | "choice" }
+
+const SCORE_AXES = TASTE_AXES.filter((axis): axis is (typeof TASTE_AXES)[number] & { key: ScoreAxisKey } => axis.key !== "revisit")
+const REVISIT_AXIS = TASTE_AXES.find((axis) => axis.key === "revisit") ?? {
+  key: "revisit" as const,
+  label: "재방문 의사",
+  low: "한 번이면 충분",
+  high: "자주 갈래요",
 }
+/** 낮은 점수부터 높은 점수 순. 양 끝 설명(low · high)과 방향을 맞춘다 */
+const REVISIT_CHOICES = [...REVISIT_OPTIONS].reverse()
+/** 기록 하나에 붙일 수 있는 사진 수. 서버 sort_order 0~2와 맞춘다 */
+const RECORD_PHOTO_MAX = 3
+const EMPTY_TASTE_NOTES: TasteNotes = { broth: [], noodle: [], seasoning: [], topping: [] }
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 
 function formatDate(date: Date) {
   const year = date.getFullYear()
@@ -66,154 +93,365 @@ function formatDate(date: Date) {
   return `${year}-${month}-${day}`
 }
 
+function formatDateLabel(date: Date) {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAYS[date.getDay()]})`
+}
+
+/** 원장 매장의 대표 스타일("미소 라멘"). 없으면 빈 문자열 */
+function styleOf(shop: Shop | null | undefined): string {
+  const style = (shop as Partial<ShopCatalogItem> | null | undefined)?.style
+  return typeof style === "string" ? style : ""
+}
+
+/** 대표 스타일이 라멘 종류 목록과 정확히 맞을 때만 미리 고른다. 아니면 직접 고르게 둔다. */
+function inferRamenType(style: string): string {
+  const base = style.replace(/ 라멘$/, "")
+  return RAMEN_TYPES.includes(base) ? base : ""
+}
+
+/** 받침이 없거나 ㄹ 받침이면 "로", 그 밖에는 "으로" */
+function withDirectionParticle(word: string): string {
+  const last = word.charCodeAt(word.length - 1)
+  if (last < 0xac00 || last > 0xd7a3) return `${word}로`
+  const final = (last - 0xac00) % 28
+  return final === 0 || final === 8 ? `${word}로` : `${word}으로`
+}
+
+/** VoiceOver 포커스를 옮긴다. 웹 미리보기에서는 DOM focus로 대신한다 */
+function moveAccessibilityFocus(target: View | null) {
+  if (!target) return
+  try {
+    if (Platform.OS === "web") {
+      ;(target as unknown as { focus?: () => void }).focus?.()
+      return
+    }
+    const tag = findNodeHandle(target)
+    if (tag) AccessibilityInfo.setAccessibilityFocus(tag)
+  } catch {
+    // 포커스를 옮기지 못해도 스크롤과 빨간 안내는 남는다.
+  }
+}
+
 export default function NewRecordScreen() {
   const { shopId } = useLocalSearchParams<{ shopId?: string }>()
   const navigation = useNavigation()
-  const { state, getShop, actions } = useRaota()
+  const { state, isHydrated, currentUser, actions } = useRaota()
+  const reduceMotion = useReducedMotion()
   const parsedShopId = Number(shopId)
-  const initialShopId = Number.isFinite(parsedShopId) ? parsedShopId : null
+  const initialShopId = Number.isInteger(parsedShopId) && parsedShopId > 0 ? parsedShopId : null
   const selectedShopId = state.recordDraft?.shopId ?? initialShopId
-  const shop = selectedShopId ? getShop(selectedShopId) : undefined
-  const menus = shop
-    ? (MENU_OPTIONS[shop.id] ?? [
-        `${shop.tags[0] ?? "대표"} 라멘`,
-        "특제 라멘",
-        "기본 라멘",
-      ])
-    : []
+  const shop = useShop(selectedShopId).data
+  const shops = useShops().data
+  const shopStyle = styleOf(shop)
 
-  const initialVisitDate = useRef(new Date()).current
-  const initialMenuName = useRef(menus[0] ?? "").current
-  const initialRamenType = useRef(
-    shop?.tags.find((tag) => RAMEN_TYPES.includes(tag)) ?? "쇼유",
-  ).current
-  const initialRevisit: RevisitOption = "자주 감"
-
-  const [photo, setPhoto] = useState<string | null>(null)
-  const [visitDate, setVisitDate] = useState(initialVisitDate)
-  const [menuName, setMenuName] = useState(initialMenuName)
-  const [customMenu, setCustomMenu] = useState("")
-  const [isCustomMenu, setIsCustomMenu] = useState(false)
-  const [ramenType, setRamenType] = useState(initialRamenType)
-  const [revisit, setRevisit] = useState<RevisitOption>(initialRevisit)
-  const [tasteNotes, setTasteNotes] = useState<TasteNotes>(EMPTY_TASTE)
+  const today = useRef(new Date()).current
+  const [menuName, setMenuName] = useState("")
+  const [ramenType, setRamenType] = useState(() => inferRamenType(shopStyle))
+  const [visitDate, setVisitDate] = useState(today)
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [scores, setScores] = useState<Partial<Record<ScoreAxisKey, number>>>({})
+  const [revisit, setRevisit] = useState<RevisitOption | null>(null)
+  const [photos, setPhotos] = useState<string[]>([])
   const [note, setNote] = useState("")
+  const [tasteNotes, setTasteNotes] = useState<TasteNotes>(EMPTY_TASTE_NOTES)
+  const [isTagsOpen, setIsTagsOpen] = useState(false)
   const [isPublic, setIsPublic] = useState(true)
+  const [attempted, setAttempted] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const allowLeave = useRef(false)
-  const previousShopId = useRef(selectedShopId)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [leaveVisible, setLeaveVisible] = useState(false)
 
-  const effectiveMenu = isCustomMenu ? customMenu.trim() : menuName
-  const isDirty = Boolean(
-    photo ||
-      note ||
-      customMenu ||
-      isCustomMenu ||
-      selectedShopId !== initialShopId ||
-      menuName !== initialMenuName ||
-      ramenType !== initialRamenType ||
-      formatDate(visitDate) !== formatDate(initialVisitDate) ||
-      revisit !== initialRevisit ||
-      !isPublic ||
-      Object.values(tasteNotes).some((items) => items.length),
-  )
+  const allowLeave = useRef(false)
+  const pendingLeave = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null)
+  const previousShopId = useRef(selectedShopId)
+  const scrollRef = useRef<ScrollView>(null)
+  const contentRef = useRef<View>(null)
+  const shopRef = useRef<View>(null)
+  const menuRef = useRef<TextInput>(null)
+  const ramenTypeRef = useRef<View>(null)
+  const visitedAtRef = useRef<View>(null)
+  const revisitRef = useRef<View>(null)
+  const noteRef = useRef<TextInput>(null)
+  const axisRefs = useRef<Partial<Record<ScoreAxisKey, View | null>>>({})
+
+  const visitedAt = formatDate(visitDate)
+  const trimmedMenu = menuName.trim()
+  const selectedTagCount = Object.values(tasteNotes).reduce((sum, list) => sum + list.length, 0)
 
   useEffect(() => {
     actions.startRecordDraft(initialShopId)
   }, [actions.startRecordDraft, initialShopId])
 
+  // "변경"으로 가게를 바꾸면 그 가게의 대표 스타일이 목록과 맞을 때만 종류를 다시 고른다.
   useEffect(() => {
     if (previousShopId.current === selectedShopId) return
     previousShopId.current = selectedShopId
-    const nextMenus = shop
-      ? (MENU_OPTIONS[shop.id] ?? [
-          `${shop.tags[0] ?? "대표"} 라멘`,
-          "특제 라멘",
-          "기본 라멘",
-        ])
-      : []
-    setMenuName(nextMenus[0] ?? "")
-    setCustomMenu("")
-    setIsCustomMenu(false)
-    setRamenType(
-      shop?.tags.find((tag) => RAMEN_TYPES.includes(tag)) ?? "쇼유",
-    )
-  }, [selectedShopId, shop])
+    const inferred = inferRamenType(shopStyle)
+    if (inferred) setRamenType(inferred)
+  }, [selectedShopId, shopStyle])
 
+  const draft: RecordDraft = {
+    shopId: shop?.id ?? null,
+    menuName,
+    ramenType,
+    visitedAt,
+    scores,
+    revisit,
+    note,
+    tasteNotes,
+    photos,
+    imageUrl: photos[0] ?? null,
+    isPublic,
+  }
+  const validShopIds = useMemo(() => shops.map((item) => item.id), [shops])
+  const missingAxes = new Set(missingScoreAxes(draft))
+  const missing: MissingField[] = validateRecordDraft(draft, { validShopIds, now: new Date() }).flatMap(
+    (error): MissingField[] => {
+      switch (error.field) {
+        case "shopId":
+          return [{ key: "shop", label: "가게", kind: "choice" }]
+        case "menuName":
+          return [{ key: "menu", label: "먹은 메뉴", kind: "text" }]
+        case "ramenType":
+          return [{ key: "ramenType", label: "라멘 종류", kind: "choice" }]
+        case "visitedAt":
+          return [{ key: "visitedAt", label: "방문일", kind: "choice" }]
+        case "scores": {
+          const axis = TASTE_AXES.find(({ key }) => key === error.axis)
+          return axis ? [{ key: axis.key, label: axis.label, kind: "choice" }] : []
+        }
+        case "note":
+          return [{ key: "note", label: "메모", kind: "text" }]
+        default:
+          return []
+      }
+    },
+  )
+  const isComplete = missing.length === 0
+  const isMissing = (key: FieldKey) => attempted && missing.some((item) => item.key === key)
+
+  const hint = (() => {
+    if (isComplete) return "필수 항목을 모두 채웠어요"
+    const shown = missing.slice(0, 3).map((item) => item.label)
+    const rest = missing.length - shown.length
+    const subject = rest > 0 ? `${shown.join(", ")} 외 ${rest}개` : shown.join(", ")
+    const verb = missing.some((item) => item.kind === "text") ? "채워주세요" : "골라주세요"
+    return `${withObjectParticle(subject)} ${verb}`
+  })()
+
+  const baselineRamenType = inferRamenType(shopStyle)
+  const isDirty =
+    selectedShopId !== initialShopId ||
+    menuName.length > 0 ||
+    ramenType !== baselineRamenType ||
+    visitedAt !== formatDate(today) ||
+    Object.keys(scores).length > 0 ||
+    revisit !== null ||
+    photos.length > 0 ||
+    note.length > 0 ||
+    selectedTagCount > 0 ||
+    !isPublic
+  const dirtyRef = useRef(isDirty)
+  dirtyRef.current = isDirty
+
+  // 뒤로가기 버튼과 가장자리 스와이프 모두 여기서 가로챈다. 저장에 성공한 뒤의 이동은 막지 않는다.
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (event) => {
-      if (!isDirty || allowLeave.current) {
+      if (allowLeave.current || !dirtyRef.current) {
         actions.clearRecordDraft()
         return
       }
       event.preventDefault()
-      Alert.alert(
-        "기록 작성을 그만둘까요?",
-        "입력한 내용은 저장되지 않습니다.",
-        [
-          { text: "계속 작성", style: "cancel" },
-          {
-            text: "나가기",
-            style: "destructive",
-            onPress: () => {
-              allowLeave.current = true
-              actions.clearRecordDraft()
-              navigation.dispatch(event.data.action)
-            },
-          },
-        ],
-      )
+      pendingLeave.current = event.data.action
+      setLeaveVisible(true)
     })
     return unsubscribe
-  }, [actions.clearRecordDraft, isDirty, navigation])
+  }, [actions.clearRecordDraft, navigation])
 
-  const openSettingsAlert = (kind: string) => {
+  // 입력을 고치면 지난 저장 실패 안내를 거둔다.
+  useEffect(() => {
+    setSaveError(null)
+  }, [shop?.id, menuName, ramenType, visitedAt, scores, revisit, photos, note, tasteNotes, isPublic])
+
+  // 맛 태그 펼침 화살표. Reduce Motion이면 바로 바뀐다.
+  const chevron = useSharedValue(0)
+  useEffect(() => {
+    const target = isTagsOpen ? 180 : 0
+    chevron.value = reduceMotion ? target : withTiming(target, { duration: 200 })
+  }, [chevron, isTagsOpen, reduceMotion])
+  const chevronStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${chevron.value}deg` }] }))
+
+  const goBack = () => {
+    if (router.canGoBack()) router.back()
+    else router.replace("/native")
+  }
+
+  const confirmLeave = () => {
+    setLeaveVisible(false)
+    allowLeave.current = true
+    actions.clearRecordDraft()
+    const action = pendingLeave.current
+    pendingLeave.current = null
+    if (action) navigation.dispatch(action)
+    else goBack()
+  }
+
+  const fieldTarget = (key: FieldKey): View | TextInput | null => {
+    switch (key) {
+      case "shop":
+        return shopRef.current
+      case "menu":
+        return menuRef.current
+      case "ramenType":
+        return ramenTypeRef.current
+      case "visitedAt":
+        return visitedAtRef.current
+      case "revisit":
+        return revisitRef.current
+      case "note":
+        return noteRef.current
+      default:
+        return axisRefs.current[key] ?? null
+    }
+  }
+
+  const focusFirstMissing = () => {
+    const first = missing[0]
+    if (!first) return
+    const target = fieldTarget(first.key)
+    const content = contentRef.current
+    const scrollAndFocus = (y: number) => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - spacing.x6), animated: !reduceMotion })
+      setTimeout(
+        () => {
+          if (first.key === "menu" || first.key === "note") (target as TextInput | null)?.focus()
+          else moveAccessibilityFocus(target as View | null)
+        },
+        reduceMotion ? 0 : 250,
+      )
+    }
+    if (!target || !content) return
+    try {
+      ;(target as View).measureLayout(
+        content,
+        (_x, y) => scrollAndFocus(y),
+        () => scrollAndFocus(0),
+      )
+    } catch {
+      scrollAndFocus(0)
+    }
+  }
+
+  const save = async () => {
+    if (saving) return
+    if (!isComplete || !shop || !revisit) {
+      setAttempted(true)
+      AccessibilityInfo.announceForAccessibility?.(hint)
+      focusFirstMissing()
+      return
+    }
+    const fullScores: TasteScores = {
+      satisfaction: scores.satisfaction ?? 0,
+      brothDensity: scores.brothDensity ?? 0,
+      noodleFirmness: scores.noodleFirmness ?? 0,
+      topping: scores.topping ?? 0,
+      revisit: REVISIT_SCORE[revisit],
+    }
+    const input: CreateRamenLogInput = {
+      shopId: shop.id,
+      shopName: shop.name,
+      branch: shop.branch,
+      menuName: trimmedMenu,
+      ramenType,
+      visitedAt,
+      imageUrl: photos[0] ?? null,
+      photos,
+      note: note.trim(),
+      tasteNotes,
+      scores: fullScores,
+      revisit,
+      isPublic,
+    }
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const log = await actions.createLog(input)
+      allowLeave.current = true
+      actions.clearRecordDraft()
+      router.replace({ pathname: "/record/complete", params: { logId: String(log.id) } })
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message ? error.message : "연결을 확인한 뒤 다시 시도해주세요."
+      setSaveError(message)
+      AccessibilityInfo.announceForAccessibility?.(`저장하지 못했어요. ${message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const showPermissionAlert = (kind: "사진" | "카메라") => {
     Alert.alert(
-      `${kind} 권한이 필요해요`,
-      `설정에서 ${kind} 접근을 허용하거나 사진 없이 기록을 계속할 수 있어요.`,
+      `${kind} 접근 권한이 필요해요`,
+      `설정에서 ${kind} 접근을 허용하거나, 사진 없이도 계속 기록할 수 있어요.`,
       [
-        { text: "나중에", style: "cancel" },
-        { text: "설정 열기", onPress: () => Linking.openSettings() },
+        { text: "사진 없이 계속", style: "cancel" },
+        { text: "설정 열기", onPress: () => void Linking.openSettings() },
       ],
     )
   }
 
-  const pickPhoto = async (source: "camera" | "library") => {
-    const permission =
-      source === "camera"
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync()
+  const addFromLibrary = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      openSettingsAlert(source === "camera" ? "카메라" : "사진")
+      showPermissionAlert("사진")
       return
     }
-    const result =
-      source === "camera"
-        ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ["images"],
-            allowsEditing: true,
-            quality: 0.84,
-          })
-        : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"],
-            allowsEditing: true,
-            quality: 0.84,
-          })
-    const uri = !result.canceled ? result.assets[0]?.uri : undefined
-    if (!uri) return
-    setPhoto(uri)
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsMultipleSelection: true,
+      selectionLimit: Math.max(1, RECORD_PHOTO_MAX - photos.length),
+      orderedSelection: true,
+      quality: 0.84,
+    })
+    if (result.canceled) return
+    const uris = result.assets.map((asset) => asset.uri).filter(Boolean)
+    setPhotos((current) => [...current, ...uris].slice(0, RECORD_PHOTO_MAX))
   }
 
-  const showPhotoMenu = () => {
-    Alert.alert("라멘 사진 추가", "사진을 가져올 방법을 선택하세요.", [
-      { text: "카메라로 촬영", onPress: () => void pickPhoto("camera") },
-      { text: "사진 보관함", onPress: () => void pickPhoto("library") },
+  const addFromCamera = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync()
+    if (!permission.granted) {
+      showPermissionAlert("카메라")
+      return
+    }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.84 })
+    const uri = result.canceled ? undefined : result.assets[0]?.uri
+    if (uri) setPhotos((current) => [...current, uri].slice(0, RECORD_PHOTO_MAX))
+  }
+
+  const choosePhotoSource = () => {
+    if (Platform.OS === "web") {
+      void addFromLibrary()
+      return
+    }
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { title: "라멘 사진 추가", options: ["카메라로 촬영", "사진 보관함에서 선택", "취소"], cancelButtonIndex: 2 },
+        (index) => {
+          if (index === 0) void addFromCamera()
+          if (index === 1) void addFromLibrary()
+        },
+      )
+      return
+    }
+    Alert.alert("라멘 사진 추가", undefined, [
+      { text: "카메라로 촬영", onPress: () => void addFromCamera() },
+      { text: "사진 보관함에서 선택", onPress: () => void addFromLibrary() },
       { text: "취소", style: "cancel" },
     ])
   }
 
-  const toggleTaste = (key: TasteNoteKey, option: string) => {
+  const toggleTasteNote = (key: TasteNoteKey, option: string) => {
     setTasteNotes((current) => ({
       ...current,
       [key]: current[key].includes(option)
@@ -222,403 +460,662 @@ export default function NewRecordScreen() {
     }))
   }
 
-  const validationMessage = useMemo(
-    () =>
-      firstRecordValidationMessage({
-        shopId: shop?.id,
-        menuName: effectiveMenu,
-        ramenType,
-        visitedAt: formatDate(visitDate),
-        imageUrl: photo,
-        photos: photo ? [photo] : [],
-        note,
-        tasteNotes,
-        revisit,
-        isPublic,
-      }),
-    [
-      effectiveMenu,
-      isPublic,
-      note,
-      photo,
-      ramenType,
-      revisit,
-      shop?.id,
-      tasteNotes,
-      visitDate,
-    ],
-  )
-
-  const save = async () => {
-    if (validationMessage || !shop) {
-      setError(validationMessage ?? "입력 내용을 확인해주세요.")
-      return
-    }
-    const input: CreateRamenLogInput = {
-      shopId: shop.id,
-      shopName: shop.name,
-      branch: shop.branch,
-      menuName: effectiveMenu,
-      ramenType,
-      visitedAt: formatDate(visitDate),
-      imageUrl: photo,
-      photos: photo ? [photo] : [],
-      note: note.trim(),
-      tasteNotes,
-      revisit,
-      isPublic,
-    }
-    setSaving(true)
-    setError(null)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 650))
-      const created: unknown = await Promise.resolve(actions.createLog(input))
-      const newId =
-        typeof created === "number"
-          ? created
-          : typeof created === "object" && created && "id" in created
-            ? String(created.id)
-            : undefined
-      allowLeave.current = true
-      actions.clearRecordDraft()
-      router.replace({
-        pathname: "/record/complete",
-        params: newId ? { logId: String(newId) } : {},
-      })
-    } catch {
-      setError(
-        "기록을 저장하지 못했어요. 연결 상태를 확인하고 다시 시도해주세요.",
-      )
-    } finally {
-      setSaving(false)
-    }
+  if (!isHydrated) {
+    return (
+      <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.screen}>
+        <LoadingState fullScreen label="기록 화면을 준비하는 중…" />
+      </SafeAreaView>
+    )
   }
 
-  return (
-    <FlowPage>
-      <FlowHeader
-        title="라멘로그 작성"
-        subtitle={
-          shop
-            ? `${shop.name}${shop.branch ? ` · ${shop.branch}` : ""}`
-            : "매장을 선택해주세요"
-        }
-      />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
-        <FlowScroll contentContainerStyle={styles.content}>
-          {!!error && <InlineNotice text={error} tone="error" />}
+  if (!currentUser) {
+    return (
+      <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.screen}>
+        <StatusBar style="dark" />
+        <Header backLabel="뒤로가기" onBack={goBack} title="라멘 기록하기" />
+        <EmptyState
+          actionLabel="로그인하기"
+          description="기록은 계정에 저장돼요. 로그인하면 5축 취향 리포트도 함께 쌓여요."
+          icon={<LogIn color={colors.textMuted} size={32} />}
+          onAction={() => router.replace("/auth/login")}
+          style={styles.flex}
+          title="로그인하고 한 그릇을 기록해보세요"
+        />
+      </SafeAreaView>
+    )
+  }
 
-          <View style={flowStyles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={flowStyles.sectionTitle}>시식 사진</Text>
-              <Text style={styles.optional}>선택</Text>
-            </View>
-            {photo ? (
-              <View style={styles.photoFrame}>
-                <Image
-                  source={{ uri: photo }}
-                  contentFit="cover"
-                  style={StyleSheet.absoluteFill}
-                />
+  const inputStyle = (invalid: boolean) => [styles.input, invalid && styles.inputInvalid]
+
+  return (
+    <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
+      <StatusBar style="dark" />
+      <Header
+        backLabel="뒤로가기"
+        onBack={goBack}
+        right={
+          <AppText capScale style={styles.bold} tone="muted" variant="meta">
+            {isPublic ? "공개 기록" : "나만 보기"}
+          </AppText>
+        }
+        style={styles.headerPad}
+        title="라멘 기록하기"
+      />
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
+        <ScrollView
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          style={styles.flex}
+        >
+          <View collapsable={false} ref={contentRef}>
+            {/* 1. 한 그릇 정보 */}
+            <View style={styles.section}>
+              <SectionHeader meta="필수" style={styles.sectionHead} title="한 그릇 정보" />
+
+              <View style={styles.field}>
+                <AppText style={styles.label} variant="bodyStrong">
+                  가게
+                </AppText>
                 <Pressable
+                  accessibilityHint="기록할 가게를 다시 골라요"
+                  accessibilityLabel={
+                    shop ? `가게, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}. 변경` : "가게를 골라주세요"
+                  }
                   accessibilityRole="button"
-                  accessibilityLabel="사진 삭제"
-                  onPress={() => setPhoto(null)}
-                  style={styles.removePhoto}
+                  onPress={() => router.push({ pathname: "/record/select-shop" })}
+                  ref={shopRef}
+                  style={({ pressed }) => [styles.shopField, isMissing("shop") && styles.inputInvalid, pressed && styles.pressed]}
                 >
-                  <Trash2 color={palette.canvas} size={18} />
+                  <View style={styles.flexShrink}>
+                    <AppText numberOfLines={1} tone={shop ? "ink" : "muted"} variant="cardTitle">
+                      {shop?.name ?? "가게를 골라주세요"}
+                    </AppText>
+                    {shop?.branch ? (
+                      <AppText numberOfLines={1} tone="muted" variant="secondary">
+                        {shop.branch}
+                      </AppText>
+                    ) : null}
+                  </View>
+                  <AppText capScale style={styles.bold} tone="brand" variant="secondary">
+                    {shop ? "변경" : "선택"}
+                  </AppText>
                 </Pressable>
               </View>
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="라멘 사진 추가"
-                onPress={showPhotoMenu}
-                style={styles.photoPicker}
-              >
-                <ImagePlus color={palette.red} size={26} />
-                <Text style={styles.photoPickerTitle}>
-                  먹기 전에 찍은 한 장
-                </Text>
-                <Text style={styles.photoPickerCopy}>
-                  카메라로 촬영하거나 보관함에서 선택하세요.
-                </Text>
-              </Pressable>
-            )}
-          </View>
 
-          <View style={[flowStyles.section, styles.formSection]}>
-            <Text style={flowStyles.sectionTitle}>한 그릇 기본 정보</Text>
-            <View>
-              <Text style={flowStyles.label}>매장</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  shop ? `선택한 매장 ${shop.name}. 변경하기` : "매장 선택"
-                }
-                onPress={() => router.push("/record/select-shop")}
-                style={styles.selectField}
-              >
-                <MapPin color={shop ? palette.red : palette.muted} size={19} />
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={[
-                      styles.selectValue,
-                      !shop && { color: palette.muted },
-                    ]}
-                  >
-                    {shop?.name ?? "방문한 매장을 선택하세요"}
-                  </Text>
-                  {!!shop?.branch && (
-                    <Text style={styles.selectMeta}>{shop.branch}</Text>
-                  )}
+              <View style={styles.field}>
+                <View style={styles.labelRow}>
+                  <AppText nativeID="record-menu-label" variant="bodyStrong">
+                    먹은 메뉴
+                  </AppText>
+                  {isMissing("menu") ? (
+                    <AppText capScale tone="brand" variant="meta">
+                      채워주세요
+                    </AppText>
+                  ) : null}
                 </View>
-                <ChevronDown color={palette.muted} size={19} />
-              </Pressable>
-            </View>
-
-            <View>
-              <Text style={flowStyles.label}>방문일</Text>
-              <View style={styles.dateRow}>
-                <Text style={styles.dateText}>{formatDate(visitDate)}</Text>
-                <DateTimePicker
-                  accessibilityLabel="방문일 선택"
-                  display={Platform.OS === "ios" ? "compact" : "default"}
-                  maximumDate={new Date()}
-                  mode="date"
-                  onChange={(_, date) => date && setVisitDate(date)}
-                  value={visitDate}
-                />
-              </View>
-            </View>
-
-            <View>
-              <Text style={flowStyles.label}>먹은 메뉴</Text>
-              <View style={styles.chips}>
-                {menus.map((menu) => (
-                  <SelectChip
-                    key={menu}
-                    label={menu}
-                    selected={!isCustomMenu && menuName === menu}
-                    onPress={() => {
-                      setIsCustomMenu(false)
-                      setMenuName(menu)
-                    }}
-                  />
-                ))}
-                <SelectChip
-                  label="직접 입력"
-                  selected={isCustomMenu}
-                  onPress={() => setIsCustomMenu(true)}
-                />
-              </View>
-              {isCustomMenu && (
                 <TextInput
-                  accessibilityLabel="메뉴명 직접 입력"
+                  accessibilityLabel="먹은 메뉴"
+                  aria-required
+                  maxFontSizeMultiplier={maxFontScale}
                   maxLength={40}
-                  onChangeText={setCustomMenu}
-                  placeholder="메뉴명을 입력하세요"
-                  placeholderTextColor={palette.quiet}
-                  style={[flowStyles.input, { marginTop: 10 }]}
-                  value={customMenu}
+                  onChangeText={setMenuName}
+                  placeholder="예: 특제 쇼유 라멘"
+                  placeholderTextColor={colors.textMuted}
+                  ref={menuRef}
+                  returnKeyType="done"
+                  style={inputStyle(isMissing("menu"))}
+                  value={menuName}
                 />
-              )}
-            </View>
-
-            <View>
-              <Text style={flowStyles.label}>라멘 계보</Text>
-              <View style={styles.chips}>
-                {RAMEN_TYPES.map((type) => (
-                  <SelectChip
-                    key={type}
-                    label={type}
-                    selected={ramenType === type}
-                    onPress={() => setRamenType(type)}
+                {shopStyle && !trimmedMenu ? (
+                  <Chip
+                    accessibilityHint="먹은 메뉴 칸을 대표 스타일로 채워요"
+                    label={`대표 스타일 ${withDirectionParticle(shopStyle)} 채우기`}
+                    onPress={() => setMenuName(shopStyle)}
+                    style={styles.fillChip}
                   />
-                ))}
+                ) : null}
               </View>
-            </View>
-          </View>
 
-          <View style={[flowStyles.section, styles.formSection]}>
-            <Text style={flowStyles.sectionTitle}>다시 먹고 싶은 정도</Text>
-            <View style={styles.chips}>
-              {REVISIT_OPTIONS.map((option) => (
-                <SelectChip
-                  key={option}
-                  label={option}
-                  selected={revisit === option}
-                  onPress={() => setRevisit(option)}
-                />
-              ))}
-            </View>
-          </View>
-
-          <View style={[flowStyles.section, styles.formSection]}>
-            <Text style={flowStyles.sectionTitle}>맛의 기억</Text>
-            <Text style={flowStyles.secondary}>
-              각 항목에서 가장 가까운 느낌을 하나 이상 골라주세요.
-            </Text>
-            {TASTE_FIELDS.map((field) => (
-              <View key={field.key}>
-                <Text style={flowStyles.label}>{field.label}</Text>
-                <View style={styles.chips}>
-                  {field.options.map((option) => (
-                    <SelectChip
-                      key={option}
-                      label={option}
-                      selected={tasteNotes[field.key].includes(option)}
-                      onPress={() => toggleTaste(field.key, option)}
-                    />
-                  ))}
+              <View style={styles.field}>
+                <View
+                  accessibilityLabel={isMissing("ramenType") ? "라멘 종류, 골라주세요" : "라멘 종류"}
+                  accessible
+                  ref={ramenTypeRef}
+                  style={styles.labelRow}
+                >
+                  <AppText variant="bodyStrong">라멘 종류</AppText>
+                  {isMissing("ramenType") ? (
+                    <AppText capScale tone="brand" variant="meta">
+                      골라주세요
+                    </AppText>
+                  ) : null}
+                </View>
+                <View accessibilityLabel="라멘 종류" accessibilityRole="radiogroup" style={styles.chips}>
+                  {RAMEN_TYPES.map((type) => {
+                    const selected = ramenType === type
+                    return (
+                      <Chip
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: selected }}
+                        key={type}
+                        label={type}
+                        onPress={() => setRamenType(type)}
+                        selected={selected}
+                      />
+                    )
+                  })}
                 </View>
               </View>
-            ))}
-          </View>
 
-          <View style={[flowStyles.section, styles.formSection]}>
-            <View style={styles.sectionHeader}>
-              <Text style={flowStyles.sectionTitle}>나만의 시식 메모</Text>
-              <Text style={styles.counter}>{note.length}/500</Text>
+              <View style={styles.fieldLast}>
+                <AppText style={styles.label} variant="bodyStrong">
+                  방문일
+                </AppText>
+                <Pressable
+                  accessibilityHint={Platform.OS === "web" ? undefined : "달력을 열어 날짜를 바꿔요"}
+                  accessibilityLabel={`방문일, ${formatDateLabel(visitDate)}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: isDatePickerOpen }}
+                  onPress={() => setIsDatePickerOpen((open) => !open)}
+                  ref={visitedAtRef}
+                  style={({ pressed }) => [
+                    styles.dateField,
+                    isMissing("visitedAt") && styles.inputInvalid,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <AppText style={styles.medium} variant="body">
+                    {formatDateLabel(visitDate)}
+                    {visitedAt === formatDate(today) ? (
+                      <AppText tone="muted" variant="body">
+                        {"  오늘"}
+                      </AppText>
+                    ) : null}
+                  </AppText>
+                  <CalendarDays color={colors.textMuted} size={18} />
+                </Pressable>
+                {isDatePickerOpen ? (
+                  <DateTimePicker
+                    accentColor={colors.brand}
+                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    locale="ko-KR"
+                    maximumDate={today}
+                    mode="date"
+                    onChange={(event, date) => {
+                      if (Platform.OS !== "ios") setIsDatePickerOpen(false)
+                      if (event.type === "set" && date) setVisitDate(date)
+                    }}
+                    themeVariant="light"
+                    value={visitDate}
+                  />
+                ) : null}
+              </View>
             </View>
-            <TextInput
-              accessibilityLabel="시식 메모"
-              maxLength={500}
-              multiline
-              onChangeText={setNote}
-              placeholder="첫 모금, 면의 식감, 다음 주문 팁처럼 다시 기억하고 싶은 순간을 적어보세요."
-              placeholderTextColor={palette.quiet}
-              style={[flowStyles.input, styles.noteInput]}
-              textAlignVertical="top"
-              value={note}
-            />
-          </View>
 
-          <View style={styles.publicRow}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={styles.publicTitle}>라운지에 공개</Text>
-              <Text style={styles.publicDescription}>
-                끄면 나만 볼 수 있는 개인 기록으로 저장됩니다.
-              </Text>
+            <View style={styles.divider} />
+
+            {/* 2. 5축 평가 */}
+            <View style={styles.section}>
+              <SectionHeader meta="필수" title="5축 평가" />
+              <AppText style={styles.sectionLead} tone="muted" variant="secondary">
+                다섯 축이 모여 취향 여권이 갱신됩니다.
+              </AppText>
+              <View style={styles.axes}>
+                {SCORE_AXES.map((axis, index) => (
+                  <ScoreSegment
+                    high={axis.high}
+                    index={index + 1}
+                    invalid={attempted && missingAxes.has(axis.key)}
+                    key={axis.key}
+                    label={axis.label}
+                    low={axis.low}
+                    onChange={(value) => setScores((current) => ({ ...current, [axis.key]: value }))}
+                    ref={(node) => {
+                      axisRefs.current[axis.key] = node
+                    }}
+                    value={scores[axis.key] ?? null}
+                  />
+                ))}
+
+                <View>
+                  <View
+                    accessibilityLabel={
+                      attempted && missingAxes.has("revisit") ? `${REVISIT_AXIS.label}, 골라주세요` : REVISIT_AXIS.label
+                    }
+                    accessible
+                    ref={revisitRef}
+                    style={styles.scoreHead}
+                  >
+                    <AppText variant="bodyStrong">
+                      <AppText tone="muted" variant="bodyStrong">
+                        {`${SCORE_AXES.length + 1}  `}
+                      </AppText>
+                      {REVISIT_AXIS.label}
+                    </AppText>
+                    <AppText
+                      capScale
+                      tone={revisit ? "ink" : attempted && missingAxes.has("revisit") ? "critical" : "muted"}
+                      variant="meta"
+                    >
+                      {revisit
+                        ? `${REVISIT_SCORE[revisit]}점`
+                        : attempted && missingAxes.has("revisit")
+                          ? "골라주세요"
+                          : "미선택"}
+                    </AppText>
+                  </View>
+                  <View
+                    accessibilityLabel={REVISIT_AXIS.label}
+                    accessibilityRole="radiogroup"
+                    style={[styles.segment, attempted && missingAxes.has("revisit") && styles.segmentInvalid]}
+                  >
+                    {REVISIT_CHOICES.map((option, index) => {
+                      const selected = revisit === option
+                      return (
+                        <Pressable
+                          accessibilityLabel={`${REVISIT_AXIS.label} ${option}, ${REVISIT_SCORE[option]}점`}
+                          accessibilityRole="radio"
+                          accessibilityState={{ checked: selected }}
+                          key={option}
+                          onPress={() => setRevisit(option)}
+                          style={({ pressed }) => [
+                            styles.segmentCell,
+                            index > 0 && styles.segmentDivider,
+                            selected && styles.segmentSelected,
+                            pressed && !selected && styles.pressed,
+                          ]}
+                        >
+                          <AppText
+                            capScale
+                            numberOfLines={1}
+                            style={[styles.bold, styles.textCenter]}
+                            tone={selected ? "onDark" : "ink"}
+                            variant="secondary"
+                          >
+                            {option}
+                          </AppText>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                  <View style={styles.scoreEnds}>
+                    <AppText capScale tone="muted" variant="meta">
+                      {REVISIT_AXIS.low}
+                    </AppText>
+                    <AppText capScale tone="muted" variant="meta">
+                      {REVISIT_AXIS.high}
+                    </AppText>
+                  </View>
+                </View>
+              </View>
             </View>
-            <Switch
-              accessibilityLabel="라운지 공개"
-              ios_backgroundColor={palette.line}
-              onValueChange={setIsPublic}
-              trackColor={{ false: palette.line, true: palette.red }}
-              value={isPublic}
-            />
-          </View>
-        </FlowScroll>
 
-        <View style={flowStyles.bottomBar}>
-          <ActionButton
-            label="라멘로그 저장하기"
-            loading={saving}
-            disabled={saving}
-            icon={<Camera color={palette.canvas} size={19} />}
-            onPress={save}
-          />
-        </View>
+            <View style={styles.divider} />
+
+            {/* 3. 사진 (선택) */}
+            <View style={styles.section}>
+              <SectionHeader meta={`선택 · 최대 ${RECORD_PHOTO_MAX}장`} style={styles.sectionHeadTight} title="사진" />
+              <ScrollView
+                contentContainerStyle={styles.photoRow}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.photoScroller}
+              >
+                {photos.length < RECORD_PHOTO_MAX ? (
+                  <Pressable
+                    accessibilityHint="카메라나 사진 보관함에서 가져와요"
+                    accessibilityLabel={photos.length === 0 ? "사진 추가" : `사진 추가, ${photos.length}장 중 최대 ${RECORD_PHOTO_MAX}장`}
+                    accessibilityRole="button"
+                    onPress={choosePhotoSource}
+                    style={({ pressed }) => [styles.photoAdd, pressed && styles.pressed]}
+                  >
+                    <ImagePlus color={colors.textMuted} size={24} />
+                    <AppText capScale style={styles.bold} tone="muted" variant="meta">
+                      {photos.length === 0 ? "사진 추가" : `${photos.length}/${RECORD_PHOTO_MAX}`}
+                    </AppText>
+                  </Pressable>
+                ) : null}
+                {photos.map((uri, index) => (
+                  <View key={uri} style={styles.photoTile}>
+                    <Image
+                      accessibilityLabel={`첨부 사진 ${index + 1}`}
+                      contentFit="cover"
+                      source={{ uri }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <Pressable
+                      accessibilityLabel={`사진 ${index + 1} 삭제`}
+                      accessibilityRole="button"
+                      onPress={() => setPhotos((current) => current.filter((item) => item !== uri))}
+                      style={styles.photoRemove}
+                    >
+                      <View style={styles.photoRemoveDot}>
+                        <X color={colors.onDark} size={14} />
+                      </View>
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* 4. 메모 (선택) */}
+            <View style={styles.section}>
+              <SectionHeader
+                meta={`선택 · ${note.length}/${RECORD_NOTE_MAX_LENGTH}`}
+                style={styles.sectionHeadTight}
+                title="기억해둘 점"
+              />
+              <TextInput
+                accessibilityHint={`선택, ${RECORD_NOTE_MAX_LENGTH}자까지`}
+                accessibilityLabel="기억해둘 점"
+                maxLength={RECORD_NOTE_MAX_LENGTH}
+                multiline
+                onChangeText={setNote}
+                placeholder="예: 다음엔 면을 단단하게 부탁하기"
+                placeholderTextColor={colors.textMuted}
+                ref={noteRef}
+                style={[styles.input, styles.noteInput]}
+                textAlignVertical="top"
+                value={note}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* 5. 맛 태그 더 남기기 (선택, 접힘) */}
+            <View>
+              <Pressable
+                accessibilityHint={isTagsOpen ? "맛 태그를 접어요" : "국물, 면, 간, 토핑 태그를 펼쳐요"}
+                accessibilityLabel={`맛 태그 더 남기기, 선택${selectedTagCount > 0 ? `, ${selectedTagCount}개 선택` : ""}`}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isTagsOpen }}
+                onPress={() => setIsTagsOpen((open) => !open)}
+                style={({ pressed }) => [styles.tagsToggle, pressed && styles.pressedSoft]}
+              >
+                <View style={styles.flexShrink}>
+                  <AppText variant="sectionTitle">맛 태그 더 남기기</AppText>
+                  <AppText style={styles.tagsSub} tone="muted" variant="secondary">
+                    {`선택 · 국물, 면, 간, 토핑${selectedTagCount > 0 ? ` · ${selectedTagCount}개 선택` : ""}`}
+                  </AppText>
+                </View>
+                <Animated.View style={chevronStyle}>
+                  <ChevronDown color={colors.textMuted} size={20} />
+                </Animated.View>
+              </Pressable>
+              {isTagsOpen ? (
+                <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(200)} style={styles.tagsPanel}>
+                  {TASTE_FIELDS.map((field) => (
+                    <View key={field.key}>
+                      <View style={styles.labelRow}>
+                        <AppText variant="bodyStrong">{field.label}</AppText>
+                        <AppText capScale style={styles.bold} tone="muted" variant="meta">
+                          {`${tasteNotes[field.key].length}개 선택`}
+                        </AppText>
+                      </View>
+                      <View accessibilityLabel={field.label} style={styles.chips}>
+                        {field.options.map((option) => (
+                          <Chip
+                            accessibilityLabel={`${field.label} ${option}`}
+                            key={option}
+                            label={option}
+                            onPress={() => toggleTasteNote(field.key, option)}
+                            selected={tasteNotes[field.key].includes(option)}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+                </Animated.View>
+              ) : null}
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* 6. 공개 여부 */}
+            <View style={styles.publicRow}>
+              <View style={styles.flexShrink}>
+                <AppText variant="cardTitle">내 기록 공개하기</AppText>
+                <AppText style={styles.tagsSub} tone="muted" variant="secondary">
+                  끄면 피드에 올라가지 않고 나만 볼 수 있어요.
+                </AppText>
+              </View>
+              <Switch
+                accessibilityHint="끄면 피드에 올라가지 않고 나만 볼 수 있어요"
+                accessibilityLabel="내 기록 공개하기"
+                ios_backgroundColor={colors.textFaint}
+                onValueChange={setIsPublic}
+                thumbColor={colors.onDark}
+                trackColor={{ false: colors.textFaint, true: colors.brand }}
+                value={isPublic}
+              />
+            </View>
+            <View style={styles.bottomSpace} />
+          </View>
+        </ScrollView>
+
+        <StickyActionBar
+          hint={saveError ? undefined : hint}
+          hintTone={!isComplete && attempted ? "brand" : "muted"}
+        >
+          {saveError ? (
+            <View accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorRow}>
+              <AlertCircle color={colors.critical} size={20} />
+              <AppText style={styles.flex} variant="secondary">
+                {`저장하지 못했어요. ${saveError}`}
+              </AppText>
+              <Button loading={saving} onPress={() => void save()} size="small" title="다시 시도" />
+            </View>
+          ) : (
+            // 공용 Button은 disabled를 늘 Pressable에 넘겨 accessibilityState.disabled를 덮으므로,
+            // "누를 수 있지만 미완성"을 알리려고 같은 모양의 버튼을 여기서 그린다.
+            <Pressable
+              accessibilityHint={isComplete ? undefined : "빠진 첫 항목으로 이동해요"}
+              accessibilityLabel={isComplete ? "기록 저장하기" : `기록 저장하기, 남은 필수 ${missing.length}개`}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !isComplete, busy: saving }}
+              onPress={() => void save()}
+              style={({ pressed }) => [
+                styles.saveButton,
+                !isComplete && !saving && styles.saveButtonIncomplete,
+                pressed && styles.saveButtonPressed,
+              ]}
+            >
+              {saving ? <ActivityIndicator color={colors.onDark} size="small" /> : null}
+              <AppText
+                capScale
+                numberOfLines={1}
+                tone={!isComplete && !saving ? "muted" : "onDark"}
+                variant="bodyStrong"
+              >
+                {saving ? "저장하는 중…" : isComplete ? "기록 저장하기" : `남은 필수 ${missing.length}개 보러 가기`}
+              </AppText>
+            </Pressable>
+          )}
+        </StickyActionBar>
       </KeyboardAvoidingView>
-    </FlowPage>
+
+      <ConfirmDialog
+        cancelLabel="계속 작성"
+        confirmLabel="나가기"
+        destructive
+        message="작성 중인 기록이 있어요. 지금까지 고른 평가와 사진은 저장되지 않아요."
+        onCancel={() => {
+          pendingLeave.current = null
+          setLeaveVisible(false)
+        }}
+        onConfirm={confirmLeave}
+        title="작성을 그만둘까요?"
+        visible={leaveVisible}
+      />
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  content: { paddingTop: 14, gap: 14 },
-  sectionHeader: {
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  flexShrink: { flex: 1, minWidth: 0 },
+  bold: { fontWeight: "700" },
+  medium: { fontWeight: "500" },
+  textCenter: { textAlign: "center" },
+  headerPad: { paddingRight: spacing.x4 },
+  section: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, paddingBottom: spacing.x6 },
+  sectionHead: { marginBottom: spacing.x4 },
+  sectionHeadTight: { marginBottom: spacing.x3 },
+  sectionLead: { marginTop: spacing.x1, marginBottom: spacing.x5 },
+  divider: { height: spacing.x2, backgroundColor: colors.canvasSoft },
+  field: { marginBottom: spacing.x4 },
+  fieldLast: {},
+  label: { marginBottom: spacing.x1_5 },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    marginBottom: spacing.x1_5,
+  },
+  input: {
+    ...typography.body,
+    fontWeight: "500",
+    minHeight: 48,
+    paddingHorizontal: spacing.x3_5,
+    paddingVertical: spacing.x3,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceInput,
+    color: colors.ink,
+  },
+  inputInvalid: { borderColor: colors.brand },
+  noteInput: { minHeight: 96, paddingTop: spacing.x3_5 },
+  fillChip: { alignSelf: "flex-start", marginTop: spacing.x2 },
+  shopField: {
+    minHeight: 48,
+    paddingHorizontal: spacing.x3_5,
+    paddingVertical: spacing.x2,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceInput,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x3,
+  },
+  dateField: {
+    minHeight: 48,
+    paddingHorizontal: spacing.x3_5,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceInput,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    gap: spacing.x3,
   },
-  optional: { color: palette.muted, fontSize: 12, fontWeight: "700" },
-  photoFrame: {
-    height: 220,
-    borderRadius: 10,
+  pressed: { backgroundColor: colors.canvasSoft },
+  pressedSoft: { backgroundColor: colors.surfaceInput },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
+  axes: { gap: spacing.x6 },
+  scoreHead: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    marginBottom: spacing.x2,
+  },
+  segment: {
+    flexDirection: "row",
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: "hidden",
-    backgroundColor: palette.wash,
   },
-  removePhoto: {
-    position: "absolute",
-    right: 8,
-    top: 8,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(37,40,43,0.82)",
+  segmentInvalid: { borderColor: colors.brand },
+  segmentCell: {
+    flex: 1,
+    minHeight: touchTarget,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: spacing.x1,
+    backgroundColor: colors.canvas,
   },
-  photoPicker: {
-    minHeight: 150,
-    borderRadius: 10,
+  segmentDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
+  segmentSelected: { backgroundColor: colors.brand },
+  scoreEnds: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.x1_5 },
+  photoScroller: { marginHorizontal: -spacing.gutter },
+  photoRow: { paddingHorizontal: spacing.gutter, gap: spacing.x2 },
+  photoAdd: {
+    width: 96,
+    height: 96,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: "#C9C9C9",
-    backgroundColor: palette.wash,
+    borderColor: colors.textFaint,
+    backgroundColor: colors.surfaceInput,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    gap: spacing.x1,
   },
-  photoPickerTitle: {
-    color: palette.ink,
-    fontSize: 15,
-    fontWeight: "800",
-    marginTop: 9,
-  },
-  photoPickerCopy: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 3,
-    textAlign: "center",
-  },
-  formSection: { gap: 18 },
-  selectField: {
-    minHeight: 58,
-    borderRadius: 8,
+  photoTile: {
+    width: 96,
+    height: 96,
+    borderRadius: radii.sm,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: palette.line,
-    paddingHorizontal: 13,
+    borderColor: colors.border,
+    backgroundColor: colors.canvasSoft,
+  },
+  photoRemove: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: "flex-end",
+    justifyContent: "flex-start",
+    padding: spacing.x1_5,
+  },
+  photoRemoveDot: {
+    width: 24,
+    height: 24,
+    borderRadius: radii.pill,
+    backgroundColor: colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tagsToggle: {
+    minHeight: 56,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.x3,
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
+    gap: spacing.x3,
   },
-  selectValue: { color: palette.ink, fontSize: 15, fontWeight: "800" },
-  selectMeta: { color: palette.muted, fontSize: 12, marginTop: 2 },
-  dateRow: {
-    minHeight: 52,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: palette.line,
-    paddingHorizontal: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  dateText: { color: palette.ink, fontSize: 15, fontWeight: "700" },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  counter: { color: palette.quiet, fontSize: 11 },
-  noteInput: { minHeight: 132, paddingTop: 13 },
+  tagsSub: { marginTop: spacing.x0_5 },
+  tagsPanel: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.x6, gap: spacing.x5 },
   publicRow: {
-    minHeight: 76,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.x4,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: palette.wash,
+    gap: spacing.x3,
   },
-  publicTitle: { color: palette.ink, fontSize: 15, fontWeight: "800" },
-  publicDescription: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 3,
+  bottomSpace: { height: spacing.x4 },
+  errorRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.x3 },
+  saveButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: radii.pill,
+    backgroundColor: colors.brand,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.x2,
+    paddingHorizontal: spacing.x6,
   },
+  saveButtonIncomplete: { backgroundColor: colors.canvasSoft },
+  saveButtonPressed: { opacity: 0.85 },
 })
