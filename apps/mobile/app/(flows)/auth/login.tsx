@@ -2,22 +2,23 @@ import { useState, type ReactElement } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import * as Haptics from "expo-haptics"
-import { Compass, Soup } from "lucide-react-native"
+import { Compass } from "lucide-react-native"
 import { Image, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import Svg, { Path } from "react-native-svg"
 
 import type { AuthProvider } from "@raota/shared"
 import { track } from "@/src/analytics"
-import { AppText, Button, Header, Toast } from "@/src/components/ui"
+import { AppText, Header, Toast } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
- * 로그인. 웹 LoginScreen과 같은 구성이다(로고 → 한 줄 소개 → 간편 로그인 → 데모 체험 → 둘러보기).
+ * 로그인. 로고·소개·간편 로그인을 화면 가운데에 모으고, 둘러보기와 약관 링크는 아래에 둔다.
  * MVP 로그인 수단은 Apple · 카카오 · Google 세 가지다.
  * params.mode === "signup"(마이·홈의 "회원가입")이면 같은 화면을 가입 흐름으로 보여준다:
- * 간편 로그인으로 계정을 만든 뒤 바로 온보딩(닉네임·약관)으로 간다. 데모 체험은 가입 흐름에서 빼 둔다.
+ * 간편 로그인으로 계정을 만든 뒤 바로 온보딩(닉네임·약관)으로 간다.
+ * 데모 계정(42그릇) 버튼은 두지 않는다. 개발 빌드에서만 로고를 길게 누르면 들어간다.
  * 지금은 인증 API가 없어 actions.login({ provider })로 기기 안에서만 로그인한다.
  * TODO(#44): Apple은 expo-apple-authentication의 signInAsync, 카카오·Google은 각 SDK로 토큰을 받아
  *   서버 #44(소셜 로그인)에 보내고, 응답의 사용자·신규 여부로 온보딩 이동을 정한다.
@@ -113,6 +114,21 @@ function ProviderButton({ id, label, Mark, onPress }: (typeof PROVIDERS)[number]
   )
 }
 
+function LegalLink({ doc, label }: { doc: "terms" | "privacy"; label: string }) {
+  return (
+    <Pressable
+      accessibilityRole="link"
+      hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }}
+      onPress={() => router.push({ pathname: "/legal/[doc]", params: { doc } })}
+      style={({ pressed }) => pressed && styles.pressed}
+    >
+      <AppText style={styles.legalLinkText} tone="sub" variant="meta">
+        {label}
+      </AppText>
+    </Pressable>
+  )
+}
+
 export default function LoginScreen() {
   const params = useLocalSearchParams<{ mode?: string }>()
   const signup = params.mode === "signup"
@@ -144,7 +160,7 @@ export default function LoginScreen() {
     afterLogin(profile.id !== previousUserId)
   }
 
-  // 데모 계정 체험: provider 없이 login()을 부르면 항상 데모 계정(42그릇)으로 들어간다
+  // 개발 빌드 전용: provider 없이 login()을 부르면 데모 계정(42그릇)으로 들어간다. 리포트·월별 화면 확인용
   const demoLogin = () => {
     actions.login()
     track("login", { provider: "demo" })
@@ -179,7 +195,14 @@ export default function LoginScreen() {
         title={signup ? "회원가입" : "로그인"}
       />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.main}>
         <View style={styles.brand}>
+          <Pressable
+            accessible={false}
+            delayLongPress={800}
+            disabled={!__DEV__}
+            onLongPress={demoLogin}
+          >
           <Image
             accessibilityIgnoresInvertColors
             accessibilityLabel="RAOTA"
@@ -187,6 +210,7 @@ export default function LoginScreen() {
             source={require("@/assets/images/logo.png")}
             style={styles.logo}
           />
+          </Pressable>
           <AppText accessibilityRole="header" style={styles.center} variant="headline">
             좋았던 한 그릇을{"\n"}
             <AppText tone="brand" variant="headline">
@@ -206,26 +230,7 @@ export default function LoginScreen() {
           ))}
         </View>
 
-        {signup ? null : (
-          <>
-            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <AppText capScale style={styles.bold} tone="muted" variant="secondary">
-                또는
-              </AppText>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <Button
-              accessibilityHint="기록이 쌓여 있는 체험용 계정으로 둘러봐요"
-              leftIcon={<Soup color={colors.onDark} size={16} />}
-              onPress={demoLogin}
-              size="small"
-              title="데모 계정으로 체험"
-              variant="secondary"
-            />
-          </>
-        )}
+        </View>
 
         <View style={styles.bottom}>
           <Pressable
@@ -240,11 +245,18 @@ export default function LoginScreen() {
               로그인 없이 둘러보기
             </AppText>
           </Pressable>
-          {signup ? null : (
+          <View style={styles.legal}>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="muted" variant="meta">
               처음이면 간편 로그인 뒤 닉네임과 약관 동의만 하면 가입이 끝나요.
             </AppText>
-          )}
+            <View style={styles.legalLinks}>
+              <LegalLink doc="terms" label="이용약관" />
+              <AppText tone="muted" variant="meta">
+                ·
+              </AppText>
+              <LegalLink doc="privacy" label="개인정보처리방침" />
+            </View>
+          </View>
         </View>
       </ScrollView>
       <Toast message={notice ?? ""} onDismiss={() => setNotice(null)} visible={Boolean(notice)} />
@@ -257,10 +269,11 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.x6,
-    paddingBottom: spacing.x6,
-    gap: spacing.x3,
+    paddingTop: spacing.x4,
+    paddingBottom: spacing.x4,
   },
+  // 로고·소개·간편 로그인 묶음을 남는 높이의 가운데에 둔다(헤더를 빼고 조금 위로 보이도록 아래 여백을 더 준다)
+  main: { flexGrow: 1, justifyContent: "center", gap: spacing.x3, paddingBottom: spacing.x8 },
   center: { textAlign: "center" },
   bold: { fontWeight: "700" },
   pressed: { opacity: 0.85 },
@@ -282,9 +295,10 @@ const styles = StyleSheet.create({
   providerGoogle: { backgroundColor: colors.canvas, borderColor: colors.border },
   providerMark: { position: "absolute", left: spacing.x5, top: 0, bottom: 0, justifyContent: "center" },
   providerLabel: { ...typography.cardTitle },
-  divider: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x1 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  bottom: { marginTop: "auto", paddingTop: spacing.x8, alignItems: "center", gap: spacing.x1 },
+  bottom: { paddingTop: spacing.x4, alignItems: "center", gap: spacing.x2 },
+  legal: { alignItems: "center", gap: spacing.x1 },
+  legalLinks: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
+  legalLinkText: { textDecorationLine: "underline" },
   guest: {
     minHeight: touchTarget,
     flexDirection: "row",

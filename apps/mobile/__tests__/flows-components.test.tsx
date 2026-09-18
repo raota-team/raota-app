@@ -103,13 +103,25 @@ describe("authentication and onboarding screens", () => {
     jest.clearAllMocks()
   })
 
-  it("offers Apple, Kakao and Google login with a separate demo entry", async () => {
+  it("offers Apple, Kakao and Google login and guest browsing without a demo button", async () => {
     const view = await renderWithStore(<LoginScreen />)
 
-    for (const name of ["Apple로 계속하기", "카카오로 계속하기", "Google로 계속하기", "데모 계정으로 체험", "로그인 없이 둘러보기"]) {
+    for (const name of ["Apple로 계속하기", "카카오로 계속하기", "Google로 계속하기", "로그인 없이 둘러보기"]) {
       expect(view.getByRole("button", { name })).toBeTruthy()
     }
+    expect(view.queryByText("데모 계정으로 체험")).toBeNull()
     expect(view.queryByText("이메일로 로그인")).toBeNull()
+  })
+
+  it("opens the full terms and privacy pages from the login footer", async () => {
+    const { router } = jest.requireMock("expo-router") as {
+      router: { push: jest.Mock }
+    }
+    const view = await renderWithStore(<LoginScreen />)
+
+    await fireEvent.press(view.getByRole("link", { name: "개인정보처리방침" }))
+
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/legal/[doc]", params: { doc: "privacy" } })
   })
 
   it("completes onboarding and routes to the tab shell", async () => {

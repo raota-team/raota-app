@@ -233,27 +233,29 @@ describe("RecordFab dev reminder test (Expo Go)", () => {
 describe("PolicySheet", () => {
   it("renders nothing while closed", async () => {
     const view = await render(<PolicySheet onClose={jest.fn()} type={null} />)
-    expect(view.queryByText("제1조 (목적)")).toBeNull()
+    expect(view.queryByText("1. 목적")).toBeNull()
   })
 
-  it("shows the three terms articles and a 닫기 button", async () => {
+  it("shows the web terms (same shared source) and a 닫기 button", async () => {
     const onClose = jest.fn()
     const view = await render(<PolicySheet onClose={onClose} type="terms" />)
 
-    expect(view.getByText("서비스 이용약관")).toBeTruthy()
-    for (const heading of ["제1조 (목적)", "제2조 (회원의 의무)", "제3조 (서비스 제공 및 변경)"]) {
+    expect(view.getByText("이용약관")).toBeTruthy()
+    expect(view.getByText("시행일 2026년 6월 11일")).toBeTruthy()
+    for (const heading of ["1. 목적", "6. 회원의 의무와 금지행위", "13. 문의"]) {
       expect(view.getByText(heading)).toBeTruthy()
     }
     await fireEvent.press(view.getByRole("button", { name: "닫기" }))
     expect(onClose).toHaveBeenCalled()
   })
 
-  it("shows the four privacy items and lets a footer replace 닫기", async () => {
+  it("shows the privacy policy and lets a footer replace 닫기", async () => {
     const view = await render(
       <PolicySheet footer={<Text>확인하고 동의</Text>} onClose={jest.fn()} title="개인정보 수집 및 이용 동의" type="privacy" />,
     )
     expect(view.getByText("개인정보 수집 및 이용 동의")).toBeTruthy()
-    expect(view.getByText("4. 문의")).toBeTruthy()
+    expect(view.getByText("2. 처리하는 개인정보 항목")).toBeTruthy()
+    expect(view.getByText("12. 개인정보 보호책임자 및 문의")).toBeTruthy()
     expect(view.getByText("확인하고 동의")).toBeTruthy()
     expect(view.queryByRole("button", { name: "닫기" })).toBeNull()
   })
@@ -327,10 +329,11 @@ describe("login", () => {
     expect(router.replace).toHaveBeenCalledWith("/native")
   })
 
-  it("keeps the demo account behind its own button", async () => {
+  it("keeps the demo account off screen, behind a dev-only long press on the logo", async () => {
     const view = await renderApp(<LoginScreen />, guestState())
+    expect(view.queryByText("데모 계정으로 체험")).toBeNull()
 
-    await fireEvent.press(view.getByRole("button", { name: "데모 계정으로 체험" }))
+    await fireEvent(view.getByLabelText("RAOTA"), "longPress")
 
     expect(view.getByTestId("who").props.children).toBe("user-demo")
     expect(track).toHaveBeenCalledWith("login", { provider: "demo" })
