@@ -76,6 +76,7 @@ function HydratedNavigation() {
         }}
       >
         <Stack.Screen name="index" />
+        <Stack.Screen name="dev-webview" />
         <Stack.Screen name="native" />
         <Stack.Screen name="(flows)" />
         <Stack.Screen name="+not-found" />
