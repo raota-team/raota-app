@@ -263,8 +263,12 @@ export interface CreateRamenLogInput {
   visitedAt: string
   imageUrl?: string | null
   photos?: string[]
+  /** 선택. 빈 문자열이면 메모 없음 */
   note: string
+  /** 선택. 빈 배열이면 태그 없음 */
   tasteNotes: TasteNotes
+  /** 필수 5축 평가. revisit 점수는 revisit 답에서 다시 계산된다 */
+  scores: TasteScores
   revisit: RevisitOption
   isPublic: boolean
 }
