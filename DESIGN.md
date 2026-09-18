@@ -1,6 +1,6 @@
 # RAOTA Design System
 
-> 이 문서에서 Vodafone은 편집형 레이아웃과 강한 단일 브랜드 컬러를 설명하기 위한 참고점이다. 실제 제품에서는 RAOTA의 라멘 그릇 로고, 음식 사진, Pretendard/Do Hyeon 타이포그래피와 `#e60000` 레드를 우선한다. 아래 규칙이 레퍼런스 설명과 충돌하면 RAOTA 제품 규칙을 따른다.
+> 이 문서에서 Vodafone은 편집형 레이아웃과 강한 단일 브랜드 컬러를 설명하기 위한 참고점이다. 실제 제품에서는 RAOTA의 라멘 그릇 로고, 음식 사진, Apple 시스템 서체(SF Pro 및 Apple SD Gothic Neo)와 `#e60000` 레드를 우선한다. 아래 규칙이 레퍼런스 설명과 충돌하면 RAOTA 제품 규칙을 따른다.
 
 ## 1. Visual Theme & Atmosphere
 
@@ -41,7 +41,7 @@ Surface treatment is disciplined and predictable: a three-surface pass of white 
 ### Neutrals & Text
 
 - **Charcoal Headline** (`#25282b`): All heading text on light surfaces and the charcoal surface color itself — a near-black with a faint cool tint, never pure black.
-- **Secondary Body Grey** (`#7e7e7e`): Body copy, meta text, and secondary labels — a true mid-grey that reads as unemphatic but still legible.
+- **Secondary Body Grey** (`#6b6e73`): Body copy, meta text, and secondary labels on white. 5.1:1 on white, so it clears WCAG AA at every text size. The earlier `#7e7e7e` (4.1:1) is retired. On the charcoal panel use white at 70% or more instead of any grey hex.
 - **Form Text Grey** (`#333333`): Borders on input-style ghost buttons and the text color inside them.
 - **Disabled Grey** (`#bebebe`): Inactive chip text on subtle ghost-style controls.
 - **Translucent White Divider** (`rgba(255,255,255,0.25)`): Hairline column dividers on dark institutional panels (footer columns, map legend rows).
@@ -59,10 +59,10 @@ Vodafone's design is intentionally gradient-free. The only tonal variation is a 
 
 ### Font Family
 
-- **Primary**: `Pretendard` — RAOTA's default application sans-serif, used for body copy, navigation, controls, cards, forms, and most headings
-- **Display exception**: homepage hero display type may use `Do Hyeon` as a branded Korean display treatment, while still following the same uppercase-scale and tight layout principles
-- **Fallback stack**: `Pretendard, "Helvetica Neue", Arial, sans-serif`
-- **Icon font**: `icomoon` — carries pictograph glyphs at 18px/24px/48px fixed sizes
+- **Primary**: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Apple SD Gothic Neo", system-ui, sans-serif` — RAOTA's default application sans-serif, used for body copy, navigation, controls, cards, forms, and most headings
+- **Display treatment**: the same Apple system stack uses the display size, weight, and tracking rules for branded moments without loading a separate display face
+- **Fallback stack**: `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Apple SD Gothic Neo", system-ui, sans-serif`
+- **Icon set**: Lucide SVG icons — keeps utility symbols independent from the text font
 - **Rendering**: `font-smoothing: antialiased` across the board; OpenType features are not aggressively used — the design relies on weight and tracking, not stylistic alternates
 
 ### Hierarchy
@@ -104,7 +104,28 @@ Vodafone's design is intentionally gradient-free. The only tonal variation is a 
 
 ### Note on Font Substitutes
 
-The original Vodafone corporate typeface is proprietary, so RAOTA uses **Pretendard** as the practical production sans-serif. Pretendard gives Korean UI text consistent weight, spacing, and legibility across dense lists, forms, and editorial sections. At large display sizes, keep the tight tracking and compact line-height rules from this document; use the homepage `Do Hyeon` display treatment only where a deliberate RAOTA brand moment is needed.
+The original Vodafone corporate typeface is proprietary, so RAOTA uses the Apple system font stack as its production sans-serif. SF Pro provides the native iOS voice, while Apple SD Gothic Neo supplies the Korean glyph fallback. At large display sizes, keep the tight tracking and compact line-height rules from this document; use weight and scale to create deliberate RAOTA brand moments without a separate custom font.
+
+### RAOTA App Scale (mobile product UI)
+
+The Vodafone display scale above is for editorial brand moments. Inside the 430px app, use this fixed scale and nothing smaller. The iOS app uses the same numbers in pt; see `apps/mobile/DESIGN.md` for the native mapping.
+
+| Role | Size | Weight | Use |
+|------|------|--------|-----|
+| Counter | 56px | 800 | The "N번째 그릇" number on record complete — one place only |
+| Headline | 24px | 800 | Flow intros, taste identity title, sign-up complete |
+| Screen title | 20px | 800 | Top bar and screen headings |
+| Section title | 17px | 800 | Section heads inside a screen |
+| Card title | 15px | 700 | Shop names, log titles, list primaries |
+| Body | 14px | 400–500 | Notes, descriptions, form text |
+| Secondary | 13px | 500 | Supporting lines, chip labels |
+| Meta | 12px | 500–700 | Dates, counts, tab labels, badges — the floor |
+
+- **12px is the floor.** No 8–11px text anywhere, including tab labels and badges.
+- **Touch targets are at least 44×44px.** Expand the hit area with padding when the visible control is smaller.
+- **Korean labels only.** No decorative English labels (TASTE SPECTRUM, SANCTUM SHOPS) and no eyebrow line above a heading.
+- **Cards and sheets:** 6px card radius, 12px top radius on bottom sheets and dialogs. No card inside a card.
+- **Depth:** no decorative shadows, glows, or backdrop blur. Only floating elements (FAB, bottom sheet, toast) take one soft offset shadow: `0 4px 16px rgba(0,0,0,0.12)`. Modal scrims are a flat `rgba(0,0,0,0.5)`.
 
 ## 4. Component Stylings
 
@@ -256,7 +277,7 @@ The shop-detail 1:1 compare panel is a secondary action at the bottom of a detai
 - Height: approximately 64px desktop, 56px mobile
 - Logo: Vodafone speech-mark, 40×40px red circle with a white "speech-mark" cut-out, left-aligned
 - Nav links: 16px weight 400 Charcoal Headline (`#25282b`) on white; reversed to white when sitting on dark hero imagery
-- Right-side utility: small icon links (search, locale, menu) rendered as 24px icomoon glyphs
+- Right-side utility: small icon links (search, locale, menu) rendered as 24px Lucide SVG icons
 - On interior pages (Investors, Sustainable Business), the top bar shows additional secondary-nav row: "Vodafone Business / Vodafone Foundation / Our site" labels, aligned right
 
 **Mobile collapse**
@@ -453,7 +474,7 @@ All interactive controls meet a 44×44px minimum on mobile. Icon buttons use 40�
 - Primary CTA: "Vodafone Red (`#e60000`)"
 - Background: "Canvas White (`#ffffff`)"
 - Heading text: "Charcoal Headline (`#25282b`)"
-- Body text: "Secondary Body Grey (`#7e7e7e`)"
+- Body text: "Secondary Body Grey (`#6b6e73`)"
 - Institutional surface: "Charcoal Institutional Panel (`#25282b`)"
 - Inline link: "Signal Blue (`#3860be`)"
 - Quiet pill background: "Light Neutral (`#f2f2f2`)"
@@ -481,6 +502,6 @@ When refining existing screens generated with this design system:
 ### Known Gaps
 
 - Form input styles (text fields, dropdowns, toggles) are not exposed on these page templates; their specs are inferred from the ghost-button pattern and may need refinement when real forms are designed
-- The Vodafone corporate typeface is proprietary and cannot be reproduced exactly in open systems; RAOTA standardizes on Pretendard for production UI, with Do Hyeon reserved only for selected brand/display moments
+- The Vodafone corporate typeface is proprietary and cannot be reproduced exactly in open systems; RAOTA standardizes on the Apple system font stack for production UI and uses scale, weight, and tracking for selected brand/display moments
 - Animation and transition timings are intentionally not documented — the site uses them sparingly and the values are not extractable from static analysis
 - The share ticker's exact number styling (separators, currency glyph) is documented from the investor-page screenshot; other regional variants may display differently
