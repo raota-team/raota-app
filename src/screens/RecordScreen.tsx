@@ -29,7 +29,7 @@ type MissingField = { key: FieldKey; label: string; kind: 'text' | 'choice' }
 const SCORE_AXES = TASTE_AXES.filter((axis): axis is typeof axis & { key: ScoreAxisKey } => axis.key !== 'revisit')
 const REVISIT_AXIS = TASTE_AXES.find(axis => axis.key === 'revisit')!
 const SCORE_VALUES = [1, 2, 3, 4, 5]
-const MAX_PHOTOS = 5
+const MAX_PHOTOS = 3
 const EMPTY_TASTE_NOTES: TasteNotes = { broth: [], noodle: [], seasoning: [], topping: [] }
 
 const todayInSeoul = () => new Intl.DateTimeFormat('en-CA', {
