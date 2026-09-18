@@ -4,34 +4,52 @@
     "slug": "raota",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "raota",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.raota.app"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.raota.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "내 주변 라멘집과 거리를 보여드리기 위해 위치를 사용합니다.",
+        "NSCameraUsageDescription": "라멘 기록에 사진을 남기기 위해 카메라를 사용합니다.",
+        "NSPhotoLibraryUsageDescription": "라멘 기록과 프로필에 사진을 추가하기 위해 사진 보관함을 사용합니다."
+      }
     },
     "android": {
       "package": "com.raota.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/logo.png",
+        "monochromeImage": "./assets/images/logo.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/logo.png"
     },
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "내 주변 라멘집과 거리를 보여드리기 위해 위치를 사용합니다."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "라멘 기록과 프로필에 사진을 추가하기 위해 사진 보관함을 사용합니다.",
+          "cameraPermission": "라멘 기록에 사진을 남기기 위해 카메라를 사용합니다.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logo.png",
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
