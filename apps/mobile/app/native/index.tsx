@@ -249,7 +249,7 @@ export default function HomeScreen() {
                 <Pressable
                   accessibilityLabel="회원가입"
                   accessibilityRole="button"
-                  onPress={() => router.push("/auth/onboarding")}
+                  onPress={() => router.push({ pathname: "/auth/login", params: { mode: "signup" } })}
                   style={({ pressed }) => [styles.signupButton, pressed && styles.signupPressed]}
                 >
                   <AppText capScale style={styles.bold} tone="onDark" variant="secondary">

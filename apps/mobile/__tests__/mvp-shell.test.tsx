@@ -261,8 +261,7 @@ describe("PolicySheet", () => {
 
 describe("login", () => {
   it("logs in with Apple through the dummy provider and goes on to sign-up for a new person", async () => {
-    // 저장된 사용자가 없는 상태(탈퇴 뒤). 앱 첫 설치는 데모 사용자를 들고 시작하므로
-    // 그 상태에서는 스토어 login()이 데모 id를 이어 쓴다. 아래 가입 흐름 테스트와 보고서 "필요 변경" 참고
+    // 저장된 사용자가 없는 상태(탈퇴 뒤)
     const fresh = { ...createInitialPersistedState(), user: null, onboardingCompleted: false }
     const view = await renderApp(<LoginScreen />, fresh)
     expect(view.getByTestId("who").props.children).toBe("guest")
@@ -277,12 +276,25 @@ describe("login", () => {
   })
 
   it("returns to the screen that asked for login when the account is already set up", async () => {
-    const view = await renderApp(<LoginScreen />, guestState())
+    // 이 기기에서 카카오로 가입을 마친 뒤 로그아웃한 상태
+    const base = createInitialPersistedState()
+    const kakaoUser = { ...base.user!, id: "local-kakao", nickname: "카카오러", isLoggedIn: false }
+    const view = await renderApp(<LoginScreen />, { ...base, user: kakaoUser, onboardingCompleted: true })
 
     await fireEvent.press(view.getByRole("button", { name: "카카오로 계속하기" }))
 
     expect(track).toHaveBeenCalledWith("login", { provider: "kakao", signup: false })
     expect(router.back).toHaveBeenCalled()
+    expect(view.getByTestId("who").props.children).toBe("local-kakao")
+  })
+
+  it("starts a new account from the demo device and sends it to onboarding", async () => {
+    const view = await renderApp(<LoginScreen />, guestState())
+
+    await fireEvent.press(view.getByRole("button", { name: "카카오로 계속하기" }))
+
+    expect(view.getByTestId("who").props.children).toBe("local-kakao")
+    expect(router.replace).toHaveBeenCalledWith("/auth/onboarding")
   })
 
   it("shows the sign-up flow for mode=signup and goes straight to onboarding", async () => {
@@ -295,9 +307,8 @@ describe("login", () => {
 
     expect(track).toHaveBeenCalledWith("login", { provider: "google", signup: true })
     expect(router.replace).toHaveBeenCalledWith("/auth/onboarding")
-    // 지금 스토어의 실제 동작을 그대로 기록한다: 기기에 남은 데모 사용자 id를 이어 써서 새 가입자가 데모 기록을 본다.
-    // RaotaStore login()이 소셜 가입 때 새 id를 만들도록 바뀌면 이 기대값을 not.toBe("user-demo")로 뒤집는다(필요 변경)
-    expect(view.getByTestId("who").props.children).toBe("user-demo")
+    // 첫 설치(데모 사용자가 남아 있는 기기)에서도 소셜 가입은 새 계정으로 시작한다
+    expect(view.getByTestId("who").props.children).toBe("local-google")
   })
 
   it("switches between login and sign-up from the header link", async () => {

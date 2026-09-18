@@ -7,7 +7,7 @@ import { Image, Platform, Pressable, ScrollView, StyleSheet, View } from "react-
 import { SafeAreaView } from "react-native-safe-area-context"
 import Svg, { Path } from "react-native-svg"
 
-import { DEMO_USER, type AuthProvider } from "@raota/shared"
+import type { AuthProvider } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { AppText, Button, Header, Toast } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -124,10 +124,11 @@ export default function LoginScreen() {
     else router.replace("/native")
   }
 
-  const afterLogin = () => {
+  // newAccount: 이 기기에서 처음 쓰는 계정이면 온보딩을 거친다. 로그인 직후의 state는 아직 이전 값이라 결과로 판단한다
+  const afterLogin = (newAccount: boolean) => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined)
-    // 가입 흐름이면 곧바로 닉네임·약관 단계로 간다
-    if (signup || !state.onboardingCompleted) {
+    // 가입 흐름이거나 새 계정이면 곧바로 닉네임·약관 단계로 간다
+    if (signup || newAccount) {
       router.replace("/auth/onboarding")
       return
     }
@@ -137,21 +138,17 @@ export default function LoginScreen() {
 
   const socialLogin = (provider: SocialProvider) => {
     // TODO(#44): 실제 인증으로 교체. 지금은 기기 안 더미 로그인
-    actions.login({ provider })
+    const previousUserId = state.user?.id
+    const profile = actions.login({ provider })
     track("login", { provider, signup })
-    afterLogin()
+    afterLogin(profile.id !== previousUserId)
   }
 
-  // 데모 계정은 이 기기에 저장된 사용자가 데모일 때만 다시 켤 수 있다(스토어에 데모 전환 동작이 없다)
-  const demoAvailable = state.user?.id === DEMO_USER.id
+  // 데모 계정 체험: provider 없이 login()을 부르면 항상 데모 계정(42그릇)으로 들어간다
   const demoLogin = () => {
-    if (!demoAvailable) {
-      setNotice("이 기기에는 다른 계정이 있어 데모 계정으로 바꿀 수 없어요.")
-      return
-    }
     actions.login()
     track("login", { provider: "demo" })
-    afterLogin()
+    afterLogin(false)
   }
 
   // 진짜 비회원으로 둘러본다. 데모 계정으로 들어가지 않는다

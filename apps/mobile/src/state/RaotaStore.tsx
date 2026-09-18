@@ -17,7 +17,7 @@ import type {
   TasteReport,
   UserProfile,
 } from "@raota/shared"
-import { REVISIT_SCORE } from "@raota/shared"
+import { DEMO_SAVED_SHOP_NAMES, DEMO_USER, REVISIT_SCORE, findShopByName } from "@raota/shared"
 import {
   createContext,
   useCallback,
@@ -66,7 +66,14 @@ export type RaotaAction =
   | { type: "START_RECORD_DRAFT"; payload: number | null }
   | { type: "SELECT_RECORD_DRAFT_SHOP"; payload: number }
   | { type: "CLEAR_RECORD_DRAFT" }
-  | { type: "LOGIN"; payload: UserProfile }
+  | {
+      type: "LOGIN"
+      payload: UserProfile
+      /** 이 기기에서 처음 쓰는 계정이면 온보딩을 다시 거친다 */
+      onboardingCompleted?: boolean
+      /** 계정이 바뀌면 찜 목록도 그 계정 것으로 바꾼다 */
+      bookmarkedShopIds?: number[]
+    }
   | { type: "COMPLETE_ONBOARDING"; payload: UserProfile }
   | { type: "LOGOUT" }
   | { type: "WITHDRAW"; payload: PersistedAppStateV1 }
@@ -94,6 +101,13 @@ export type RaotaAction =
       payload: Partial<NotificationSettings>
     }
   | { type: "REFRESH_TASTE_REPORT"; payload: TasteReport }
+
+/** 데모 계정의 찜 목록(웹과 같은 DEMO_SAVED_SHOP_NAMES) */
+function demoBookmarkIds(): number[] {
+  return DEMO_SAVED_SHOP_NAMES.map((name) => findShopByName(name)?.id).filter(
+    (id): id is number => typeof id === "number",
+  )
+}
 
 export function createInitialRaotaState(): RaotaState {
   return {
@@ -181,7 +195,12 @@ export function raotaReducer(
     case "CLEAR_RECORD_DRAFT":
       return { ...state, recordDraft: null }
     case "LOGIN":
-      return { ...state, user: action.payload }
+      return {
+        ...state,
+        user: action.payload,
+        onboardingCompleted: action.onboardingCompleted ?? state.onboardingCompleted,
+        bookmarkedShopIds: action.bookmarkedShopIds ?? state.bookmarkedShopIds,
+      }
     case "COMPLETE_ONBOARDING":
       return { ...state, user: action.payload, onboardingCompleted: true }
     case "LOGOUT":
@@ -684,11 +703,36 @@ export function RaotaProvider({
     })
   }, [persistedState, repository, state.hydrationStatus])
 
+  /**
+   * 서버 인증(#44) 전의 기기 안 로그인.
+   * - provider 없음: 데모 계정 체험. 항상 데모 계정(42그릇)으로 들어가고 찜 목록도 데모 기준으로 돌린다.
+   * - provider 있음(apple·kakao·google): 로그인 수단마다 기기 안 고정 id(local-<provider>)를 쓴다.
+   *   처음이면 0그릇·빈 찜 목록으로 시작하고 온보딩을 거친다. 같은 수단으로 다시 로그인하면 이전 기록이 돌아온다.
+   */
   const login = useCallback(
     (input: LoginInput = {}): UserProfile => {
+      if (!input.provider) {
+        const wasDemo = state.user?.id === DEMO_USER.id
+        const profile: UserProfile = { ...(wasDemo && state.user ? state.user : DEMO_USER), isLoggedIn: true }
+        dispatch({
+          type: "LOGIN",
+          payload: profile,
+          onboardingCompleted: true,
+          bookmarkedShopIds: wasDemo ? undefined : demoBookmarkIds(),
+        })
+        return profile
+      }
+
+      const id = `local-${input.provider}`
+      if (state.user?.id === id) {
+        const profile: UserProfile = { ...state.user, isLoggedIn: true }
+        dispatch({ type: "LOGIN", payload: profile })
+        return profile
+      }
+
       const freshName = input.name ?? input.nickname ?? "라멘 탐험가"
-      const previous: UserProfile = state.user ?? {
-        id: `local-${Date.now()}`,
+      const profile: UserProfile = {
+        id,
         name: freshName,
         nickname: input.nickname ?? freshName,
         email: input.email,
@@ -696,23 +740,13 @@ export function RaotaProvider({
         level: "라멘 입문자",
         levelNumber: 1,
         membershipNo: `#RT-${String(Date.now()).slice(-6)}`,
-        bio: "라오타에서 나만의 한 그릇을 찾는 중입니다.",
-        favoriteRamenType: "쇼유",
+        bio: "",
+        favoriteRamenType: undefined,
         visitedCount: 0,
         revisitCount: 0,
-        isLoggedIn: false,
-      }
-      const fallbackName = input.name ?? input.nickname ?? previous.name
-      const profile: UserProfile = {
-        ...previous,
-        id: state.user?.id ?? `local-${Date.now()}`,
-        name: fallbackName,
-        nickname: input.nickname ?? fallbackName,
-        email: input.email ?? previous.email,
-        avatar: input.avatar === undefined ? previous.avatar : input.avatar,
         isLoggedIn: true,
       }
-      dispatch({ type: "LOGIN", payload: profile })
+      dispatch({ type: "LOGIN", payload: profile, onboardingCompleted: false, bookmarkedShopIds: [] })
       return profile
     },
     [state.user],
@@ -732,6 +766,8 @@ export function RaotaProvider({
       const current =
         state.user ??
         login({
+          // 로그인 수단 없이 바로 가입하는 경우는 이메일 가입 새 계정으로 만든다(provider가 없으면 데모 계정이 된다)
+          provider: "email",
           name:
             normalizedInput.nickname ?? normalizedInput.name ?? "라멘 탐험가",
           nickname: normalizedInput.nickname,

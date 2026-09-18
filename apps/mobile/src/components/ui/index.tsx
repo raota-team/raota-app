@@ -945,7 +945,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   sheetDescription: { marginTop: spacing.x0_5 },
-  sheetContent: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.x4 },
+  // 긴 본문이 하단 버튼을 밀어내지 않도록 줄어들 수 있게 둔다
+  sheetContent: { flexShrink: 1, paddingHorizontal: spacing.gutter, paddingVertical: spacing.x4 },
   sheetFooter: {
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.x3,

@@ -64,7 +64,7 @@ function AccountProbe() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="새 로그인"
-        onPress={() => actions.login({ name: "새라오타" })}
+        onPress={() => actions.login({ provider: "kakao", name: "새라오타" })}
       />
     </>
   )

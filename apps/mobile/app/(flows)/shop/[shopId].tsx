@@ -165,6 +165,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
       requireLogin()
       return
     }
+    track("record_started", { mode: "shop", source: "shop_detail" })
     router.push({ pathname: "/record/new", params: { shopId: String(shop.id) } })
   }
 
