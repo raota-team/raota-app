@@ -44,6 +44,8 @@ jest.mock("react-native-maps", () => {
   return { __esModule: true, default: MapView, Marker }
 })
 
+jest.mock("expo-haptics", () => ({ selectionAsync: jest.fn(() => Promise.resolve()) }))
+
 jest.mock("expo-location", () => ({
   Accuracy: { Balanced: 3 },
   requestForegroundPermissionsAsync: jest.fn(),
@@ -87,9 +89,12 @@ describe("map location permission states", () => {
     const view = await render(<MapHarness />)
 
     expect(
-      await view.findByText("위치 권한 없이 망원동을 표시 중이에요."),
+      await view.findByText("위치 권한이 없어 망원·합정 일대를 보여드려요."),
     ).toBeTruthy()
-    expect(view.getByRole("button", { name: "설정" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "설정 열기" })).toBeTruthy()
+    // 거절해도 기본 지역의 지도와 하단 퀵뷰는 그대로 쓴다
+    expect(view.getByTestId("apple-map").props.accessibilityState.selected).toBe(false)
+    expect(view.getByRole("button", { name: /매장 상세 보기/ })).toBeTruthy()
   })
 
   it("enables the native user-location layer after permission is granted", async () => {

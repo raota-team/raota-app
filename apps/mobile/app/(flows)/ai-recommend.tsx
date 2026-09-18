@@ -1,1070 +1,756 @@
-import * as Location from "expo-location"
-import { useEffect, useMemo, useState } from "react"
+import * as Haptics from "expo-haptics"
 import { router } from "expo-router"
-import { Image } from "expo-image"
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Minus, PenLine, RotateCcw, Sparkles } from "lucide-react-native"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
-  ArrowRight,
-  ChevronLeft,
-  MessageSquare,
-  RefreshCcw,
-  Sparkles,
-  Target,
-  Utensils,
-} from "lucide-react-native"
-import {
+  AccessibilityInfo,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
+  findNodeHandle,
+  useWindowDimensions,
 } from "react-native"
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
+import Svg, { Circle } from "react-native-svg"
 
-import { rankShopsForAIRecommendation } from "@/src/domain"
+import type { Shop, ShopCatalogItem } from "@raota/shared"
+import { track } from "@/src/analytics"
+import { ResilientUriImage } from "@/src/components/ResilientUriImage"
+import { AppText, Button, Header, IconButton, Screen, StickyActionBar } from "@/src/components/ui"
+import { useShops } from "@/src/data/hooks"
+import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { useRaota } from "@/src/state/RaotaStore"
-import {
-  ActionButton,
-  FlowHeader,
-  FlowPage,
-  Text,
-  palette,
-} from "./_layout"
+import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 
+type CuratorShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec">>
 type Step = 1 | 2 | 3 | 4 | "loading" | "result"
 
 const SOUP_OPTIONS = [
-  "쇼유 (간장)",
-  "돈코츠 (돼지뼈)",
-  "시오 (소금)",
-  "미소 (된장)",
-  "츠케멘",
-  "토리파이탄 (닭백탕)",
-]
-const MOOD_OPTIONS = [
-  "혼밥하기 좋은 곳",
-  "데이트/아늑한 분위기",
-  "웨이팅 감수 맛집",
-  "빠르고 든든한 한 끼",
-]
-const PRIORITY_OPTIONS = [
-  "진하고 묵직한 국물",
-  "탱글탱글 자가제면",
-  "두툼하고 부드러운 차슈",
-  "깔끔하고 깊은 감칠맛",
-]
-const QUICK_PROMPTS = [
-  "국물이 덜 짠 곳",
-  "차슈가 푸짐한 곳",
-  "주차 가능한 곳",
-  "웨이팅 적은 곳",
-  "매운맛 조절 가능한 곳",
-  "밥 무료 제공",
+  { id: "shoyu", label: "쇼유", sub: "간장 타레", keys: ["쇼유"] },
+  { id: "tonkotsu", label: "돈코츠", sub: "돼지뼈 육수", keys: ["돈코츠", "이에케"] },
+  { id: "shio", label: "시오", sub: "소금 타레", keys: ["시오"] },
+  { id: "miso", label: "미소", sub: "된장 타레", keys: ["미소"] },
+  { id: "tsukemen", label: "츠케멘", sub: "찍어 먹는 면", keys: ["츠케멘"] },
+  { id: "tori", label: "토리파이탄", sub: "닭백탕", keys: ["토리파이탄", "닭백탕"] },
 ]
 
-interface RecommendationResult {
-  shopId: number
-  shopName: string
-  branch: string
-  style: string
-  matchScore: number
-  photo: string
-  reason: string
-  tags: string[]
+const MOOD_OPTIONS = [
+  { id: "solo", label: "혼밥하기 좋은 곳" },
+  { id: "date", label: "데이트/아늑한 분위기" },
+  { id: "waiting", label: "웨이팅 감수 맛집" },
+  { id: "quick", label: "빠르고 든든한 한 끼" },
+]
+
+const PRIORITY_OPTIONS = [
+  { id: "rich", label: "진하고 묵직한 국물", keys: ["진한", "농후", "백탕", "이에케", "돈코츠", "적된장"] },
+  { id: "noodle", label: "탱글탱글 자가제면", keys: ["자가제면", "치지레멘"] },
+  { id: "chashu", label: "두툼하고 부드러운 차슈", keys: ["차슈"] },
+  { id: "clean", label: "깔끔하고 깊은 감칠맛", keys: ["깔끔", "맑은", "청탕", "감칠맛", "시오"] },
+]
+
+const QUICK_PROMPTS = ["국물이 덜 짠 곳", "차슈가 푸짐한 곳", "주차 가능한 곳", "웨이팅 적은 곳", "매운맛 조절 가능한 곳", "밥 무료 제공"]
+
+const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
+  1: { title: "오늘 어떤 국물이 당기나요?", help: "맑은 청탕부터 묵직한 백탕까지 골라보세요." },
+  2: { title: "어떤 상황에서 드시나요?", help: "지금 갈 수 있는 곳과 여유 있는 방문을 구분해 추천해요." },
+  3: { title: "한 그릇에서 가장 포기할 수 없는 것은?", help: "가게 특징과 태그에 이 요소가 있는 곳을 먼저 찾아요." },
+  4: {
+    title: "더 바라는 점이 있나요?",
+    help: "선택 사항이에요. 웨이팅, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요.",
+  },
 }
 
-const MOCK_RESULTS: Record<string, RecommendationResult> = {
-  default: {
-    shopId: 1,
-    shopName: "멘야준",
-    branch: "망원 본점",
-    style: "특제 쇼유 라멘",
-    matchScore: 96,
-    photo:
-      "https://images.unsplash.com/photo-1742633882713-593c13e90231?w=800&h=600&fit=crop&auto=format&q=80",
-    reason:
-      "자가제면의 단단한 스트레이트 면발과 닭·오리 더블 육수의 깊은 감칠맛이 선택하신 깔끔하고 진한 육수 선호도 및 요청사항에 완벽히 부합합니다.",
-    tags: ["자가제면", "맑은육수", "혼밥최적"],
-  },
-  donkotsu: {
-    shopId: 2,
-    shopName: "오레노라멘",
-    branch: "마포 본점",
-    style: "토리파이탄 (진한 닭백탕 라멘)",
-    matchScore: 98,
-    photo:
-      "https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=800&h=600&fit=crop&auto=format&q=80",
-    reason:
-      "거품을낸 농후한 동물계 육수의 크리미함과 부드러운 수비드 차슈 구성이 선택하신 묵직한 취향에 최적의 조합입니다.",
-    tags: ["미쉐린 빕구르망", "농후육수", "무료 면추가"],
-  },
-  miso: {
-    shopId: 3,
-    shopName: "후쿠 라멘",
-    branch: "합정점",
-    style: "특제 삿포로 미소 라멘",
-    matchScore: 94,
-    photo:
-      "https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=800&h=600&fit=crop&auto=format&q=80",
-    reason:
-      "불향 가득 볶아낸 숙주와 진한 홋카이도 된장 타레가 어우러져 깊고 든든한 한 그릇을 완성합니다.",
-    tags: ["진한국물", "자가제면", "불향가득"],
-  },
+const LOADING_MESSAGES = ["선택한 취향을 확인하고 있어요", "어울리는 라멘집을 찾고 있어요", "오늘의 추천을 정리하고 있어요", "오늘의 한 그릇을 골랐어요"]
+const LOADING_DURATION = 3300
+const PROMPT_MAX_LENGTH = 200
+
+interface Inputs {
+  soupId: string
+  moodId: string
+  priorityId: string
+  prompt: string
+}
+
+interface Condition {
+  label: string
+  applied: boolean
+  note: string
+}
+
+interface Curation {
+  shop: CuratorShop
+  conditions: Condition[]
+  /** 조건으로 고르지 못해 인기·거리순으로 대신 골랐는지 */
+  fallback: boolean
+}
+
+const DEFAULT_INPUTS: Inputs = { soupId: "shoyu", moodId: "solo", priorityId: "clean", prompt: "" }
+
+const shopText = (shop: CuratorShop) => [shop.style, shop.spec, shop.description, ...shop.tags].filter(Boolean).join(" ")
+const hasAnyKey = (shop: CuratorShop, keys: string[]) => keys.some((key) => shopText(shop).includes(key))
+const byPopularity = (a: CuratorShop, b: CuratorShop) =>
+  b.reviewCount - a.reviewCount || b.rating - a.rating || a.distanceM - b.distanceM
+
+/**
+ * 선택한 조건을 원장과 실제로 대조해 후보를 좁히고(웹 AIRecommendScreen과 같은 규칙),
+ * 남은 후보 안에서 src/domain/ai-recommendation 랭킹으로 한 곳을 고른다.
+ * 대조할 정보가 없는 조건은 applied=false("참고만")로 남긴다. 랭킹이 실패하거나 후보가 없으면 인기·거리순으로 대신한다.
+ * 서버 추천(#46)이 붙으면 이 함수만 바꾼다.
+ */
+function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
+  const all = shops.filter((shop) => shop.lat && shop.lng)
+  if (all.length === 0) return null
+  const conditions: Condition[] = []
+  let pool = all
+  let byDistance = false
+
+  const narrow = (predicate: (shop: CuratorShop) => boolean) => {
+    const next = pool.filter(predicate)
+    if (next.length === 0) return false
+    pool = next
+    return true
+  }
+
+  const soup = SOUP_OPTIONS.find((option) => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
+  if (narrow((shop) => hasAnyKey(shop, soup.keys))) {
+    conditions.push({ label: `${soup.label} 계보`, applied: true, note: `${soup.label} 계보 ${pool.length}곳 중에서 골랐어요` })
+  } else {
+    conditions.push({ label: `${soup.label} 계보`, applied: false, note: `${soup.label} 전문점이 아직 없어 전체 라멘집에서 골랐어요` })
+  }
+
+  const mood = MOOD_OPTIONS.find((option) => option.id === inputs.moodId) ?? MOOD_OPTIONS[0]
+  if (mood.id === "quick") {
+    const opened = narrow((shop) => shop.businessStatus === "OPERATIONAL" && shop.isOpen)
+    byDistance = true
+    conditions.push({
+      label: mood.label,
+      applied: true,
+      note: opened ? "지금 영업 중이고 가까운 곳을 우선했어요" : "영업 중인 곳이 없어 가까운 곳을 우선했어요",
+    })
+  } else if (mood.id === "waiting") {
+    if (narrow((shop) => shop.reviewCount > 0 || shop.rating > 0)) {
+      conditions.push({ label: mood.label, applied: true, note: "라멘로그와 평점이 쌓인 곳을 우선했어요" })
+    } else {
+      conditions.push({ label: mood.label, applied: false, note: "라멘로그 수 정보가 아직 없어 참고만 했어요" })
+    }
+  } else {
+    conditions.push({ label: mood.label, applied: false, note: "매장 분위기 정보는 아직 없어 참고만 했어요" })
+  }
+
+  const priority = PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)
+  if (priority) {
+    if (narrow((shop) => hasAnyKey(shop, priority.keys))) {
+      conditions.push({ label: priority.label, applied: true, note: "가게 특징과 태그에 이 요소가 있는 곳을 우선했어요" })
+    } else {
+      conditions.push({ label: priority.label, applied: false, note: "이 요소가 적힌 가게가 없어 참고만 했어요" })
+    }
+  }
+
+  const prompt = inputs.prompt.trim()
+  if (prompt) {
+    const applied: string[] = []
+    if (prompt.includes("웨이팅") && narrow((shop) => shop.isOpen)) applied.push("지금 영업 중")
+    if (prompt.includes("밥") && narrow((shop) => Boolean(shop.servicePerks?.riceRefill))) applied.push("공깃밥 제공")
+    if (prompt.includes("차슈") && narrow((shop) => hasAnyKey(shop, ["차슈"]))) applied.push("차슈")
+    if (prompt.includes("면") && narrow((shop) => hasAnyKey(shop, ["자가제면", "치지레멘", "면"]))) applied.push("면")
+    conditions.push(
+      applied.length
+        ? { label: `직접 입력: ${prompt}`, applied: true, note: `${applied.join(", ")} 조건을 매장 정보와 대조했어요` }
+        : { label: `직접 입력: ${prompt}`, applied: false, note: "아직 매장 정보와 대조하지 못해 참고만 했어요" },
+    )
+  }
+
+  let picked: CuratorShop | undefined
+  if (byDistance) {
+    picked = [...pool].sort((a, b) => a.distanceM - b.distanceM || byPopularity(a, b))[0]
+  } else {
+    try {
+      picked = rankShopsForAIRecommendation(pool, {
+        soup: soup.label,
+        mood: mood.label,
+        priority: priority?.label ?? "",
+        prompt,
+      })[0]?.shop as CuratorShop | undefined
+    } catch {
+      picked = undefined
+    }
+  }
+  if (picked) return { shop: picked, conditions, fallback: false }
+
+  const fallbackShop = [...all].sort(byPopularity)[0]
+  return fallbackShop ? { shop: fallbackShop, conditions, fallback: true } : null
+}
+
+/** 스크린리더 포커스를 새 제목으로 옮긴다 */
+function focusOn(ref: React.RefObject<View | null>) {
+  // 웹(react-native-web)에는 findNodeHandle이 없다. VoiceOver 포커스 이동은 iOS에서만 한다
+  if (Platform.OS === "web" || !ref.current) return
+  try {
+    const node = findNodeHandle(ref.current)
+    if (node) AccessibilityInfo.setAccessibilityFocus(node)
+  } catch {
+    // 포커스 이동 실패가 흐름을 막지 않는다
+  }
 }
 
 export default function AIRecommendScreen() {
-  const { shops, currentTasteReport, currentUser } = useRaota()
+  const { currentUser } = useRaota()
+  const shopsQuery = useShops()
+  const reducedMotion = useReducedMotion()
+  const { width } = useWindowDimensions()
+  /** SE 폭에서는 하단 버튼의 장식 아이콘을 빼 문구를 자르지 않는다 */
+  const compact = width < 360
+  const [inputs, setInputs] = useState<Inputs>(DEFAULT_INPUTS)
   const [step, setStep] = useState<Step>(1)
-  const [selectedSoup, setSelectedSoup] = useState<string>("쇼유 (간장)")
-  const [selectedMood, setSelectedMood] = useState<string>("혼밥하기 좋은 곳")
-  const [selectedPriority, setSelectedPriority] = useState<string>("깔끔하고 깊은 감칠맛")
-  const [customPrompt, setCustomPrompt] = useState<string>("")
-  const [loadingStage, setLoadingStage] = useState<number>(1)
-  const [recommendationOrigin, setRecommendationOrigin] = useState<{
-    latitude: number
-    longitude: number
-  } | null>(null)
+  const [curation, setCuration] = useState<Curation | null>(null)
+  const scrollRef = useRef<ScrollView>(null)
+  const headingRef = useRef<View>(null)
+
+  const loggedIn = Boolean(currentUser?.isLoggedIn)
+  const nickname = loggedIn ? currentUser?.nickname : null
 
   useEffect(() => {
-    if (Platform.OS === "web") return
-    let mounted = true
-    const loadAlreadyGrantedLocation = async () => {
-      try {
-        const permission = await Location.getForegroundPermissionsAsync()
-        if (!mounted || permission.status !== "granted") return
-        const cached = await Location.getLastKnownPositionAsync({
-          maxAge: 5 * 60 * 1000,
-          requiredAccuracy: 1_000,
-        })
-        const current =
-          cached ??
-          (await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          }))
-        if (!mounted) return
-        setRecommendationOrigin({
-          latitude: current.coords.latitude,
-          longitude: current.coords.longitude,
-        })
-      } catch {
-        // Fallback gracefully
-      }
-    }
-    void loadAlreadyGrantedLocation()
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  useEffect(() => {
-    if (step !== "loading") return
-    const t1 = setTimeout(() => setLoadingStage(2), 1200)
-    const t2 = setTimeout(() => setLoadingStage(3), 2500)
-    const t3 = setTimeout(() => setStep("result"), 3800)
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-      clearTimeout(t3)
-    }
+    scrollRef.current?.scrollTo({ y: 0, animated: false })
+    const timer = setTimeout(() => focusOn(headingRef), 250)
+    return () => clearTimeout(timer)
   }, [step])
 
-  const domainRank = useMemo(
-    () =>
-      rankShopsForAIRecommendation(shops, {
-        soup: selectedSoup,
-        mood: selectedMood,
-        priority: selectedPriority,
-        prompt: customPrompt,
-        currentTasteReport,
-        origin: recommendationOrigin,
-      })[0],
-    [
-      currentTasteReport,
-      customPrompt,
-      recommendationOrigin,
-      selectedMood,
-      selectedPriority,
-      selectedSoup,
-      shops,
-    ],
-  )
-
-  const result: RecommendationResult = useMemo(() => {
-    if (selectedSoup.includes("돈코츠") || selectedSoup.includes("토리파이탄")) {
-      return MOCK_RESULTS.donkotsu
-    }
-    if (selectedSoup.includes("미소")) {
-      return MOCK_RESULTS.miso
-    }
-    if (domainRank?.shop) {
-      const s = domainRank.shop
-      return {
-        shopId: s.id,
-        shopName: s.name,
-        branch: s.branch || "본점",
-        style: s.tags[0] || "특제 시그니처 라멘",
-        matchScore: domainRank.matchPercent || 96,
-        photo: s.photos[0] || MOCK_RESULTS.default.photo,
-        reason: `${s.name}의 육수 밸런스와 ${selectedPriority} 요소가 선택하신 조건에 최적입니다.`,
-        tags: s.tags.slice(0, 3),
-      }
-    }
-    return MOCK_RESULTS.default
-  }, [selectedSoup, domainRank, selectedPriority])
-
-  const reset = () => {
-    setStep(1)
-    setLoadingStage(1)
-    setCustomPrompt("")
+  const setInput = <K extends keyof Inputs>(key: K, value: Inputs[K]) => {
+    setInputs((prev) => ({ ...prev, [key]: value }))
+    if (key !== "prompt") void Haptics.selectionAsync().catch(() => undefined)
   }
 
-  // 1. Loading screen (Full dark Curation Engine)
-  if (step === "loading") {
+  const startAnalysis = () => {
+    track("ai_recommend_requested", {
+      soup: inputs.soupId,
+      mood: inputs.moodId,
+      priority: inputs.priorityId,
+      hasPrompt: inputs.prompt.trim().length > 0,
+    })
+    const next = curate(shopsQuery.data as CuratorShop[], inputs)
+    setCuration(next)
+    // Reduce Motion이면 연출 없이 바로 결과를 보여준다
+    setStep(next && !reducedMotion ? "loading" : "result")
+  }
+
+  const restart = () => {
+    setCuration(null)
+    setStep(1)
+  }
+
+  const recordShop = (shop: CuratorShop) => {
+    if (!loggedIn) {
+      router.push("/auth/login")
+      return
+    }
+    router.push({ pathname: "/record/new", params: { shopId: String(shop.id) } })
+  }
+
+  if (step === "loading" && curation) {
     return (
-      <View style={styles.loadingContainer}>
-        {/* Header */}
-        <View style={styles.loadingHeader}>
-          <View style={styles.loadingBrandRow}>
-            <View style={styles.loadingRedDot} />
-            <Text style={styles.loadingBrandText}>RAOTA CURATION ENGINE</Text>
-          </View>
-          <Text style={styles.loadingStageBadge}>
-            {loadingStage === 1 ? "STAGE 01" : loadingStage === 2 ? "STAGE 02" : "STAGE 03"}
-          </Text>
-        </View>
-
-        {/* Center core */}
-        <View style={styles.loadingCenter}>
-          <View style={styles.loadingLogoWrap}>
-            <View style={styles.loadingOuterRing} />
-            <View style={styles.loadingLogoBox}>
-              <Image
-                source={require("@/assets/images/logo.png")}
-                style={styles.loadingLogoImage}
-                contentFit="contain"
-              />
-            </View>
-          </View>
-
-          <Text accessibilityLiveRegion="polite" style={styles.loadingStepTitle}>
-            {loadingStage === 1 && "서울 120여 개 라멘집 DB 탐색"}
-            {loadingStage === 2 && "육수 농도 · 면 굵기 매칭"}
-            {loadingStage === 3 && "오늘의 1순위 라멘집 도출"}
-          </Text>
-          <Text style={styles.loadingStepDesc}>
-            {loadingStage === 1 && "실시간 방문 데이터와 레시피를 대조합니다."}
-            {loadingStage === 2 && "선택하신 취향 축의 최적 접점을 계산합니다."}
-            {loadingStage === 3 && "미각 프로필과 일치하는 곳을 선정했습니다."}
-          </Text>
-
-          {/* Condition chips */}
-          <View style={styles.loadingChipsRow}>
-            <View style={styles.loadingChip}>
-              <Utensils color={palette.red} size={11} />
-              <Text style={styles.loadingChipText}>{selectedSoup.split(" ")[0]}</Text>
-            </View>
-            <View style={styles.loadingChip}>
-              <Target color={palette.red} size={11} />
-              <Text style={styles.loadingChipText}>{selectedPriority.split(" ")[0]}</Text>
-            </View>
-            {!!customPrompt && (
-              <View style={[styles.loadingChip, styles.loadingChipActive]}>
-                <MessageSquare color={palette.red} size={11} />
-                <Text numberOfLines={1} style={styles.loadingChipTextHighlight}>
-                  “{customPrompt}”
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Bottom progress */}
-        <View style={styles.loadingBottom}>
-          <View style={styles.loadingProgressHeader}>
-            <Text style={styles.loadingProgressLabel}>큐레이션 매칭 분석</Text>
-            <Text style={styles.loadingProgressPercent}>
-              {loadingStage === 1 ? "38%" : loadingStage === 2 ? "78%" : "100%"}
-            </Text>
-          </View>
-
-          <View style={styles.loadingTrack}>
-            <View
-              style={[
-                styles.loadingFill,
-                { width: `${loadingStage === 1 ? 38 : loadingStage === 2 ? 78 : 100}%` },
-              ]}
-            />
-          </View>
-
-          <View style={styles.loadingStepLabels}>
-            <Text style={[styles.stepLabelText, loadingStage >= 1 && styles.stepLabelActive]}>
-              01 DB 스캔
-            </Text>
-            <Text style={styles.stepLabelDot}>·</Text>
-            <Text style={[styles.stepLabelText, loadingStage >= 2 && styles.stepLabelActive]}>
-              02 미각 분석
-            </Text>
-            <Text style={styles.stepLabelDot}>·</Text>
-            <Text style={[styles.stepLabelText, loadingStage >= 3 && styles.stepLabelActive]}>
-              03 매칭 완료
-            </Text>
-          </View>
-        </View>
-      </View>
+      <CurationLoading
+        conditions={curation.conditions.filter((condition) => condition.applied).map((condition) => condition.label.replace(/^직접 입력: /, ""))}
+        onBack={() => setStep(4)}
+        onComplete={() => setStep("result")}
+      />
     )
   }
 
-  // 2. Result Screen
-  if (step === "result") {
-    const userName = currentUser?.nickname || "회원"
-    return (
-      <FlowPage>
-        <FlowHeader
-          title="AI 라멘 큐레이터"
-          subtitle="취향 기반 3초 핀포인트 매칭"
-          right={
-            <View style={styles.resultBadge}>
-              <Text style={styles.resultBadgeText}>매칭 완료</Text>
-            </View>
-          }
-        />
-        <ScrollView contentContainerStyle={styles.resultScroll}>
-          <View style={styles.resultHeading}>
-            <View style={styles.resultPill}>
-              <Sparkles color={palette.red} size={12} />
-              <Text style={styles.resultPillText}>AI 취향 매칭 결과</Text>
-            </View>
-            <Text style={styles.resultHeroTitle}>
-              오늘 {userName}님을 위한 1순위 라멘집
-            </Text>
-          </View>
+  const result = step === "result" ? curation : null
+  const numericStep = typeof step === "number" ? step : null
 
-          {/* Result Card */}
-          <View style={styles.resultCard}>
-            <View style={styles.resultImageWrap}>
-              <Image source={{ uri: result.photo }} style={styles.resultImage} contentFit="cover" />
-            </View>
+  return (
+    <Screen contentContainerStyle={styles.flex} keyboardAvoiding>
+      <Header
+        backLabel="뒤로가기"
+        onBack={() => (router.canGoBack() ? router.back() : router.replace("/native"))}
+        right={
+          numericStep ? (
+            <AppText accessibilityLabel={`4단계 중 ${numericStep}단계`} capScale style={styles.stepCount} tone="muted" variant="meta">
+              {`${numericStep} / 4`}
+            </AppText>
+          ) : null
+        }
+        title="AI 라멘 큐레이터"
+      />
 
-            <View style={styles.resultCardBody}>
-              <View style={styles.resultCardHeader}>
-                <Text style={styles.resultShopName}>
-                  {result.shopName} · {result.branch}
-                </Text>
-                <View style={styles.recommendFirstBadge}>
-                  <Sparkles color={palette.red} size={11} />
-                  <Text style={styles.recommendFirstText}>추천 1위</Text>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        style={styles.flex}
+      >
+        {numericStep ? (
+          <View>
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${(numericStep / 4) * 100}%` }]} />
+            </View>
+            <View accessible accessibilityRole="header" ref={headingRef}>
+              <AppText variant="screenTitle">{STEP_TITLES[numericStep].title}</AppText>
+            </View>
+            <AppText style={styles.help} tone="muted" variant="secondary">
+              {STEP_TITLES[numericStep].help}
+            </AppText>
+
+            {numericStep === 1 ? (
+              <View accessibilityLabel="국물 베이스" accessibilityRole="radiogroup" style={styles.grid}>
+                {SOUP_OPTIONS.map((soup) => {
+                  const active = inputs.soupId === soup.id
+                  return (
+                    <Pressable
+                      accessibilityLabel={`${soup.label}, ${soup.sub}`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: active }}
+                      key={soup.id}
+                      onPress={() => setInput("soupId", soup.id)}
+                      style={({ pressed }) => [styles.option, styles.gridOption, active && styles.optionActive, pressed && !active && styles.pressedWash]}
+                    >
+                      <View style={styles.flexShrink}>
+                        <AppText tone={active ? "onDark" : "ink"} variant="cardTitle">
+                          {soup.label}
+                        </AppText>
+                        <AppText capScale style={styles.optionSub} tone={active ? "onDarkMuted" : "muted"} variant="meta">
+                          {soup.sub}
+                        </AppText>
+                      </View>
+                      {active ? <Check color={colors.onDark} size={16} /> : null}
+                    </Pressable>
+                  )
+                })}
+              </View>
+            ) : null}
+
+            {numericStep === 2 || numericStep === 3 ? (
+              <View accessibilityLabel={numericStep === 2 ? "식사 상황" : "가장 중요한 요소"} accessibilityRole="radiogroup" style={styles.stack}>
+                {(numericStep === 2 ? MOOD_OPTIONS : PRIORITY_OPTIONS).map((option) => {
+                  const active = numericStep === 2 ? inputs.moodId === option.id : inputs.priorityId === option.id
+                  return (
+                    <Pressable
+                      accessibilityLabel={option.label}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: active }}
+                      key={option.id}
+                      onPress={() => setInput(numericStep === 2 ? "moodId" : "priorityId", option.id)}
+                      style={({ pressed }) => [styles.option, styles.rowOption, active && styles.optionActive, pressed && !active && styles.pressedWash]}
+                    >
+                      <AppText style={styles.flexShrink} tone={active ? "onDark" : "ink"} variant="cardTitle">
+                        {option.label}
+                      </AppText>
+                      {active ? <Check color={colors.onDark} size={16} /> : <ChevronRight color={colors.textMuted} size={16} />}
+                    </Pressable>
+                  )
+                })}
+              </View>
+            ) : null}
+
+            {numericStep === 4 ? (
+              <View style={styles.promptWrap}>
+                <TextInput
+                  accessibilityHint="선택 사항이에요"
+                  accessibilityLabel="더 바라는 점"
+                  maxFontSizeMultiplier={maxFontScale}
+                  maxLength={PROMPT_MAX_LENGTH}
+                  multiline
+                  onChangeText={(text) => setInput("prompt", text)}
+                  placeholder="예: 차슈가 부드럽고 국물이 덜 짠 곳"
+                  placeholderTextColor={colors.textMuted}
+                  style={styles.promptInput}
+                  textAlignVertical="top"
+                  value={inputs.prompt}
+                />
+                <AppText style={styles.quickTitle} tone="muted" variant="secondary">
+                  자주 찾는 조건
+                </AppText>
+                <View style={styles.quickRow}>
+                  {QUICK_PROMPTS.map((text) => {
+                    const added = inputs.prompt.includes(text)
+                    return (
+                      <Pressable
+                        accessibilityLabel={added ? `${text}, 추가됨` : `${text} 추가`}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: added, disabled: added }}
+                        disabled={added}
+                        key={text}
+                        onPress={() => setInput("prompt", inputs.prompt ? `${inputs.prompt}, ${text}` : text)}
+                        style={({ pressed }) => [styles.quickChip, added && styles.quickChipAdded, pressed && !added && styles.pressedWash]}
+                      >
+                        <AppText capScale style={styles.bold} tone={added ? "onDark" : "ink"} variant="secondary">
+                          {added ? text : `+ ${text}`}
+                        </AppText>
+                      </Pressable>
+                    )
+                  })}
                 </View>
               </View>
-              <Text style={styles.resultShopStyle}>대표: {result.style}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
-              {/* Reason quote block */}
-              <View style={styles.resultReasonBox}>
-                <Text style={styles.resultReasonText}>
-                  <Text style={styles.quoteRed}>“ </Text>
-                  {result.reason}
-                  <Text style={styles.quoteRed}> ”</Text>
-                </Text>
+        {step === "result" && !result ? (
+          <View>
+            <View accessible accessibilityRole="header" ref={headingRef}>
+              <AppText variant="screenTitle">추천할 라멘집을 찾지 못했어요</AppText>
+            </View>
+            <AppText style={styles.help} tone="muted" variant="secondary">
+              매장 정보를 불러오지 못했어요. 잠시 뒤 다시 추천받아 주세요.
+            </AppText>
+            <RestartButton onPress={restart} />
+          </View>
+        ) : null}
+
+        {result ? (
+          <View>
+            <View accessible accessibilityRole="header" ref={headingRef}>
+              <AppText variant="screenTitle">{nickname ? `오늘 ${nickname}님을 위한 라멘집` : "오늘의 추천"}</AppText>
+            </View>
+
+            <View style={styles.resultCard}>
+              <ResilientUriImage accessibilityLabel={`${result.shop.name} 대표 사진`} style={styles.resultPhoto} uri={result.shop.photos[0]} />
+              <View style={styles.resultBody}>
+                {result.shop.style ? (
+                  <AppText style={styles.bold} tone="muted" variant="secondary">
+                    {result.shop.style}
+                  </AppText>
+                ) : null}
+                <AppText style={styles.resultName} variant="screenTitle">
+                  {result.shop.name}
+                  {result.shop.branch ? (
+                    <AppText style={styles.bold} tone="muted" variant="cardTitle">
+                      {` · ${result.shop.branch}`}
+                    </AppText>
+                  ) : null}
+                </AppText>
+                {result.shop.spec ? (
+                  <AppText style={styles.resultSpec} variant="body">
+                    {result.shop.spec}
+                  </AppText>
+                ) : null}
+                {result.shop.description ? (
+                  <View style={styles.quote}>
+                    <AppText variant="body">{result.shop.description}</AppText>
+                  </View>
+                ) : null}
+                {result.shop.tags.length ? (
+                  <View accessibilityLabel={`특징: ${result.shop.tags.join(", ")}`} style={styles.tags}>
+                    {result.shop.tags.map((tag) => (
+                      <View key={tag} style={styles.tag}>
+                        <AppText capScale style={styles.bold} variant="meta">
+                          {tag}
+                        </AppText>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
+            </View>
 
-              <View style={styles.resultTagRow}>
-                {result.tags.map((t, idx) => (
-                  <View key={idx} style={styles.resultTag}>
-                    <Text style={styles.resultTagText}>#{t}</Text>
+            {result.conditions.length ? (
+              <View style={styles.conditions}>
+                <AppText accessibilityRole="header" style={styles.conditionsTitle} variant="cardTitle">
+                  추천에 쓴 조건
+                </AppText>
+                {result.fallback ? (
+                  <AppText style={styles.fallbackNote} tone="muted" variant="secondary">
+                    조건에 맞는 곳을 찾지 못해 라멘로그가 많고 가까운 곳으로 골랐어요.
+                  </AppText>
+                ) : null}
+                {result.conditions.map((condition, index) => (
+                  <View
+                    accessible
+                    accessibilityLabel={`${condition.label}, ${condition.applied ? "반영" : "참고만"}. ${condition.note}`}
+                    key={condition.label}
+                    style={[styles.condition, index > 0 && styles.conditionDivider]}
+                  >
+                    <View style={[styles.conditionIcon, condition.applied ? styles.conditionIconApplied : styles.conditionIconRef]}>
+                      {condition.applied ? <Check color={colors.onDark} size={12} /> : <Minus color={colors.textMuted} size={12} />}
+                    </View>
+                    <View style={styles.flexShrink}>
+                      <AppText variant="bodyStrong">
+                        {condition.label}
+                        <AppText capScale style={styles.bold} tone={condition.applied ? "ink" : "muted"} variant="meta">
+                          {`  ${condition.applied ? "반영" : "참고만"}`}
+                        </AppText>
+                      </AppText>
+                      <AppText style={styles.conditionNote} tone="muted" variant="secondary">
+                        {condition.note}
+                      </AppText>
+                    </View>
                   </View>
                 ))}
               </View>
-            </View>
+            ) : null}
+
+            <RestartButton onPress={restart} />
           </View>
-
-          {/* Action buttons */}
-          <View style={styles.resultActions}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                router.push({
-                  pathname: "/shop/[shopId]",
-                  params: { shopId: String(result.shopId) },
-                })
-              }
-              style={styles.primaryActionButton}
-            >
-              <Text style={styles.primaryActionText}>매장 상세 및 리뷰 보러가기 →</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={reset}
-              style={styles.secondaryActionButton}
-            >
-              <Text style={styles.secondaryActionText}>다시 추천받기</Text>
-              <RefreshCcw color="#25282B" size={13} />
-            </Pressable>
-          </View>
-        </ScrollView>
-      </FlowPage>
-    )
-  }
-
-  // 3. Step 1 ~ 4 Question Flow
-  return (
-    <FlowPage>
-      <FlowHeader
-        title="AI 라멘 큐레이터"
-        subtitle="취향 기반 3초 핀포인트 매칭"
-        right={
-          <View style={styles.stepCountBadge}>
-            <Text style={styles.stepCountText}>Step {step}/4</Text>
-          </View>
-        }
-      />
-      <ScrollView contentContainerStyle={styles.stepScroll}>
-        {step === 1 && (
-          <View style={styles.stepContent}>
-            <Text style={styles.stepHeaderTag}>STEP 01</Text>
-            <Text style={styles.stepTitle}>오늘 어떤 국물 베이스가 가장 당기시나요?</Text>
-            <Text style={styles.stepDescription}>
-              맑고 깔끔한 청탕부터 묵직한 백탕까지 선택해보세요.
-            </Text>
-
-            <View style={styles.optionList}>
-              {SOUP_OPTIONS.map((soup) => {
-                const selected = selectedSoup === soup
-                return (
-                  <Pressable
-                    key={soup}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    onPress={() => setSelectedSoup(soup)}
-                    style={[
-                      styles.optionCard,
-                      selected ? styles.optionCardSelected : styles.optionCardNormal,
-                    ]}
-                  >
-                    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-                      {soup}
-                    </Text>
-                    <Text style={[styles.optionArrow, selected && styles.optionArrowSelected]}>
-                      {selected ? "선택됨 ✓" : "→"}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </View>
-        )}
-
-        {step === 2 && (
-          <View style={styles.stepContent}>
-            <Text style={styles.stepHeaderTag}>STEP 02</Text>
-            <Text style={styles.stepTitle}>오늘의 식사 상황이나 원하는 분위기는 어떤가요?</Text>
-            <Text style={styles.stepDescription}>
-              방문 목적에 꼭 맞는 매장 환경을 고려해 매칭합니다.
-            </Text>
-
-            <View style={styles.optionList}>
-              {MOOD_OPTIONS.map((mood) => {
-                const selected = selectedMood === mood
-                return (
-                  <Pressable
-                    key={mood}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    onPress={() => setSelectedMood(mood)}
-                    style={[
-                      styles.optionCard,
-                      selected ? styles.optionCardSelected : styles.optionCardNormal,
-                    ]}
-                  >
-                    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-                      {mood}
-                    </Text>
-                    <Text style={[styles.optionArrow, selected && styles.optionArrowSelected]}>
-                      {selected ? "선택됨 ✓" : "→"}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </View>
-        )}
-
-        {step === 3 && (
-          <View style={styles.stepContent}>
-            <Text style={styles.stepHeaderTag}>STEP 03</Text>
-            <Text style={styles.stepTitle}>라멘 한 그릇에서 가장 포기할 수 없는 것은?</Text>
-            <Text style={styles.stepDescription}>
-              회원님의 취향 벡터와 결합하여 최적의 매장을 선별합니다.
-            </Text>
-
-            <View style={styles.optionList}>
-              {PRIORITY_OPTIONS.map((p) => {
-                const selected = selectedPriority === p
-                return (
-                  <Pressable
-                    key={p}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    onPress={() => setSelectedPriority(p)}
-                    style={[
-                      styles.optionCard,
-                      selected ? styles.optionCardSelected : styles.optionCardNormal,
-                    ]}
-                  >
-                    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-                      {p}
-                    </Text>
-                    <Text style={[styles.optionArrow, selected && styles.optionArrowSelected]}>
-                      {selected ? "선택됨 ✓" : "→"}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </View>
-        )}
-
-        {step === 4 && (
-          <View style={styles.stepContent}>
-            <Text style={styles.stepHeaderTag}>STEP 04 (선택)</Text>
-            <Text style={styles.stepTitle}>더 추천받고 싶은 점이 있나요?</Text>
-            <Text style={styles.stepDescription}>
-              특별히 원하는 맛, 토핑, 주차나 웨이팅 조건을 자유롭게 적어주세요.
-            </Text>
-
-            {/* 자유 입력창 */}
-            <TextInput
-              accessibilityLabel="자유 추천 요청"
-              maxLength={120}
-              multiline
-              numberOfLines={4}
-              onChangeText={setCustomPrompt}
-              placeholder="예: 차슈가 부드럽고 국물이 덜 짠 곳으로 추천해주세요."
-              placeholderTextColor="#8A8A8A"
-              style={styles.promptTextArea}
-              value={customPrompt}
-            />
-
-            {/* 추천 키워드 칩 */}
-            <View style={styles.quickPromptSection}>
-              <Text style={styles.quickPromptLabel}>추천 키워드</Text>
-              <View style={styles.quickPromptWrap}>
-                {QUICK_PROMPTS.map((p) => (
-                  <Pressable
-                    key={p}
-                    accessibilityRole="button"
-                    onPress={() => {
-                      if (!customPrompt.includes(p)) {
-                        setCustomPrompt((prev) => (prev ? `${prev}, ${p}` : p))
-                      }
-                    }}
-                    style={styles.quickPromptChip}
-                  >
-                    <Text style={styles.quickPromptChipText}>+{p}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
+        ) : null}
       </ScrollView>
 
-      {/* Step Navigation Bottom Bar */}
-      <View style={styles.stepBottomBar}>
-        {step > 1 && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setStep((step - 1) as Step)}
-            style={styles.prevButton}
-          >
-            <Text style={styles.prevButtonText}>이전 단계</Text>
-          </Pressable>
-        )}
+      {numericStep ? (
+        <StickyActionBar style={styles.stickyBar}>
+          {numericStep > 1 ? (
+            <Button fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="outline" />
+          ) : null}
+          <Button
+            leftIcon={numericStep === 4 ? <Sparkles color={colors.onDark} size={16} /> : undefined}
+            onPress={() => (numericStep === 4 ? startAnalysis() : setStep((numericStep + 1) as Step))}
+            rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
+            style={styles.primaryCta}
+            title={numericStep === 4 ? "AI 맞춤 추천받기" : "다음"}
+          />
+        </StickyActionBar>
+      ) : result ? (
+        <StickyActionBar style={styles.stickyBar}>
+          <Button
+            accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
+            fullWidth
+            leftIcon={compact ? undefined : <PenLine color={colors.ink} size={16} />}
+            onPress={() => recordShop(result.shop)}
+            style={styles.stickyButton}
+            title="이 가게 기록하기"
+            variant="outline"
+          />
+          <Button
+            fullWidth
+            onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: String(result.shop.id) } })}
+            rightIcon={compact ? undefined : <ChevronRight color={colors.onDark} size={16} />}
+            style={styles.stickyButton}
+            title="매장 상세 보기"
+          />
+        </StickyActionBar>
+      ) : null}
+    </Screen>
+  )
+}
+
+function RestartButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityLabel="다시 추천받기"
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.restart, pressed && styles.pressedDim]}
+    >
+      <RotateCcw color={colors.ink} size={16} />
+      <AppText variant="bodyStrong">다시 추천받기</AppText>
+    </Pressable>
+  )
+}
+
+/** 웹 AICurationLoading과 같은 차분한 로딩. 실제로 반영된 조건만 보여준다 */
+function CurationLoading({ conditions, onBack, onComplete }: { conditions: string[]; onBack: () => void; onComplete: () => void }) {
+  const { height } = useWindowDimensions()
+  const [stage, setStage] = useState(0)
+  const titleRef = useRef<View>(null)
+  const rotation = useSharedValue(0)
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
+  const complete = stage === 3
+  const size = height < 700 ? 200 : 260
+
+  useEffect(() => {
+    rotation.value = withTiming(360, { duration: LOADING_DURATION, easing: Easing.bezier(0.45, 0, 0.2, 1) })
+    const timers = [
+      setTimeout(() => setStage(1), LOADING_DURATION / 3),
+      setTimeout(() => setStage(2), (LOADING_DURATION * 2) / 3),
+      setTimeout(() => setStage(3), LOADING_DURATION),
+      setTimeout(() => onCompleteRef.current(), LOADING_DURATION + 650),
+    ]
+    const focus = setTimeout(() => focusOn(titleRef), 250)
+    return () => {
+      timers.forEach(clearTimeout)
+      clearTimeout(focus)
+    }
+  }, [rotation])
+
+  const orbitStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }))
+  const message = useMemo(() => LOADING_MESSAGES[stage], [stage])
+
+  return (
+    <Screen contentContainerStyle={styles.flex}>
+      <View style={styles.loadingHeader}>
+        <IconButton accessibilityLabel="추천 조건으로 돌아가기" icon={<ChevronLeft color={colors.ink} size={22} />} onPress={onBack} />
+        <AppText variant="cardTitle">AI 라멘 추천</AppText>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <View style={styles.loadingBody}>
+        <View accessible accessibilityRole="header" ref={titleRef}>
+          <AppText style={styles.center} variant="headline">
+            {"오늘의 한 그릇을\n찾고 있어요"}
+          </AppText>
+        </View>
+        <AppText style={[styles.center, styles.loadingConditions]} tone="sub" variant="body">
+          {conditions.length ? conditions.join(" · ") : "전체 라멘집에서 골라요"}
+        </AppText>
+
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.visual, { width: size, height: size }]}>
+          <Svg height={size} style={StyleSheet.absoluteFill} viewBox="0 0 280 280" width={size}>
+            <Circle cx="140" cy="140" fill="none" r="87" stroke={colors.border} strokeWidth="1" />
+            {complete ? (
+              <Circle cx="140" cy="140" fill="none" r="87" stroke={colors.brand} strokeWidth="2" />
+            ) : null}
+          </Svg>
+          {complete ? null : (
+            <Animated.View style={[StyleSheet.absoluteFill, orbitStyle]}>
+              <Svg height={size} viewBox="0 0 280 280" width={size}>
+                {/* 원의 경로는 3시 방향에서 시작한다. 4분의 3 둘레만큼 밀어 12시(점 위치)에서 시작하게 한다 */}
+                <Circle
+                  cx="140"
+                  cy="140"
+                  fill="none"
+                  r="87"
+                  stroke={colors.brand}
+                  strokeDasharray="90 547"
+                  strokeDashoffset={-410}
+                  strokeLinecap="round"
+                  strokeWidth="2"
+                />
+                <Circle cx="140" cy="53" fill={colors.brand} r="3" />
+              </Svg>
+            </Animated.View>
+          )}
+          <View style={[styles.core, { width: size * 0.46, height: size * 0.46 }]}>
+            <Animated.Image
+              source={require("@/assets/images/logo.png")}
+              style={{ width: size * 0.4, height: size * 0.4, resizeMode: "contain" }}
+            />
+            {complete ? (
+              <View style={styles.coreCheck}>
+                <Check color={colors.onDark} size={18} />
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <View accessibilityLiveRegion="polite" style={styles.statusLine}>
+          <View style={styles.statusDot} />
+          <AppText accessibilityRole="text" tone="sub" variant="secondary">
+            {message}
+          </AppText>
+        </View>
+      </View>
+
+      <View style={styles.loadingFooter}>
         <Pressable
+          accessibilityLabel="추천 바로 보기"
           accessibilityRole="button"
-          onPress={() => {
-            if (step === 4) {
-              setLoadingStage(1)
-              setStep("loading")
-            } else {
-              setStep((step + 1) as Step)
-            }
-          }}
-          style={styles.nextButton}
+          onPress={onComplete}
+          style={({ pressed }) => [styles.skip, pressed && styles.pressedWash]}
         >
-          <Text style={styles.nextButtonText}>
-            {step === 4 ? "AI 맞춤 추천받기 ✨" : "다음 단계 →"}
-          </Text>
+          <AppText tone="sub" variant="secondary">
+            추천 바로 보기
+          </AppText>
+          <ArrowRight color={colors.inkSub} size={16} />
         </Pressable>
       </View>
-    </FlowPage>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  stepCountBadge: {
-    backgroundColor: "rgba(230,0,0,0.1)",
-    borderRadius: 32,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  stepCountText: {
-    color: palette.red,
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  stepScroll: {
-    padding: 20,
-    paddingBottom: 32,
-  },
-  stepContent: {
-    gap: 6,
-  },
-  stepHeaderTag: {
-    color: palette.red,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  stepTitle: {
-    color: "#25282B",
-    fontSize: 21,
-    fontWeight: "900",
-    lineHeight: 28,
-    letterSpacing: -0.4,
-  },
-  stepDescription: {
-    color: "#7E7E7E",
-    fontSize: 12.5,
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  optionList: {
-    gap: 9,
-  },
-  optionCard: {
+  flex: { flex: 1 },
+  flexShrink: { flexShrink: 1, minWidth: 0 },
+  bold: { fontWeight: "700" },
+  center: { textAlign: "center" },
+  pressedWash: { backgroundColor: colors.canvasSoft },
+  pressedDim: { opacity: 0.7 },
+  stepCount: { fontVariant: ["tabular-nums"], paddingRight: spacing.x3 },
+
+  body: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, paddingBottom: spacing.x6 },
+  progressTrack: { height: 4, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden", marginBottom: spacing.x5 },
+  progressFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
+  help: { marginTop: spacing.x1_5 },
+
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2, marginTop: spacing.x5 },
+  stack: { gap: spacing.x2, marginTop: spacing.x5 },
+  option: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderRadius: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: spacing.x2,
+    borderRadius: radii.sm,
     borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.canvas,
   },
-  optionCardNormal: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E2E2E2",
-  },
-  optionCardSelected: {
-    backgroundColor: "#25282B",
-    borderColor: "#25282B",
-  },
-  optionText: {
-    color: "#25282B",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  optionTextSelected: {
-    color: "#FFFFFF",
-  },
-  optionArrow: {
-    color: "#7E7E7E",
-    fontSize: 12.5,
-    fontWeight: "700",
-  },
-  optionArrowSelected: {
-    color: palette.red,
-    fontWeight: "800",
-  },
+  gridOption: { flexBasis: "47%", flexGrow: 1, minHeight: 64, paddingHorizontal: spacing.x3_5, paddingVertical: spacing.x3 },
+  rowOption: { minHeight: 56, paddingHorizontal: spacing.x4, paddingVertical: spacing.x3 },
+  optionActive: { borderColor: colors.ink, backgroundColor: colors.ink },
+  optionSub: { marginTop: spacing.x0_5 },
 
-  promptTextArea: {
-    backgroundColor: "#F2F2F2",
-    borderColor: "#E2E2E2",
+  promptWrap: { marginTop: spacing.x5 },
+  promptInput: {
+    ...typography.body,
+    minHeight: 96,
+    padding: spacing.x3_5,
+    paddingTop: spacing.x3_5,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    borderRadius: 6,
-    padding: 12,
-    fontSize: 13,
-    color: "#25282B",
-    minHeight: 88,
-    textAlignVertical: "top",
-    marginTop: 6,
+    borderColor: colors.border,
+    backgroundColor: colors.canvasSoft,
+    color: colors.ink,
   },
-  quickPromptSection: {
-    marginTop: 14,
-  },
-  quickPromptLabel: {
-    color: "#7E7E7E",
-    fontSize: 11,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  quickPromptWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  quickPromptChip: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E2E2E2",
+  quickTitle: { fontWeight: "700", marginTop: spacing.x4, marginBottom: spacing.x2 },
+  quickRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
+  quickChip: {
+    minHeight: touchTarget,
+    justifyContent: "center",
+    paddingHorizontal: spacing.x3_5,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    borderRadius: 32,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
+    borderColor: colors.border,
+    backgroundColor: colors.canvas,
   },
-  quickPromptChipText: {
-    color: "#25282B",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  quickChipAdded: { borderColor: colors.ink, backgroundColor: colors.ink },
 
-  stepBottomBar: {
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderTopColor: "#EAEAEA",
-    borderTopWidth: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  prevButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 60,
-    borderWidth: 1,
-    borderColor: "#E2E2E2",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  prevButtonText: {
-    color: "#25282B",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  nextButton: {
-    flex: 1,
-    height: 48,
-    borderRadius: 60,
-    backgroundColor: palette.red,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nextButtonText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "800",
-  },
+  primaryCta: { flex: 2 },
+  stickyBar: { paddingHorizontal: spacing.x4 },
+  stickyButton: { paddingHorizontal: spacing.x3 },
 
-  // Loading Screen Styles
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#141518",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-  },
-  loadingHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 10,
-  },
-  loadingBrandRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  loadingRedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: palette.red,
-  },
-  loadingBrandText: {
-    color: "rgba(255,255,255,0.45)",
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  loadingStageBadge: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  loadingCenter: {
-    alignItems: "center",
-    marginVertical: "auto",
-  },
-  loadingLogoWrap: {
-    width: 88,
-    height: 88,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-  },
-  loadingOuterRing: {
+  resultCard: { marginTop: spacing.x4, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, overflow: "hidden" },
+  resultPhoto: { width: "100%", aspectRatio: 16 / 10 },
+  resultBody: { padding: spacing.x4 },
+  resultName: { marginTop: spacing.x0_5 },
+  resultSpec: { marginTop: spacing.x1_5 },
+  quote: { marginTop: spacing.x3, paddingLeft: spacing.x3, borderLeftWidth: 1, borderLeftColor: colors.ink },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
+  tag: { backgroundColor: colors.canvasSoft, borderRadius: radii.xs, paddingHorizontal: spacing.x2_5, paddingVertical: spacing.x1 },
+
+  conditions: { marginTop: spacing.x5 },
+  conditionsTitle: { paddingBottom: spacing.x2, borderBottomWidth: 1, borderBottomColor: colors.border },
+  fallbackNote: { marginTop: spacing.x3 },
+  condition: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3, paddingVertical: spacing.x3 },
+  conditionDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+  conditionIcon: { width: 20, height: 20, marginTop: spacing.x0_5, borderRadius: radii.pill, alignItems: "center", justifyContent: "center" },
+  conditionIconApplied: { backgroundColor: colors.ink },
+  conditionIconRef: { backgroundColor: colors.canvasSoft },
+  conditionNote: { marginTop: spacing.x0_5 },
+  restart: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, minHeight: touchTarget, alignSelf: "flex-start", marginTop: spacing.x3 },
+
+  loadingHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.x4, paddingVertical: spacing.x2 },
+  headerSpacer: { width: touchTarget },
+  loadingBody: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
+  loadingConditions: { marginTop: spacing.x3, maxWidth: 280 },
+  visual: { alignItems: "center", justifyContent: "center", marginVertical: spacing.x6 },
+  core: { alignItems: "center", justifyContent: "center", borderRadius: radii.pill, backgroundColor: colors.brandWeak },
+  coreCheck: {
     position: "absolute",
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 1.5,
-    borderColor: "rgba(230,0,0,0.65)",
-  },
-  loadingLogoBox: {
-    width: 68,
-    height: 68,
-    borderRadius: 18,
-    backgroundColor: "#1E2024",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    right: 0,
+    bottom: spacing.x1,
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.brand,
   },
-  loadingLogoImage: {
-    width: 38,
-    height: 38,
-  },
-  loadingStepTitle: {
-    color: "#FFFFFF",
-    fontSize: 19,
-    fontWeight: "900",
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  loadingStepDesc: {
-    color: "#A8A29E",
-    fontSize: 12.5,
-    textAlign: "center",
-    lineHeight: 18,
-    marginBottom: 20,
-  },
-  loadingChipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 6,
-    maxWidth: 290,
-  },
-  loadingChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  loadingChipActive: {
-    borderColor: "rgba(230,0,0,0.4)",
-  },
-  loadingChipText: {
-    color: "#D6D3D1",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  loadingChipTextHighlight: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  loadingBottom: {
-    gap: 8,
-    marginBottom: 10,
-  },
-  loadingProgressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  loadingProgressLabel: {
-    color: "#A8A29E",
-    fontSize: 11,
-  },
-  loadingProgressPercent: {
-    color: palette.red,
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  loadingTrack: {
-    height: 3,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  loadingFill: {
-    height: 3,
-    backgroundColor: palette.red,
-    borderRadius: 2,
-  },
-  loadingStepLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 4,
-  },
-  stepLabelText: {
-    color: "rgba(255,255,255,0.3)",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  stepLabelActive: {
-    color: "#FFFFFF",
-  },
-  stepLabelDot: {
-    color: "rgba(255,255,255,0.15)",
-    fontSize: 10,
-  },
-
-  // Result Screen Styles
-  resultBadge: {
-    backgroundColor: "rgba(230,0,0,0.1)",
-    borderRadius: 32,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  resultBadgeText: {
-    color: palette.red,
-    fontSize: 10.5,
-    fontWeight: "800",
-  },
-  resultScroll: {
-    padding: 16,
-    paddingBottom: 32,
-    gap: 14,
-  },
-  resultHeading: {
-    alignItems: "center",
-    paddingVertical: 4,
-  },
-  resultPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(230,0,0,0.1)",
-    borderRadius: 32,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginBottom: 6,
-  },
-  resultPillText: {
-    color: palette.red,
-    fontSize: 10.5,
-    fontWeight: "900",
-  },
-  resultHeroTitle: {
-    color: "#25282B",
-    fontSize: 18,
-    fontWeight: "900",
-    letterSpacing: -0.3,
-  },
-  resultCard: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E2E2E2",
-    borderWidth: 1,
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  resultImageWrap: {
-    aspectRatio: 16 / 9,
-    backgroundColor: "#F2F2F2",
-    width: "100%",
-  },
-  resultImage: {
-    width: "100%",
-    height: "100%",
-  },
-  resultCardBody: {
-    padding: 14,
-  },
-  resultCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-    marginBottom: 3,
-  },
-  resultShopName: {
-    color: "#25282B",
-    fontSize: 17.5,
-    fontWeight: "900",
-    flex: 1,
-  },
-  recommendFirstBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  recommendFirstText: {
-    color: palette.red,
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  resultShopStyle: {
-    color: "#7E7E7E",
-    fontSize: 11,
-    marginBottom: 10,
-  },
-  resultReasonBox: {
-    backgroundColor: "#F2F2F2",
-    borderRadius: 6,
-    padding: 12,
-    marginBottom: 10,
-  },
-  resultReasonText: {
-    color: "#25282B",
-    fontSize: 11.5,
-    lineHeight: 18,
-  },
-  quoteRed: {
-    color: palette.red,
-    fontWeight: "900",
-  },
-  resultTagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  resultTag: {
-    backgroundColor: "#FFFFFF",
-    borderColor: "#E2E2E2",
-    borderWidth: 1,
-    borderRadius: 32,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  resultTagText: {
-    color: "#4A4D52",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  resultActions: {
-    gap: 8,
-    marginTop: 4,
-  },
-  primaryActionButton: {
-    height: 46,
-    borderRadius: 60,
-    backgroundColor: palette.red,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryActionText: {
-    color: "#FFFFFF",
-    fontSize: 12.5,
-    fontWeight: "800",
-  },
-  secondaryActionButton: {
-    height: 42,
-    borderRadius: 60,
-    borderWidth: 1,
-    borderColor: "#E2E2E2",
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  secondaryActionText: {
-    color: "#25282B",
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: 24 },
+  statusDot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
+  loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingTop: spacing.x2, paddingBottom: spacing.x6 },
+  skip: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: touchTarget, paddingHorizontal: spacing.x5, borderRadius: radii.pill },
 })

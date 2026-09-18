@@ -1,833 +1,676 @@
+import * as Location from "expo-location"
 import { router } from "expo-router"
-import {
-  Bell,
-  Bookmark,
-  ChevronRight,
-  Crosshair,
-  Flame,
-  PenLine,
-  Search,
-  Sparkles,
-  X,
-} from "lucide-react-native"
-import { useMemo, useState } from "react"
-import {
-  FlatList,
-  Image,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text as NativeText,
-  View,
-  type TextProps,
-} from "react-native"
+import { ChevronRight, Sparkles } from "lucide-react-native"
+import { useEffect, useMemo, useState } from "react"
+import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg"
 
-import type { Shop } from "@raota/shared"
-import { ResilientUriImage } from "@/src/components"
+import type { Shop, ShopCatalogItem, TasteIdentity, TasteProfile } from "@raota/shared"
+import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
+import RecordFab from "@/src/components/RecordFab"
+import { ResilientUriImage } from "@/src/components/ResilientUriImage"
+import { AppText, LoadingState } from "@/src/components/ui"
+import { useShops, useTasteIdentity, useTasteProfile } from "@/src/data/hooks"
+import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
+import { distanceBetweenCoordinates } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, fonts } from "@/src/theme"
+import { colors, maxFontScale, radii, spacing, touchTarget } from "@/src/theme"
 
-const RED = colors.brand
-const INK = colors.text
-const MUTED = colors.textMuted
-const LINE = colors.border
-const SOFT = colors.backgroundBasement
+const CONTACT_EMAIL = "contact@raota.net"
+/** 떠 있는 기록 버튼(56pt)과 여백만큼 목록 끝을 비워 마지막 줄을 가리지 않는다 */
+const FAB_CLEARANCE = 96
 
-function Text({ style, ...props }: TextProps) {
-  const resolvedStyle = StyleSheet.flatten(style)
-  const readableSize =
-    typeof resolvedStyle?.fontSize === "number" && resolvedStyle.fontSize < 11
-      ? { fontSize: 11 }
-      : null
-  return (
-    <NativeText
-      {...props}
-      style={[{ fontFamily: fonts.body }, style, readableSize]}
-    />
-  )
+/** 원장의 표시용 필드(스타일, 한 줄 특징). API 응답에 없으면 빈 문자열 */
+function catalogOf(shop: Shop): Partial<Pick<ShopCatalogItem, "style" | "spec">> {
+  return shop as Partial<ShopCatalogItem>
 }
 
-function distanceLabel(distanceM: number) {
-  return distanceM < 1000
-    ? `${distanceM}m`
-    : `${(distanceM / 1000).toFixed(1)}km`
+function formatDistance(meters: number) {
+  return meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${meters}m`
+}
+
+/** 영업 상태는 원장의 businessStatus와 isOpen에서만 계산한다 */
+function statusOf(shop: Shop): { label: string; open: boolean } {
+  if (shop.businessStatus !== "OPERATIONAL") return { label: "영업 정보 확인 필요", open: false }
+  return shop.isOpen ? { label: "영업 중", open: true } : { label: "준비 중", open: false }
 }
 
 function openShop(shopId: number) {
-  router.push({
-    pathname: "/shop/[shopId]",
-    params: { shopId: String(shopId) },
-  })
+  router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shopId) } })
 }
 
-function ShopRow({ shop, index, isLast }: { shop: Shop; index: number; isLast?: boolean }) {
+/** 원장 매장의 표시용 텍스트(스타일·특징·태그·소개). 추천 이유를 판정할 때 쓴다 */
+function shopText(shop: Shop) {
+  const catalog = catalogOf(shop)
+  return [catalog.style, catalog.spec, shop.description, ...shop.tags].filter(Boolean).join(" ")
+}
+
+const SOUP_KEYS: Record<string, string[]> = {
+  돈코츠: ["돈코츠", "이에케"],
+  쇼유: ["쇼유"],
+  시오: ["시오"],
+  미소: ["미소"],
+}
+const DENSE_KEYS = ["진한", "농후", "백탕", "이에케", "돈코츠", "적된장"]
+const CLEAN_KEYS = ["깔끔", "맑은", "청탕", "감칠맛", "시오"]
+const hasAny = (text: string, keys: string[]) => keys.some((key) => text.includes(key))
+
+interface Recommendation {
+  shop: Shop
+  /** 카드에 보여주는 추천 이유 한 줄. 랭킹 입력에서 실제로 쓴 근거만 쓴다 */
+  reason: string
+}
+
+/** 기록이 없거나 비회원일 때: 라멘로그·평점이 쌓인 곳 → 가까운 곳 순 */
+function fallbackRecommendations(shops: Shop[]): Recommendation[] {
+  return [...shops]
+    .sort((a, b) => b.reviewCount - a.reviewCount || b.rating - a.rating || a.distanceM - b.distanceM)
+    .slice(0, 5)
+    .map((shop) => ({ shop, reason: plainReason(shop) }))
+}
+
+function plainReason(shop: Shop) {
+  if (shop.reviewCount > 0) {
+    return [`라멘로그 ${shop.reviewCount.toLocaleString()}개`, shop.rating > 0 ? `★ ${shop.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")
+  }
+  const open = statusOf(shop).open
+  return open ? `가까운 영업 중 매장 · ${formatDistance(shop.distanceM)}` : `${formatDistance(shop.distanceM)} 거리`
+}
+
+/**
+ * 로그인 사용자의 추천. 가장 많이 먹은 종류(취향 정체성)와 육수 농도 평균을 src/domain/ai-recommendation 랭킹의 입력으로 쓴다.
+ * 이유 문구는 그 입력과 매장 정보가 실제로 맞은 경우에만 붙인다. 서버 추천(#46)이 오면 이 함수만 바꾼다.
+ */
+function personalRecommendations(shops: Shop[], identity: TasteIdentity, profile: TasteProfile): Recommendation[] {
+  const leader = identity.leader && identity.leader.name !== "기타" ? identity.leader.name : null
+  const dense = profile.scores.brothDensity >= 3.5
+  try {
+    const ranked = rankShopsForAIRecommendation(shops, {
+      soup: leader ?? "",
+      mood: "",
+      priority: dense ? "진하고 묵직한 국물" : "깔끔하고 깊은 감칠맛",
+    })
+    if (!ranked.length) return fallbackRecommendations(shops)
+    return ranked.slice(0, 5).map(({ shop }) => {
+      const text = shopText(shop)
+      const reasons: string[] = []
+      if (leader && hasAny(text, SOUP_KEYS[leader] ?? [leader])) reasons.push(`${leader}를 가장 자주 드셔서`)
+      if (dense && hasAny(text, DENSE_KEYS)) reasons.push("진한 육수 취향")
+      if (!dense && hasAny(text, CLEAN_KEYS)) reasons.push("맑은 육수 취향")
+      return { shop, reason: reasons.length ? reasons.join(" · ") : plainReason(shop) }
+    })
+  } catch {
+    return fallbackRecommendations(shops)
+  }
+}
+
+/**
+ * 위치 권한이 이미 허용돼 있을 때만 현재 위치를 읽는다. 홈에서는 권한을 새로 묻지 않는다
+ * (권한 요청은 지도 탭에서 맥락과 함께 한다). 없으면 원장 거리를 그대로 쓴다.
+ */
+function useKnownLocation() {
+  const [origin, setOrigin] = useState<{ latitude: number; longitude: number } | null>(null)
+  useEffect(() => {
+    if (Platform.OS === "web") return
+    let mounted = true
+    ;(async () => {
+      try {
+        const permission = await Location.getForegroundPermissionsAsync()
+        if (permission.status !== "granted") return
+        const position =
+          (await Location.getLastKnownPositionAsync()) ??
+          (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
+        if (mounted && position) setOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude })
+      } catch {
+        // 위치를 못 읽으면 원장 거리로 보여준다
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+  return origin
+}
+
+function SectionHead({ title, right }: { title: string; right?: React.ReactNode }) {
   return (
-    <Pressable
-      accessibilityLabel={`${shop.name} ${shop.branch ?? ""}, ${distanceLabel(shop.distanceM)}, ${
-        shop.isOpen ? "영업 중" : "영업 종료"
-      }, 상세 보기`}
-      accessibilityRole="button"
-      onPress={() => openShop(shop.id)}
-      style={({ pressed }) => [styles.shopRow, isLast && styles.shopRowLast, pressed && styles.pressed]}
-    >
-      <Text style={styles.shopIndex}>{String(index + 1).padStart(2, "0")}</Text>
-      <ResilientUriImage
-        accessibilityLabel={`${shop.name} 대표 사진`}
-        uri={shop.photos[0]}
-        style={styles.shopThumb}
-      />
-      <View style={styles.shopRowBody}>
-        <View style={styles.inline}>
-          <Text numberOfLines={1} style={styles.shopRowName}>
-            {shop.name}
-          </Text>
-        </View>
-        <Text numberOfLines={1} style={styles.shopDescription}>
-          {shop.description || shop.tags.join(" · ")}
-        </Text>
-        <View style={styles.inline}>
-          <Text style={styles.distance}>{distanceLabel(shop.distanceM)}</Text>
-          <Text style={styles.dotSeparator}>·</Text>
-          <Text style={[styles.openState, !shop.isOpen && styles.closedState]}>
-            {shop.isOpen ? "● 영업 중" : "● 영업 종료"}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
+    <View style={styles.sectionHead}>
+      <AppText accessibilityRole="header" style={styles.flex} variant="sectionTitle">
+        {title}
+      </AppText>
+      {right}
+    </View>
+  )
+}
+
+function Thumb({ uri, size }: { uri?: string; size: number }) {
+  return (
+    <ResilientUriImage
+      accessibilityLabel=""
+      style={[styles.thumb, { width: size, height: size }]}
+      uri={uri}
+    />
   )
 }
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
-  const { shops, currentUser, unreadNotificationCount, userLogs } = useRaota()
-  const [fabOpen, setFabOpen] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
+  const { width } = useWindowDimensions()
+  const { currentUser } = useRaota()
+  const shopsQuery = useShops()
+  const tasteProfile = useTasteProfile()
+  const tasteIdentity = useTasteIdentity()
+  const origin = useKnownLocation()
+  const [policy, setPolicy] = useState<PolicyType | null>(null)
+  const loggedIn = Boolean(currentUser?.isLoggedIn)
 
-  const nearby = useMemo(
-    () => [...shops].sort((a, b) => a.distanceM - b.distanceM).slice(0, 5),
-    [shops],
+  /** 위치가 있으면 실제 거리로 다시 계산한다 */
+  const shops = useMemo(() => {
+    if (!origin) return shopsQuery.data
+    return shopsQuery.data.map((shop) =>
+      shop.lat && shop.lng
+        ? { ...shop, distanceM: Math.round(distanceBetweenCoordinates(origin, { latitude: shop.lat, longitude: shop.lng })) }
+        : shop,
+    )
+  }, [origin, shopsQuery.data])
+
+  /** 오늘의 픽: 원장에서 소개글과 사진이 있는 첫 매장 (웹과 같은 에디터 픽) */
+  const todayPick = useMemo(() => shops.find((shop) => shop.description && shop.photos[0]) ?? shops[0] ?? null, [shops])
+  /** 가까운 순 상위 5곳 */
+  const nearby = useMemo(() => [...shops].sort((a, b) => a.distanceM - b.distanceM).slice(0, 5), [shops])
+  /** 추천: 기록이 있는 로그인 사용자는 취향 기반 랭킹, 그 외에는 라멘로그·거리 기준 */
+  const personal = loggedIn && tasteProfile.data.profile.count > 0 && Boolean(tasteIdentity.data.leader)
+  const recommendations = useMemo(
+    () => (personal ? personalRecommendations(shops, tasteIdentity.data, tasteProfile.data.profile) : fallbackRecommendations(shops)),
+    [personal, shops, tasteIdentity.data, tasteProfile.data.profile],
   )
-  const popular = useMemo(() => {
-    const preferredOrder = [1, 5, 3, 6, 4]
-    const byId = new Map(shops.map((shop) => [shop.id, shop]))
-    const ordered = preferredOrder
-      .map((id) => byId.get(id))
-      .filter((shop): shop is Shop => Boolean(shop))
-    return ordered.length ? ordered : [...shops].sort((a, b) => b.reviewCount - a.reviewCount).slice(0, 5)
-  }, [shops])
-  const heroShop = nearby[0] ?? shops[0]
+  const recommendTitle = personal && currentUser ? `${currentUser.nickname}님이 좋아할 라멘집` : "처음이라면 여기부터"
+  const recommendMeta = personal ? `${tasteIdentity.data.total}그릇 취향 기준` : "라멘로그 · 거리 기준"
 
-  const refresh = () => {
-    setRefreshing(true)
-    setTimeout(() => setRefreshing(false), 650)
-  }
+  const compactHeader = width < 360
+  const pickCatalog = todayPick ? catalogOf(todayPick) : {}
 
-  const startRecord = (mode: "nearby" | "saved" | "search") => {
-    setFabOpen(false)
-    router.push({ pathname: "/record/select-shop", params: { mode } })
-  }
-
-  const header = (
-    <>
-      <View style={styles.header}>
-        <View style={styles.brandWrap}>
-          <Image
-            accessibilityLabel="라오타 로고"
-            source={require("@/assets/images/logo.png")}
-            style={styles.logo}
-          />
-          <View>
-            <Text style={styles.wordmark}>
-              RAOTA<Text style={styles.red}>.</Text>
-            </Text>
-            <Text style={styles.slogan}>나의 라멘 취향을 찾는 곳</Text>
+  return (
+    <View style={styles.root}>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: FAB_CLEARANCE }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 1. 헤더: 로고 · 인사 (MVP에는 알림 벨이 없다) */}
+        <View style={styles.header}>
+          <View style={styles.brand}>
+            <Image accessibilityIgnoresInvertColors source={require("@/assets/images/logo.png")} style={styles.logo} />
+            <View style={styles.flexShrink}>
+              <AppText
+                accessibilityLabel="RAOTA"
+                accessibilityRole="header"
+                maxFontSizeMultiplier={maxFontScale}
+                numberOfLines={1}
+                style={styles.wordmark}
+                variant="screenTitle"
+              >
+                RAOTA<AppText style={styles.wordmark} tone="brand" variant="screenTitle">.</AppText>
+              </AppText>
+              <AppText capScale numberOfLines={1} style={styles.bold} tone="muted" variant="meta">
+                나의 라멘 취향을 찾는 곳
+              </AppText>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.headerActions}>
-          {currentUser?.isLoggedIn ? (
+          {loggedIn && currentUser ? (
             <Pressable
+              accessibilityHint="마이 탭으로 이동해요"
+              accessibilityLabel={`${currentUser.nickname}님, 반갑습니다`}
               accessibilityRole="button"
-              onPress={() => router.push("/native/my")}
-              style={styles.welcomeButton}
+              onPress={() => router.navigate("/native/my")}
+              style={({ pressed }) => [styles.greeting, pressed && styles.pressedDim]}
             >
-                <Text numberOfLines={1} style={styles.welcomeText}>
-                <Text style={styles.red}>{currentUser.nickname}</Text>님, 반갑습니다
-              </Text>
+              <AppText capScale numberOfLines={1} style={styles.bold} variant="secondary">
+                <AppText style={styles.bold} tone="brand" variant="secondary">
+                  {currentUser.nickname}
+                </AppText>
+                님, 반갑습니다
+              </AppText>
             </Pressable>
           ) : (
             <View style={styles.authRow}>
               <Pressable
+                accessibilityLabel="로그인"
                 accessibilityRole="button"
                 onPress={() => router.push("/auth/login")}
-                style={styles.textButton}
+                style={({ pressed }) => [styles.loginButton, pressed && styles.pressedDim]}
               >
-                <Text style={styles.textButtonLabel}>로그인</Text>
+                <AppText capScale style={styles.bold} variant="secondary">
+                  로그인
+                </AppText>
               </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push("/auth/onboarding")}
-                style={styles.joinButton}
-              >
-                <Text style={styles.joinButtonLabel}>회원가입</Text>
-              </Pressable>
+              {compactHeader ? null : (
+                <Pressable
+                  accessibilityLabel="회원가입"
+                  accessibilityRole="button"
+                  onPress={() => router.push("/auth/onboarding")}
+                  style={({ pressed }) => [styles.signupButton, pressed && styles.signupPressed]}
+                >
+                  <AppText capScale style={styles.bold} tone="onDark" variant="secondary">
+                    회원가입
+                  </AppText>
+                </Pressable>
+              )}
             </View>
           )}
+        </View>
+
+        {/* 2. AI 라멘 큐레이터 배너 */}
+        <View style={styles.bannerWrap}>
           <Pressable
-            accessibilityLabel={`알림 ${unreadNotificationCount}개`}
+            accessibilityHint="국물과 상황을 골라 오늘의 한 그릇을 추천받아요"
+            accessibilityLabel="오늘 뭐 먹지? AI 라멘 큐레이터"
             accessibilityRole="button"
-            hitSlop={6}
-            onPress={() => router.push("/notifications")}
-            style={styles.iconButton}
+            onPress={() => router.push("/ai-recommend")}
+            style={({ pressed }) => [styles.banner, pressed && styles.pressedDim]}
           >
-            <Bell color={INK} size={20} />
-            {unreadNotificationCount > 0 ? (
-              <View style={styles.notificationDot} />
-            ) : null}
+            <View style={styles.bannerIcon}>
+              <Sparkles color={colors.onDark} size={20} />
+            </View>
+            <View style={styles.flex}>
+              <AppText tone="onDark" variant="cardTitle">
+                오늘 뭐 먹지? AI 라멘 큐레이터
+              </AppText>
+              <AppText style={styles.bannerBody} tone="onDarkMuted" variant="secondary">
+                국물과 상황에 맞는 오늘의 한 그릇 추천
+              </AppText>
+            </View>
+            <ChevronRight color={colors.onDarkMuted} size={20} />
           </Pressable>
         </View>
-      </View>
 
-      <View style={styles.contentInset}>
-        <Pressable
-          accessibilityLabel="AI 라멘 큐레이터 시작"
-          accessibilityRole="button"
-          onPress={() => router.push("/ai-recommend")}
-          style={({ pressed }) => [styles.aiBanner, pressed && styles.pressed]}
-        >
-          <View style={styles.aiIcon}>
-            <Sparkles color="#FFFFFF" size={20} />
-          </View>
-          <View style={styles.flex}>
-            <Text style={styles.aiTitle}>오늘 뭐 먹지? AI 라멘 큐레이터</Text>
-            <Text style={styles.aiBody}>육수 농도 · 면 굵기 · 타레 맞춤 라멘 추천</Text>
-          </View>
-          <ChevronRight color="#FFFFFF" size={19} />
-        </Pressable>
+        {shopsQuery.isLoading ? <LoadingState label="라멘집을 불러오는 중…" /> : null}
 
-        {/* 기록 완료 알림 배너 */}
-        {userLogs.length > 0 && (
-          <View style={styles.recordSavedBanner}>
-            <View style={styles.recordSavedLeft}>
-              <View style={styles.recordSavedIconWrap}>
-                <Text style={styles.recordSavedCheck}>✓</Text>
+        {/* 3. 오늘의 픽 */}
+        {todayPick ? (
+          <View style={styles.sectionFirst}>
+            <SectionHead
+              right={
+                <AppText capScale style={styles.bold} tone="muted" variant="meta">
+                  {[formatDistance(todayPick.distanceM), pickCatalog.style].filter(Boolean).join(" · ")}
+                </AppText>
+              }
+              title="오늘의 큐레이션 라멘집"
+            />
+            <Pressable
+              accessibilityLabel={`오늘의 픽, ${todayPick.name}${todayPick.branch ? ` ${todayPick.branch}` : ""}, ${pickCatalog.spec ?? ""}, 매장 상세 보기`}
+              accessibilityRole="button"
+              onPress={() => openShop(todayPick.id)}
+              style={({ pressed }) => [styles.pickCard, pressed && styles.pressedWash]}
+            >
+              <View style={styles.pickPhoto}>
+                <ResilientUriImage
+                  accessibilityLabel={`${todayPick.name} 대표 사진`}
+                  style={StyleSheet.absoluteFill}
+                  uri={todayPick.photos[0]}
+                />
+                {/* 사진 위 글씨를 읽히게 하는 아래쪽 스크림(허용된 유일한 그라디언트) */}
+                <Svg height="67%" pointerEvents="none" style={styles.scrim} width="100%">
+                  <Defs>
+                    <LinearGradient id="pickScrim" x1="0" x2="0" y1="0" y2="1">
+                      <Stop offset="0" stopColor={colors.black} stopOpacity="0" />
+                      <Stop offset="1" stopColor={colors.black} stopOpacity="0.75" />
+                    </LinearGradient>
+                  </Defs>
+                  <Rect fill="url(#pickScrim)" height="100%" width="100%" x="0" y="0" />
+                </Svg>
+                <View style={styles.pickBadge}>
+                  <AppText capScale style={styles.bold} variant="meta">
+                    오늘의 픽
+                  </AppText>
+                </View>
+                <View style={styles.pickCaption}>
+                  {pickCatalog.spec ? (
+                    <AppText numberOfLines={1} style={styles.bold} tone="onDarkMuted" variant="secondary">
+                      {pickCatalog.spec}
+                    </AppText>
+                  ) : null}
+                  <AppText numberOfLines={2} tone="onDark" variant="screenTitle">
+                    {todayPick.name}
+                    {todayPick.branch ? (
+                      <AppText style={styles.pickBranch} tone="onDarkMuted" variant="cardTitle">
+                        {` · ${todayPick.branch}`}
+                      </AppText>
+                    ) : null}
+                  </AppText>
+                </View>
               </View>
-              <View style={styles.recordSavedTextWrap}>
-                <Text numberOfLines={1} style={styles.recordSavedTitle}>
-                  새로운 라멘로그가 취향 리포트에 반영되었습니다.
-                </Text>
-                <Text numberOfLines={1} style={styles.recordSavedSubtitle}>
-                  최신 라멘로그 데이터를 기반으로 맞춤 추천이 갱신되었습니다.
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.recordSavedBadge}>기록 완료</Text>
-          </View>
-        )}
-
-        <View style={styles.sectionHeadingWithBorder}>
-          <Text accessibilityRole="header" style={styles.sectionTitle}>오늘의 큐레이션 라멘집</Text>
-          <Text style={styles.sectionMeta}>420m · 망원동</Text>
-        </View>
-
-        {heroShop ? (
-          <Pressable
-            accessibilityLabel={`${heroShop.name} 오늘의 추천, ${distanceLabel(heroShop.distanceM)}, 상세 보기`}
-            accessibilityRole="button"
-            onPress={() => openShop(heroShop.id)}
-            style={({ pressed }) => [
-              styles.heroCard,
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.heroImageWrap}>
-              <ResilientUriImage
-                accessibilityLabel={`${heroShop.name} 오늘의 추천 사진`}
-                uri={heroShop.photos[0]}
-                style={styles.heroImage}
-              />
-              <View style={styles.pickBadge}>
-                <Text style={styles.pickBadgeText}>★ TODAY&apos;S PICK</Text>
-              </View>
-            </View>
-            <View style={styles.heroBody}>
-              <View style={styles.inline}>
-                <Text style={styles.heroName}>{heroShop.name}</Text>
-                {heroShop.branch ? (
-                  <View style={styles.heroBranchBadge}>
-                    <Text style={styles.heroBranch}>{heroShop.branch}</Text>
+              <View style={styles.pickBody}>
+                {todayPick.description ? (
+                  <View style={styles.quote}>
+                    <AppText variant="body">{todayPick.description}</AppText>
                   </View>
                 ) : null}
+                <View style={styles.pickFoot}>
+                  <View style={styles.pickTags}>
+                    {todayPick.tags.slice(0, 2).map((tag) => (
+                      <View key={tag} style={styles.tag}>
+                        <AppText capScale numberOfLines={1} style={styles.bold} variant="meta">
+                          {tag}
+                        </AppText>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.inline}>
+                    <AppText capScale style={styles.bold} tone="brand" variant="secondary">
+                      매장 상세 보기
+                    </AppText>
+                    <ChevronRight color={colors.brand} size={16} />
+                  </View>
+                </View>
               </View>
-              <Text style={styles.heroCopy} numberOfLines={2}>
-                특제 쇼유 라멘 · 자가제면 스트레이트 면 · 닭과 오리 더블 육수
-              </Text>
-              <View style={styles.heroQuote}>
-                <Text style={styles.heroQuoteText}>
-                  “진한 동물계 감칠맛과 단단한 자가제면 식감이 일품인 망원동의 대표 쇼유 라멘 명소입니다.”
-                </Text>
-              </View>
-              <View style={styles.heroActionRow}>
-                <View style={styles.tagRow}>
-                  {['자가제면', '맑은육수'].map((tag) => (
-                    <View key={tag} style={styles.tag}>
-                      <Text style={styles.tagText}>#{tag}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* 4. 추천 라멘집. 숫자 일치도 대신 추천 이유 한 줄을 보여준다 */}
+        {recommendations.length ? (
+          <View style={styles.section}>
+            <SectionHead
+              right={
+                <AppText capScale style={styles.bold} tone="muted" variant="meta">
+                  {recommendMeta}
+                </AppText>
+              }
+              title={recommendTitle}
+            />
+            <View style={styles.listCard}>
+              {recommendations.map(({ shop, reason }, index) => (
+                <Pressable
+                  accessibilityLabel={`추천 ${index + 1}위, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${reason}, 매장 상세 보기`}
+                  accessibilityRole="button"
+                  key={shop.id}
+                  onPress={() => openShop(shop.id)}
+                  style={({ pressed }) => [styles.row, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
+                >
+                  <View style={[styles.rank, index < 3 ? styles.rankTop : styles.rankRest]}>
+                    <AppText capScale style={styles.rankText} tone={index < 3 ? "onDark" : "muted"} variant="meta">
+                      {index + 1}
+                    </AppText>
+                  </View>
+                  <Thumb size={48} uri={shop.photos[0]} />
+                  <View style={styles.rowBody}>
+                    <View style={styles.nameLine}>
+                      <AppText numberOfLines={1} style={styles.flexShrink} variant="cardTitle">
+                        {shop.name}
+                      </AppText>
+                      {shop.branch ? (
+                        <AppText capScale numberOfLines={1} style={styles.branch} tone="muted" variant="meta">
+                          {shop.branch}
+                        </AppText>
+                      ) : null}
                     </View>
-                  ))}
-                </View>
-                <View style={styles.detailButton}>
-                  <Text style={styles.detailText}>매장 상세 보기 →</Text>
-                </View>
-              </View>
+                    <AppText capScale numberOfLines={1} style={styles.rowSub} tone="sub" variant="secondary">
+                      {reason}
+                    </AppText>
+                  </View>
+                </Pressable>
+              ))}
             </View>
+            {personal ? null : (
+              <AppText style={styles.recommendHint} tone="muted" variant="secondary">
+                {loggedIn ? "라멘을 기록하면 내 취향에 맞춰 추천이 바뀌어요." : "로그인하고 기록하면 내 취향에 맞춰 추천이 바뀌어요."}
+              </AppText>
+            )}
+          </View>
+        ) : null}
+
+        {/* 5. 가까운 라멘집 (거리 순) */}
+        {nearby.length ? (
+          <View style={styles.section}>
+            <SectionHead
+              right={
+                <Pressable
+                  accessibilityLabel="지도에서 보기"
+                  accessibilityRole="button"
+                  hitSlop={{ top: 8, bottom: 8 }}
+                  onPress={() => router.navigate("/native/map")}
+                  style={({ pressed }) => [styles.mapLink, pressed && styles.pressedDim]}
+                >
+                  <AppText capScale style={styles.bold} tone="muted" variant="secondary">
+                    지도에서 보기
+                  </AppText>
+                  <ChevronRight color={colors.textMuted} size={16} />
+                </Pressable>
+              }
+              title="가까운 라멘집"
+            />
+            <View style={styles.listCard}>
+              {nearby.map((shop, index) => {
+                const catalog = catalogOf(shop)
+                const status = statusOf(shop)
+                const line = [catalog.style, catalog.spec].filter(Boolean).join(" · ")
+                return (
+                  <Pressable
+                    accessibilityLabel={`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${formatDistance(shop.distanceM)}, ${status.label}, 매장 상세 보기`}
+                    accessibilityRole="button"
+                    key={shop.id}
+                    onPress={() => openShop(shop.id)}
+                    style={({ pressed }) => [styles.row, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
+                  >
+                    <AppText capScale style={styles.index} tone="muted" variant="secondary">
+                      {String(index + 1).padStart(2, "0")}
+                    </AppText>
+                    <Thumb size={56} uri={shop.photos[0]} />
+                    <View style={styles.rowBody}>
+                      <View style={styles.nameLine}>
+                        <AppText numberOfLines={1} style={styles.flexShrink} variant="cardTitle">
+                          {shop.name}
+                        </AppText>
+                        {shop.branch ? (
+                          <AppText capScale numberOfLines={1} style={styles.branch} tone="muted" variant="meta">
+                            {shop.branch}
+                          </AppText>
+                        ) : null}
+                      </View>
+                      {line ? (
+                        <AppText capScale numberOfLines={1} style={styles.rowSub} tone="muted" variant="secondary">
+                          {line}
+                        </AppText>
+                      ) : null}
+                      <View style={styles.metaLine}>
+                        <AppText capScale style={styles.bold} variant="meta">
+                          {formatDistance(shop.distanceM)}
+                        </AppText>
+                        <AppText aria-hidden capScale style={styles.dot} variant="meta">
+                          ·
+                        </AppText>
+                        <AppText capScale style={styles.bold} tone={status.open ? "positive" : "muted"} variant="meta">
+                          {`● ${status.label}`}
+                        </AppText>
+                      </View>
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
+        ) : null}
+
+        {/* 6. 약관 · 문의 푸터 */}
+        <View style={styles.footer}>
+          <View accessibilityLabel="약관 및 문의" style={styles.footerLinks}>
+            <Pressable
+              accessibilityLabel="이용약관 보기"
+              accessibilityRole="button"
+              onPress={() => setPolicy("terms")}
+              style={({ pressed }) => [styles.footerButton, pressed && styles.pressedDim]}
+            >
+              <AppText capScale style={styles.bold} tone="muted" variant="meta">
+                이용약관
+              </AppText>
+            </Pressable>
+            <AppText aria-hidden capScale style={styles.dot} variant="meta">
+              ·
+            </AppText>
+            <Pressable
+              accessibilityLabel="개인정보처리방침 보기"
+              accessibilityRole="button"
+              onPress={() => setPolicy("privacy")}
+              style={({ pressed }) => [styles.footerButton, pressed && styles.pressedDim]}
+            >
+              <AppText capScale style={styles.bold} variant="meta">
+                개인정보처리방침
+              </AppText>
+            </Pressable>
+          </View>
+          <Pressable
+            accessibilityHint="메일 앱을 열어요"
+            accessibilityLabel={`문의하기, ${CONTACT_EMAIL}`}
+            accessibilityRole="link"
+            onPress={() => void Linking.openURL(`mailto:${CONTACT_EMAIL}`).catch(() => undefined)}
+            style={({ pressed }) => [styles.footerButton, pressed && styles.pressedDim]}
+          >
+            <AppText capScale style={styles.bold} tone="muted" variant="meta">
+              {`문의하기 · ${CONTACT_EMAIL}`}
+            </AppText>
           </Pressable>
-        ) : null}
-
-        <View style={styles.sectionHeadingWithBorder}>
-          <View style={styles.inline}>
-            <Flame color={RED} fill={RED} size={16} />
-            <Text accessibilityRole="header" style={styles.sectionTitleSmall}>
-              오늘 많이 본 라멘집
-            </Text>
-          </View>
-          <Text style={styles.sectionMeta}>실시간 조회수 기준</Text>
+          <AppText capScale tone="muted" variant="meta">
+            © 2026 RAOTA · 라멘에 진심인 사람들
+          </AppText>
         </View>
-        <View style={styles.rankingList}>
-          {popular.map((shop, index) => (
-            <Pressable
-              accessibilityLabel={`${index + 1}위 ${shop.name}, 조회 ${shop.reviewCount.toLocaleString()}회, 상세 보기`}
-              accessibilityRole="button"
-              key={shop.id}
-              onPress={() => openShop(shop.id)}
-              style={({ pressed }) => [
-                styles.rankingRow,
-                pressed && styles.pressed,
-              ]}
-            >
-              <View
-                style={[
-                  styles.rankBadge,
-                  index === 0 && styles.rankBadgeFirst,
-                  index === 1 && styles.rankBadgeSecond,
-                  index === 2 && styles.rankBadgeThird,
-                  index > 2 && styles.rankBadgeMuted,
-                ]}
-              >
-                <Text style={[styles.rank, index < 3 ? styles.rankInverse : styles.rankMuted]}>
-                  {index + 1}
-                </Text>
-              </View>
-              <ResilientUriImage
-                accessibilityLabel={`${shop.name} 인기 순위 대표 사진`}
-                uri={shop.photos[0]}
-                style={styles.rankThumb}
-              />
-              <View style={styles.flex}>
-                <View style={styles.inline}>
-                  <Text numberOfLines={1} style={styles.rankName}>
-                    {shop.name}
-                  </Text>
-                  <Text style={styles.branch}>{shop.branch}</Text>
-                </View>
-                <Text numberOfLines={1} style={styles.rankDescription}>
-                  {shop.tags.slice(0, 2).join(" · ")}
-                </Text>
-              </View>
-              <View style={styles.rankViewsWrap}>
-                <Text style={styles.rankViews}>
-                  {shop.reviewCount.toLocaleString()}회
-                </Text>
-                <Text style={styles.rankArrow}>→</Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
+      </ScrollView>
 
-        <View style={styles.sectionHeadingWithBorder}>
-          <Text accessibilityRole="header" style={styles.sectionTitleSmall}>거리순 라멘집 목록</Text>
-          <Text style={styles.sectionMeta}>가까운 순서</Text>
-        </View>
-      </View>
-    </>
-  )
-
-  return (
-    <View style={styles.root}>
-      <FlatList
-        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 16 }}
-        data={nearby}
-        keyExtractor={(item) => String(item.id)}
-        ListHeaderComponent={header}
-        ListFooterComponent={
-          <View style={styles.footer}>
-            <View style={styles.footerLinks}>
-              <Text style={styles.footerLink}>이용약관</Text>
-              <Text style={styles.footerDot}>·</Text>
-              <Text style={styles.footerLink}>개인정보처리방침</Text>
-              <Text style={styles.footerDot}>·</Text>
-              <Text style={styles.footerLink}>문의하기</Text>
-            </View>
-            <Text style={styles.footerCopy}>
-              © 2026 RAOTA · 라멘에 진심인 사람들
-            </Text>
-          </View>
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={refresh}
-            tintColor={RED}
-          />
-        }
-        renderItem={({ item, index }) => (
-          <View style={styles.nearbyRowWrap}>
-            <ShopRow index={index} isLast={index === nearby.length - 1} shop={item} />
-          </View>
-        )}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {fabOpen ? (
-        <Pressable
-          accessibilityLabel="기록 메뉴 닫기"
-          accessibilityRole="button"
-          onPress={() => setFabOpen(false)}
-          style={styles.backdrop}
-        />
-      ) : null}
-      <View
-        accessibilityViewIsModal={fabOpen}
-        onAccessibilityEscape={() => setFabOpen(false)}
-        pointerEvents="box-none"
-        style={[styles.fabWrap, { bottom: insets.bottom + 82 }]}
-      >
-        {fabOpen ? (
-          <View accessibilityLabel="기록 방법 선택" style={styles.fabMenu}>
-            <Pressable
-              accessibilityLabel="주변 라멘집 기록하기"
-              accessibilityRole="button"
-              onPress={() => startRecord("nearby")}
-              style={styles.fabMenuItem}
-            >
-              <Text style={styles.fabMenuLabel}>주변 라멘집 기록하기</Text>
-              <Crosshair color={RED} size={18} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="저장 목록에서 기록하기"
-              accessibilityRole="button"
-              onPress={() => startRecord("saved")}
-              style={styles.fabMenuItem}
-            >
-              <Text style={styles.fabMenuLabel}>저장 목록에서 기록하기</Text>
-              <Bookmark color={RED} size={18} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="직접 검색해서 기록하기"
-              accessibilityRole="button"
-              onPress={() => startRecord("search")}
-              style={styles.fabMenuItem}
-            >
-              <Text style={styles.fabMenuLabel}>직접 검색해서 기록하기</Text>
-              <Search color={RED} size={18} />
-            </Pressable>
-          </View>
-        ) : null}
-        <Pressable
-          accessibilityLabel={fabOpen ? "기록 메뉴 닫기" : "라멘 기록하기"}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: fabOpen }}
-          onPress={() => setFabOpen((open) => !open)}
-          style={({ pressed }) => [
-            styles.fab,
-            fabOpen && styles.fabClose,
-            pressed && styles.pressed,
-          ]}
-        >
-          {fabOpen ? (
-            <X color="#FFFFFF" size={22} />
-          ) : (
-            <PenLine color="#FFFFFF" size={22} />
-          )}
-        </Pressable>
-      </View>
+      <PolicySheet onClose={() => setPolicy(null)} type={policy} />
+      <RecordFab />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FFFFFF" },
+  root: { flex: 1, position: "relative", backgroundColor: colors.canvas },
   flex: { flex: 1 },
-  red: { color: RED },
-  inline: { flexDirection: "row", alignItems: "center", gap: 6 },
-  pressed: { opacity: 0.72, transform: [{ scale: 0.99 }] },
-  contentInset: { paddingHorizontal: 20 },
+  flexShrink: { flexShrink: 1, minWidth: 0 },
+  bold: { fontWeight: "700" },
+  inline: { flexDirection: "row", alignItems: "center", gap: spacing.x0_5 },
+  pressedDim: { opacity: 0.7 },
+  pressedWash: { backgroundColor: colors.canvasSoft },
+
   header: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderBottomColor: LINE,
-    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    minHeight: 66,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  brandWrap: { alignItems: "center", flexDirection: "row", gap: 10 },
-  logo: { width: 36, height: 36 },
-  wordmark: {
-    color: INK,
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: -0.8,
-  },
-  slogan: { color: MUTED, fontSize: 9.5, fontWeight: "700", marginTop: 1 },
-  headerActions: { alignItems: "center", flexDirection: "row", gap: 4 },
-  welcomeButton: {
-    justifyContent: "center",
-    minHeight: 44,
-    maxWidth: 150,
-    paddingHorizontal: 6,
-  },
-  welcomeText: { color: INK, fontSize: 12, fontWeight: "800" },
-  authRow: { alignItems: "center", flexDirection: "row", gap: 2 },
-  textButton: { justifyContent: "center", minHeight: 44, paddingHorizontal: 7 },
-  textButtonLabel: { color: INK, fontSize: 11.5, fontWeight: "800" },
-  joinButton: {
-    alignItems: "center",
-    backgroundColor: RED,
-    borderRadius: 4,
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 9,
-  },
-  joinButtonLabel: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
-  iconButton: {
-    alignItems: "center",
-    height: 44,
-    justifyContent: "center",
-    position: "relative",
-    width: 44,
-  },
-  notificationDot: {
-    backgroundColor: RED,
-    borderColor: "#FFFFFF",
-    borderRadius: 5,
-    borderWidth: 2,
-    height: 10,
-    position: "absolute",
-    right: 8,
-    top: 7,
-    width: 10,
-  },
-  aiBanner: {
-    alignItems: "center",
-    backgroundColor: INK,
-    borderRadius: 6,
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
-    minHeight: 72,
-    padding: 16,
-  },
-  aiIcon: {
-    alignItems: "center",
-    backgroundColor: RED,
-    borderRadius: 6,
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  aiTitle: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "900",
-    letterSpacing: -0.3,
-  },
-  aiBody: { color: "#CBCDCF", fontSize: 11, marginTop: 2 },
-  sectionHeading: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-    marginTop: 16,
-  },
-  sectionHeadingWithBorder: {
-    alignItems: "flex-end",
-    borderBottomColor: LINE,
+    gap: spacing.x2,
+    paddingLeft: spacing.x4,
+    paddingRight: spacing.x3,
+    paddingVertical: spacing.x2_5,
     borderBottomWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-    marginTop: 18,
-    paddingBottom: 8,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.canvas,
   },
-  recordSavedBanner: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderColor: LINE,
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-    padding: 14,
-  },
-  recordSavedLeft: { alignItems: "center", flexDirection: "row", flex: 1, gap: 10 },
-  recordSavedIconWrap: {
-    alignItems: "center",
-    backgroundColor: "rgba(230,0,0,0.1)",
-    borderRadius: 14,
-    height: 28,
+  brand: { flexDirection: "row", alignItems: "center", gap: spacing.x2_5, flexShrink: 1, minWidth: 0 },
+  logo: { width: 36, height: 36, resizeMode: "contain" },
+  wordmark: { lineHeight: 22, letterSpacing: -0.4 },
+  greeting: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2, flexShrink: 1 },
+  authRow: { flexDirection: "row", alignItems: "center", gap: spacing.x1 },
+  loginButton: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2_5 },
+  signupButton: {
+    minHeight: touchTarget,
     justifyContent: "center",
-    width: 28,
+    paddingHorizontal: spacing.x3,
+    borderRadius: radii.sm,
+    backgroundColor: colors.brand,
   },
-  recordSavedCheck: { color: RED, fontSize: 13, fontWeight: "900" },
-  recordSavedTextWrap: { flex: 1 },
-  recordSavedTitle: { color: INK, fontSize: 12.5, fontWeight: "800" },
-  recordSavedSubtitle: { color: MUTED, fontSize: 10.5, marginTop: 2 },
-  recordSavedBadge: { color: RED, fontSize: 11, fontWeight: "800", marginLeft: 8 },
-  sectionTitle: {
-    color: RED,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: -0.7,
+  signupPressed: { backgroundColor: colors.brandPressed },
+
+  bannerWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4 },
+  banner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x3,
+    padding: spacing.x4,
+    borderRadius: radii.sm,
+    backgroundColor: colors.ink,
   },
-  sectionTitleSmall: {
-    color: INK,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: -0.4,
+  bannerIcon: {
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.brand,
   },
-  sectionSubtitle: { color: MUTED, fontSize: 11, marginTop: 3 },
-  sectionMeta: { color: MUTED, fontSize: 11, fontWeight: "700" },
-  heroCard: {
-    borderColor: LINE,
-    borderRadius: 8,
-    borderWidth: 1,
-    overflow: "hidden",
+  bannerBody: { marginTop: spacing.x0_5 },
+
+  sectionFirst: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x6 },
+  section: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x7 },
+  sectionHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x2,
+    paddingBottom: spacing.x2,
+    marginBottom: spacing.x3,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  heroImageWrap: { height: 220, position: "relative" },
-  heroImage: { backgroundColor: SOFT, height: "100%", width: "100%" },
+
+  pickCard: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvas },
+  pickPhoto: { width: "100%", aspectRatio: 4 / 3, backgroundColor: colors.canvasSoft },
+  scrim: { position: "absolute", left: 0, right: 0, bottom: 0 },
   pickBadge: {
-    alignItems: "center",
-    backgroundColor: RED,
-    borderRadius: 4,
-    flexDirection: "row",
-    gap: 4,
-    left: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     position: "absolute",
-    top: 12,
+    top: spacing.x3,
+    left: spacing.x3,
+    paddingHorizontal: spacing.x2_5,
+    paddingVertical: spacing.x1,
+    borderRadius: radii.xs,
+    backgroundColor: colors.canvas,
   },
-  pickBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10.5,
-    fontWeight: "900",
-    letterSpacing: 0.4,
-  },
-  heroBody: { padding: 16 },
-  heroName: {
-    color: INK,
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: -0.4,
-  },
-  heroBranchBadge: {
-    backgroundColor: SOFT,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  heroBranch: { color: MUTED, fontSize: 11, fontWeight: "700" },
-  heroCopy: { color: MUTED, fontSize: 12, fontWeight: "700", lineHeight: 18, marginTop: 4 },
-  heroQuote: {
-    backgroundColor: "#F8F8F8",
-    borderLeftColor: RED,
-    borderLeftWidth: 3,
-    borderBottomRightRadius: 6,
-    borderTopRightRadius: 6,
-    marginTop: 10,
-    padding: 12,
-  },
-  heroQuoteText: { color: INK, fontSize: 12, fontWeight: "500", lineHeight: 18 },
-  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  tag: {
-    backgroundColor: SOFT,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  tagText: { color: INK, fontSize: 11, fontWeight: "700" },
-  heroActionRow: {
-    alignItems: "center",
-    borderTopColor: "#EFEFF0",
-    borderTopWidth: 1,
+  pickCaption: { position: "absolute", left: 0, right: 0, bottom: 0, padding: spacing.x4, gap: spacing.x0_5 },
+  pickBranch: { fontWeight: "700" },
+  pickBody: { padding: spacing.x4 },
+  quote: { borderLeftWidth: 1, borderLeftColor: colors.ink, paddingLeft: spacing.x3 },
+  pickFoot: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 12,
-    paddingTop: 12,
+    gap: spacing.x3,
+    marginTop: spacing.x4,
+    paddingTop: spacing.x3,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  openInline: { alignItems: "center", flexDirection: "row", gap: 5 },
-  statusDot: {
-    backgroundColor: "#1B9B55",
-    borderRadius: 4,
-    height: 7,
-    width: 7,
+  pickTags: { flexDirection: "row", gap: spacing.x1_5, flexShrink: 1, overflow: "hidden" },
+  tag: {
+    backgroundColor: colors.canvasSoft,
+    borderRadius: radii.xs,
+    paddingHorizontal: spacing.x2_5,
+    paddingVertical: spacing.x1,
+    flexShrink: 1,
   },
-  statusDotClosed: { backgroundColor: MUTED },
-  openInlineText: { color: "#4D5358", fontSize: 10.5, fontWeight: "700" },
-  detailButton: {
-    alignItems: "center",
-    backgroundColor: RED,
-    borderRadius: 4,
+
+  listCard: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvas },
+  row: {
     flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  detailText: {
     alignItems: "center",
-    color: "#FFFFFF",
-    fontSize: 11.5,
-    fontWeight: "900",
+    gap: spacing.x3,
+    paddingHorizontal: spacing.x3_5,
+    paddingVertical: spacing.x3,
+    minHeight: touchTarget,
   },
-  rankingList: {
-    borderColor: LINE,
-    borderRadius: 6,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  rankingRow: {
-    alignItems: "center",
-    borderBottomColor: LINE,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: 12,
-    minHeight: 67,
-    paddingHorizontal: 14,
-  },
-  rankBadge: {
-    alignItems: "center",
-    backgroundColor: "#F2F2F2",
-    borderRadius: 12,
-    height: 24,
-    justifyContent: "center",
-    width: 24,
-  },
-  rankBadgeFirst: { backgroundColor: RED },
-  rankBadgeSecond: { backgroundColor: INK },
-  rankBadgeThird: { backgroundColor: "#57534E" },
-  rankBadgeMuted: { backgroundColor: "#F5F5F4" },
-  rankMuted: { color: "#78716C", fontSize: 12, fontWeight: "900" },
-  rankViewsWrap: { alignItems: "center", flexDirection: "row", gap: 8 },
-  rankArrow: { color: "#D6D3D1", fontSize: 13, fontWeight: "800" },
-  dotSeparator: { color: LINE, fontSize: 10, marginHorizontal: 2 },
-  rank: {
-    color: "#71757A",
-    fontSize: 14,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  rankInverse: { color: "#FFFFFF" },
-  rankThumb: { backgroundColor: SOFT, borderRadius: 4, height: 44, width: 44 },
-  rankName: { color: INK, fontSize: 12.5, fontWeight: "900", maxWidth: 130 },
-  branch: { color: MUTED, fontSize: 9.5, fontWeight: "700" },
-  rankDescription: { color: MUTED, fontSize: 10, marginTop: 3 },
-  rankViews: { color: "#999DA1", fontSize: 9.5, fontWeight: "700" },
-  seeAllButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 44,
-    paddingHorizontal: 4,
-  },
-  seeAllText: { color: RED, fontSize: 11, fontWeight: "900" },
-  nearbyRowWrap: {
-    marginHorizontal: 20,
-    backgroundColor: "#FFFFFF",
-    borderLeftColor: LINE,
-    borderRightColor: LINE,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-  },
-  shopRow: {
-    alignItems: "center",
-    borderTopColor: LINE,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: 10,
-    minHeight: 82,
-    paddingHorizontal: 12,
-  },
-  shopRowLast: { borderBottomColor: LINE, borderBottomWidth: 1 },
-  shopIndex: { color: "#A3A6A9", fontSize: 11, fontWeight: "900", width: 20 },
-  shopThumb: { backgroundColor: SOFT, borderRadius: 4, height: 58, width: 58 },
-  shopRowBody: { flex: 1, minWidth: 0 },
-  shopRowName: { color: INK, fontSize: 13.5, fontWeight: "900", maxWidth: 150 },
-  shopDescription: { color: MUTED, fontSize: 10, marginTop: 4 },
-  distance: { color: INK, fontSize: 10, fontWeight: "800", marginTop: 5 },
-  openState: {
-    color: "#14834A",
-    fontSize: 9.5,
-    fontWeight: "700",
-    marginLeft: 3,
-    marginTop: 5,
-  },
-  closedState: { color: MUTED },
-  match: {
-    color: RED,
-    fontSize: 9.5,
-    fontWeight: "800",
-    marginLeft: 3,
-    marginTop: 5,
-  },
-  footer: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  footerLinks: { alignItems: "center", flexDirection: "row", gap: 10, marginBottom: 6 },
-  footerLink: { color: MUTED, fontSize: 10.5, fontWeight: "700" },
-  footerDot: { color: LINE, fontSize: 10.5 },
-  footerCopy: { color: "#A0A0A0", fontSize: 9.5 },
-  backdrop: {
-    backgroundColor: "rgba(16,18,20,0.42)",
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  fabWrap: { alignItems: "flex-end", position: "absolute", right: 18 },
-  fabMenu: { alignItems: "flex-end", gap: 8, marginBottom: 10 },
-  fabMenuItem: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    flexDirection: "row",
-    gap: 10,
-    minHeight: 44,
-    paddingHorizontal: 14,
-    shadowColor: INK,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.13,
-    shadowRadius: 12,
-  },
-  fabMenuLabel: { color: INK, fontSize: 11.5, fontWeight: "800" },
-  fab: {
-    alignItems: "center",
-    backgroundColor: RED,
-    borderRadius: 28,
-    height: 56,
-    justifyContent: "center",
-    shadowColor: RED,
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.24,
-    shadowRadius: 11,
-    width: 56,
-  },
-  fabClose: { backgroundColor: INK, shadowColor: INK },
+  rowDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+  rank: { width: 24, height: 24, borderRadius: radii.pill, alignItems: "center", justifyContent: "center" },
+  rankTop: { backgroundColor: colors.ink },
+  rankRest: { backgroundColor: colors.canvasSoft },
+  rankText: { fontWeight: "800", fontVariant: ["tabular-nums"] },
+  thumb: { borderRadius: radii.sm },
+  rowBody: { flex: 1, minWidth: 0 },
+  nameLine: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1_5, minWidth: 0 },
+  branch: { fontWeight: "700", flexShrink: 0 },
+  rowSub: { marginTop: spacing.x0_5 },
+  recommendHint: { marginTop: spacing.x2 },
+  metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
+  dot: { color: colors.textFaint },
+  index: { width: 20, textAlign: "center", fontWeight: "700", fontVariant: ["tabular-nums"] },
+  mapLink: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", gap: spacing.x0_5, marginVertical: -spacing.x2 },
+
+  footer: { alignItems: "center", paddingHorizontal: spacing.gutter, paddingTop: spacing.x8, paddingBottom: spacing.x6 },
+  footerLinks: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center" },
+  footerButton: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },
 })
