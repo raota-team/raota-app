@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react'
-import { Crosshair, Bookmark, Search, X, MapPin } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Crosshair, Bookmark, Search, X, ChevronRight } from 'lucide-react'
+import { SHOP_CATALOG, type ShopCatalogItem } from '../data/shops'
+import { DEMO_SAVED_SHOP_NAMES } from '../data/demoProfile'
 
 export type RecordSheetMode = 'nearby' | 'saved' | 'search'
 
@@ -7,554 +9,333 @@ interface Props {
   initialMode?: RecordSheetMode
   onClose: () => void
   onSelectShop: (shopName: string) => void
+  /** 찜한 가게 이름. 넘기지 않으면 데모 원장의 찜 목록을 쓴다. */
+  savedShopNames?: string[]
 }
 
 interface ShopItem {
-  id: string | number
+  id: number
   name: string
   branch: string
   style: string
-  broth?: string
-  dist?: string
-  distMeters?: number
-  status?: '영업 중' | '준비 중' | '마감'
-  photo: string
+  spec: string
+  distanceM: number
+  distance: string
+  isOpen: boolean
+  photo?: string
   tags: string[]
-  memo?: string
-  savedDate?: string
   region: string
 }
 
-const ALL_SHOPS: ShopItem[] = [
-  {
-    id: 1,
-    name: '멘야준',
-    branch: '망원 본점',
-    style: '특제 쇼유 라멘',
-    broth: '닭과 오리 더블 육수',
-    dist: '420m',
-    distMeters: 420,
-    status: '영업 중',
-    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=400&h=400&fit=crop&auto=format&q=80',
-    tags: ['자가제면', '수비드 차슈'],
-    memo: '특제 쇼유 + 차슈 추가 필수!',
-    savedDate: '2026.08.28',
-    region: '망원동',
-  },
-  {
-    id: 2,
-    name: '후쿠 라멘',
-    branch: '합정점',
-    style: '진한 삿포로 미소 라멘',
-    broth: '돼지뼈 육수와 볶음 채소',
-    dist: '680m',
-    distMeters: 680,
-    status: '영업 중',
-    photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=400&h=400&fit=crop&auto=format&q=80',
-    tags: ['불향 가득', '꼬불꼬불 면'],
-    region: '합정동',
-  },
-  {
-    id: 3,
-    name: '하쿠텐',
-    branch: '연남점',
-    style: '진한 농후 이에케 라멘',
-    broth: '진한 돈골 육수 & 닭기름',
-    dist: '950m',
-    distMeters: 950,
-    status: '영업 중',
-    photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=400&h=400&fit=crop&auto=format&q=80',
-    tags: ['이에케', '밥 무한리필', '김 추가'],
-    memo: '평일 오픈런 추천, 농후한 국물!',
-    savedDate: '2026.08.15',
-    region: '연남동',
-  },
-  {
-    id: 4,
-    name: '세상끝의라멘',
-    branch: '합정점',
-    style: '오사카식 블랙 쇼유 & 차슈',
-    broth: '진한 간장 타레와 닭 육수',
-    dist: '1.1km',
-    distMeters: 1100,
-    status: '영업 중',
-    photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=400&h=400&fit=crop&auto=format&q=80',
-    tags: ['오사카 블랙', '면 리필 1회 무료'],
-    region: '합정동',
-  },
-  {
-    id: 5,
-    name: '오레노라멘',
-    branch: '마포 본점',
-    style: '토리파이탄 (닭백탕 라멘)',
-    broth: '거품 낸 진한 닭 육수',
-    dist: '1.4km',
-    distMeters: 1400,
-    status: '영업 중',
-    photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=400&h=400&fit=crop&auto=format&q=80',
-    tags: ['미쉐린 빕구르망', '자가제면'],
-    region: '마포구',
-  },
-  {
-    id: 6,
-    name: '묘코',
-    branch: '연남점',
-    style: '특제 오리 시오 라멘',
-    broth: '깔끔한 청탕 오리 육수',
-    dist: '1.5km',
-    distMeters: 1500,
-    status: '준비 중',
-    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=400&h=400&fit=crop&auto=format&q=80',
-    tags: ['오리가슴살 차슈', '깔끔담백'],
-    region: '연남동',
-  },
-  {
-    id: 7,
-    name: '담택',
-    branch: '합정 본점',
-    style: '깔끔한 유자 시오 라멘',
-    broth: '맑은 닭 육수와 상큼한 유자',
-    dist: '1.8km',
-    distMeters: 1800,
-    status: '영업 중',
-    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=400&h=400&fit=crop&auto=format&q=80',
-    tags: ['유자 시오', '가정식 라멘'],
-    memo: '유자 시오 라멘 꼭 먹어보기',
-    savedDate: '2026.07.20',
-    region: '합정동',
-  },
-  {
-    id: 8,
-    name: '이리에라멘',
-    branch: '합정점',
-    style: '진한 도미 시오 라멘',
-    broth: '통도미를 우려낸 해산물 육수',
-    dist: '1.9km',
-    distMeters: 1900,
-    status: '영업 중',
-    photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=400&h=400&fit=crop&auto=format&q=80',
-    tags: ['도미 육수', '아부라소바'],
-    region: '합정동',
-  },
+/** 주소의 동 또는 역 이름에서 동네를 뽑는다. 못 찾으면 비워 둔다. */
+const REGION_PATTERN = /(망원|합정|연남|서교|상수|동교)(동|역)/
+const regionOf = (address: string) => {
+  const match = address.match(REGION_PATTERN)
+  return match ? `${match[1]}동` : ''
+}
+
+const formatDistance = (meters: number) =>
+  meters >= 1000 ? `${(meters / 1000).toFixed(1).replace(/\.0$/, '')}km` : `${meters}m`
+
+/** 매장 원장에서 시트가 쓰는 목록을 파생한다. 이름, 지점, 거리는 원장과 항상 같다. */
+const toShopItem = (shop: ShopCatalogItem): ShopItem => ({
+  id: shop.id,
+  name: shop.name,
+  branch: shop.branch ?? '',
+  style: shop.style,
+  spec: shop.spec,
+  distanceM: shop.distanceM,
+  distance: formatDistance(shop.distanceM),
+  isOpen: shop.isOpen,
+  photo: shop.photos[0],
+  tags: shop.tags,
+  region: regionOf(shop.address),
+})
+
+const ALL_SHOPS: ShopItem[] = SHOP_CATALOG.map(toShopItem).sort((a, b) => a.distanceM - b.distanceM)
+
+const QUICK_KEYWORDS = Array.from(
+  new Set([
+    ...ALL_SHOPS.map(shop => shop.style.replace(/ 라멘$/, '')),
+    ...ALL_SHOPS.map(shop => shop.region).filter(Boolean),
+  ]),
+)
+
+const MODES: Array<{ id: RecordSheetMode; label: string; Icon: typeof Crosshair }> = [
+  { id: 'nearby', label: '주변', Icon: Crosshair },
+  { id: 'saved', label: '찜한 가게', Icon: Bookmark },
+  { id: 'search', label: '검색', Icon: Search },
 ]
 
-const SAVED_SHOPS = ALL_SHOPS.filter(s => !!s.memo)
-
-const POPULAR_KEYWORDS = [
-  '자가제면',
-  '이에케',
-  '쇼유',
-  '토리파이탄',
-  '미쉐린',
-  '시오',
-  '망원동',
-  '합정동',
-  '연남동',
-]
+function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="w-[calc(100%+1rem)] min-h-14 py-3 px-2 -mx-2 flex items-center gap-3 text-left rounded-[6px] active:bg-[#F2F2F2]"
+    >
+      <div className="w-14 h-14 rounded-[6px] overflow-hidden shrink-0 bg-[#F2F2F2] border border-[#E2E2E2]">
+        {shop.photo && <img src={shop.photo} alt="" className="w-full h-full object-cover" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          <span className="text-[15px] font-bold text-[#25282B] truncate">{shop.name}</span>
+          {shop.branch && <span className="text-[13px] text-[#6B6E73] shrink-0">{shop.branch}</span>}
+        </div>
+        <p className="text-[13px] text-[#6B6E73] truncate mt-0.5">{shop.spec || shop.style}</p>
+        <div className="flex items-center gap-2 mt-1 text-[12px] font-bold">
+          <span className="text-[#25282B]">{shop.distance}</span>
+          <span className={shop.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>{shop.isOpen ? '영업 중' : '준비 중'}</span>
+          {shop.region && <span className="text-[#6B6E73] font-medium">{shop.region}</span>}
+        </div>
+      </div>
+      <ChevronRight className="w-5 h-5 shrink-0 text-[#6B6E73]" aria-hidden="true" />
+    </button>
+  )
+}
 
 export default function RecordSheet({
   initialMode = 'nearby',
   onClose,
   onSelectShop,
+  savedShopNames = DEMO_SAVED_SHOP_NAMES,
 }: Props) {
   const [mode, setMode] = useState<RecordSheetMode>(initialMode)
   const [nearbyFilter, setNearbyFilter] = useState<'all' | 'open' | '500m'>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // 주변 라멘집 필터링
-  const nearbyList = useMemo(() => {
-    return ALL_SHOPS.filter(shop => {
-      if (nearbyFilter === 'open' && shop.status !== '영업 중') return false
-      if (nearbyFilter === '500m' && (shop.distMeters || 9999) > 500) return false
-      return true
+  // 첫 포커스: 검색 모드면 검색창, 아니면 제목. Escape는 App도 처리하지만 시트 안에서도 닫는다.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const raf = requestAnimationFrame(() => {
+      if (initialMode === 'search') searchInputRef.current?.focus()
+      else titleRef.current?.focus()
     })
-  }, [nearbyFilter])
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('keydown', onKey)
+      previous?.focus?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  // 검색 결과 필터링
+  useEffect(() => {
+    if (mode === 'search') searchInputRef.current?.focus()
+  }, [mode])
+
+  const savedShops = useMemo(
+    () => ALL_SHOPS.filter(shop => savedShopNames.includes(shop.name)),
+    [savedShopNames],
+  )
+
+  const nearbyList = useMemo(
+    () =>
+      ALL_SHOPS.filter(shop => {
+        if (nearbyFilter === 'open' && !shop.isOpen) return false
+        if (nearbyFilter === '500m' && shop.distanceM > 500) return false
+        return true
+      }),
+    [nearbyFilter],
+  )
+
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return []
     return ALL_SHOPS.filter(shop =>
-      shop.name.toLowerCase().includes(q) ||
-      shop.branch.toLowerCase().includes(q) ||
-      shop.style.toLowerCase().includes(q) ||
-      shop.region.toLowerCase().includes(q) ||
-      shop.tags.some(t => t.toLowerCase().includes(q))
+      [shop.name, shop.branch, shop.style, shop.spec, shop.region, ...shop.tags].some(text => text.toLowerCase().includes(q)),
     )
   }, [searchQuery])
 
+  const filterChip = (active: boolean) =>
+    `min-h-11 px-4 rounded-[60px] text-[13px] font-bold border transition-colors ${
+      active ? 'bg-[#25282B] text-white border-[#25282B]' : 'bg-white text-[#25282B] border-[#E2E2E2] active:bg-[#F2F2F2]'
+    }`
+
   return (
-    <div className="absolute inset-0 z-50 flex flex-col justify-end overflow-hidden" role="dialog" aria-modal="true">
-      {/* 백드롭 */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-xs anim-fade-in"
+    <div className="absolute inset-0 z-50 flex flex-col justify-end overflow-hidden">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50 anim-fade-in"
         onClick={onClose}
         aria-label="닫기"
-        role="button"
+        tabIndex={-1}
       />
 
-      {/* 시트 모달 */}
-      <div className="relative z-10 w-full bg-white rounded-t-[20px] anim-slide-up border-t border-[#E2E2E2] shadow-2xl text-[#25282B] flex flex-col max-h-[85%] overflow-hidden">
-        {/* 핸들 바 */}
-        <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-stone-300" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="record-sheet-title"
+        className="relative z-10 w-full bg-white rounded-t-[12px] anim-slide-up shadow-[0_4px_16px_rgba(0,0,0,0.12)] text-[#25282B] flex flex-col max-h-[88%] overflow-hidden"
+      >
+        <div className="flex justify-center pt-2.5 shrink-0" aria-hidden="true">
+          <div className="w-10 h-1 rounded-full bg-[#E2E2E2]" />
         </div>
 
-        {/* 헤더 */}
-        <div className="px-5 pt-2 pb-3 flex items-center justify-between border-b border-[#E2E2E2] shrink-0">
-          <div>
-            <span className="text-[10px] font-black text-[#E60000] tracking-wider uppercase block">
-              라멘로그 기록하기
-            </span>
-            <h2 className="text-[17px] font-black text-[#25282B] tracking-tight mt-0.5">
-              어느 가게의 라멘을 기록할까요?
-            </h2>
-          </div>
+        <div className="pl-5 pr-2 pt-2 pb-1 flex items-center justify-between gap-2 shrink-0">
+          <h2 id="record-sheet-title" ref={titleRef} tabIndex={-1} className="text-[20px] font-extrabold tracking-tight outline-none">
+            어느 가게를 기록할까요?
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 hover:text-[#E60000] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2]"
             aria-label="닫기"
           >
-            <X className="w-4 h-4 stroke-[2.5]" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
-        {/* 3가지 모드 탭 스위처 */}
-        <div className="px-5 pt-3 pb-2 shrink-0 bg-[#FAFAFA] border-b border-[#E2E2E2]">
-          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#ECECEC] rounded-[8px]">
-            <button
-              type="button"
-              onClick={() => setMode('nearby')}
-              className={`py-2 px-1 rounded-[6px] text-[12px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                mode === 'nearby'
-                  ? 'bg-white text-[#25282B] shadow-xs'
-                  : 'text-[#7E7E7E] hover:text-[#25282B]'
-              }`}
-            >
-              <Crosshair className={`w-3.5 h-3.5 ${mode === 'nearby' ? 'text-[#E60000]' : ''}`} />
-              <span>주변 라멘집</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('saved')}
-              className={`py-2 px-1 rounded-[6px] text-[12px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                mode === 'saved'
-                  ? 'bg-white text-[#25282B] shadow-xs'
-                  : 'text-[#7E7E7E] hover:text-[#25282B]'
-              }`}
-            >
-              <Bookmark className={`w-3.5 h-3.5 ${mode === 'saved' ? 'text-[#E60000]' : ''}`} />
-              <span>저장 목록 ({SAVED_SHOPS.length})</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('search')}
-              className={`py-2 px-1 rounded-[6px] text-[12px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                mode === 'search'
-                  ? 'bg-white text-[#25282B] shadow-xs'
-                  : 'text-[#7E7E7E] hover:text-[#25282B]'
-              }`}
-            >
-              <Search className={`w-3.5 h-3.5 ${mode === 'search' ? 'text-[#E60000]' : ''}`} />
-              <span>직접 검색</span>
-            </button>
-          </div>
+        <div role="tablist" aria-label="가게 찾는 방법" className="px-5 pt-2 pb-3 shrink-0 flex gap-2 border-b border-[#E2E2E2]">
+          {MODES.map(({ id, label, Icon }) => {
+            const active = mode === id
+            const count = id === 'saved' ? savedShops.length : id === 'nearby' ? ALL_SHOPS.length : null
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-controls={`record-panel-${id}`}
+                id={`record-tab-${id}`}
+                onClick={() => setMode(id)}
+                className={`flex-1 min-h-11 rounded-[6px] text-[13px] font-bold flex items-center justify-center gap-1.5 transition-colors ${
+                  active ? 'bg-[#25282B] text-white' : 'bg-[#F2F2F2] text-[#25282B] active:bg-[#E2E2E2]'
+                }`}
+              >
+                <Icon className="w-4 h-4" aria-hidden="true" />
+                <span>
+                  {label}
+                  {count !== null && <span className={active ? 'text-white/70' : 'text-[#6B6E73]'}> {count}</span>}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
-        {/* 탭별 본문 컨텐츠 (스크롤 가능) */}
-        <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-3">
-          {/* ======================= 1. 주변 라멘집 탭 ======================= */}
+        <div
+          className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-5 pt-4 pb-4"
+          role="tabpanel"
+          id={`record-panel-${mode}`}
+          aria-labelledby={`record-tab-${mode}`}
+        >
           {mode === 'nearby' && (
-            <div className="space-y-3 anim-fade-in">
-              {/* 내 위치 안내 & 필터 바 */}
-              <div className="space-y-2 pb-1">
-                <div className="flex items-center justify-between text-[11px] font-bold text-[#7E7E7E]">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <MapPin className="w-3.5 h-3.5 text-[#E60000] shrink-0" />
-                    <span className="truncate">마포구 망원동 기준 (반경 2km)</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 text-[10.5px] text-emerald-600 font-bold shrink-0">
-                    <span className="relative flex h-2 w-2 items-center justify-center">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-                    </span>
-                    <span>GPS 수신 중</span>
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setNearbyFilter('all')}
-                    className={`px-2.5 py-1 rounded-[4px] text-[11px] font-bold transition-all cursor-pointer ${
-                      nearbyFilter === 'all'
-                        ? 'bg-[#25282B] text-white shadow-xs'
-                        : 'bg-[#F2F2F2] text-[#7E7E7E] hover:bg-[#E2E2E2]'
-                    }`}
-                  >
-                    전체 ({ALL_SHOPS.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNearbyFilter('500m')}
-                    className={`px-2.5 py-1 rounded-[4px] text-[11px] font-bold transition-all cursor-pointer ${
-                      nearbyFilter === '500m'
-                        ? 'bg-[#25282B] text-white shadow-xs'
-                        : 'bg-[#F2F2F2] text-[#7E7E7E] hover:bg-[#E2E2E2]'
-                    }`}
-                  >
-                    500m 이내
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNearbyFilter('open')}
-                    className={`px-2.5 py-1 rounded-[4px] text-[11px] font-bold transition-all cursor-pointer ${
-                      nearbyFilter === 'open'
-                        ? 'bg-[#25282B] text-white shadow-xs'
-                        : 'bg-[#F2F2F2] text-[#7E7E7E] hover:bg-[#E2E2E2]'
-                    }`}
-                  >
-                    영업 중만
-                  </button>
-                </div>
+            <div className="anim-fade-in">
+              <div className="flex items-center gap-2 pb-3 overflow-x-auto no-scrollbar -mx-5 px-5">
+                <button type="button" onClick={() => setNearbyFilter('all')} aria-pressed={nearbyFilter === 'all'} className={filterChip(nearbyFilter === 'all')}>
+                  전체 {ALL_SHOPS.length}
+                </button>
+                <button type="button" onClick={() => setNearbyFilter('500m')} aria-pressed={nearbyFilter === '500m'} className={filterChip(nearbyFilter === '500m')}>
+                  500m 이내
+                </button>
+                <button type="button" onClick={() => setNearbyFilter('open')} aria-pressed={nearbyFilter === 'open'} className={filterChip(nearbyFilter === 'open')}>
+                  영업 중만
+                </button>
               </div>
-
-              {/* 매장 카드 목록 */}
-              <div className="space-y-2.5">
-                {nearbyList.map((shop) => (
-                  <div
-                    key={shop.id}
-                    onClick={() => onSelectShop(shop.name)}
-                    className="p-3 bg-white hover:bg-[#FAFAFA] border border-[#E2E2E2] hover:border-[#BEBEBE] rounded-[8px] cursor-pointer active:scale-99 transition-all flex items-center justify-between gap-3 group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-13 h-13 rounded-[6px] overflow-hidden shrink-0 bg-[#F2F2F2] border border-[#E2E2E2]">
-                        <img src={shop.photo} alt={shop.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-[14px] font-black text-[#25282B] truncate group-hover:text-[#E60000] transition-colors">
-                            {shop.name}
-                          </p>
-                          <span className="text-[10px] text-[#7E7E7E] font-bold">{shop.branch}</span>
-                          <span className="text-[9.5px] font-bold text-[#E60000] bg-red-50 px-1.5 py-0.2 rounded-xs">
-                            {shop.dist}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-[#7E7E7E] mt-0.5 truncate">
-                          {shop.style} {shop.broth && `· ${shop.broth}`}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          {shop.tags.map((tag, idx) => (
-                            <span key={idx} className="text-[9.5px] font-bold bg-[#F2F2F2] text-[#4A4D52] px-1.5 py-0.2 rounded-[3px]">
-                              #{tag}
-                            </span>
-                          ))}
-                          {shop.status && (
-                            <span className={`text-[9.5px] font-bold ${shop.status === '영업 중' ? 'text-[#2E7D32]' : 'text-stone-400'}`}>
-                              ● {shop.status}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="shrink-0 text-[11.5px] font-black text-white bg-[#E60000] group-hover:bg-[#CC0000] px-3 py-2 rounded-[4px] transition-all shadow-xs cursor-pointer active:scale-95"
-                    >
-                      기록 시작 →
-                    </button>
-                  </div>
+              <p className="text-[12px] font-medium text-[#6B6E73] pb-1">가까운 순</p>
+              <div className="divide-y divide-[#F2F2F2]">
+                {nearbyList.map(shop => (
+                  <ShopRow key={shop.id} shop={shop} onSelect={() => onSelectShop(shop.name)} />
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* ======================= 2. 저장 목록 탭 ======================= */}
-          {mode === 'saved' && (
-            <div className="space-y-3 anim-fade-in">
-              <div className="flex items-center justify-between pb-1">
-                <p className="text-[12px] font-bold text-[#7E7E7E]">
-                  내가 가고 싶어서 찜해둔 라멘집 ({SAVED_SHOPS.length}곳)
-                </p>
-                <span className="text-[10.5px] text-[#A0A0A0]">최근 저장순</span>
-              </div>
-
-              {SAVED_SHOPS.length === 0 ? (
-                <div className="py-12 text-center text-[#7E7E7E] space-y-2">
-                  <Bookmark className="w-8 h-8 mx-auto text-stone-300" />
-                  <p className="text-[13px] font-bold">저장한 라멘집이 없습니다.</p>
-                  <p className="text-[11px] text-[#A0A0A0]">매장 상세 페이지에서 북마크 버튼을 눌러보세요.</p>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {SAVED_SHOPS.map((shop) => (
-                    <div
-                      key={shop.id}
-                      onClick={() => onSelectShop(shop.name)}
-                      className="p-3.5 bg-white hover:bg-[#FAFAFA] border border-[#E2E2E2] hover:border-[#BEBEBE] rounded-[8px] cursor-pointer active:scale-99 transition-all space-y-2.5 group"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="w-12 h-12 rounded-[6px] overflow-hidden shrink-0 bg-[#F2F2F2] border border-[#E2E2E2]">
-                            <img src={shop.photo} alt={shop.name} className="w-full h-full object-cover" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-[14px] font-black text-[#25282B] truncate group-hover:text-[#E60000] transition-colors">
-                                {shop.name}
-                              </p>
-                              <span className="text-[10px] text-[#7E7E7E] font-bold">{shop.branch}</span>
-                            </div>
-                            <p className="text-[11px] text-[#7E7E7E] mt-0.5 truncate">{shop.style}</p>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="shrink-0 text-[11.5px] font-black text-white bg-[#E60000] group-hover:bg-[#CC0000] px-3 py-2 rounded-[4px] transition-all shadow-xs cursor-pointer active:scale-95"
-                        >
-                          기록 시작 →
-                        </button>
-                      </div>
-
-                      {/* 저장 메모 & 일자 박스 */}
-                      {shop.memo && (
-                        <div className="bg-[#F8F8F8] p-2 rounded-[4px] text-[11px] flex items-center justify-between gap-2 border border-[#EFEFEF]">
-                          <span className="text-[#4A4D52] font-medium truncate">
-                            📝 {shop.memo}
-                          </span>
-                          <span className="text-[10px] text-[#A0A0A0] shrink-0">{shop.savedDate} 저장</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              {nearbyList.length === 0 && (
+                <p className="py-10 text-center text-[14px] text-[#6B6E73]">조건에 맞는 가게가 없어요.</p>
               )}
             </div>
           )}
 
-          {/* ======================= 3. 직접 검색 탭 ======================= */}
+          {mode === 'saved' && (
+            <div className="anim-fade-in">
+              {savedShops.length === 0 ? (
+                <div className="py-12 text-center space-y-2">
+                  <Bookmark className="w-8 h-8 mx-auto text-[#BEBEBE]" aria-hidden="true" />
+                  <p className="text-[15px] font-bold">찜한 가게가 없어요.</p>
+                  <p className="text-[13px] text-[#6B6E73]">가게 상세에서 찜해 두면 여기서 바로 기록할 수 있어요.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[12px] font-medium text-[#6B6E73] pb-1">찜한 가게 {savedShops.length}곳</p>
+                  <div className="divide-y divide-[#F2F2F2]">
+                    {savedShops.map(shop => (
+                      <ShopRow key={shop.id} shop={shop} onSelect={() => onSelectShop(shop.name)} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {mode === 'search' && (
-            <div className="space-y-3.5 anim-fade-in">
-              {/* 검색 입력창 */}
+            <div className="anim-fade-in space-y-4">
               <div className="relative">
+                <label htmlFor="record-shop-search" className="sr-only">가게 검색</label>
                 <input
+                  id="record-shop-search"
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="라멘집 이름 또는 지역(합정, 망원, 연남 등) 검색"
-                  autoFocus
-                  className="w-full pl-9 pr-8 py-2.5 bg-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] text-[13px] font-bold text-[#25282B] placeholder:text-[#A0A0A0] focus:outline-hidden focus:border-[#25282B] focus:bg-white transition-all"
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="가게 이름, 지역, 스타일"
+                  className="w-full h-12 pl-10 pr-12 bg-[#F7F7F7] border border-[#E2E2E2] rounded-[6px] text-[14px] font-medium text-[#25282B] placeholder:text-[#6B6E73] outline-none focus:border-[#25282B] focus:bg-white transition-colors"
                 />
-                <Search className="w-4 h-4 text-[#7E7E7E] absolute left-3 top-3 pointer-events-none" />
+                <Search className="w-4 h-4 text-[#6B6E73] absolute left-3.5 top-4 pointer-events-none" aria-hidden="true" />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-2.5 p-0.5 text-stone-400 hover:text-[#25282B] cursor-pointer"
+                    aria-label="검색어 지우기"
+                    className="absolute right-0.5 top-0.5 w-11 h-11 flex items-center justify-center text-[#6B6E73]"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" aria-hidden="true" />
                   </button>
                 )}
               </div>
 
-              {/* 검색어 없을 때: 추천 키워드 & 최근 검색 */}
               {!searchQuery && (
-                <div className="space-y-4 pt-1">
-                  <div>
-                    <span className="text-[11px] font-bold text-[#7E7E7E] block mb-2">
-                      인기 검색 키워드
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {POPULAR_KEYWORDS.map((kw) => (
-                        <button
-                          key={kw}
-                          type="button"
-                          onClick={() => setSearchQuery(kw)}
-                          className="px-2.5 py-1 bg-[#F2F2F2] hover:bg-[#E2E2E2] text-[#25282B] rounded-[4px] text-[11.5px] font-bold transition-colors cursor-pointer"
-                        >
-                          #{kw}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-[11px] font-bold text-[#7E7E7E] block mb-2">
-                      추천 라멘집 바로 선택
-                    </span>
-                    <div className="divide-y divide-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] overflow-hidden">
-                      {ALL_SHOPS.slice(0, 4).map((shop) => (
-                        <div
-                          key={shop.id}
-                          onClick={() => onSelectShop(shop.name)}
-                          className="p-2.5 bg-white hover:bg-[#FAFAFA] flex items-center justify-between cursor-pointer transition-colors group"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-[13px] font-black text-[#25282B] group-hover:text-[#E60000]">
-                              {shop.name}
-                            </span>
-                            <span className="text-[10.5px] text-[#7E7E7E] font-medium">{shop.branch}</span>
-                            <span className="text-[10px] text-stone-400">· {shop.style}</span>
-                          </div>
-                          <span className="text-[11px] font-bold text-[#E60000]">선택 →</span>
-                        </div>
-                      ))}
-                    </div>
+                <div>
+                  <p className="text-[12px] font-medium text-[#6B6E73] mb-2">빠른 검색어</p>
+                  <div className="flex flex-wrap gap-2">
+                    {QUICK_KEYWORDS.map(keyword => (
+                      <button
+                        key={keyword}
+                        type="button"
+                        onClick={() => setSearchQuery(keyword)}
+                        className="min-h-11 px-4 rounded-[60px] border border-[#E2E2E2] bg-white text-[13px] font-bold text-[#25282B] active:bg-[#F2F2F2]"
+                      >
+                        {keyword}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* 검색 결과 목록 */}
               {searchQuery && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-[#7E7E7E]">
-                    <span>검색 결과 ({searchResults.length}건)</span>
-                  </div>
-
+                <div>
+                  <p className="text-[12px] font-medium text-[#6B6E73] pb-1" aria-live="polite">
+                    검색 결과 {searchResults.length}건
+                  </p>
                   {searchResults.length > 0 ? (
-                    <div className="space-y-2">
-                      {searchResults.map((shop) => (
-                        <div
-                          key={shop.id}
-                          onClick={() => onSelectShop(shop.name)}
-                          className="p-3 bg-white hover:bg-[#FAFAFA] border border-[#E2E2E2] hover:border-[#BEBEBE] rounded-[6px] cursor-pointer active:scale-99 transition-all flex items-center justify-between gap-3 group"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-[14px] font-black text-[#25282B] group-hover:text-[#E60000] transition-colors truncate">
-                                {shop.name}
-                              </p>
-                              <span className="text-[10.5px] text-[#7E7E7E] font-bold shrink-0">{shop.branch}</span>
-                              <span className="text-[9.5px] font-bold bg-[#F2F2F2] text-[#7E7E7E] px-1 py-0.2 rounded-xs shrink-0">
-                                {shop.region}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-[#7E7E7E] mt-0.5 truncate">{shop.style}</p>
-                          </div>
-                          <button
-                            type="button"
-                            className="shrink-0 text-[11px] font-black text-white bg-[#E60000] group-hover:bg-[#CC0000] px-2.5 py-1.5 rounded-[4px] transition-colors cursor-pointer"
-                          >
-                            선택 →
-                          </button>
-                        </div>
+                    <div className="divide-y divide-[#F2F2F2]">
+                      {searchResults.map(shop => (
+                        <ShopRow key={shop.id} shop={shop} onSelect={() => onSelectShop(shop.name)} />
                       ))}
                     </div>
                   ) : (
-                    <div className="py-8 text-center space-y-3 bg-[#FAFAFA] rounded-[8px] border border-dashed border-[#E2E2E2] p-4">
-                      <p className="text-[12.5px] font-bold text-[#7E7E7E]">
-                        ‘{searchQuery}’에 해당하는 등록 매장이 없습니다.
+                    <div className="py-6 text-center space-y-3">
+                      <p className="text-[14px] text-[#6B6E73]">
+                        ‘{searchQuery.trim()}’ 가게가 아직 목록에 없어요.
                       </p>
                       <button
                         type="button"
                         onClick={() => onSelectShop(searchQuery.trim())}
-                        className="w-full py-2.5 bg-[#E60000] text-white rounded-[6px] text-[12px] font-black hover:bg-[#CC0000] active:scale-98 transition-all cursor-pointer shadow-xs"
+                        className="w-full min-h-12 rounded-[60px] bg-[#25282B] text-white text-[14px] font-bold active:bg-[#1A1C1E]"
                       >
-                        ‘{searchQuery.trim()}’(으)로 직접 기록 시작하기 →
+                        ‘{searchQuery.trim()}’(으)로 바로 기록하기
                       </button>
                     </div>
                   )}
@@ -563,19 +344,7 @@ export default function RecordSheet({
             </div>
           )}
         </div>
-
-        {/* 하단 닫기 */}
-        <div className="px-5 pb-5 pt-2 border-t border-[#E2E2E2] bg-white shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full h-10 rounded-[6px] border border-stone-200 text-[12px] font-bold text-[#7E7E7E] hover:text-[#25282B] bg-white hover:bg-stone-50 active:scale-98 transition-all cursor-pointer"
-          >
-            닫기
-          </button>
-        </div>
       </div>
     </div>
   )
 }
-

@@ -1,524 +1,438 @@
 import { useState, useEffect, useRef } from 'react'
-import { Target, MessageSquare, RotateCcw, ChevronLeft } from 'lucide-react'
-import RamenIcon from '../components/icons/RamenIcon'
-
-export function AISparkleIcon({ className = 'w-5 h-5' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      {/* 메인 4각 별 */}
-      <path d="M11 2C11 6.97 6.97 11 2 11C6.97 11 11 15.03 11 20C11 15.03 15.03 11 20 11C15.03 11 11 6.97 11 2Z" />
-      {/* 우상단 보조 4각 별 */}
-      <path d="M19 2C19 4.21 17.21 6 15 6C17.21 6 19 7.79 19 10C19 7.79 20.79 6 23 6C20.79 6 19 4.21 19 2Z" opacity="0.9" />
-    </svg>
-  )
-}
+import type { UserProfile } from '../types'
+import { RotateCcw, ChevronLeft, ChevronRight, Check, Minus, Sparkles, PenLine } from 'lucide-react'
+import AICurationLoading from './AICurationLoading'
+import { SHOP_CATALOG, findShopByName, type ShopCatalogItem } from '../data/shops'
 
 interface Props {
+  user?: UserProfile | null
   onBack: () => void
-  onShopClick: () => void
+  onShopClick: (shopName: string) => void
   onRecordShop: (shopName: string) => void
+  initialResultShopName?: string
 }
 
+type Step = 1 | 2 | 3 | 4 | 'loading' | 'result'
 
-const SOUP_OPTIONS = ['쇼유 (간장)', '돈코츠 (돼지뼈)', '시오 (소금)', '미소 (된장)', '츠케멘', '토리파이탄 (닭백탕)']
-const MOOD_OPTIONS = ['혼밥하기 좋은 곳', '데이트/아늑한 분위기', '웨이팅 감수 맛집', '빠르고 든든한 한 끼']
-const PRIORITY_OPTIONS = ['진하고 묵직한 국물', '탱글탱글 자가제면', '두툼하고 부드러운 차슈', '깔끔하고 깊은 감칠맛']
+interface SoupOption {
+  id: string
+  label: string
+  sub: string
+  /** 원장 style/tags에서 찾을 키워드 */
+  keys: string[]
+}
+
+const SOUP_OPTIONS: SoupOption[] = [
+  { id: 'shoyu', label: '쇼유', sub: '간장 타레', keys: ['쇼유'] },
+  { id: 'tonkotsu', label: '돈코츠', sub: '돼지뼈 육수', keys: ['돈코츠', '이에케'] },
+  { id: 'shio', label: '시오', sub: '소금 타레', keys: ['시오'] },
+  { id: 'miso', label: '미소', sub: '된장 타레', keys: ['미소'] },
+  { id: 'tsukemen', label: '츠케멘', sub: '찍어 먹는 면', keys: ['츠케멘'] },
+  { id: 'tori', label: '토리파이탄', sub: '닭백탕', keys: ['토리파이탄', '닭백탕'] },
+]
+
+const MOOD_OPTIONS = ['혼밥하기 좋은 곳', '데이트/아늑한 분위기', '웨이팅 감수 맛집', '빠르고 든든한 한 끼'] as const
+type Mood = (typeof MOOD_OPTIONS)[number]
+
+const PRIORITY_OPTIONS: Array<{ label: string; keys: string[] }> = [
+  { label: '진하고 묵직한 국물', keys: ['진한', '농후', '백탕', '이에케', '돈코츠', '적된장'] },
+  { label: '탱글탱글 자가제면', keys: ['자가제면', '치지레멘'] },
+  { label: '두툼하고 부드러운 차슈', keys: ['차슈'] },
+  { label: '깔끔하고 깊은 감칠맛', keys: ['깔끔', '맑은', '청탕', '감칠맛', '시오'] },
+]
+
 const QUICK_PROMPTS = ['국물이 덜 짠 곳', '차슈가 푸짐한 곳', '주차 가능한 곳', '웨이팅 적은 곳', '매운맛 조절 가능한 곳', '밥 무료 제공']
 
-interface RecommendationResult {
-  shopName: string
-  branch: string
-  style: string
-  matchScore: number
-  photo: string
-  reason: string
-  tags: string[]
+interface Inputs {
+  soupId: string
+  mood: Mood
+  priority: string
+  prompt: string
 }
 
-const MOCK_RESULTS: Record<string, RecommendationResult> = {
-  default: {
-    shopName: '멘야준',
-    branch: '망원 본점',
-    style: '특제 쇼유 라멘',
-    matchScore: 96,
-    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=800&h=600&fit=crop&auto=format&q=80',
-    reason: '자가제면의 단단한 스트레이트 면발과 닭·오리 더블 육수의 깊은 감칠맛이 선택하신 깔끔하고 진한 육수 선호도 및 요청사항에 완벽히 부합합니다.',
-    tags: ['자가제면', '맑은육수', '혼밥최적'],
-  },
-  donkotsu: {
-    shopName: '오레노라멘',
-    branch: '마포 본점',
-    style: '토리파이탄 (진한 닭백탕 라멘)',
-    matchScore: 98,
-    photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=800&h=600&fit=crop&auto=format&q=80',
-    reason: '거품을낸 농후한 동물계 육수의 크리미함과 부드러운 수비드 차슈 구성이 선택하신 묵직한 취향에 최적의 조합입니다.',
-    tags: ['미쉐린 빕구르망', '농후육수', '무료 면추가'],
-  },
-  miso: {
-    shopName: '후쿠 라멘',
-    branch: '합정점',
-    style: '특제 삿포로 미소 라멘',
-    matchScore: 94,
-    photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=800&h=600&fit=crop&auto=format&q=80',
-    reason: '불향 가득 볶아낸 숙주와 진한 홋카이도 된장 타레가 어우러져 깊고 든든한 한 그릇을 완성합니다.',
-    tags: ['진한국물', '자가제면', '불향가득'],
-  },
+interface Condition {
+  label: string
+  applied: boolean
+  note: string
 }
 
-export default function AIRecommendScreen({ onBack, onShopClick }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 'loading' | 'result'>(1)
-  const [selectedSoup, setSelectedSoup] = useState<string>('쇼유 (간장)')
-  const [selectedMood, setSelectedMood] = useState<string>('혼밥하기 좋은 곳')
-  const [selectedPriority, setSelectedPriority] = useState<string>('깔끔하고 깊은 감칠맛')
-  const [customPrompt, setCustomPrompt] = useState<string>('')
-  const [loadingStage, setLoadingStage] = useState<number>(1)
+interface Curation {
+  shop: ShopCatalogItem
+  conditions: Condition[]
+}
+
+const shopText = (shop: ShopCatalogItem) => [shop.style, shop.spec, shop.description ?? '', ...shop.tags].join(' ')
+const hasAnyKey = (shop: ShopCatalogItem, keys: string[]) => keys.some(key => shopText(shop).includes(key))
+
+/**
+ * 선택한 조건을 원장 데이터와 실제로 대조해 한 곳을 고른다.
+ * 대조할 정보가 없는 조건은 applied=false로 표시해 결과 화면이 "참고만 한 조건"으로 보여준다.
+ */
+function curate(inputs: Inputs): Curation {
+  const conditions: Condition[] = []
+  let pool = SHOP_CATALOG.filter(shop => shop.lat && shop.lng)
+  let sortByDistance = false
+
+  const narrow = (predicate: (shop: ShopCatalogItem) => boolean) => {
+    const next = pool.filter(predicate)
+    if (next.length === 0) return false
+    pool = next
+    return true
+  }
+
+  // 1. 국물
+  const soup = SOUP_OPTIONS.find(option => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
+  if (narrow(shop => hasAnyKey(shop, soup.keys))) {
+    conditions.push({ label: `${soup.label} 계보`, applied: true, note: `${soup.label} 계보 ${pool.length}곳 중에서 골랐어요` })
+  } else {
+    conditions.push({ label: `${soup.label} 계보`, applied: false, note: `${soup.label} 전문점이 아직 없어 전체 라멘집에서 골랐어요` })
+  }
+
+  // 2. 분위기와 상황
+  if (inputs.mood === '빠르고 든든한 한 끼') {
+    const opened = narrow(shop => shop.isOpen)
+    sortByDistance = true
+    conditions.push({ label: inputs.mood, applied: true, note: opened ? '지금 영업 중이고 가까운 곳을 우선했어요' : '영업 중인 곳이 없어 가까운 곳을 우선했어요' })
+  } else if (inputs.mood === '웨이팅 감수 맛집') {
+    if (narrow(shop => shop.reviewCount > 0 || shop.rating > 0)) {
+      conditions.push({ label: inputs.mood, applied: true, note: '라멘로그와 평점이 쌓인 곳을 우선했어요' })
+    } else {
+      conditions.push({ label: inputs.mood, applied: false, note: '라멘로그 수 정보가 아직 없어 참고만 했어요' })
+    }
+  } else {
+    conditions.push({ label: inputs.mood, applied: false, note: '매장 분위기 정보는 아직 없어 참고만 했어요' })
+  }
+
+  // 3. 우선순위: 원장의 특징, 태그, 리뷰 요약과 대조
+  const priority = PRIORITY_OPTIONS.find(option => option.label === inputs.priority)
+  if (priority) {
+    if (narrow(shop => hasAnyKey(shop, priority.keys))) {
+      conditions.push({ label: priority.label, applied: true, note: '가게 특징과 태그에 이 요소가 있는 곳을 우선했어요' })
+    } else {
+      conditions.push({ label: priority.label, applied: false, note: '이 요소가 적힌 가게가 없어 참고만 했어요' })
+    }
+  }
+
+  // 4. 자유 입력: 대조 가능한 키워드만 반영
+  const prompt = inputs.prompt.trim()
+  if (prompt) {
+    const applied: string[] = []
+    if (prompt.includes('웨이팅') && narrow(shop => shop.isOpen)) applied.push('지금 영업 중')
+    if (prompt.includes('밥') && narrow(shop => Boolean(shop.servicePerks?.riceRefill))) applied.push('공깃밥 제공')
+    if (prompt.includes('차슈') && narrow(shop => hasAnyKey(shop, ['차슈']))) applied.push('차슈')
+    if (prompt.includes('면') && narrow(shop => hasAnyKey(shop, ['자가제면', '치지레멘', '면']))) applied.push('면')
+    if (applied.length > 0) {
+      conditions.push({ label: `직접 입력: ${prompt}`, applied: true, note: `${applied.join(', ')} 조건을 매장 정보와 대조했어요` })
+    } else {
+      conditions.push({ label: `직접 입력: ${prompt}`, applied: false, note: '아직 매장 정보와 대조하지 못해 참고만 했어요' })
+    }
+  }
+
+  const [shop] = [...pool].sort((a, b) => (sortByDistance ? a.distanceM - b.distanceM || b.matchScore - a.matchScore : b.matchScore - a.matchScore || a.distanceM - b.distanceM))
+  return { shop, conditions }
+}
+
+const DEFAULT_INPUTS: Inputs = { soupId: 'shoyu', mood: '혼밥하기 좋은 곳', priority: '깔끔하고 깊은 감칠맛', prompt: '' }
+
+/** 상세로 갔다 돌아올 때 같은 결과를 다시 보여주기 위한 마지막 입력값 (페이지가 살아 있는 동안만) */
+let lastInputs: Inputs | null = null
+
+function restoreCuration(shopName?: string): Curation | null {
+  if (!shopName) return null
+  if (lastInputs) {
+    const restored = curate(lastInputs)
+    if (restored.shop.name === shopName) return restored
+  }
+  const shop = findShopByName(shopName)
+  return shop ? { shop, conditions: [] } : null
+}
+
+const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
+  1: { title: '오늘 어떤 국물이 당기나요?', help: '맑은 청탕부터 묵직한 백탕까지 골라보세요.' },
+  2: { title: '어떤 상황에서 드시나요?', help: '지금 갈 수 있는 곳과 여유 있는 방문을 구분해 추천해요.' },
+  3: { title: '한 그릇에서 가장 포기할 수 없는 것은?', help: '가게 특징과 태그에 이 요소가 있는 곳을 먼저 찾아요.' },
+  4: { title: '더 바라는 점이 있나요?', help: '선택 사항이에요. 웨이팅, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요.' },
+}
+
+export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordShop, initialResultShopName }: Props) {
+  const [inputs, setInputs] = useState<Inputs>(() => (initialResultShopName && lastInputs) || DEFAULT_INPUTS)
+  const [curation, setCuration] = useState<Curation | null>(() => restoreCuration(initialResultShopName))
+  const [step, setStep] = useState<Step>(() => (restoreCuration(initialResultShopName) ? 'result' : 1))
+  const resultHeadingRef = useRef<HTMLHeadingElement>(null)
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
-  const handleStartAnalysis = () => {
+  const setInput = <K extends keyof Inputs>(key: K, value: Inputs[K]) => setInputs(prev => ({ ...prev, [key]: value }))
+
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 })
+    if (step === 'result') resultHeadingRef.current?.focus({ preventScroll: true })
+    else if (typeof step === 'number') stepHeadingRef.current?.focus({ preventScroll: true })
+  }, [step])
+
+  const startAnalysis = () => {
+    lastInputs = inputs
+    setCuration(curate(inputs))
     setStep('loading')
-    setLoadingStage(1)
   }
 
-  // 스텝 변경 시 최상단으로 스크롤 리셋
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0
-    }
-  }, [step])
-
-  useEffect(() => {
-    if (step === 'loading') {
-      const t1 = setTimeout(() => setLoadingStage(2), 1200)
-      const t2 = setTimeout(() => setLoadingStage(3), 2600)
-      const t3 = setTimeout(() => setStep('result'), 3800)
-
-      return () => {
-        clearTimeout(t1)
-        clearTimeout(t2)
-        clearTimeout(t3)
-      }
-    }
-  }, [step])
-
-
-  const getResult = (): RecommendationResult => {
-    if (selectedSoup.includes('돈코츠') || selectedSoup.includes('토리파이탄')) {
-      return MOCK_RESULTS.donkotsu
-    }
-    if (selectedSoup.includes('미소')) {
-      return MOCK_RESULTS.miso
-    }
-    return MOCK_RESULTS.default
+  const restart = () => {
+    setCuration(null)
+    setStep(1)
   }
 
-  const result = getResult()
-
-  // 1) 전용 독립 로딩 화면 (RAOTA AI Curation Engine - Impeccable Distilled)
-  if (step === 'loading') {
+  if (step === 'loading' && curation) {
     return (
-      <div className="h-full flex flex-col justify-between bg-[#141518] text-white px-6 py-8 relative overflow-hidden select-none">
-        {/* 미니멀 앰비언트 배경: 군더더기 없는 은은한 센터 래디얼 */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="w-[320px] h-[320px] rounded-full bg-radial from-[#E60000]/10 via-transparent to-transparent blur-2xl" />
-        </div>
-
-        {/* 상단: 디스틸드 엔진 헤더 */}
-        <div className="relative z-10 flex items-center justify-between text-[11px] font-mono text-white/40 tracking-wider uppercase">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#E60000]" />
-            RAOTA CURATION ENGINE
-          </span>
-          <span className="text-white/60 font-bold">
-            {loadingStage === 1 ? 'STAGE 01' : loadingStage === 2 ? 'STAGE 02' : 'STAGE 03'}
-          </span>
-        </div>
-
-        {/* 중앙: 정적인 프리미엄 브랜드 코어 & 정밀 텍스트 (안 빤짝거리는 안정된 로고) */}
-        <div className="relative z-10 flex flex-col items-center text-center my-auto">
-          {/* 중앙 로고 컨테이너 - 빤짝임/펄스 없이 단정하고 깊이 있는 매트 디자인 */}
-          <div className="relative w-24 h-24 flex items-center justify-center mb-7">
-            {/* 은은한 외곽 정적 링 & 얇은 회전 가이드라인 */}
-            <div className="absolute inset-0 rounded-full border border-white/10" />
-            <div
-              className="absolute inset-[-3px] rounded-full border-t border-r border-[#E60000]/70 animate-spin"
-              style={{ animationDuration: '3s', animationTimingFunction: 'linear' }}
-            />
-
-            {/* 정적(Static) 라오타 브랜드 심볼 코어 (빤짝임 제거) */}
-            <div className="w-18 h-18 rounded-[20px] bg-[#1E2024] border border-white/15 flex items-center justify-center shadow-xl">
-              <img
-                src="/logo.png"
-                alt="RAOTA"
-                className="w-10 h-10 object-contain"
-              />
-            </div>
-          </div>
-
-          {/* 디스틸드 단계별 타이틀 & 설명 */}
-          <div className="space-y-1.5 min-h-[64px] flex flex-col items-center justify-center max-w-[280px]">
-            <h2 className="text-[19px] font-black tracking-tight leading-snug text-white">
-              {loadingStage === 1 && '서울 120여 개 라멘집 DB 탐색'}
-              {loadingStage === 2 && '육수 농도 · 면 굵기 매칭'}
-              {loadingStage === 3 && '오늘의 1순위 라멘집 도출'}
-            </h2>
-            <p className="text-[12px] text-stone-400 font-medium leading-relaxed">
-              {loadingStage === 1 && '실시간 방문 데이터와 레시피를 대조합니다.'}
-              {loadingStage === 2 && '선택하신 취향 축의 최적 접점을 계산합니다.'}
-              {loadingStage === 3 && '미각 프로필과 일치하는 곳을 선정했습니다.'}
-            </p>
-          </div>
-
-          {/* 선택 조건 칩 (불필요한 장식 배제, 절제된 디스틸드 뱃지) */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 mt-6 max-w-[300px]">
-            <span className="px-2.5 py-1 rounded-[6px] bg-white/5 border border-white/10 text-[11px] font-bold text-stone-300 flex items-center gap-1.5">
-              <RamenIcon className="w-3 h-3 text-[#E60000] shrink-0" />
-              <span>{selectedSoup.split(' ')[0]}</span>
-            </span>
-
-            <span className="px-2.5 py-1 rounded-[6px] bg-white/5 border border-white/10 text-[11px] font-bold text-stone-300 flex items-center gap-1.5">
-              <Target className="w-3 h-3 text-[#E60000] shrink-0" />
-              <span>{selectedPriority.split(' ')[0]}</span>
-            </span>
-
-            {customPrompt && (
-              <span className="px-2.5 py-1 rounded-[6px] bg-white/5 border border-[#E60000]/40 text-[11px] font-bold text-white truncate max-w-[240px] flex items-center gap-1.5">
-                <MessageSquare className="w-3 h-3 text-[#E60000] shrink-0" />
-                <span className="truncate">“{customPrompt}”</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* 하단: 정밀 프로그레스 & 미니멀 스테퍼 */}
-        <div className="relative z-10 pb-4 space-y-3">
-          <div className="flex items-center justify-between text-[11px] font-mono">
-            <span className="text-stone-400 tracking-tight">큐레이션 매칭 분석</span>
-            <span className="text-[#E60000] font-black">
-              {loadingStage === 1 ? '38%' : loadingStage === 2 ? '78%' : '100%'}
-            </span>
-          </div>
-
-          {/* 정밀 헤어라인 프로그레스 바 */}
-          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#E60000] rounded-full transition-all duration-700 ease-out"
-              style={{ width: loadingStage === 1 ? '38%' : loadingStage === 2 ? '78%' : '100%' }}
-            />
-          </div>
-
-          {/* 3단계 스텝 레이블 */}
-          <div className="flex items-center justify-between text-[10px] font-mono pt-0.5">
-            <span className={loadingStage >= 1 ? 'text-white font-bold' : 'text-white/30'}>
-              01 DB 스캔
-            </span>
-            <span className="text-white/15">·</span>
-            <span className={loadingStage >= 2 ? 'text-white font-bold' : 'text-white/30'}>
-              02 미각 분석
-            </span>
-            <span className="text-white/15">·</span>
-            <span className={loadingStage >= 3 ? 'text-white font-bold' : 'text-white/30'}>
-              03 매칭 완료
-            </span>
-          </div>
-        </div>
-      </div>
+      <AICurationLoading
+        conditions={curation.conditions.filter(condition => condition.applied).map(condition => condition.label.replace(/^직접 입력: /, ''))}
+        onBack={() => setStep(4)}
+        onComplete={() => setStep('result')}
+      />
     )
   }
 
+  const result = step === 'result' ? curation : null
+  const nickname = user?.isLoggedIn ? user.nickname : null
+  const optionClass = (active: boolean) =>
+    `rounded-[6px] border text-left transition-colors ${active ? 'border-[#25282B] bg-[#25282B] text-white' : 'border-[#E2E2E2] bg-white text-[#25282B] active:bg-[#F2F2F2]'}`
+
   return (
-    <div className={`h-full bg-[#FFFFFF] text-[#25282B] ${step === 'result' ? 'overflow-y-auto no-scrollbar' : 'flex flex-col overflow-hidden'}`}>
-      
-      {/* 상단 마스터 바 */}
-      <header className="flex-shrink-0 bg-white px-5 pt-3.5 pb-3.5 border-b border-[#E2E2E2] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="w-8 h-8 rounded-full bg-[#F2F2F2] flex items-center justify-center text-[#25282B] active:scale-95 transition-all"
-            aria-label="뒤로가기"
-          >
-            <ChevronLeft className="w-5 h-5" />
+    <div className="h-full bg-white text-[#25282B] flex flex-col overflow-hidden">
+      {/* 상단 바 */}
+      <header className="flex-shrink-0 bg-white px-3 py-2 border-b border-[#E2E2E2] flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1 min-w-0">
+          <button type="button" onClick={onBack} className="w-11 h-11 rounded-full flex items-center justify-center active:bg-[#F2F2F2] transition-colors" aria-label="뒤로가기">
+            <ChevronLeft className="w-5 h-5" aria-hidden="true" />
           </button>
-          <div>
-
-            <h1 className="text-[18px] font-black tracking-tight text-[#25282B]">
-              AI 라멘 큐레이터
-            </h1>
-            <p className="text-[10px] text-[#7E7E7E]">취향 기반 3초 핀포인트 매칭</p>
-          </div>
+          <h1 className="text-[17px] font-extrabold tracking-tight truncate">AI 라멘 큐레이터</h1>
         </div>
-
-        <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-2.5 py-0.5 rounded-[32px]">
-          {typeof step === 'number' ? `Step ${step}/4` : '매칭 완료'}
-        </span>
+        {typeof step === 'number' && (
+          <span className="text-[12px] font-bold text-[#6B6E73] shrink-0 tabular-nums" aria-label={`4단계 중 ${step}단계`}>
+            {step} / 4
+          </span>
+        )}
       </header>
 
-      {/* 본문 인터랙션 영역 */}
-      <div
-        ref={scrollContainerRef}
-        className={`flex-1 flex flex-col justify-between ${
-          step === 'result' ? 'p-4 space-y-3' : 'p-5 overflow-hidden'
-        }`}
-      >
-        
-        {/* Step 1: 국물 베이스 선택 */}
-
-        {step === 1 && (
-          <div className="space-y-4 anim-fade-in my-auto">
-            <div>
-              <span className="text-[11px] font-bold text-[#E60000] tracking-wider block mb-1">
-                STEP 01
-              </span>
-              <h2 className="text-[21px] font-black tracking-tight leading-snug text-[#25282B] break-keep">
-                오늘 어떤 국물 베이스가 가장 당기시나요?
-              </h2>
-              <p className="text-[12px] text-[#7E7E7E] mt-1 break-keep">
-                맑고 깔끔한 청탕부터 묵직한 백탕까지 선택해보세요.
-              </p>
+      {/* 본문 (스크롤) */}
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+        {typeof step === 'number' && (
+          <div className="px-5 pt-5 pb-6 anim-fade-in" key={step}>
+            <div className="h-1 w-full bg-[#F2F2F2] rounded-full overflow-hidden mb-5" aria-hidden="true">
+              <div className="h-full bg-[#E60000] rounded-full transition-[width] duration-200" style={{ width: `${(step / 4) * 100}%` }} />
             </div>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="text-[20px] font-extrabold tracking-tight leading-snug break-keep outline-none">
+              {STEP_TITLES[step].title}
+            </h2>
+            <p className="text-[13px] text-[#6B6E73] mt-1.5 break-keep">{STEP_TITLES[step].help}</p>
 
-            <div className="space-y-2 pt-2">
-              {SOUP_OPTIONS.map(soup => (
-                <button
-                  key={soup}
-                  onClick={() => setSelectedSoup(soup)}
-                  className={`w-full p-4 rounded-[6px] border text-left flex items-center justify-between transition-all ${
-                    selectedSoup === soup
-                      ? 'border-[#25282B] bg-[#25282B] text-white shadow-xs'
-                      : 'border-[#E2E2E2] bg-white text-[#25282B] hover:border-[#BEBEBE] hover:bg-[#F9F9F9]'
-                  }`}
-                >
-                  <span className="text-[14px] font-bold">{soup}</span>
-                  <span className={`text-[12px] ${selectedSoup === soup ? 'text-[#E60000]' : 'text-[#7E7E7E]'}`}>
-                    {selectedSoup === soup ? '선택됨 ✓' : '→'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: 식사 상황/분위기 */}
-        {step === 2 && (
-          <div className="space-y-4 anim-fade-in my-auto">
-            <div>
-              <span className="text-[11px] font-bold text-[#E60000] tracking-wider block mb-1">
-                STEP 02
-              </span>
-              <h2 className="text-[21px] font-black tracking-tight leading-snug text-[#25282B] break-keep">
-                오늘의 식사 상황이나 원하는 분위기는 어떤가요?
-              </h2>
-              <p className="text-[12px] text-[#7E7E7E] mt-1 break-keep">
-                방문 목적에 꼭 맞는 매장 환경을 고려해 매칭합니다.
-              </p>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              {MOOD_OPTIONS.map(mood => (
-                <button
-                  key={mood}
-                  onClick={() => setSelectedMood(mood)}
-                  className={`w-full p-4 rounded-[6px] border text-left flex items-center justify-between transition-all ${
-                    selectedMood === mood
-                      ? 'border-[#25282B] bg-[#25282B] text-white shadow-xs'
-                      : 'border-[#E2E2E2] bg-white text-[#25282B] hover:border-[#BEBEBE] hover:bg-[#F9F9F9]'
-                  }`}
-                >
-                  <span className="text-[14px] font-bold">{mood}</span>
-                  <span className={`text-[12px] ${selectedMood === mood ? 'text-[#E60000]' : 'text-[#7E7E7E]'}`}>
-                    {selectedMood === mood ? '선택됨 ✓' : '→'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: 최우선 요소 */}
-        {step === 3 && (
-          <div className="space-y-4 anim-fade-in my-auto">
-            <div>
-              <span className="text-[11px] font-bold text-[#E60000] tracking-wider block mb-1">
-                STEP 03
-              </span>
-              <h2 className="text-[21px] font-black tracking-tight leading-snug text-[#25282B] break-keep">
-                라멘 한 그릇에서 가장 포기할 수 없는 것은?
-              </h2>
-              <p className="text-[12px] text-[#7E7E7E] mt-1 break-keep">
-                회원님의 취향 벡터와 결합하여 최적의 매장을 선별합니다.
-              </p>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              {PRIORITY_OPTIONS.map(p => (
-                <button
-                  key={p}
-                  onClick={() => setSelectedPriority(p)}
-                  className={`w-full p-4 rounded-[6px] border text-left flex items-center justify-between transition-all ${
-                    selectedPriority === p
-                      ? 'border-[#25282B] bg-[#25282B] text-white shadow-xs'
-                      : 'border-[#E2E2E2] bg-white text-[#25282B] hover:border-[#BEBEBE] hover:bg-[#F9F9F9]'
-                  }`}
-                >
-                  <span className="text-[14px] font-bold">{p}</span>
-                  <span className={`text-[12px] ${selectedPriority === p ? 'text-[#E60000]' : 'text-[#7E7E7E]'}`}>
-                    {selectedPriority === p ? '선택됨 ✓' : '→'}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: 더 추천받고 싶은 점 자유 입력 */}
-        {step === 4 && (
-          <div className="space-y-4 anim-fade-in my-auto">
-            <div>
-              <span className="text-[11px] font-bold text-[#E60000] tracking-wider block mb-1">
-                STEP 04 (선택)
-              </span>
-              <h2 className="text-[21px] font-black tracking-tight leading-snug text-[#25282B] break-keep">
-                더 추천받고 싶은 점이 있나요?
-              </h2>
-              <p className="text-[12px] text-[#7E7E7E] mt-1 break-keep">
-                특별히 원하는 맛, 토핑, 주차나 웨이팅 조건을 자유롭게 적어주세요.
-              </p>
-            </div>
-
-            {/* 자유 텍스트 입력창 */}
-            <div className="pt-2">
-              <textarea
-                value={customPrompt}
-                onChange={e => setCustomPrompt(e.target.value)}
-                placeholder="예: 차슈가 부드럽고 국물이 덜 짠 곳으로 추천해주세요."
-                className="w-full h-24 p-3.5 bg-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] text-[13px] text-[#25282B] placeholder-[#8A8A8A] outline-none focus:border-[#25282B] resize-none"
-              />
-            </div>
-
-            {/* 빠른 추천 키워드 칩 */}
-            <div>
-              <span className="text-[11px] font-bold text-[#7E7E7E] block mb-2">추천 키워드</span>
-              <div className="flex flex-wrap gap-1.5">
-                {QUICK_PROMPTS.map(p => (
-                  <button
-                    key={p}
-                    onClick={() => {
-                      if (!customPrompt.includes(p)) {
-                        setCustomPrompt(prev => (prev ? `${prev}, ${p}` : p))
-                      }
-                    }}
-                    className="h-7 px-3 bg-white border border-[#E2E2E2] hover:border-[#BEBEBE] hover:bg-[#F9F9F9] rounded-[32px] text-[11px] font-bold text-[#25282B] transition-colors"
-                  >
-                    +{p}
-                  </button>
-                ))}
+            {step === 1 && (
+              <div role="radiogroup" aria-label="국물 베이스" className="grid grid-cols-2 gap-2 mt-5">
+                {SOUP_OPTIONS.map(soup => {
+                  const active = inputs.soupId === soup.id
+                  return (
+                    <button key={soup.id} type="button" role="radio" aria-checked={active} onClick={() => setInput('soupId', soup.id)} className={`${optionClass(active)} min-h-16 px-3.5 py-3 flex items-center justify-between gap-2`}>
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-bold break-keep">{soup.label}</span>
+                        <span className={`block text-[12px] mt-0.5 ${active ? 'text-white/70' : 'text-[#6B6E73]'}`}>{soup.sub}</span>
+                      </span>
+                      {active && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
+                    </button>
+                  )
+                })}
               </div>
-            </div>
+            )}
+
+            {step === 2 && (
+              <div role="radiogroup" aria-label="식사 상황" className="space-y-2 mt-5">
+                {MOOD_OPTIONS.map(mood => {
+                  const active = inputs.mood === mood
+                  return (
+                    <button key={mood} type="button" role="radio" aria-checked={active} onClick={() => setInput('mood', mood)} className={`${optionClass(active)} w-full min-h-14 px-4 py-3 flex items-center justify-between gap-3`}>
+                      <span className="text-[15px] font-bold break-keep">{mood}</span>
+                      {active ? <Check className="w-4 h-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="w-4 h-4 shrink-0 text-[#6B6E73]" aria-hidden="true" />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {step === 3 && (
+              <div role="radiogroup" aria-label="가장 중요한 요소" className="space-y-2 mt-5">
+                {PRIORITY_OPTIONS.map(option => {
+                  const active = inputs.priority === option.label
+                  return (
+                    <button key={option.label} type="button" role="radio" aria-checked={active} onClick={() => setInput('priority', option.label)} className={`${optionClass(active)} w-full min-h-14 px-4 py-3 flex items-center justify-between gap-3`}>
+                      <span className="text-[15px] font-bold break-keep">{option.label}</span>
+                      {active ? <Check className="w-4 h-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="w-4 h-4 shrink-0 text-[#6B6E73]" aria-hidden="true" />}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="mt-5">
+                <label htmlFor="ai-custom-prompt" className="sr-only">더 바라는 점</label>
+                <textarea
+                  id="ai-custom-prompt"
+                  value={inputs.prompt}
+                  onChange={e => setInput('prompt', e.target.value)}
+                  placeholder="예: 차슈가 부드럽고 국물이 덜 짠 곳"
+                  className="w-full h-24 p-3.5 bg-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] text-[14px] text-[#25282B] placeholder-[#6B6E73] outline-none focus:border-[#25282B] resize-none"
+                />
+                <p className="text-[13px] font-bold text-[#6B6E73] mt-4 mb-2">자주 찾는 조건</p>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_PROMPTS.map(promptText => {
+                    const added = inputs.prompt.includes(promptText)
+                    return (
+                      <button
+                        key={promptText}
+                        type="button"
+                        aria-pressed={added}
+                        onClick={() => {
+                          if (added) return
+                          setInput('prompt', inputs.prompt ? `${inputs.prompt}, ${promptText}` : promptText)
+                        }}
+                        className={`min-h-11 px-3.5 rounded-[60px] border text-[13px] font-bold transition-colors ${added ? 'border-[#25282B] bg-[#25282B] text-white' : 'border-[#E2E2E2] bg-white text-[#25282B] active:bg-[#F2F2F2]'}`}
+                      >
+                        {added ? '' : '+ '}
+                        {promptText}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Step: 매칭 결과 화면 */}
-        {step === 'result' && (
-          <div className="space-y-3 anim-fade-in">
-            <div className="text-center py-1">
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#E60000] bg-[#E60000]/10 px-3 py-0.5 rounded-[32px]">
-                <AISparkleIcon className="w-3 h-3 text-[#E60000]" />
-                <span>AI 취향 매칭 결과</span>
-              </span>
-              <h2 className="text-[18px] font-black text-[#25282B] tracking-tight mt-1.5 break-keep">
-                오늘 뿡님을 위한 1순위 라멘집
-              </h2>
-            </div>
+        {result && (
+          <div className="px-5 pt-5 pb-6 anim-fade-in">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#E60000] bg-[#FFF0F0] px-3 py-1 rounded-[60px]">
+              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+              AI 취향 매칭 결과
+            </span>
+            <h2 ref={resultHeadingRef} tabIndex={-1} className="text-[20px] font-extrabold tracking-tight mt-2 break-keep outline-none">
+              {nickname ? `오늘 ${nickname}님을 위한 라멘집` : '오늘의 추천'}
+            </h2>
 
-            {/* 추천 카드 */}
-            <article className="bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden">
-              <div className="relative aspect-[16/9] bg-[#F2F2F2] overflow-hidden">
-                <img src={result.photo} alt={result.shopName} className="w-full h-full object-cover" />
-              </div>
-
-              <div className="p-3.5">
-                <div className="flex items-baseline justify-between mb-1">
-                  <h3 className="text-[18px] font-black text-[#25282B]">
-                    {result.shopName} · {result.branch}
-                  </h3>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#E60000]">
-                    <AISparkleIcon className="w-3 h-3 text-[#E60000]" />
-                    <span>추천 1위</span>
+            <article className="mt-4 bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden">
+              <div className="relative aspect-[16/10] bg-[#E9E9E9]">
+                {result.shop.photos[0] && <img src={result.shop.photos[0]} alt={`${result.shop.name} 대표 사진`} className="w-full h-full object-cover" />}
+                {result.shop.matchScore > 0 && (
+                  <span className="absolute top-3 right-3 bg-[#E60000] text-white text-[13px] font-extrabold px-2.5 py-1 rounded-[4px] tabular-nums">
+                    취향 일치도 {result.shop.matchScore}%
                   </span>
-                </div>
-                <p className="text-[11px] text-[#7E7E7E] mb-2.5">대표: {result.style}</p>
-
-                {/* AI 추천 근거 요약 블록 */}
-                <div className="p-3 bg-[#F2F2F2] rounded-[6px] text-[11.5px] text-[#25282B] leading-relaxed mb-2.5 break-keep">
-                  <span className="text-[#E60000] font-black mr-1">“</span>
-                  {result.reason}
-                  <span className="text-[#E60000] font-black ml-1">”</span>
-                </div>
-
-                <div className="flex gap-1.5 flex-wrap">
-                  {result.tags.map((t, idx) => (
-                    <span key={idx} className="bg-white border border-[#E2E2E2] text-[10px] font-bold px-2 py-0.5 rounded-[32px] text-[#4A4D52]">
-                      #{t}
-                    </span>
-                  ))}
-                </div>
+                )}
+              </div>
+              <div className="p-4">
+                <p className="text-[13px] font-bold text-[#6B6E73]">{result.shop.style}</p>
+                <h3 className="text-[20px] font-extrabold tracking-tight leading-tight mt-0.5 break-keep">
+                  {result.shop.name}
+                  {result.shop.branch && <span className="text-[15px] font-bold text-[#6B6E73]"> · {result.shop.branch}</span>}
+                </h3>
+                {result.shop.spec && <p className="text-[14px] mt-1.5 break-keep">{result.shop.spec}</p>}
+                {result.shop.description && (
+                  <p className="text-[14px] leading-relaxed text-[#25282B] mt-3 pl-3 border-l border-[#25282B] break-keep">{result.shop.description}</p>
+                )}
+                {result.shop.tags.length > 0 && (
+                  <ul className="flex gap-1.5 flex-wrap mt-3" aria-label="특징">
+                    {result.shop.tags.map(tag => (
+                      <li key={tag} className="bg-[#F2F2F2] text-[12px] font-bold px-2.5 py-1 rounded-[4px]">{tag}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </article>
 
-            {/* 액션 버튼 */}
-            <div className="space-y-1.5 pt-1">
-              <button
-                onClick={onShopClick}
-                className="w-full h-11 rounded-[60px] bg-[#E60000] text-white font-bold text-[12px] active:scale-98 hover:bg-[#CC0000] transition-all flex items-center justify-center gap-2 shadow-xs"
-              >
-                매장 상세 및 리뷰 보러가기 →
-              </button>
-              <button
-                onClick={() => setStep(1)}
-                className="w-full h-10 rounded-[60px] border border-[#E2E2E2] hover:border-[#BEBEBE] text-[11.5px] font-bold text-[#25282B] bg-white hover:bg-[#F9F9F9] transition-all flex items-center justify-center gap-1.5 shadow-2xs"
-              >
-                <span>다시 추천받기</span>
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {result.conditions.length > 0 && (
+              <section className="mt-5" aria-labelledby="ai-conditions-heading">
+                <h3 id="ai-conditions-heading" className="text-[15px] font-bold pb-2 border-b border-[#E2E2E2]">추천에 쓴 조건</h3>
+                <ul className="divide-y divide-[#E2E2E2]">
+                  {result.conditions.map(condition => (
+                    <li key={condition.label} className="py-3 flex items-start gap-3">
+                      <span
+                        className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${condition.applied ? 'bg-[#25282B] text-white' : 'bg-[#F2F2F2] text-[#6B6E73]'}`}
+                        aria-hidden="true"
+                      >
+                        {condition.applied ? <Check className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-bold break-keep">
+                          {condition.label}
+                          <span className={`ml-1.5 text-[12px] ${condition.applied ? 'text-[#25282B]' : 'text-[#6B6E73]'}`}>{condition.applied ? '반영' : '참고만'}</span>
+                        </p>
+                        <p className="text-[13px] text-[#6B6E73] mt-0.5 break-keep">{condition.note}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {result.conditions.length === 0 && (
+              <p className="mt-4 text-[13px] text-[#6B6E73] break-keep">이전에 받은 추천이에요. 조건을 바꾸려면 다시 추천받기를 눌러주세요.</p>
+            )}
+
+            <button type="button" onClick={restart} className="mt-3 min-h-11 inline-flex items-center gap-1.5 text-[14px] font-bold text-[#25282B]">
+              <RotateCcw className="w-4 h-4" aria-hidden="true" />
+              다시 추천받기
+            </button>
           </div>
         )}
+      </div>
 
-        {/* Step 네비게이션 버튼 (Step 1~4일 때) */}
-        {typeof step === 'number' && (
-          <footer className="pt-2 pb-2 flex gap-2.5 shrink-0">
+      {/* 하단 고정 CTA */}
+      <footer className="flex-shrink-0 border-t border-[#E2E2E2] bg-white px-4 py-3">
+        {typeof step === 'number' ? (
+          <div className="flex gap-2.5">
             {step > 1 && (
               <button
-                onClick={() => setStep((step - 1) as any)}
-                className="flex-1 h-12 rounded-[60px] border border-[#E2E2E2] hover:border-[#BEBEBE] text-[13px] font-bold text-[#25282B] bg-white hover:bg-[#F9F9F9] transition-all shadow-2xs"
+                type="button"
+                onClick={() => setStep((step - 1) as Step)}
+                className="flex-1 h-13 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2] transition-colors"
               >
-                이전 단계
+                이전
               </button>
             )}
             <button
-              onClick={() => {
-                if (step === 4) {
-                  handleStartAnalysis()
-                } else {
-                  setStep((step + 1) as any)
-                }
-              }}
-              className="flex-1 h-12 rounded-[60px] bg-[#E60000] text-white font-bold text-[13px] active:scale-98 hover:bg-[#CC0000] transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              type="button"
+              onClick={() => (step === 4 ? startAnalysis() : setStep((step + 1) as Step))}
+              className="flex-[2] h-13 rounded-[60px] bg-[#E60000] text-white font-bold text-[14px] active:bg-[#CC0000] transition-colors flex items-center justify-center gap-1.5"
             >
               {step === 4 ? (
                 <>
+                  <Sparkles className="w-4 h-4" aria-hidden="true" />
                   <span>AI 맞춤 추천받기</span>
-                  <AISparkleIcon className="w-4 h-4 text-white" />
                 </>
               ) : (
-                <span>다음 단계 →</span>
+                <>
+                  <span>다음</span>
+                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
+                </>
               )}
             </button>
-          </footer>
-        )}
-
-
-
-      </div>
+          </div>
+        ) : result ? (
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={() => onRecordShop(result.shop.name)}
+              className="flex-1 h-13 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2] transition-colors flex items-center justify-center gap-1.5"
+            >
+              <PenLine className="w-4 h-4" aria-hidden="true" />
+              이 가게 기록하기
+            </button>
+            <button
+              type="button"
+              onClick={() => onShopClick(result.shop.name)}
+              className="flex-1 h-13 rounded-[60px] bg-[#E60000] text-white font-bold text-[14px] active:bg-[#CC0000] transition-colors flex items-center justify-center gap-1"
+            >
+              매장 상세 보기
+              <ChevronRight className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
+      </footer>
     </div>
   )
 }

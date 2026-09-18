@@ -1,14 +1,35 @@
-import { useState } from 'react'
-import { Camera, Zap, MapPin } from 'lucide-react'
-
+import { useMemo, useState } from 'react'
+import { Camera, Zap, ChevronRight, ExternalLink, Bell, BellRing, CalendarX } from 'lucide-react'
+import { findShopByName } from '../data/shops'
+import type { UserProfile } from '../types'
 
 interface Props {
-  onShopClick?: () => void
+  onShopClick?: (shopName: string) => void
+  /** null이면 비회원. App이 넘기면 알림 받기를 로그인으로 보낸다. */
+  user?: UserProfile | null
+  onLoginRequest?: () => void
 }
 
 const FILTERS = ['전체', '한정 메뉴', '영업 공지', '이벤트']
 
-const NEWS_POSTS = [
+interface NewsPost {
+  id: number
+  shop: string
+  branch: string
+  /** 확인된 인스타그램 계정. 없으면 원문 링크를 숨긴다. */
+  handle?: string
+  type: '한정 메뉴' | '영업 공지' | '이벤트'
+  title: string
+  summary: string[]
+  time: string
+  photo: string | null
+  /** 소식이 유효한 기간(서울 기준, YYYY-MM-DD). 지나면 종료로 표시한다. */
+  startDate?: string
+  endDate?: string
+  notifying: boolean
+}
+
+const NEWS_POSTS: NewsPost[] = [
   {
     id: 1,
     shop: '멘야준',
@@ -23,7 +44,8 @@ const NEWS_POSTS = [
     ],
     time: '2시간 전',
     photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=600&h=400&fit=crop&auto=format&q=80',
-    instagramUrl: 'https://instagram.com',
+    startDate: '2026-09-01',
+    endDate: '2026-09-30',
     notifying: true,
   },
   {
@@ -40,7 +62,8 @@ const NEWS_POSTS = [
     ],
     time: '어제',
     photo: null,
-    instagramUrl: 'https://instagram.com',
+    startDate: '2026-09-19',
+    endDate: '2026-09-19',
     notifying: true,
   },
   {
@@ -54,9 +77,10 @@ const NEWS_POSTS = [
       '9월 5일~7일 (3일간) 방문 고객 전원 수비드 삼겹 차슈 2장 쿠폰',
       '당일 조기 재료 소진 시 이벤트가 일찍 마감될 수 있습니다',
     ],
-    time: '3일 전',
+    time: '2주 전',
     photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=600&h=400&fit=crop&auto=format&q=80',
-    instagramUrl: 'https://instagram.com',
+    startDate: '2026-09-05',
+    endDate: '2026-09-07',
     notifying: false,
   },
   {
@@ -70,153 +94,218 @@ const NEWS_POSTS = [
       '오리 산지 직송 일정으로 9월 14일(월)~16일(수) 3일간 임시 휴무',
       '9월 17일(목)부터 정상 영업 재개',
     ],
-    time: '4일 전',
+    time: '1주 전',
     photo: null,
-    instagramUrl: 'https://instagram.com',
+    startDate: '2026-09-14',
+    endDate: '2026-09-16',
     notifying: false,
   },
 ]
 
-export default function NewsFeedScreen({ onShopClick }: Props) {
+/** 서울 기준 오늘 날짜(YYYY-MM-DD). ISO 형식 문자열끼리는 사전순 비교가 날짜 비교와 같다. */
+const todayInSeoul = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+
+const isEnded = (post: NewsPost, today: string) => Boolean(post.endDate && post.endDate < today)
+
+/** 원장에 확인된 링크가 있으면 우선, 없으면 소식에 적힌 계정으로만 연결한다. 계정을 지어내지 않는다. */
+const instagramUrlFor = (post: NewsPost) => {
+  const fromCatalog = findShopByName(post.shop)?.instagramUrl
+  if (fromCatalog) return fromCatalog
+  const handle = post.handle?.replace(/^@/, '').trim()
+  return handle ? `https://www.instagram.com/${handle}/` : undefined
+}
+
+const formatPeriod = (post: NewsPost) => {
+  if (!post.startDate) return null
+  const toLabel = (iso: string) => {
+    const [, m, d] = iso.split('-')
+    return `${Number(m)}/${Number(d)}`
+  }
+  if (!post.endDate || post.endDate === post.startDate) return toLabel(post.startDate)
+  return `${toLabel(post.startDate)}~${toLabel(post.endDate)}`
+}
+
+export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Props) {
   const [activeFilter, setActiveFilter] = useState('전체')
   const [notifications, setNotifications] = useState<Record<number, boolean>>(
     Object.fromEntries(NEWS_POSTS.map(p => [p.id, p.notifying]))
   )
+  const today = todayInSeoul()
 
-  const filtered = activeFilter === '전체'
-    ? NEWS_POSTS
-    : NEWS_POSTS.filter(p => p.type.startsWith(activeFilter))
+  const filtered = useMemo(() => {
+    const base = activeFilter === '전체' ? NEWS_POSTS : NEWS_POSTS.filter(p => p.type === activeFilter)
+    // 진행 중인 소식을 먼저, 종료된 소식은 아래로 보낸다. 같은 묶음 안에서는 원래 순서를 지킨다.
+    return [...base].sort((a, b) => Number(isEnded(a, today)) - Number(isEnded(b, today)))
+  }, [activeFilter, today])
+
+  const toggleNotify = (id: number) => {
+    // App이 user를 넘겨 비회원임이 확실할 때만 로그인으로 보낸다
+    if (user === null && onLoginRequest) {
+      onLoginRequest()
+      return
+    }
+    setNotifications(prev => ({ ...prev, [id]: !prev[id] }))
+  }
 
   return (
-    <div className="h-full overflow-y-auto no-scrollbar bg-[#FFFFFF] text-[#25282B]">
-      
-      {/* 1. 상단 바 */}
-      <header className="bg-white px-5 pt-3.5 pb-3.5 border-b border-[#E2E2E2]">
-        <div className="flex items-center gap-2.5 mb-3">
-          <img src="/logo.png" alt="RAOTA" className="w-8 h-8 object-contain" />
+    <div className="no-scrollbar h-full overflow-y-auto bg-white text-[#25282B]">
+      <header className="border-b border-[#E2E2E2] bg-white px-5 pb-1 pt-3.5">
+        <div className="mb-2 flex items-center gap-2.5">
+          <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
           <div>
-            <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">
-              라멘집 인스타 속보
-            </h1>
-            <p className="text-[10px] text-[#7E7E7E]">전국 라멘집 공식 인스타그램 실시간 피드</p>
+            <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">라멘속보</h1>
+            <p className="text-[13px] text-[#6B6E73]">라멘집 공식 인스타그램 소식 모아보기</p>
           </div>
-
         </div>
 
-        {/* 필터 탭 */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+        <div role="group" aria-label="소식 종류" className="no-scrollbar flex gap-1.5 overflow-x-auto">
           {FILTERS.map(f => {
             const active = activeFilter === f
             return (
-              <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                className={`flex-shrink-0 h-7 px-3 rounded-[32px] text-[11px] font-bold border transition-all ${
-                  active
-                    ? 'bg-[#25282B] text-white border-[#25282B]'
-                    : 'bg-[#F2F2F2] text-[#25282B] border-transparent hover:border-[#BEBEBE]'
-                }`}
-              >
-                {f}
+              <button key={f} type="button" onClick={() => setActiveFilter(f)} aria-pressed={active} className="flex min-h-11 shrink-0 items-center">
+                <span
+                  className={`rounded-[32px] px-3.5 py-1.5 text-[13px] font-bold transition-colors ${
+                    active ? 'bg-[#25282B] text-white' : 'bg-[#F2F2F2] text-[#25282B]'
+                  }`}
+                >
+                  {f}
+                </span>
               </button>
             )
           })}
         </div>
       </header>
 
-      {/* 2. 속보 목록 */}
-      <div className="p-4 space-y-4">
-        {filtered.map(post => (
-          <article key={post.id} className="bg-white rounded-[6px] overflow-hidden border border-[#E2E2E2]">
-            
-            {/* 상단 인스타 계정 & 시간 정보 */}
-            <div className="p-3.5 pb-2.5 flex items-center justify-between border-b border-[#E2E2E2]">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#FF512F] to-[#DD2476] text-white flex items-center justify-center shadow-xs">
-                  <Camera className="w-3.5 h-3.5 text-white" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[13px] font-black text-[#25282B]">{post.shop} ({post.branch})</span>
-                    <span className="text-[10px] font-bold text-[#E60000]">[{post.type}]</span>
+      <div className="space-y-4 p-4">
+        {filtered.length === 0 && (
+          <div className="px-6 py-16 text-center">
+            <Bell className="mx-auto mb-3 h-8 w-8 text-[#BEBEBE]" aria-hidden="true" />
+            <p className="text-[15px] font-bold text-[#25282B]">해당하는 소식이 없어요</p>
+            <p className="mt-1 text-[13px] text-[#6B6E73]">새 소식이 올라오면 이곳에 모아 드릴게요.</p>
+          </div>
+        )}
+
+        {filtered.map(post => {
+          const ended = isEnded(post, today)
+          const period = formatPeriod(post)
+          const instagramUrl = instagramUrlFor(post)
+          const notifying = notifications[post.id]
+
+          return (
+            <article
+              key={post.id}
+              aria-label={`${post.shop} ${post.type}${ended ? ', 종료' : ''}`}
+              className={`overflow-hidden rounded-[6px] border border-[#E2E2E2] bg-white ${ended ? 'opacity-70' : ''}`}
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-[#E2E2E2] py-2 pl-3.5 pr-1.5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F2F2F2] text-[#25282B]">
+                    <Camera className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => onShopClick?.(post.shop)}
+                      className="-my-2 flex min-h-11 max-w-full items-center gap-0.5 text-left text-[15px] font-black text-[#25282B]"
+                    >
+                      <span className="truncate">
+                        {post.shop} <span className="font-medium text-[#6B6E73]">{post.branch}</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-[#6B6E73]" aria-hidden="true" />
+                    </button>
+                    <p className="truncate text-[12px] text-[#6B6E73]">
+                      {post.handle ? `${post.handle} · ` : ''}
+                      {post.time}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-[#7E7E7E]">{post.handle} · {post.time}</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => toggleNotify(post.id)}
+                  aria-pressed={notifying}
+                  aria-label={notifying ? `${post.shop} 알림 끄기` : `${post.shop} 알림 받기`}
+                  className="flex min-h-11 shrink-0 items-center"
+                >
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-[32px] border px-2.5 py-1.5 text-[12px] font-bold transition-colors ${
+                      notifying ? 'border-[#25282B] bg-[#25282B] text-white' : 'border-[#E2E2E2] bg-white text-[#4A4D52]'
+                    }`}
+                  >
+                    {notifying ? <BellRing className="h-3.5 w-3.5" aria-hidden="true" /> : <Bell className="h-3.5 w-3.5" aria-hidden="true" />}
+                    {notifying ? '알림 켜짐' : '알림 받기'}
+                  </span>
+                </button>
+              </div>
+
+              {post.photo && (
+                <div className="relative h-44 overflow-hidden bg-[#F2F2F2]">
+                  <img src={post.photo} alt={post.title} className={`h-full w-full object-cover ${ended ? 'grayscale' : ''}`} />
+                </div>
+              )}
+
+              <div className="p-4">
+                <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                  <span className={`rounded-[4px] px-1.5 py-0.5 text-[12px] font-bold ${ended ? 'bg-[#F2F2F2] text-[#6B6E73]' : 'bg-[#FFF0F0] text-[#E60000]'}`}>
+                    {post.type}
+                  </span>
+                  {period && (
+                    <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#6B6E73]">
+                      {ended && <CalendarX className="h-3.5 w-3.5" aria-hidden="true" />}
+                      {period}
+                      {ended ? ' · 종료' : ''}
+                    </span>
+                  )}
+                </div>
+                <h2 className="mb-3 text-[15px] font-black leading-snug text-[#25282B]">{post.title}</h2>
+
+                <div className="border-t border-[#F2F2F2] pt-3">
+                  <p className="mb-1.5 flex items-center gap-1 text-[13px] font-black text-[#25282B]">
+                    <Zap className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>핵심 요약</span>
+                  </p>
+                  <ul className="space-y-1">
+                    {post.summary.map((line, idx) => (
+                      <li key={idx} className="flex items-start gap-1.5 text-[13px] leading-relaxed text-[#4A4D52]">
+                        <span aria-hidden="true" className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-[#6B6E73]" />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 border-t border-[#F2F2F2] pt-3">
+                  <button
+                    type="button"
+                    onClick={() => onShopClick?.(post.shop)}
+                    className="flex h-11 flex-1 items-center justify-center gap-1 rounded-[6px] bg-[#F2F2F2] text-[13px] font-bold text-[#25282B] transition-colors hover:bg-[#EAEAEA]"
+                  >
+                    <span>매장 정보</span>
+                    <ChevronRight className="h-4 w-4 text-[#6B6E73]" aria-hidden="true" />
+                  </button>
+                  {instagramUrl && (
+                    <a
+                      href={instagramUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex h-11 flex-1 items-center justify-center gap-1 rounded-[6px] border border-[#E2E2E2] bg-white text-[13px] font-bold text-[#25282B] transition-colors hover:border-[#BEBEBE]"
+                    >
+                      <span>인스타 원문</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-[#6B6E73]" aria-hidden="true" />
+                      <span className="sr-only">(새 창)</span>
+                    </a>
+                  )}
                 </div>
               </div>
+            </article>
+          )
+        })}
 
-              <button
-                onClick={() => setNotifications(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
-                className={`px-2.5 py-1 rounded-[32px] text-[10px] font-bold border transition-all ${
-                  notifications[post.id]
-                    ? 'bg-[#25282B] text-white border-[#25282B]'
-                    : 'bg-[#F2F2F2] text-[#7E7E7E] border-[#E2E2E2]'
-                }`}
-              >
-                {notifications[post.id] ? '알림 켜짐 ✓' : '알림 받기'}
-              </button>
-            </div>
-
-            {/* 인스타그램 사진 */}
-            {post.photo && (
-              <div className="h-44 bg-[#F2F2F2] overflow-hidden relative">
-                <img src={post.photo} alt={post.title} className="w-full h-full object-cover" />
-              </div>
-            )}
-
-            {/* 본문 및 AI 3줄 요약 */}
-            <div className="p-4">
-              <h2 className="text-[15px] font-black text-[#25282B] leading-snug mb-2.5">
-                {post.title}
-              </h2>
-
-              {/* AI 3줄 요약 블록 */}
-              <div className="p-3 bg-[#F2F2F2] rounded-[6px] space-y-1 mb-3.5">
-                <span className="text-[10px] font-black text-[#25282B] flex items-center gap-1 block mb-1">
-                  <Zap className="w-3 h-3 fill-[#E60000] text-[#E60000]" />
-                  <span>핵심 요약</span>
-                </span>
-                {post.summary.map((line, idx) => (
-                  <p key={idx} className="text-[11px] text-[#4A4D52] leading-relaxed flex items-start gap-1">
-                    <span className="text-[#7E7E7E]">•</span>
-                    <span>{line}</span>
-                  </p>
-                ))}
-              </div>
-
-              {/* 하단 바로가기 버튼 그룹 */}
-              <div className="flex items-center gap-2 pt-2 border-t border-[#E2E2E2]">
-                <button
-                  onClick={onShopClick}
-                  className="flex-1 h-9 rounded-[6px] bg-[#F2F2F2] hover:bg-[#E2E2E2] text-[11px] font-bold text-[#25282B] flex items-center justify-center gap-1 transition-colors"
-                >
-                  <span>매장 정보 보기</span>
-                  <MapPin className="w-3 h-3 text-stone-500" />
-                </button>
-                <a
-                  href={post.instagramUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 h-9 rounded-[6px] border border-[#E2E2E2] hover:border-[#BEBEBE] bg-white hover:bg-[#F9F9F9] text-[11px] font-bold text-[#25282B] flex items-center justify-center gap-1 transition-colors shadow-2xs"
-                >
-                  <span>인스타 원문 보기</span>
-                  <span>↗</span>
-                </a>
-              </div>
-            </div>
-
-          </article>
-        ))}
-
-        {/* 피드 끝 안내 문구 (라멘속보) */}
-        <div className="pt-8 pb-3 text-center">
-          <p className="text-[10.5px] text-[#A0A0A0]">
-            모든 라멘속보를 확인했습니다. 새로운 소식이 올라오면 바로 알려드릴게요
-          </p>
-        </div>
-
-
+        {filtered.length > 0 && (
+          <p className="px-4 pb-3 pt-6 text-center text-[13px] text-[#6B6E73]">모든 라멘속보를 확인했습니다. 새 소식이 올라오면 알려드릴게요.</p>
+        )}
         <div className="h-6" />
-
       </div>
     </div>
   )

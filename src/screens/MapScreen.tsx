@@ -1,201 +1,80 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import L from 'leaflet'
-import { ChevronDown, Search, X, SlidersHorizontal, MapPin, List, Navigation, Map } from 'lucide-react'
+import { ChevronDown, ChevronRight, Check, Search, X, MapPin, List, Navigation, Map, Plus, Minus } from 'lucide-react'
 import RamenIcon from '../components/icons/RamenIcon'
-
-
+import { SHOP_CATALOG, type ShopCatalogItem } from '../data/shops'
 
 interface Props {
+  /** 탭이 보이는 상태인지. 숨겨졌다 다시 보일 때 지도 크기를 다시 계산한다. */
+  isActive?: boolean
   selectedPin: number
   filter?: string
   onPinSelect: (i: number) => void
   onFilterChange?: (f: string) => void
-  onShopClick: () => void
+  onShopClick: (shopName: string) => void
 }
 
+/** 지도 화면이 쓰는 매장 뷰 모델. 원장(`SHOP_CATALOG`)에서만 만든다. */
 interface Shop {
   id: number
   name: string
   branch: string
+  address: string
   style: string
   pinLabel: string
   dist: string
+  distanceM: number
+  isOpen: boolean
   status: string
-  lastOrder: string
+  lastOrder?: string
   match: number
   lat: number
   lng: number
-  photo: string
+  photo?: string
   spec: string
 }
 
+const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`)
+
+function toMapShop(shop: ShopCatalogItem): Shop {
+  const operational = shop.businessStatus === 'OPERATIONAL'
+  const isOpen = operational && shop.isOpen
+  return {
+    id: shop.id,
+    name: shop.name,
+    branch: shop.branch ?? '',
+    address: shop.address,
+    style: shop.style,
+    pinLabel: shop.pinLabel,
+    dist: formatDistance(shop.distanceM),
+    distanceM: shop.distanceM,
+    isOpen,
+    status: operational ? (isOpen ? '영업 중' : '준비 중') : '영업 정보 확인 필요',
+    lastOrder: shop.lastOrder,
+    match: shop.matchScore,
+    lat: shop.lat,
+    lng: shop.lng,
+    photo: shop.photos[0],
+    spec: shop.spec,
+  }
+}
+
+const SHOPS: Shop[] = SHOP_CATALOG.filter(shop => shop.lat && shop.lng).map(toMapShop)
+
 const REGION_OPTIONS = [
-  { value: 'ALL', label: '전체 지역' },
-  { value: '망원', label: '마포 · 망원동' },
-  { value: '합정', label: '마포 · 합정/상수' },
-  { value: '연남', label: '마포 · 연남/홍대' },
+  { value: 'ALL', label: '전체 지역', keys: [] as string[] },
+  { value: '망원', label: '마포 · 망원동', keys: ['망원'] },
+  { value: '합정', label: '마포 · 합정/상수', keys: ['합정', '상수'] },
+  { value: '연남', label: '마포 · 연남/홍대', keys: ['연남', '홍대', '서교'] },
 ]
 
 const MENU_OPTIONS = [
-  { value: 'ALL', label: '모든 메뉴' },
-  { value: '쇼유', label: '쇼유 라멘 (간장)' },
-  { value: '돈코츠', label: '돈코츠/이에케 (돼지뼈)' },
-  { value: '시오', label: '시오 라멘 (소금)' },
-  { value: '미소', label: '미소 라멘 (된장)' },
-  { value: '토리파이탄', label: '토리파이탄 (닭백탕)' },
-]
-
-const SHOPS: Shop[] = [
-  {
-    id: 0,
-    name: '멘야준',
-    branch: '망원 본점',
-    style: '쇼유 라멘',
-    pinLabel: '준',
-    dist: '420m',
-    status: '영업 중',
-    lastOrder: '20:30',
-    match: 91,
-    lat: 37.5559,
-    lng: 126.9114,
-    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '자가제면 · 닭과 오리 더블 육수',
-  },
-  {
-    id: 1,
-    name: '후쿠 라멘',
-    branch: '합정점',
-    style: '미소 라멘',
-    pinLabel: '후',
-    dist: '680m',
-    status: '영업 중',
-    lastOrder: '21:00',
-    match: 82,
-    lat: 37.5492,
-    lng: 126.9150,
-    photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '진한 삿포로 적된장 육수',
-  },
-  {
-    id: 2,
-    name: '오레노라멘',
-    branch: '마포 본점',
-    style: '토리파이탄',
-    pinLabel: '오',
-    dist: '1.4km',
-    status: '영업 중',
-    lastOrder: '20:00',
-    match: 75,
-    lat: 37.5484,
-    lng: 126.9208,
-    photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '닭백탕 · 미쉐린 빕구르망',
-  },
-  {
-    id: 3,
-    name: '묘코',
-    branch: '연남점',
-    style: '쇼유 라멘',
-    pinLabel: '묘',
-    dist: '1.1km',
-    status: '준비 중',
-    lastOrder: '20:30',
-    match: 78,
-    lat: 37.5620,
-    lng: 126.9240,
-    photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '깔끔한 청탕 오리 육수',
-  },
-  {
-    id: 4,
-    name: '세상끝의라멘',
-    branch: '합정점',
-    style: '쇼유 라멘',
-    pinLabel: '세',
-    dist: '850m',
-    status: '영업 중',
-    lastOrder: '20:30',
-    match: 88,
-    lat: 37.5502,
-    lng: 126.9135,
-    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '오사카식 블랙 쇼유와 차슈 덮밥',
-  },
-  {
-    id: 5,
-    name: '멘지',
-    branch: '망원 본점',
-    style: '토리파이탄',
-    pinLabel: '멘',
-    dist: '550m',
-    status: '영업 중',
-    lastOrder: '20:00',
-    match: 84,
-    lat: 37.5562,
-    lng: 126.9065,
-    photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '극상의 진한 닭백탕 육수',
-  },
-  {
-    id: 6,
-    name: '하쿠텐',
-    branch: '연남점',
-    style: '돈코츠 라멘',
-    pinLabel: '하',
-    dist: '1.2km',
-    status: '영업 중',
-    lastOrder: '20:30',
-    match: 93,
-    lat: 37.5612,
-    lng: 126.9255,
-    photo: 'https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '진한 요코하마식 이에케 라멘',
-  },
-  {
-    id: 7,
-    name: '담택',
-    branch: '합정점',
-    style: '시오 라멘',
-    pinLabel: '담',
-    dist: '720m',
-    status: '영업 중',
-    lastOrder: '20:00',
-    match: 89,
-    lat: 37.5510,
-    lng: 126.9160,
-    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '깔끔한 닭육수 유자 시오 라멘',
-  },
-  {
-    id: 8,
-    name: '이리에라멘',
-    branch: '망원점',
-    style: '시오 라멘',
-    pinLabel: '이',
-    dist: '490m',
-    status: '영업 중',
-    lastOrder: '20:30',
-    match: 87,
-    lat: 37.5548,
-    lng: 126.9080,
-    photo: 'https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '도미 뼈로 우려낸 감칠맛 도미 시오',
-  },
-  {
-    id: 9,
-    name: '무타히로',
-    branch: '홍대점',
-    style: '쇼유 라멘',
-    pinLabel: '무',
-    dist: '1.5km',
-    status: '준비 중',
-    lastOrder: '20:30',
-    match: 81,
-    lat: 37.5570,
-    lng: 126.9290,
-    photo: 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=300&h=200&fit=crop&auto=format&q=80',
-    spec: '멸치(니보시) 육수의 깊은 감칠맛',
-  },
+  { value: 'ALL', label: '모든 메뉴', keys: [] as string[] },
+  { value: '쇼유', label: '쇼유 라멘 (간장)', keys: ['쇼유'] },
+  { value: '돈코츠', label: '돈코츠/이에케 (돼지뼈)', keys: ['돈코츠', '이에케'] },
+  { value: '시오', label: '시오 라멘 (소금)', keys: ['시오'] },
+  { value: '미소', label: '미소 라멘 (된장)', keys: ['미소'] },
+  { value: '토리파이탄', label: '토리파이탄 (닭백탕)', keys: ['토리파이탄', '닭백탕'] },
 ]
 
 const USER_LOC = { lat: 37.5525, lng: 126.9165 } // 합정/서교 인근
@@ -211,7 +90,7 @@ function createCustomIcon(shop: Shop, isSelected: boolean) {
           height: ${isSelected ? '40px' : '32px'};
           background-color: ${isSelected ? '#E60000' : '#FFFFFF'};
           border: ${isSelected ? '2px solid #FFFFFF' : '1.5px solid #E2E2E2'};
-          box-shadow: ${isSelected ? '0 4px 14px rgba(230,0,0,0.35)' : '0 2px 8px rgba(0,0,0,0.08)'};
+          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
           border-radius: 9999px;
           display: flex;
           align-items: center;
@@ -228,12 +107,13 @@ function createCustomIcon(shop: Shop, isSelected: boolean) {
           background-color: ${isSelected ? '#E60000' : '#FFFFFF'};
           color: ${isSelected ? '#FFFFFF' : '#4A4D52'};
           border: 1px solid ${isSelected ? '#E60000' : '#E2E2E2'};
-          padding: 2px 8px;
+          padding: 3px 9px;
           border-radius: 32px;
-          font-size: 10px;
+          font-size: 12px;
+          line-height: 1.2;
           font-weight: 800;
           white-space: nowrap;
-          box-shadow: ${isSelected ? '0 2px 8px rgba(230,0,0,0.25)' : '0 2px 6px rgba(0,0,0,0.06)'};
+          box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         ">
           ${shop.name}
         </div>
@@ -277,7 +157,7 @@ function createClusterIcon(count: number, hasSelected: boolean) {
         user-select: none;
         ${hasSelected ? 'outline: 3px solid rgba(230, 0, 0, 0.4);' : ''}
       ">
-        <span style="font-size: ${size >= 36 ? '12px' : '11px'}; font-weight: 900; line-height: 1; letter-spacing: -0.5px;">${count}</span>
+        <span style="font-size: 12px; font-weight: 900; line-height: 1; letter-spacing: -0.5px;">${count}</span>
       </div>
     </div>
   `
@@ -387,11 +267,11 @@ function clusterShops(shops: Shop[], map: L.Map, selectedPin: number): Array<{ t
   })
 }
 
-export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Props) {
+export default function MapScreen({ isActive = true, selectedPin, onPinSelect, onShopClick }: Props) {
   const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
   const [search, setSearch] = useState('')
   const [searching, setSearching] = useState(false)
-  const [sortBy, setSortBy] = useState<'dist' | 'popular' | 'name'>('dist')
+  const [sortBy, setSortBy] = useState<'dist' | 'match' | 'name'>('dist')
   const [onlyOpen, setOnlyOpen] = useState(false)
   
   // 📍 지역 및 🍜 메뉴 필터 상태 (raota-front 스펙)
@@ -405,6 +285,9 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const currentMarkersRef = useRef<L.Marker[]>([])
+  const filteredShopsRef = useRef<Shop[]>(SHOPS)
+  const selectedPinRef = useRef(selectedPin)
+  const onPinSelectRef = useRef(onPinSelect)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -423,26 +306,18 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
     }
   }, [isRegionDropdownOpen, isMenuDropdownOpen])
 
-  const selected = SHOPS.find(s => s.id === selectedPin) ?? SHOPS[0]
-
   // 필터링 적용된 목록 (지역 + 메뉴 + 영업상태 + 검색어)
-  const filteredShops = SHOPS.filter(shop => {
+  const filteredShops = useMemo(() => SHOPS.filter(shop => {
     // 1. 영업 중 필터
-    if (onlyOpen && shop.status !== '영업 중') return false
+    if (onlyOpen && !shop.isOpen) return false
 
-    // 2. 지역 필터
-    if (regionFilter !== 'ALL') {
-      const matchBranch = shop.branch.includes(regionFilter)
-      const matchSpec = shop.spec.includes(regionFilter)
-      if (!matchBranch && !matchSpec) return false
-    }
+    // 2. 지역 필터 (지점명 또는 주소)
+    const regionKeys = REGION_OPTIONS.find(option => option.value === regionFilter)?.keys ?? []
+    if (regionKeys.length > 0 && !regionKeys.some(key => shop.branch.includes(key) || shop.address.includes(key))) return false
 
     // 3. 메뉴(계통) 필터
-    if (menuFilter !== 'ALL') {
-      const matchStyle = shop.style.includes(menuFilter)
-      const matchSpec = shop.spec.includes(menuFilter)
-      if (!matchStyle && !matchSpec) return false
-    }
+    const menuKeys = MENU_OPTIONS.find(option => option.value === menuFilter)?.keys ?? []
+    if (menuKeys.length > 0 && !menuKeys.some(key => shop.style.includes(key) || shop.spec.includes(key))) return false
 
     // 4. 키워드 검색
     if (search.trim()) {
@@ -456,10 +331,15 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
 
     return true
   }).sort((a, b) => {
-    if (sortBy === 'popular') return parseFloat(a.dist) - parseFloat(b.dist)
+    if (sortBy === 'match') return b.match - a.match
     if (sortBy === 'name') return a.name.localeCompare(b.name)
-    return parseFloat(a.dist) - parseFloat(b.dist)
-  })
+    return a.distanceM - b.distanceM
+  }), [menuFilter, onlyOpen, regionFilter, search, sortBy])
+
+  const selected = filteredShops.find(shop => shop.id === selectedPin) ?? filteredShops[0] ?? null
+  filteredShopsRef.current = filteredShops
+  selectedPinRef.current = selectedPin
+  onPinSelectRef.current = onPinSelect
 
   // 동적 마커 및 클러스터 렌더링 함수
   const renderMarkers = useCallback(() => {
@@ -471,19 +351,19 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
     currentMarkersRef.current = []
 
     // 현재 줌과 위치에 맞춘 클러스터링 계산
-    const items = clusterShops(filteredShops, map, selectedPin)
+    const items = clusterShops(filteredShopsRef.current, map, selectedPinRef.current)
 
     items.forEach(item => {
       if (item.type === 'single') {
         const shop = item.shop
-        const isSelected = selectedPin === shop.id
+        const isSelected = selectedPinRef.current === shop.id
         const marker = L.marker([shop.lat, shop.lng], {
           icon: createCustomIcon(shop, isSelected),
           zIndexOffset: isSelected ? 1000 : 0,
         })
 
         marker.on('click', () => {
-          onPinSelect(shop.id)
+          onPinSelectRef.current(shop.id)
           map.flyTo([shop.lat, shop.lng], Math.max(map.getZoom(), 15.5), { duration: 0.45 })
         })
 
@@ -506,7 +386,7 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
         currentMarkersRef.current.push(marker)
       }
     })
-  }, [filteredShops, selectedPin, onPinSelect])
+  }, [])
 
   // 지도 인스턴스 초기화 (viewMode === 'map'일 때)
   useEffect(() => {
@@ -519,16 +399,17 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
     }
 
     // 지도 생성: 서울 마포구 일대 중심
+    const initialShop = SHOPS.find(shop => shop.id === selectedPinRef.current) ?? SHOPS[0]
     const map = L.map(mapContainerRef.current, {
-      center: [selected.lat, selected.lng],
+      center: [initialShop.lat, initialShop.lng],
       zoom: 15,
       zoomControl: false,
       attributionControl: false,
     })
 
-    // 오픈소스 CartoDB Voyager 타일 레이어
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd',
+    // OpenStreetMap 표준 타일 레이어
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(map)
 
@@ -556,12 +437,24 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
     }
   }, [viewMode, renderMarkers])
 
+  // 숨겨진 채 마운트됐다가 탭이 보이면 지도 크기를 다시 계산한다.
+  useEffect(() => {
+    if (!isActive || viewMode !== 'map') return
+    const map = mapInstanceRef.current
+    if (!map) return
+    const frame = requestAnimationFrame(() => {
+      map.invalidateSize()
+      renderMarkers()
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [isActive, viewMode, renderMarkers])
+
   // 필터나 선택 핀 변경 시 마커 재렌더링
   useEffect(() => {
     if (viewMode === 'map' && mapInstanceRef.current) {
       renderMarkers()
     }
-  }, [viewMode, renderMarkers])
+  }, [filteredShops, selectedPin, viewMode, renderMarkers])
 
   // 내 위치로 이동
   const handleGoToUserLocation = () => {
@@ -574,335 +467,284 @@ export default function MapScreen({ selectedPin, onPinSelect, onShopClick }: Pro
   const handleZoomIn = () => mapInstanceRef.current?.zoomIn()
   const handleZoomOut = () => mapInstanceRef.current?.zoomOut()
 
+  const hasActiveFilter = regionFilter !== 'ALL' || menuFilter !== 'ALL' || onlyOpen
+  const regionLabel = REGION_OPTIONS.find(r => r.value === regionFilter)?.label ?? '전체 지역'
+  const menuLabel = MENU_OPTIONS.find(m => m.value === menuFilter)?.label ?? '모든 메뉴'
+
+  const filterButtonClass = (active: boolean) =>
+    `w-full flex h-11 items-center justify-between gap-1.5 rounded-[6px] border px-3 text-[13px] font-bold transition-colors ${
+      active ? 'bg-[#FFF0F0] border-[#E60000] text-[#E60000]' : 'bg-[#F2F2F2] border-[#E2E2E2] text-[#25282B]'
+    }`
+  const optionClass = (active: boolean) =>
+    `w-full min-h-11 px-3.5 text-left text-[13px] flex items-center justify-between gap-2 active:bg-[#F2F2F2] transition-colors ${
+      active ? 'font-bold text-[#E60000] bg-[#FFF0F0]' : 'text-[#25282B]'
+    }`
+
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#FFFFFF] text-[#25282B] relative">
-      
-      {/* 1. 상단 검색창 및 필터 탭 바 */}
-      <header className="bg-white/95 backdrop-blur-md px-4 pt-3.5 pb-3.5 border-b border-[#E2E2E2] z-20 flex-shrink-0">
+    <div className="h-full flex flex-col overflow-hidden bg-white text-[#25282B] relative">
+      {/* 1. 검색창과 필터 */}
+      <header className="bg-white px-4 pt-3 pb-3 border-b border-[#E2E2E2] z-20 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 bg-[#F2F2F2] border border-[#E2E2F2] rounded-[6px] px-3.5 h-11">
-            <Search className="w-4 h-4 text-[#7E7E7E]" />
+          <div className="flex-1 flex items-center gap-2 bg-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] pl-3.5 pr-1 h-11">
+            <Search className="w-4 h-4 text-[#6B6E73] shrink-0" aria-hidden="true" />
             <input
-              className="flex-1 bg-transparent text-[13px] font-bold text-[#25282B] placeholder-[#8A8A8A] outline-none"
-              placeholder="라멘집 상호, 지하철역, 계보 검색"
+              className="flex-1 min-w-0 h-full bg-transparent text-[14px] font-medium text-[#25282B] placeholder-[#6B6E73] outline-none"
+              placeholder="라멘집 이름, 계보, 지점 검색"
               value={search}
               onChange={e => { setSearch(e.target.value); setSearching(e.target.value.length > 0) }}
               aria-label="라멘집 검색"
             />
             {searching && (
-              <button onClick={() => { setSearch(''); setSearching(false) }} className="text-[#7E7E7E]" aria-label="지우기">
-                <X className="w-3.5 h-3.5" />
+              <button type="button" onClick={() => { setSearch(''); setSearching(false) }} className="w-10 h-10 flex items-center justify-center text-[#6B6E73]" aria-label="검색어 지우기">
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
           </div>
 
-
-          {/* 🗺️ 지도 ⇄ ☰ 목록 뷰 모드 토글 버튼 */}
           <button
+            type="button"
             onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
-            className="h-11 px-3.5 rounded-[6px] bg-[#25282B] text-white text-[12px] font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm flex-shrink-0"
+            className="h-11 px-3.5 rounded-[6px] bg-[#25282B] text-white text-[13px] font-bold flex items-center gap-1.5 active:scale-95 transition-transform flex-shrink-0"
             aria-label={viewMode === 'map' ? '목록으로 보기' : '지도로 보기'}
           >
-            {viewMode === 'map' ? (
-              <>
-                <List className="w-4 h-4" />
-                <span>목록</span>
-              </>
-            ) : (
-              <>
-                <Map className="w-4 h-4" />
-                <span>지도</span>
-              </>
-            )}
+            {viewMode === 'map' ? <List className="w-4 h-4" aria-hidden="true" /> : <Map className="w-4 h-4" aria-hidden="true" />}
+            <span>{viewMode === 'map' ? '목록' : '지도'}</span>
           </button>
         </div>
 
-        {/* 📍 지역 & 🍜 메뉴 커스텀 드롭다운 필터 바 (raota-front 스펙) */}
         <div className="flex items-center gap-2 pt-2.5">
-          {/* 지역 필터 드롭다운 */}
-          <div className="relative flex-1" ref={regionDropdownRef}>
+          {/* 지역 필터 */}
+          <div className="relative flex-1 min-w-0" ref={regionDropdownRef}>
             <button
               type="button"
-              onClick={() => {
-                setIsRegionDropdownOpen(prev => !prev)
-                setIsMenuDropdownOpen(false)
-              }}
+              onClick={() => { setIsRegionDropdownOpen(prev => !prev); setIsMenuDropdownOpen(false) }}
               aria-expanded={isRegionDropdownOpen}
-              className={`w-full flex h-8 items-center justify-between gap-1 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition-colors ${
-                regionFilter !== 'ALL'
-                  ? 'bg-red-50 border-[#E60000] text-[#E60000]'
-                  : 'bg-[#F2F2F2] border-stone-200 text-[#25282B] hover:bg-[#EAEAEA]'
-              }`}
+              aria-haspopup="listbox"
+              aria-controls="map-region-options"
+              aria-label={`지역 필터: ${regionLabel}`}
+              className={filterButtonClass(regionFilter !== 'ALL')}
             >
-              <div className="flex items-center gap-1 truncate">
-                <MapPin className="w-3 h-3 text-stone-400 shrink-0" />
-                <span className="truncate">
-                  {REGION_OPTIONS.find(r => r.value === regionFilter)?.label || '전체 지역'}
-                </span>
-              </div>
-              <ChevronDown
-                className={`w-3 h-3 text-stone-400 shrink-0 transition-transform duration-200 ${
-                  isRegionDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
-                }`}
-              />
+              <span className="flex items-center gap-1.5 min-w-0">
+                <MapPin className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{regionLabel}</span>
+              </span>
+              <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isRegionDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
 
-
             {isRegionDropdownOpen && (
-              <div className="absolute left-0 top-full mt-1.5 z-40 w-44 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
-                <div className="py-1 divide-y divide-stone-50">
-                  {REGION_OPTIONS.map(reg => (
-                    <button
-                      key={reg.value}
-                      type="button"
-                      onClick={() => {
-                        setRegionFilter(reg.value)
-                        setIsRegionDropdownOpen(false)
-                      }}
-                      className={`w-full px-3 py-2 text-left text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-between ${
-                        regionFilter === reg.value ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
-                      }`}
-                    >
+              <ul id="map-region-options" role="listbox" aria-label="지역 선택" className="absolute left-0 top-full mt-1.5 z-40 w-48 rounded-[6px] border border-[#E2E2E2] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] overflow-hidden anim-fade-in-up py-1">
+                {REGION_OPTIONS.map(reg => (
+                  <li key={reg.value} role="option" aria-selected={regionFilter === reg.value}>
+                    <button type="button" onClick={() => { setRegionFilter(reg.value); setIsRegionDropdownOpen(false) }} className={optionClass(regionFilter === reg.value)}>
                       <span>{reg.label}</span>
-                      {regionFilter === reg.value && <span className="text-[#E60000] font-bold">✓</span>}
+                      {regionFilter === reg.value && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
-          {/* 메뉴(계통) 필터 드롭다운 */}
-          <div className="relative flex-1" ref={menuDropdownRef}>
+          {/* 메뉴(계통) 필터 */}
+          <div className="relative flex-1 min-w-0" ref={menuDropdownRef}>
             <button
               type="button"
-              onClick={() => {
-                setIsMenuDropdownOpen(prev => !prev)
-                setIsRegionDropdownOpen(false)
-              }}
+              onClick={() => { setIsMenuDropdownOpen(prev => !prev); setIsRegionDropdownOpen(false) }}
               aria-expanded={isMenuDropdownOpen}
-              className={`w-full flex h-8 items-center justify-between gap-1 rounded-sm border px-2.5 py-1 text-[11px] font-bold transition-colors ${
-                menuFilter !== 'ALL'
-                  ? 'bg-red-50 border-[#E60000] text-[#E60000]'
-                  : 'bg-[#F2F2F2] border-stone-200 text-[#25282B] hover:bg-[#EAEAEA]'
-              }`}
+              aria-haspopup="listbox"
+              aria-controls="map-menu-options"
+              aria-label={`메뉴 필터: ${menuLabel}`}
+              className={filterButtonClass(menuFilter !== 'ALL')}
             >
-              <div className="flex items-center gap-1.5 truncate">
-                <RamenIcon className="w-3.5 h-3.5 text-[#E60000] shrink-0" />
-                <span className="truncate">
-                  {MENU_OPTIONS.find(m => m.value === menuFilter)?.label || '모든 메뉴'}
-                </span>
-              </div>
-
-              <ChevronDown
-                className={`w-3 h-3 text-stone-400 shrink-0 transition-transform duration-200 ${
-                  isMenuDropdownOpen ? 'rotate-180 text-[#E60000]' : ''
-                }`}
-              />
+              <span className="flex items-center gap-1.5 min-w-0">
+                <RamenIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">{menuLabel}</span>
+              </span>
+              <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isMenuDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
 
             {isMenuDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 z-40 w-48 rounded-sm border border-stone-300 bg-white shadow-xl overflow-hidden anim-fade-in-up">
-                <div className="py-1 divide-y divide-stone-50">
-                  {MENU_OPTIONS.map(menu => (
-                    <button
-                      key={menu.value}
-                      type="button"
-                      onClick={() => {
-                        setMenuFilter(menu.value)
-                        setIsMenuDropdownOpen(false)
-                      }}
-                      className={`w-full px-3 py-2 text-left text-[11px] hover:bg-stone-50 transition-colors flex items-center justify-between ${
-                        menuFilter === menu.value ? 'font-bold text-[#E60000] bg-red-50' : 'text-[#25282B]'
-                      }`}
-                    >
+              <ul id="map-menu-options" role="listbox" aria-label="메뉴 선택" className="absolute right-0 top-full mt-1.5 z-40 w-52 rounded-[6px] border border-[#E2E2E2] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] overflow-hidden anim-fade-in-up py-1">
+                {MENU_OPTIONS.map(menu => (
+                  <li key={menu.value} role="option" aria-selected={menuFilter === menu.value}>
+                    <button type="button" onClick={() => { setMenuFilter(menu.value); setIsMenuDropdownOpen(false) }} className={optionClass(menuFilter === menu.value)}>
                       <span>{menu.label}</span>
-                      {menuFilter === menu.value && <span className="text-[#E60000] font-bold">✓</span>}
+                      {menuFilter === menu.value && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
-          {/* 영업 중만 토글 버튼 */}
+          {/* 영업 중만 보기 */}
           <button
             type="button"
             onClick={() => setOnlyOpen(prev => !prev)}
-            className={`h-8 px-2.5 rounded-sm border text-[11px] font-bold transition-all flex items-center gap-1 shrink-0 ${
-              onlyOpen
-                ? 'bg-[#2E7D32] text-white border-[#2E7D32]'
-                : 'bg-[#F2F2F2] border-stone-200 text-[#25282B] hover:bg-[#EAEAEA]'
+            aria-pressed={onlyOpen}
+            className={`h-11 px-3 rounded-[6px] border text-[13px] font-bold transition-colors flex items-center gap-1.5 shrink-0 ${
+              onlyOpen ? 'bg-[#25282B] text-white border-[#25282B]' : 'bg-[#F2F2F2] border-[#E2E2E2] text-[#25282B]'
             }`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${onlyOpen ? 'bg-white' : 'bg-[#2E7D32]'}`} />
-            <span>영업중</span>
+            <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${onlyOpen ? 'bg-white' : 'bg-[#2E7D32]'}`} />
+            <span>영업 중</span>
           </button>
 
-          {/* 필터 활성화 시 리셋 버튼 */}
-          {(regionFilter !== 'ALL' || menuFilter !== 'ALL' || onlyOpen) && (
+          {hasActiveFilter && (
             <button
               type="button"
-              onClick={() => {
-                setRegionFilter('ALL')
-                setMenuFilter('ALL')
-                setOnlyOpen(false)
-              }}
-              className="h-8 w-8 rounded-sm bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-[#25282B] flex items-center justify-center text-xs font-bold transition-colors shrink-0"
-              title="필터 초기화"
+              onClick={() => { setRegionFilter('ALL'); setMenuFilter('ALL'); setOnlyOpen(false) }}
+              className="h-11 w-11 rounded-[6px] bg-[#F2F2F2] text-[#25282B] flex items-center justify-center shrink-0 active:bg-[#E2E2E2] transition-colors"
               aria-label="필터 초기화"
             >
-              ✕
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         </div>
       </header>
 
-      {/* 2. 본문 영역: [지도 뷰] vs [목록 뷰] */}
+      {/* 2. 지도 뷰 또는 목록 뷰 */}
       {viewMode === 'map' ? (
-        <div className="flex-1 relative overflow-hidden flex flex-col justify-between">
-          <div className="flex-1 relative overflow-hidden">
+        <div className="flex-1 min-h-0 relative overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 relative overflow-hidden">
             <div ref={mapContainerRef} className="w-full h-full" style={{ zIndex: 1 }} />
 
-            {/* 지도 우측 상단 플로팅 컨트롤 (줌 및 GPS) */}
+            {/* 지도 컨트롤 */}
             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-              {/* 내 위치 버튼 */}
               <button
+                type="button"
                 onClick={handleGoToUserLocation}
-                className="w-10 h-10 rounded-[6px] bg-white border border-[#E2E2E2] text-[#25282B] shadow-md flex items-center justify-center hover:bg-[#F2F2F2] active:scale-95 transition-all"
+                className="w-11 h-11 rounded-[6px] bg-white border border-[#E2E2E2] text-[#25282B] shadow-[0_4px_16px_rgba(0,0,0,0.12)] flex items-center justify-center active:bg-[#F2F2F2] transition-colors"
                 aria-label="내 위치로 이동"
               >
-                <Navigation className="w-4.5 h-4.5" />
+                <Navigation className="w-4.5 h-4.5" aria-hidden="true" />
               </button>
-
-
-              {/* 줌 인/아웃 */}
-              <div className="bg-white border border-[#E2E2E2] rounded-[6px] shadow-md overflow-hidden flex flex-col divide-y divide-[#E2E2E2]">
-                <button
-                  onClick={handleZoomIn}
-                  className="w-10 h-9 flex items-center justify-center text-[18px] font-bold text-[#25282B] hover:bg-[#F2F2F2] active:scale-95"
-                  aria-label="확대"
-                >
-                  +
+              <div className="bg-white border border-[#E2E2E2] rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col divide-y divide-[#E2E2E2]">
+                <button type="button" onClick={handleZoomIn} className="w-11 h-11 flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2] transition-colors" aria-label="확대">
+                  <Plus className="w-5 h-5" aria-hidden="true" />
                 </button>
-                <button
-                  onClick={handleZoomOut}
-                  className="w-10 h-9 flex items-center justify-center text-[18px] font-bold text-[#25282B] hover:bg-[#F2F2F2] active:scale-95"
-                  aria-label="축소"
-                >
-                  −
+                <button type="button" onClick={handleZoomOut} className="w-11 h-11 flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2] transition-colors" aria-label="축소">
+                  <Minus className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
-            {/* 지도 데이터 출처 표기 */}
-            <div className="absolute bottom-2 right-3 z-10 text-[9px] font-bold text-[#7E7E7E] bg-white/90 backdrop-blur-xs px-2.5 py-0.5 rounded-[6px] border border-[#E2E2E2] pointer-events-none">
-              © OpenStreetMap · CARTO
-            </div>
+            {/* 지도 데이터 출처 */}
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noreferrer"
+              className="absolute bottom-0 right-0 z-10 min-h-11 pl-3 pr-2 pb-2 flex items-end"
+            >
+              <span className="text-[12px] font-medium text-[#6B6E73] bg-white/90 px-2 py-0.5 rounded-[4px]">© OpenStreetMap contributors</span>
+            </a>
           </div>
 
-          {/* 하단 선택 매장 퀵 뷰 드로어 */}
+          {/* 선택 매장 요약 */}
           <footer className="bg-white border-t border-[#E2E2E2] p-4 z-20 flex-shrink-0">
-            <div
-              onClick={onShopClick}
-              className="flex items-center gap-3.5 p-3.5 bg-[#F2F2F2] rounded-[6px] cursor-pointer hover:bg-[#EAEAEA] active:scale-99 transition-all group"
-            >
-              <div className="w-16 h-16 rounded-[6px] overflow-hidden bg-white flex-shrink-0 border border-[#E2E2E2]">
-                <img src={selected.photo} alt={selected.name} className="w-full h-full object-cover" />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="text-[15px] font-black text-[#25282B] truncate">{selected.name} · {selected.branch}</span>
-                  <span className="text-[10px] font-bold text-[#25282B] bg-[#EAEAEA] px-2 py-0.5 rounded-[32px]">
-                    {selected.style}
-                  </span>
+            {selected ? (
+              <button
+                type="button"
+                onClick={() => onShopClick(selected.name)}
+                className="w-full text-left flex items-center gap-3.5 active:opacity-80 transition-opacity"
+              >
+                <div className="w-16 h-16 rounded-[6px] overflow-hidden bg-[#E9E9E9] flex-shrink-0">
+                  {selected.photo && <img src={selected.photo} alt="" className="w-full h-full object-cover" />}
                 </div>
-                <p className="text-[11px] text-[#7E7E7E] mt-0.5">{selected.spec}</p>
-                <div className="flex items-center gap-2 mt-1 text-[10px] text-[#7E7E7E]">
-                  <span className="text-[#2E7D32] font-bold">● {selected.status}</span>
-                  <span>·</span>
-                  <span>거리 {selected.dist}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[15px] font-bold truncate">
+                      {selected.name}
+                      {selected.branch && <span className="text-[#6B6E73]"> · {selected.branch}</span>}
+                    </span>
+                    <span className="text-[12px] font-bold text-[#25282B] bg-[#F2F2F2] px-2 py-0.5 rounded-[4px] shrink-0">{selected.style}</span>
+                  </div>
+                  <p className="text-[13px] text-[#6B6E73] mt-0.5 truncate">{selected.spec}</p>
+                  <div className="flex items-center gap-1.5 mt-1 text-[12px] font-bold">
+                    <span className={selected.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {selected.status}</span>
+                    <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
+                    <span className="text-[#6B6E73]">{selected.dist}</span>
+                    {selected.match > 0 && (
+                      <>
+                        <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
+                        <span className="text-[#E60000]">일치도 {selected.match}%</span>
+                      </>
+                    )}
+                  </div>
                 </div>
+                <ChevronRight className="w-5 h-5 text-[#6B6E73] shrink-0" aria-hidden="true" />
+              </button>
+            ) : (
+              <div className="py-3 text-center">
+                <p className="text-[15px] font-bold">조건에 맞는 라멘집이 없어요</p>
+                <p className="mt-1 text-[13px] text-[#6B6E73]">검색어나 필터를 바꿔 다시 찾아보세요.</p>
               </div>
-
-              <span className="text-[12px] font-bold text-[#E60000] group-hover:translate-x-1 transition-transform">
-                →
-              </span>
-            </div>
+            )}
           </footer>
         </div>
       ) : (
-        /* 📜 전체 라멘집 목록 뷰 */
-        <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3">
-          
-          {/* 목록 상단 헤더 & 정렬 바 */}
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-4">
           <div className="flex items-center justify-between pb-2 border-b border-[#E2E2E2]">
-            <span className="text-[12px] font-bold text-[#7E7E7E]">
-              총 <span className="text-[#25282B] font-black">{filteredShops.length}곳</span>의 라멘집
+            <span className="text-[13px] font-bold text-[#6B6E73]">
+              총 <span className="text-[#25282B] font-extrabold">{filteredShops.length}곳</span>
             </span>
-
-            <div className="flex items-center gap-1 text-[11px] font-bold">
-              <button
-                onClick={() => setSortBy('dist')}
-                className={`px-2 py-0.5 rounded-[4px] ${sortBy === 'dist' ? 'bg-[#25282B] text-white' : 'text-[#7E7E7E]'}`}
-              >
-                거리순
-              </button>
-              <button
-                onClick={() => setSortBy('popular')}
-                className={`px-2 py-0.5 rounded-[4px] ${sortBy === 'popular' ? 'bg-[#25282B] text-white' : 'text-[#7E7E7E]'}`}
-              >
-                인기순
-              </button>
-              <button
-                onClick={() => setSortBy('name')}
-                className={`px-2 py-0.5 rounded-[4px] ${sortBy === 'name' ? 'bg-[#25282B] text-white' : 'text-[#7E7E7E]'}`}
-              >
-                이름순
-              </button>
+            <div className="flex items-center gap-1 text-[13px] font-bold" role="group" aria-label="정렬">
+              {([['dist', '거리순'], ['match', '취향순'], ['name', '이름순']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSortBy(key)}
+                  aria-pressed={sortBy === key}
+                  className={`min-h-11 px-2.5 rounded-[4px] transition-colors ${sortBy === key ? 'bg-[#25282B] text-white' : 'text-[#6B6E73]'}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* 라멘집 카드 리스트 */}
-
-          <div className="space-y-2.5">
+          <ul className="mt-3 space-y-2.5">
             {filteredShops.map(shop => (
-              <article
-                key={shop.id}
-                onClick={onShopClick}
-                className="bg-white rounded-[6px] border border-[#E2E2E2] p-3.5 hover:border-[#BEBEBE] active:scale-99 transition-all cursor-pointer flex items-center gap-3.5 group shadow-2xs"
-              >
-                <div className="w-18 h-18 rounded-[6px] overflow-hidden bg-[#F2F2F2] flex-shrink-0 border border-[#E2E2E2]">
-                  <img src={shop.photo} alt={shop.name} className="w-full h-full object-cover" />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-[15px] font-black text-[#25282B] truncate group-hover:text-[#E60000] transition-colors">
-                    {shop.name} · {shop.branch}
-                  </h3>
-
-                  <p className="text-[11px] text-[#7E7E7E] mt-0.5 truncate">{shop.spec}</p>
-
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#F2F2F2] text-[11px]">
-                    <div className="flex items-center gap-1.5 text-[#7E7E7E] whitespace-nowrap min-w-0">
-                      <span className={shop.status === '영업 중' ? 'text-[#2E7D32] font-bold' : 'text-[#7E7E7E] font-bold'}>
-                        ● {shop.status}
-                      </span>
-                      <span>·</span>
-                      <span>{shop.dist}</span>
-                      <span>·</span>
-                      <span>LO {shop.lastOrder}</span>
-                    </div>
-
-                    <span className="text-[10px] font-bold text-[#25282B] bg-[#F2F2F2] px-2 py-0.5 rounded-[32px] flex-shrink-0">
-                      {shop.style}
-                    </span>
+              <li key={shop.id}>
+                <button
+                  type="button"
+                  onClick={() => onShopClick(shop.name)}
+                  className="w-full text-left bg-white rounded-[6px] border border-[#E2E2E2] p-3.5 active:bg-[#F2F2F2] transition-colors flex items-center gap-3.5"
+                >
+                  <div className="w-18 h-18 rounded-[6px] overflow-hidden bg-[#E9E9E9] flex-shrink-0">
+                    {shop.photo && <img src={shop.photo} alt="" className="w-full h-full object-cover" />}
                   </div>
-                </div>
-              </article>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-[15px] font-bold truncate">
+                        {shop.name}
+                        {shop.branch && <span className="text-[#6B6E73]"> · {shop.branch}</span>}
+                      </h3>
+                      {shop.match > 0 && <span className="text-[13px] font-extrabold text-[#E60000] shrink-0 tabular-nums">{shop.match}%</span>}
+                    </div>
+                    <p className="text-[13px] text-[#6B6E73] mt-0.5 truncate">{shop.style} · {shop.spec}</p>
+                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#F2F2F2] text-[12px] font-bold text-[#6B6E73] whitespace-nowrap overflow-hidden">
+                      <span className={shop.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {shop.status}</span>
+                      <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
+                      <span>{shop.dist}</span>
+                      {shop.lastOrder && (
+                        <>
+                          <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
+                          <span>라스트오더 {shop.lastOrder}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
+          {filteredShops.length === 0 && (
+            <div className="mt-3 rounded-[6px] border border-dashed border-[#BEBEBE] px-5 py-10 text-center">
+              <p className="text-[15px] font-bold">검색 결과가 없어요</p>
+              <p className="mt-1 text-[13px] text-[#6B6E73]">다른 매장명이나 라멘 종류로 찾아보세요.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

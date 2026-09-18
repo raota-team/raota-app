@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { recordMonthKey } from './utils/monthlyReport'
 import { Home, MapPin, MessageSquare, Flame, User } from 'lucide-react'
 import HomeScreen from './screens/HomeScreen'
 
@@ -9,15 +10,20 @@ import RecordScreen from './screens/RecordScreen'
 import RecordCompleteScreen from './screens/RecordCompleteScreen'
 import MyScreen from './screens/MyScreen'
 import TasteDetailScreen from './screens/TasteDetailScreen'
+import MonthlyTasteScreen from './screens/MonthlyTasteScreen'
+import { PAST_REPORTS } from './data/tasteReports'
 import LoungeScreen from './screens/LoungeScreen'
 import NewsFeedScreen from './screens/NewsFeedScreen'
 import AIRecommendScreen from './screens/AIRecommendScreen'
 import LoginScreen from './screens/LoginScreen'
 import RegisterScreen from './screens/RegisterScreen'
 import NotificationScreen from './screens/NotificationScreen'
-import type { AppNotification, NotificationSettings, RamenLog, RevisitOption, TasteNotes, UserProfile } from './types'
+import { findShopById, getShopDetail } from './data/shops'
+import { DEMO_BASE_PROFILE, DEMO_MONTHLY_RECORD_COUNTS, DEMO_SAVED_SHOP_NAMES, DEMO_TOTAL_BOWLS, DEMO_USER } from './data/demoProfile'
+import { EMPTY_PROFILE, mergeProfile } from './utils/taste'
+import type { AppNotification, NotificationSettings, RamenLog, RamenLogComment, RevisitOption, TasteNotes, TasteProfile, TasteScores, UserProfile } from './types'
 
-type Screen = 'home' | 'map' | 'shopDetail' | 'record' | 'recordComplete' | 'my' | 'tasteDetail' | 'lounge' | 'newsFeed' | 'aiRecommend' | 'login' | 'register' | 'notifications'
+type Screen = 'home' | 'map' | 'shopDetail' | 'record' | 'recordComplete' | 'my' | 'tasteDetail' | 'monthlyTaste' | 'lounge' | 'newsFeed' | 'aiRecommend' | 'login' | 'register' | 'notifications'
 type Tab = 'home' | 'map' | 'lounge' | 'newsFeed' | 'my'
 
 
@@ -48,6 +54,27 @@ const INITIAL_LOGS: RamenLog[] = [
     isLiked: false,
     isPublic: true,
     createdAt: '2시간 전',
+    commentCount: 2,
+    comments: [
+      {
+        id: 101,
+        logId: 1,
+        author: { name: '쇼유러버', level: '라멘집 탐험가 (Lv.3)' },
+        createdAt: '1시간 전',
+        content: '면을 꼬들하게 주문하면 국물 흡착이 정말 좋아요!',
+        likes: 4,
+        isLiked: false,
+      },
+      {
+        id: 102,
+        logId: 1,
+        author: { name: '차슈폭격기', level: '라멘 미식가 (Lv.5)' },
+        createdAt: '방금 전',
+        content: '닭과 오리 더블 육수라니, 다음 방문 메뉴로 저장해둘게요.',
+        likes: 2,
+        isLiked: false,
+      },
+    ],
   },
   {
     id: 2,
@@ -73,6 +100,18 @@ const INITIAL_LOGS: RamenLog[] = [
     isLiked: true,
     isPublic: true,
     createdAt: '어제',
+    commentCount: 1,
+    comments: [
+      {
+        id: 103,
+        logId: 2,
+        author: { name: '돈골파마스터', level: '라멘집 단골 (Lv.4)' },
+        createdAt: '어제',
+        content: '간 보통, 기름 보통, 면 꼬들하게 조합 추천합니다.',
+        likes: 3,
+        isLiked: false,
+      },
+    ],
   },
   {
     id: 3,
@@ -108,9 +147,8 @@ interface State {
   user: UserProfile | null
   showRecordSheet: boolean
   recordSheetMode: RecordSheetMode
-  recordCount: number
+  monthlyRecordCounts: Record<string, number>
   recordSaved: boolean
-  savedShop: boolean
   recordShopName: string
   recordStatus: 'idle' | 'saving' | 'error' | 'success'
   mapSelectedPin: number
@@ -119,23 +157,22 @@ interface State {
   lastLog: RamenLog | null
   notifications: AppNotification[]
   notificationSettings: NotificationSettings
+  autoGenerateReport?: boolean
+  monthlyTasteId?: string
+  selectedShopName: string
+  detailFromScreen: Screen
+  savedShopNames: string[]
+  ownedLogs: RamenLog[]
+  resumeAiResult: boolean
+  /** 이번 세션 이전까지의 5축 누적 평균 */
+  profileBase: TasteProfile
+  /** 마지막 기록 직전의 누적 평균. 완료 화면의 변화량 계산에 쓴다. */
+  profileBeforeLastLog: TasteProfile | null
+  /** 세션이 바뀔 때마다 증가해 탭 화면의 지역 상태를 초기화한다. */
+  sessionKey: number
 }
 
-const DEFAULT_USER: UserProfile = {
-  id: 'user-demo',
-  name: '뿡',
-  nickname: '뿡',
-  email: 'bbung@raota.net',
-  avatar: null,
-  level: '라멘 미식가',
-  levelNumber: 5,
-  membershipNo: '#RT-0842',
-  bio: '12시간 농축 동물계 육수와 꼬들한 면을 애호합니다.',
-  favoriteRamenType: '돈코츠',
-  visitedCount: 42,
-  revisitCount: 28,
-  isLoggedIn: true,
-}
+const DEFAULT_USER = DEMO_USER
 
 const INITIAL_NOTIFICATIONS: AppNotification[] = [
   {
@@ -160,7 +197,7 @@ const INITIAL_NOTIFICATIONS: AppNotification[] = [
     id: 'noti-3',
     type: 'level',
     title: '활동 등급 승급 축하!',
-    content: '라멘로그 40그릇을 돌파하여 [라멘 미식가 (Lv.5)]로 공식 승급되었습니다 🏆',
+    content: '라멘로그 30그릇을 돌파하여 [라멘집 단골 (Lv.4)]로 공식 승급되었습니다 🏆',
     time: '어제',
     isRead: false,
   },
@@ -171,7 +208,7 @@ const INITIAL_NOTIFICATIONS: AppNotification[] = [
     content: '[세상끝의라멘]에서 가을 한정 특제 "바지락 시오 라멘"을 개시했습니다.',
     time: '2일 전',
     isRead: true,
-    targetShopId: 2,
+    targetShopId: 4,
   },
   {
     id: 'noti-5',
@@ -192,46 +229,62 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   shopNewsEnabled: true,
 }
 
+/** 로그인한 사용자에 맞춘 세션 상태. 로그아웃, 로그인, 가입 때 이전 세션 흔적을 모두 지운다. */
+const sessionStateFor = (user: UserProfile | null) => {
+  const isDemo = user?.id === DEMO_USER.id
+  return {
+    user,
+    monthlyRecordCounts: isDemo ? { ...DEMO_MONTHLY_RECORD_COUNTS } : {},
+    savedShopNames: isDemo ? [...DEMO_SAVED_SHOP_NAMES] : [],
+    ownedLogs: [] as RamenLog[],
+    recordSaved: false,
+    lastLog: null,
+    profileBase: isDemo ? DEMO_BASE_PROFILE : EMPTY_PROFILE,
+    profileBeforeLastLog: null,
+    notifications: isDemo ? INITIAL_NOTIFICATIONS : [],
+    monthlyTasteId: undefined,
+    autoGenerateReport: false,
+    showRecordSheet: false,
+  } satisfies Partial<State>
+}
+
 const INIT: State = {
   screen: 'home',
   activeTab: 'home',
   fromScreen: 'home',
-  user: DEFAULT_USER,
-  showRecordSheet: false,
   recordSheetMode: 'nearby',
-  recordCount: 22,
-  recordSaved: false,
-  savedShop: false,
   recordShopName: '멘야준',
   recordStatus: 'idle',
   mapSelectedPin: 0,
   mapFilter: '전체',
   logs: INITIAL_LOGS,
-  lastLog: null,
-  notifications: INITIAL_NOTIFICATIONS,
   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
+  selectedShopName: '멘야준',
+  detailFromScreen: 'home',
+  resumeAiResult: false,
+  sessionKey: 0,
+  ...sessionStateFor(DEFAULT_USER),
 }
-
 
 
 function IconHome({ active }: { active: boolean }) {
-  return <Home className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
+  return <Home className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#6B6E73'} />
 }
 
 function IconMap({ active }: { active: boolean }) {
-  return <MapPin className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
+  return <MapPin className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#6B6E73'} />
 }
 
 function IconLounge({ active }: { active: boolean }) {
-  return <MessageSquare className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
+  return <MessageSquare className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#6B6E73'} />
 }
 
 function IconNewsFeed({ active }: { active: boolean }) {
-  return <Flame className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
+  return <Flame className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#6B6E73'} />
 }
 
 function IconMy({ active }: { active: boolean }) {
-  return <User className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#7E7E7E'} />
+  return <User className="w-5 h-5" strokeWidth={active ? 2.3 : 1.8} color={active ? '#E60000' : '#6B6E73'} />
 }
 
 
@@ -251,99 +304,286 @@ const TAB_SCREENS: Record<Tab, Screen> = {
   my: 'my',
 }
 
+
+const TAB_IDS = TAB_DEFS.map(tab => tab.id)
+const isTabScreen = (screen: Screen): screen is Tab => (TAB_IDS as Screen[]).includes(screen)
+
+const currentMonthKey = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Seoul',
+  year: 'numeric',
+  month: '2-digit',
+}).format(new Date())
+
+export interface SaveLogData {
+  shopName: string
+  branch: string
+  menuName: string
+  ramenType: string
+  visitedAt: string
+  revisit: RevisitOption
+  note: string
+  tasteNotes: TasteNotes
+  scores?: TasteScores
+  imageUrl: string | null
+  photos?: string[]
+  isPublic: boolean
+}
+
 export default function App() {
   const [s, setS] = useState<State>(INIT)
+  const [visitedTabs, setVisitedTabs] = useState<Tab[]>(['home'])
 
   const patch = (partial: Partial<State>) => setS(prev => ({ ...prev, ...partial }))
 
   const nav = (screen: Screen, extra?: Partial<State>) =>
     setS(prev => ({ ...prev, ...extra, screen }))
 
+  const isDemo = s.user?.id === DEMO_USER.id
+  // 누적 그릇 수는 세션 시작 시점의 누적 + 이번 세션에 남긴 기록으로만 계산한다.
+  const totalBowls = s.user ? (isDemo ? DEMO_TOTAL_BOWLS : s.user.visitedCount) + s.ownedLogs.length : 0
+  const profile = mergeProfile(s.profileBase, s.ownedLogs)
+  const unreadCount = s.user ? s.notifications.filter(n => !n.isRead).length : 0
+
+  const activeTabScreen: Tab | null = isTabScreen(s.screen) ? s.screen : null
+
+  useEffect(() => {
+    if (activeTabScreen && !visitedTabs.includes(activeTabScreen)) setVisitedTabs(prev => [...prev, activeTabScreen])
+  }, [activeTabScreen, visitedTabs])
+
+  // 열린 기록 시트는 Escape로 닫는다. 화면 안의 모달은 각 화면이 처리한다.
+  useEffect(() => {
+    if (!s.showRecordSheet) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') patch({ showRecordSheet: false })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [s.showRecordSheet])
+
+  /** 세션을 바꾸고 이전 세션의 화면 상태를 버린다. */
+  const switchSession = (user: UserProfile | null, screen: Screen, extra?: Partial<State>) => {
+    setVisitedTabs(isTabScreen(screen) ? [screen] : ['home'])
+    setS(prev => ({
+      ...prev,
+      ...sessionStateFor(user),
+      logs: INITIAL_LOGS,
+      sessionKey: prev.sessionKey + 1,
+      screen,
+      activeTab: isTabScreen(screen) ? screen : prev.activeTab,
+      ...extra,
+    }))
+  }
+
+  const requireLogin = (fromScreen: Screen) => nav('login', { fromScreen, showRecordSheet: false })
+
+  const openShop = (shopName = '멘야준', fromScreen?: Screen) => {
+    setS(prev => ({
+      ...prev,
+      selectedShopName: shopName,
+      detailFromScreen: fromScreen ?? prev.screen,
+      resumeAiResult: (fromScreen ?? prev.screen) === 'aiRecommend',
+      screen: 'shopDetail',
+    }))
+  }
+
   const setTab = (tab: Tab) =>
     setS(prev => ({ ...prev, activeTab: tab, screen: TAB_SCREENS[tab], fromScreen: prev.screen }))
 
+  const openRecordSheet = (mode: RecordSheetMode = 'nearby') => {
+    if (!s.user) return requireLogin(s.screen)
+    patch({ showRecordSheet: true, recordSheetMode: mode })
+  }
+
   const startRecord = (shopName = '멘야준') => {
-    patch({
+    if (!s.user) return requireLogin(s.screen)
+    setS(prev => ({
+      ...prev,
       showRecordSheet: false,
       recordShopName: shopName,
       recordStatus: 'idle',
-    })
-    nav('record', { fromScreen: s.screen as Screen })
+      fromScreen: prev.screen,
+      screen: 'record',
+    }))
   }
 
-  const handleSaveLog = (logData: {
-    shopName: string
-    branch: string
-    menuName: string
-    ramenType: string
-    visitedAt: string
-    revisit: RevisitOption
-    note: string
-    tasteNotes: TasteNotes
-    imageUrl: string | null
-    isPublic: boolean
-  }) => {
+  const toggleSavedShop = (shopName: string) => {
+    if (!s.user) return requireLogin(s.screen)
+    patch({
+      savedShopNames: s.savedShopNames.includes(shopName)
+        ? s.savedShopNames.filter(name => name !== shopName)
+        : [...s.savedShopNames, shopName],
+    })
+  }
+
+  const updateLog = (logId: number, update: (log: RamenLog) => RamenLog) => {
+    setS(prev => ({
+      ...prev,
+      logs: prev.logs.map(log => (log.id === logId ? update(log) : log)),
+      ownedLogs: prev.ownedLogs.map(log => (log.id === logId ? update(log) : log)),
+    }))
+  }
+
+  const toggleLogLike = (logId: number) => {
+    if (!s.user) return requireLogin(s.screen)
+    updateLog(logId, log => ({ ...log, isLiked: !log.isLiked, likes: Math.max(0, log.likes + (log.isLiked ? -1 : 1)) }))
+  }
+
+  const addLogComment = (logId: number, content: string, parentId?: number) => {
+    const user = s.user
+    if (!user) return requireLogin(s.screen)
+    updateLog(logId, log => {
+      const parent = log.comments?.find(comment => comment.id === parentId)
+      const comment: RamenLogComment = {
+        id: Date.now(),
+        logId,
+        author: { name: user.nickname, avatar: user.avatar ?? undefined, level: `${user.level} (Lv.${user.levelNumber})` },
+        content,
+        createdAt: '방금 전',
+        likes: 0,
+        isLiked: false,
+        parentId: parent?.id,
+        parentAuthorName: parent?.author.name,
+      }
+      const comments = [...(log.comments ?? []), comment]
+      return { ...log, comments, commentCount: comments.length }
+    })
+  }
+
+  const handleSaveLog = (logData: SaveLogData) => {
+    const user = s.user
+    if (!user) return requireLogin('record')
     patch({ recordStatus: 'saving' })
 
     setTimeout(() => {
+      const createdId = Date.now()
+      const shop = getShopDetail(logData.shopName)
+      const photos = logData.photos?.length ? logData.photos : logData.imageUrl ? [logData.imageUrl] : []
       const createdLog: RamenLog = {
-        id: Date.now(),
-        author: { name: '뿡뿡이', level: '돈골파 9레벨' },
-        shop: { id: Date.now(), name: logData.shopName, branch: logData.branch, location: '서울 마포구' },
+        id: createdId,
+        author: { name: user.nickname, avatar: user.avatar ?? undefined, level: `${user.level} (Lv.${user.levelNumber})` },
+        shop: { id: shop.id || createdId, name: shop.name, branch: logData.branch || shop.branch, location: '서울 마포구' },
         menuName: logData.menuName,
         ramenType: logData.ramenType,
         visitedAt: logData.visitedAt,
-        imageUrl: logData.imageUrl,
+        imageUrl: photos[0] ?? null,
+        photos,
         note: logData.note,
         tasteNotes: logData.tasteNotes,
+        scores: logData.scores,
         revisit: logData.revisit,
-        likes: 1,
-        isLiked: true,
+        likes: 0,
+        isLiked: false,
         isPublic: logData.isPublic,
         createdAt: '방금 전',
+        commentCount: 0,
+        comments: [],
       }
 
+      const monthKey = recordMonthKey(createdLog.visitedAt)
       setS(prev => ({
         ...prev,
+        monthlyRecordCounts: monthKey ? { ...prev.monthlyRecordCounts, [monthKey]: (prev.monthlyRecordCounts[monthKey] ?? 0) + 1 } : prev.monthlyRecordCounts,
         recordStatus: 'success',
-        recordCount: prev.recordCount + 1,
         recordSaved: true,
         lastLog: createdLog,
+        profileBeforeLastLog: mergeProfile(prev.profileBase, prev.ownedLogs),
+        ownedLogs: [createdLog, ...prev.ownedLogs],
         logs: createdLog.isPublic ? [createdLog, ...prev.logs] : prev.logs,
         screen: 'recordComplete',
       }))
     }, 1200)
   }
 
-  const renderScreen = () => {
-    switch (s.screen) {
+  const renderTab = (tab: Tab): ReactNode => {
+    switch (tab) {
       case 'home':
         return (
           <HomeScreen
             user={s.user}
             recordSaved={s.recordSaved}
-            unreadNotificationsCount={s.notifications.filter(n => !n.isRead).length}
-            onNotificationClick={() => nav('notifications', { fromScreen: 'home' })}
-            onShopClick={() => nav('shopDetail', { fromScreen: 'home' })}
-            onRecordClick={(mode) => patch({ showRecordSheet: true, recordSheetMode: mode || 'nearby' })}
-            onAIRecommendClick={() => nav('aiRecommend', { fromScreen: 'home' })}
-            onViewTaste={() => nav('tasteDetail', { fromScreen: 'home' })}
+            unreadNotificationsCount={unreadCount}
+            onNotificationClick={() => (s.user ? nav('notifications', { fromScreen: 'home' }) : requireLogin('home'))}
+            onShopClick={(shopName) => openShop(shopName, 'home')}
+            onRecordClick={(mode) => openRecordSheet(mode || 'nearby')}
+            onAIRecommendClick={() => nav('aiRecommend', { fromScreen: 'home', resumeAiResult: false })}
+            onViewTaste={() => nav('tasteDetail', { fromScreen: 'home', autoGenerateReport: false })}
             onLoginClick={() => nav('login', { fromScreen: 'home' })}
             onRegisterClick={() => nav('register', { fromScreen: 'home' })}
-            onUserClick={() => nav('my', { activeTab: 'my' })}
-            onMapClick={() => nav('map', { activeTab: 'map' })}
-            onNewsFeedClick={() => nav('newsFeed', { activeTab: 'newsFeed' })}
+            onUserClick={() => setTab('my')}
+            onMapClick={() => setTab('map')}
+            onNewsFeedClick={() => setTab('newsFeed')}
           />
         )
+      case 'map':
+        return (
+          <MapScreen
+            isActive={s.screen === 'map'}
+            selectedPin={s.mapSelectedPin}
+            filter={s.mapFilter}
+            onPinSelect={i => patch({ mapSelectedPin: i })}
+            onFilterChange={f => patch({ mapFilter: f })}
+            onShopClick={(shopName) => openShop(shopName, 'map')}
+          />
+        )
+      case 'lounge':
+        return (
+          <LoungeScreen
+            logs={s.logs}
+            user={s.user}
+            onRecordClick={() => openRecordSheet('nearby')}
+            onShopClick={(shopName) => openShop(shopName, 'lounge')}
+            onToggleLike={toggleLogLike}
+            onAddComment={addLogComment}
+            onLoginRequest={() => requireLogin('lounge')}
+          />
+        )
+      case 'newsFeed':
+        return (
+          <NewsFeedScreen
+            user={s.user}
+            onLoginRequest={() => requireLogin('newsFeed')}
+            onShopClick={(shopName) => openShop(shopName, 'newsFeed')}
+          />
+        )
+      case 'my':
+        return (
+          <MyScreen
+            user={s.user}
+            recordCount={totalBowls}
+            profile={profile}
+            ownedLogs={s.ownedLogs}
+            savedShopNames={s.savedShopNames}
+            monthlyRecordCount={s.monthlyRecordCounts[currentMonthKey()] ?? 0}
+            hasPastReports={isDemo}
+            onViewMonthlyChanges={() => nav('monthlyTaste')}
+            unreadNotificationsCount={unreadCount}
+            onNotificationClick={() => nav('notifications', { fromScreen: 'my' })}
+            onShopClick={(shopName) => openShop(shopName, 'my')}
+            onToggleSavedShop={toggleSavedShop}
+            onViewTaste={(autoGenerate) => nav('tasteDetail', { fromScreen: 'my', autoGenerateReport: Boolean(autoGenerate) })}
+            onLoginClick={() => nav('login', { fromScreen: 'my' })}
+            onRegisterClick={() => nav('register', { fromScreen: 'my' })}
+            onLogout={() => switchSession(null, 'home')}
+            onUpdateUser={(updated) => {
+              patch({ user: s.user ? { ...s.user, ...updated } : null })
+            }}
+            onLoungeClick={() => setTab('lounge')}
+          />
+        )
+    }
+  }
 
+  const renderScreen = (): ReactNode => {
+    switch (s.screen) {
       case 'login':
         return (
           <LoginScreen
             onBack={() => nav(s.fromScreen || 'home')}
             onRegisterClick={() => nav('register', { fromScreen: s.fromScreen || 'home' })}
+            onGuestBrowse={() => switchSession(null, 'home')}
             onLoginSuccess={(user) => {
-              patch({ user })
-              nav(s.fromScreen || 'home')
+              const target = s.fromScreen && s.fromScreen !== 'login' && s.fromScreen !== 'register' ? s.fromScreen : 'home'
+              switchSession(user, target)
             }}
           />
         )
@@ -352,30 +592,19 @@ export default function App() {
           <RegisterScreen
             onBack={() => nav(s.fromScreen || 'home')}
             onLoginClick={() => nav('login', { fromScreen: s.fromScreen || 'home' })}
-            onRegisterSuccess={(user) => {
-              patch({ user, activeTab: 'home' })
-              nav('home', { activeTab: 'home' })
-            }}
-          />
-        )
-
-      case 'map':
-        return (
-          <MapScreen
-            selectedPin={s.mapSelectedPin}
-            filter={s.mapFilter}
-            onPinSelect={i => patch({ mapSelectedPin: i })}
-            onFilterChange={f => patch({ mapFilter: f })}
-            onShopClick={() => nav('shopDetail', { fromScreen: 'map' })}
+            onRegisterSuccess={(user) => switchSession(user, 'home')}
           />
         )
       case 'shopDetail':
         return (
           <ShopDetailScreen
-            savedShop={s.savedShop}
-            onSaveShop={() => patch({ savedShop: !s.savedShop })}
-            onBack={() => nav(s.fromScreen)}
-            onRecord={() => startRecord('멘야준')}
+            shop={getShopDetail(s.selectedShopName)}
+            savedShop={s.savedShopNames.includes(s.selectedShopName)}
+            isLoggedIn={Boolean(s.user)}
+            onSaveShop={() => toggleSavedShop(s.selectedShopName)}
+            onLoginRequest={() => requireLogin('shopDetail')}
+            onBack={() => nav(s.detailFromScreen)}
+            onRecord={() => startRecord(s.selectedShopName)}
           />
         )
       case 'record':
@@ -391,72 +620,47 @@ export default function App() {
       case 'recordComplete':
         return (
           <RecordCompleteScreen
-            recordCount={s.recordCount}
+            recordCount={totalBowls}
             lastLog={s.lastLog}
-            onViewTaste={() => nav('tasteDetail', { fromScreen: 'recordComplete' })}
-            onHome={() => nav('home', { activeTab: 'home' })}
-          />
-        )
-      case 'lounge':
-        return (
-          <LoungeScreen
-            logs={s.logs}
-            onRecordClick={() => patch({ showRecordSheet: true })}
-            onShopClick={() => nav('shopDetail', { fromScreen: 'lounge' })}
-          />
-        )
-      case 'newsFeed':
-        return (
-          <NewsFeedScreen
-            onShopClick={() => nav('shopDetail', { fromScreen: 'newsFeed' })}
+            profileBefore={s.profileBeforeLastLog ?? s.profileBase}
+            profileAfter={profile}
+            onViewTaste={() => nav('tasteDetail', { fromScreen: 'recordComplete', autoGenerateReport: false })}
+            onHome={() => setTab('home')}
           />
         )
       case 'aiRecommend':
         return (
           <AIRecommendScreen
-            onBack={() => nav('home', { activeTab: 'home' })}
-            onShopClick={() => nav('shopDetail', { fromScreen: 'aiRecommend' })}
-            onRecordShop={(shopName) => startRecord(shopName)}
-          />
-        )
-      case 'my':
-        return (
-          <MyScreen
             user={s.user}
-            recordSaved={s.recordSaved}
-            recordCount={s.recordCount}
-            unreadNotificationsCount={s.notifications.filter(n => !n.isRead).length}
-            onNotificationClick={() => nav('notifications', { fromScreen: 'my' })}
-            onShopClick={(_shopId) => nav('shopDetail', { fromScreen: 'my' })}
-            onViewTaste={() => nav('tasteDetail', { fromScreen: 'my' })}
-            onLoginClick={() => nav('login', { fromScreen: 'my' })}
-            onRegisterClick={() => nav('register', { fromScreen: 'my' })}
-            onLogout={() => {
-              patch({ user: null })
-              nav('login', { fromScreen: 'home' })
-            }}
-            onUpdateUser={(updated) => {
-              patch({ user: s.user ? { ...s.user, ...updated } : null })
-            }}
-            onLoungeClick={() => nav('lounge', { activeTab: 'lounge' })}
+            onBack={() => setTab('home')}
+            onShopClick={(shopName) => openShop(shopName, 'aiRecommend')}
+            onRecordShop={(shopName) => startRecord(shopName)}
+            initialResultShopName={s.resumeAiResult ? s.selectedShopName : undefined}
           />
         )
-
-
-
-
-
+      case 'monthlyTaste':
+        return (
+          <MonthlyTasteScreen
+            onBack={() => setTab('my')}
+            reports={isDemo ? PAST_REPORTS : []}
+            monthlyRecordCounts={s.monthlyRecordCounts}
+            ownedLogs={s.ownedLogs}
+            initialSelectedId={s.monthlyTasteId}
+            onSelectMonth={(id) => patch({ monthlyTasteId: id })}
+          />
+        )
       case 'tasteDetail':
         return (
           <TasteDetailScreen
             onBack={() => {
-              if (s.fromScreen === 'recordComplete') {
-                nav('home', { activeTab: 'home' })
-              } else {
-                nav(s.fromScreen || 'my')
-              }
+              if (s.fromScreen === 'recordComplete') setTab('home')
+              else nav(s.fromScreen || 'my')
             }}
-            recordCount={s.recordCount}
+            user={s.user}
+            recordCount={totalBowls}
+            profile={profile}
+            logs={s.ownedLogs}
+            initialGenerating={Boolean(s.autoGenerateReport)}
           />
         )
       case 'notifications':
@@ -483,117 +687,69 @@ export default function App() {
             onUpdateSettings={(newSettings) => {
               patch({ notificationSettings: newSettings })
             }}
-            onNavigateToShop={(_shopId) => {
-              nav('shopDetail', { fromScreen: 'notifications' })
-            }}
-            onNavigateToLounge={() => {
-              nav('lounge', { activeTab: 'lounge' })
-            }}
-            onNavigateToMy={() => {
-              nav('my', { activeTab: 'my' })
-            }}
+            onNavigateToShop={(shopId) => openShop(findShopById(shopId)?.name ?? '멘야준', 'notifications')}
+            onNavigateToLounge={() => setTab('lounge')}
+            onNavigateToMy={() => setTab('my')}
           />
         )
-
       default:
-        return (
-          <HomeScreen
-            user={s.user}
-            recordSaved={s.recordSaved}
-            unreadNotificationsCount={s.notifications.filter(n => !n.isRead).length}
-            onNotificationClick={() => nav('notifications', { fromScreen: 'home' })}
-            onShopClick={() => nav('shopDetail', { fromScreen: 'home' })}
-            onRecordClick={(mode) => patch({ showRecordSheet: true, recordSheetMode: mode || 'nearby' })}
-            onAIRecommendClick={() => nav('aiRecommend', { fromScreen: 'home' })}
-            onLoginClick={() => nav('login', { fromScreen: 'home' })}
-            onRegisterClick={() => nav('register', { fromScreen: 'home' })}
-            onUserClick={() => nav('my', { activeTab: 'my' })}
-            onMapClick={() => nav('map', { activeTab: 'map' })}
-            onNewsFeedClick={() => nav('newsFeed', { activeTab: 'newsFeed' })}
-          />
-        )
-
-
+        return null
     }
   }
 
-  const showTabBar = ['home', 'map', 'lounge', 'newsFeed', 'my'].includes(s.screen)
-  const tabForScreen: Partial<Record<Screen, Tab>> = {
-    home: 'home',
-    map: 'map',
-    lounge: 'lounge',
-    newsFeed: 'newsFeed',
-    my: 'my',
-  }
-  const displayTab = tabForScreen[s.screen] ?? s.activeTab
-  const isDarkStatusBar = s.screen === 'my'
+  const displayTab = activeTabScreen ?? s.activeTab
+  const isDarkTop = s.screen === 'my' && Boolean(s.user)
 
   return (
-    <main className="w-full h-full min-h-screen max-h-screen overflow-hidden bg-[#121316] flex items-center justify-center p-0 sm:p-3 selection:bg-brand selection:text-white">
-      {/* iPhone 16 Pro Style Shell Container */}
-      <div className="relative w-full max-w-[390px] h-full sm:h-[min(844px,calc(100vh-20px))] bg-white sm:rounded-[48px] sm:shadow-[0_25px_70px_rgba(0,0,0,0.5)] sm:border-[8px] sm:border-[#1C1D21] flex flex-col overflow-hidden">
-
-        {/* iPhone Top Status Bar + Dynamic Island */}
-        <div className={`relative z-50 h-11 px-6 flex items-center justify-between select-none pointer-events-none shrink-0 transition-colors duration-200 ${
-          isDarkStatusBar ? 'bg-[#25282B]' : 'bg-white border-b border-[#F2F2F2]'
-        }`}>
-          {/* Status Bar Clock */}
-          <span className={`text-[13.5px] font-black tracking-tight ${isDarkStatusBar ? 'text-white' : 'text-[#25282B]'}`}>
-            9:41
-          </span>
-
-          {/* Dynamic Island Notch */}
-          <div className="absolute left-1/2 -translate-x-1/2 top-2 w-[92px] h-[26px] bg-black rounded-full flex items-center justify-end pr-2.5 shadow-xs">
-            {/* Front Camera Lens */}
-            <div className="w-2.5 h-2.5 rounded-full bg-[#1A1A1C] border border-stone-800 flex items-center justify-center">
-              <div className="w-1 h-1 rounded-full bg-[#0D1B2A]" />
-            </div>
-          </div>
-
-          {/* Status Bar Icons (Signal + WiFi + Battery) */}
-          <div className={`flex items-center gap-1.5 ${isDarkStatusBar ? 'text-white' : 'text-[#25282B]'}`}>
-            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-              <rect x="2" y="16" width="3" height="6" rx="1" />
-              <rect x="7" y="12" width="3" height="10" rx="1" />
-              <rect x="12" y="8" width="3" height="14" rx="1" />
-              <rect x="17" y="4" width="3" height="18" rx="1" />
-            </svg>
-            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-              <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z" />
-            </svg>
-            <div className={`w-5 h-2.5 border rounded-[3px] p-0.5 flex items-center relative ${
-              isDarkStatusBar ? 'border-white/70' : 'border-[#25282B]'
-            }`}>
-              <div className={`w-full h-full rounded-[1px] ${isDarkStatusBar ? 'bg-white' : 'bg-[#25282B]'}`} />
-              <div className={`absolute -right-1 w-0.5 h-1 rounded-r-xs ${isDarkStatusBar ? 'bg-white/70' : 'bg-[#25282B]'}`} />
-            </div>
-          </div>
-        </div>
+    <main className="w-full h-[100dvh] overflow-hidden bg-[#F2F2F2] flex justify-center selection:bg-brand selection:text-white">
+      {/* 모바일에서는 화면 전체, 넓은 화면에서는 430px 앱 열 */}
+      <div className="relative w-full max-w-[430px] h-full bg-white flex flex-col overflow-hidden sm:border-x sm:border-[#E2E2E2]">
+        {/* 상단 안전 영역: 기기 상태 표시줄과 겹치지 않게 한다 */}
+        <div
+          aria-hidden="true"
+          className={`shrink-0 h-[env(safe-area-inset-top)] ${isDarkTop ? 'bg-[#25282B]' : 'bg-white'}`}
+        />
 
         {/* Screen area */}
         <div className="relative overflow-hidden flex-1 min-h-0 flex flex-col bg-white">
-          {renderScreen()}
+          {/* 탭 화면은 한 번 열면 유지해 탭을 오가도 스크롤, 입력, 선택 상태가 남는다 */}
+          <div key={s.sessionKey} className={`absolute inset-0 flex-col ${activeTabScreen ? 'flex' : 'hidden'}`}>
+            {visitedTabs.map(tab => (
+              <div
+                key={tab}
+                className={`flex-1 min-h-0 flex-col ${activeTabScreen === tab ? 'flex' : 'hidden'}`}
+                aria-hidden={activeTabScreen !== tab}
+              >
+                {renderTab(tab)}
+              </div>
+            ))}
+          </div>
+          {!activeTabScreen && (
+            <div className="absolute inset-0 flex flex-col">
+              {renderScreen()}
+            </div>
+          )}
         </div>
 
         {/* 5-Tab Navigation Bar */}
-        {showTabBar && (
-          <nav className="relative z-40 flex-shrink-0 bg-white border-t border-[#E2E2E2] overflow-visible">
-            <div className="flex items-center h-13 px-1">
+        {activeTabScreen && (
+          <nav aria-label="주요 메뉴" className="relative z-40 flex-shrink-0 bg-white border-t border-[#E2E2E2] pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-stretch h-14 px-1">
               {TAB_DEFS.map(({ id, label, Icon }) => {
                 const active = displayTab === id
                 return (
                   <button
+                    type="button"
                     key={id}
                     onClick={() => setTab(id)}
-                    className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative transition-all active:scale-95"
-                    aria-label={`${label} 탭`}
+                    className="flex-1 flex flex-col items-center justify-center gap-1 relative transition-transform active:scale-95"
                     aria-current={active ? 'page' : undefined}
                   >
                     {active && (
-                      <span className="absolute top-0 w-6 h-0.5 bg-[#E60000] anim-fade-in" />
+                      <span aria-hidden="true" className="absolute top-0 w-6 h-0.5 bg-[#E60000]" />
                     )}
                     <Icon active={active} />
-                    <span className={`text-[10px] font-bold tracking-tight transition-colors ${active ? 'text-[#E60000]' : 'text-[#7E7E7E]'}`}>
+                    <span className={`text-[12px] leading-none font-bold tracking-tight ${active ? 'text-[#E60000]' : 'text-[#6B6E73]'}`}>
                       {label}
                     </span>
                   </button>
@@ -602,16 +758,15 @@ export default function App() {
             </div>
           </nav>
         )}
-
-        {/* iPhone Bottom Home Indicator Bar */}
-        <div className="shrink-0 bg-white pt-1 pb-2 flex justify-center items-center pointer-events-none">
-          <div className="w-32 h-1 bg-black/60 rounded-full" />
-        </div>
+        {!activeTabScreen && (
+          <div aria-hidden="true" className="shrink-0 h-[env(safe-area-inset-bottom)] bg-white" />
+        )}
 
         {/* Record sheet overlay */}
         {s.showRecordSheet && (
           <RecordSheet
             initialMode={s.recordSheetMode || 'nearby'}
+            savedShopNames={s.savedShopNames}
             onClose={() => patch({ showRecordSheet: false })}
             onSelectShop={(shopName) => startRecord(shopName || '멘야준')}
           />

@@ -1,157 +1,187 @@
 import { useEffect, useState } from 'react'
-import type { RamenLog } from '../types'
+import { Check, ImageOff } from 'lucide-react'
+import type { RamenLog, TasteProfile } from '../types'
+import { TASTE_AXES, profileDelta, scoresFromLog } from '../utils/taste'
 
 interface Props {
   recordCount: number
+  /** 이번 기록 직전의 5축 누적 평균 */
+  profileBefore?: TasteProfile
+  /** 이번 기록을 반영한 5축 누적 평균 */
+  profileAfter?: TasteProfile
   lastLog?: RamenLog | null
   onViewTaste: () => void
   onHome: () => void
 }
 
-const CHANGES = [
-  { label: '국물 농도', delta: '+1.2', pct: '85%' },
-  { label: '면 익힘 정도', delta: '+0.8', pct: '78%' },
-  { label: '타레 감칠맛', delta: '+0.3', pct: '65%' },
-]
+/** 'YYYY-MM-DD' → '2026.09.18'. 형식이 다르면 그대로 보여준다. */
+const formatDate = (iso: string) => {
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[1]}.${match[2]}.${match[3]}` : iso
+}
 
-export default function RecordCompleteScreen({ recordCount, lastLog, onViewTaste, onHome }: Props) {
-  const [step, setStep] = useState(0)
+/** 방문일과 누적 그릇 수로 티켓 번호를 만든다. 예: 2026-0918-43 */
+const ticketNumber = (iso: string, count: number) => {
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[1]}-${match[2]}${match[3]}-${count}` : `${count}`
+}
+
+const formatDelta = (delta: number) => (delta > 0 ? `+${delta.toFixed(2)}` : delta.toFixed(2))
+
+export default function RecordCompleteScreen({
+  recordCount,
+  profileBefore,
+  profileAfter,
+  lastLog,
+  onViewTaste,
+  onHome,
+}: Props) {
+  const [counted, setCounted] = useState(false)
 
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setStep(1), 100),
-      setTimeout(() => setStep(2), 450),
-      setTimeout(() => setStep(3), 850),
-      setTimeout(() => setStep(4), 1250),
-      setTimeout(() => setStep(5), 1600),
-    ]
-    return () => timers.forEach(clearTimeout)
+    const timer = setTimeout(() => setCounted(true), 250)
+    return () => clearTimeout(timer)
   }, [])
 
-  const shopName = lastLog?.shop.name || '멘야준'
-  const branchName = lastLog?.shop.branch || '망원 본점'
-  const menuName = lastLog?.menuName || '특제 쇼유 라멘'
-  const ramenType = lastLog?.ramenType || '쇼유'
-  const photo = lastLog?.imageUrl || 'https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80'
-  const date = lastLog?.visitedAt || '2026. 09. 01'
-  const revisit = lastLog?.revisit || '자주 감'
+  const scores = lastLog ? scoresFromLog(lastLog) : null
+  const canShowDelta = Boolean(scores && profileBefore && profileAfter)
+  const delta = canShowDelta ? profileDelta(profileBefore!, profileAfter!) : null
+  const isFirstBowl = (profileBefore?.count ?? 0) === 0
+  const nothingMoved = Boolean(delta && !isFirstBowl && TASTE_AXES.every(axis => delta[axis.key] === 0))
+
+  // 이번 그릇에서 가장 높은 축(재방문 제외). 동점이면 앞 순서를 고른다.
+  const topAxis = scores
+    ? TASTE_AXES.filter(axis => axis.key !== 'revisit').reduce((best, axis) => (scores[axis.key] > scores[best.key] ? axis : best))
+    : null
+
+  const comment = (() => {
+    if (!lastLog) return null
+    const bowl = `${lastLog.shop.name}의 ${lastLog.ramenType} 한 그릇`
+    if (!scores || !topAxis) return `${bowl}이 ${recordCount}번째 기록으로 남았어요.`
+    return `${bowl}. 이번 그릇은 ${topAxis.label} ${scores[topAxis.key]}점이 가장 높았고, 재방문 의사는 ‘${lastLog.revisit}’으로 남겼어요.`
+  })()
 
   return (
-    <div className="h-full overflow-y-auto no-scrollbar bg-[#FFFFFF] flex flex-col justify-between text-[#25282B]">
-      
-      {/* 1. 상단 축하 배너 (보더폰 딥 잉크 히어로) */}
-      <header className="flex-shrink-0 bg-[#25282B] text-white pt-5 pb-7 px-5 flex flex-col items-center text-center border-b border-[#1A1C1E]">
-        {step >= 1 && (
-          <div className="anim-fade-in-up flex flex-col items-center">
-            <div className="w-12 h-12 rounded-[6px] bg-white p-1.5 border border-white/20 flex items-center justify-center mb-2.5">
-              <img src="/logo.png" alt="RAOTA Logo" className="w-full h-full object-contain" />
-            </div>
-            
-            <span className="text-[10px] font-bold text-[#E60000] tracking-wider block mb-0.5">
-              라멘로그 아카이빙 완료
+    <div className="h-full flex flex-col overflow-hidden bg-white text-[#25282B]">
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+        {/* 상단 인장 배너 */}
+        <header className="bg-[#25282B] text-white px-5 pt-6 pb-7 flex flex-col items-center text-center">
+          <div className="anim-stamp w-14 h-14 rounded-full border-2 border-[#E60000] flex items-center justify-center mb-3">
+            <Check className="w-7 h-7 text-[#E60000]" strokeWidth={3} aria-hidden="true" />
+          </div>
+          <p className="text-[13px] font-bold text-white/70">기록이 저장됐어요</p>
+          <div className="flex items-baseline justify-center gap-2 mt-1" aria-label={`${recordCount}번째 그릇`}>
+            <span className="text-[56px] leading-none font-extrabold tracking-[-2px] tabular-nums">
+              {counted ? recordCount : Math.max(recordCount - 1, 0)}
             </span>
-            
-            <div className="flex items-baseline justify-center gap-3 my-1">
-              <span className="text-[20px] text-white/30 line-through">{recordCount - 1}</span>
-              <span className="text-[16px] text-[#E60000]">→</span>
-              <span className="text-[56px] text-white leading-none font-black tracking-[-2px]">
-                {recordCount}
-              </span>
-              <span className="text-[14px] text-white/60">번째 그릇</span>
-            </div>
-
-            <p className="text-[13px] font-bold text-white/90">
-              라멘 감정 데이터가 성공적으로 아카이빙되었습니다.
-            </p>
+            <span className="text-[17px] font-bold text-white/70">번째 그릇</span>
           </div>
-        )}
-      </header>
+        </header>
 
-      {/* 2. 본문 내용 */}
-      <div className="flex-1 p-4 space-y-3.5">
-        
-        {/* 발권 티켓 카드 (보더폰 6px 카드) */}
-        {step >= 2 && (
-          <div className="anim-fade-in-up bg-white rounded-[6px] border border-[#E2E2E2] p-4">
-            <div className="flex justify-between items-center pb-2 mb-2 border-b border-dashed border-[#E2E2E2] text-[10px] font-bold text-[#7E7E7E]">
-              <span>기록 티켓 번호 2026-0901-{recordCount}</span>
-              <span className="text-[#E60000]">라멘로그 기록 완료 ✓</span>
-            </div>
-
-            <div className="flex items-center gap-3.5">
-              <div className="w-14 h-14 rounded-[6px] overflow-hidden bg-[#F2F2F2] flex-shrink-0 border border-[#E2E2E2]">
-                <img
-                  src={photo}
-                  alt={menuName}
-                  className="w-full h-full object-cover"
-                />
+        <div className="px-4 pt-4 pb-6 space-y-4">
+          {/* 티켓 */}
+          {lastLog ? (
+            <section aria-label="기록 티켓" className="anim-fade-in-up rounded-[6px] border border-[#E2E2E2] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-dashed border-[#E2E2E2] text-[12px] font-bold">
+                <span className="text-[#6B6E73]">티켓 {ticketNumber(lastLog.visitedAt, recordCount)}</span>
+                <span className="text-[#E60000]">{lastLog.isPublic ? '공개 기록' : '나만 보기'}</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#E60000] bg-[#E60000]/10 px-2 py-0.5 rounded-[32px]">{ramenType}</span>
-                  <span className="text-[10px] font-bold text-[#25282B] bg-[#F2F2F2] px-2 py-0.5 rounded-[32px]">{revisit}</span>
+              <div className="flex items-center gap-3.5 p-4">
+                <div className="w-16 h-16 rounded-[6px] overflow-hidden bg-[#F2F2F2] shrink-0 border border-[#E2E2E2] flex items-center justify-center text-[#6B6E73]">
+                  {lastLog.imageUrl ? (
+                    <img src={lastLog.imageUrl} alt={lastLog.menuName} className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageOff className="w-5 h-5" aria-label="사진 없음" />
+                  )}
                 </div>
-                <p className="text-[15px] font-black text-[#25282B] truncate mt-0.5">{menuName}</p>
-                <p className="text-[11px] text-[#7E7E7E]">{shopName} · {branchName} ({date})</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 취향 변화 지표 */}
-        {step >= 3 && (
-          <div className="anim-fade-in-up bg-white rounded-[6px] border border-[#E2E2E2] p-4">
-            <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
-              <h2 className="text-[13px] font-black tracking-tight text-[#25282B]">
-                취향 벡터 정밀 갱신
-              </h2>
-              <span className="text-[10px] text-[#E60000] font-bold">갱신 완료</span>
-            </div>
-
-            <div className="space-y-2.5">
-              {CHANGES.map((c, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="text-[12px] font-bold text-[#25282B] w-28 flex-shrink-0">{c.label}</span>
-                  <div className="flex-1 h-2 bg-[#F2F2F2] rounded-[32px] overflow-hidden">
-                    <div className="h-full bg-[#25282B] rounded-[32px]" style={{ width: c.pct }}/>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[12px] font-bold text-[#E60000] bg-[#E60000]/10 px-2 py-0.5 rounded-[32px]">{lastLog.ramenType}</span>
+                    <span className="text-[12px] font-bold text-[#25282B] bg-[#F2F2F2] px-2 py-0.5 rounded-[32px]">{lastLog.revisit}</span>
                   </div>
-                  <span className="text-[11px] font-bold text-[#E60000] w-10 text-right">{c.delta}</span>
+                  <p className="text-[15px] font-bold truncate mt-1">{lastLog.menuName}</p>
+                  <p className="text-[13px] text-[#6B6E73] truncate">
+                    {[lastLog.shop.name, lastLog.shop.branch].filter(Boolean).join(' · ')} · {formatDate(lastLog.visitedAt)}
+                  </p>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            </section>
+          ) : (
+            <p className="text-[14px] text-[#6B6E73]">이번 기록 정보를 불러오지 못했어요.</p>
+          )}
 
-        {/* 큐레이터 코멘트 */}
-        {step >= 4 && (
-          <div className="anim-fade-in-up bg-[#F2F2F2] rounded-[6px] p-4">
-            <span className="text-[10px] text-[#7E7E7E] font-bold tracking-wider block mb-1">
-              큐레이터 분석 코멘트
-            </span>
-            <p className="text-[13px] text-[#25282B] leading-relaxed">
-              "진한 동물계 육수와 단단한 면발에 대한 취향 성향이 더욱 뚜렷해졌습니다. 다음 라멘 탐험으로는 맑은 청탕 계열 시오 라멘을 맛보시는 것을 추천합니다."
-            </p>
-          </div>
-        )}
+          {/* 취향 여권 변화 */}
+          {delta && scores && profileBefore && profileAfter && (
+            <section aria-labelledby="delta-title" className="anim-fade-in-up">
+              <div className="flex items-baseline justify-between pb-2 mb-1 border-b border-[#E2E2E2]">
+                <h2 id="delta-title" className="text-[17px] font-extrabold tracking-tight">취향 여권 변화</h2>
+                <span className="text-[12px] font-bold text-[#6B6E73]">
+                  {isFirstBowl ? '첫 그릇' : `${profileBefore.count}그릇 → ${profileAfter.count}그릇 평균`}
+                </span>
+              </div>
+              <ul className="divide-y divide-[#F2F2F2]">
+                {TASTE_AXES.map(axis => {
+                  const change = delta[axis.key]
+                  const before = (profileBefore.exact ?? profileBefore.scores)[axis.key]
+                  const after = (profileAfter.exact ?? profileAfter.scores)[axis.key]
+                  return (
+                    <li key={axis.key} className="flex items-center justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <span className="block text-[14px] font-bold">{axis.label}</span>
+                        <span className="block text-[12px] text-[#6B6E73]">이번 그릇 {scores[axis.key]}점</span>
+                      </div>
+                      <div className="text-right shrink-0 tabular-nums">
+                        {isFirstBowl ? (
+                          <span className="text-[14px] font-bold">{after.toFixed(1)}</span>
+                        ) : (
+                          <span className="text-[14px] font-bold">
+                            <span className="text-[#6B6E73] font-medium">{before.toFixed(2)}</span>
+                            <span className="text-[#6B6E73] font-medium mx-1">→</span>
+                            {after.toFixed(2)}
+                          </span>
+                        )}
+                        <span className={`block text-[12px] font-bold ${change === 0 ? 'text-[#6B6E73]' : 'text-[#E60000]'}`}>
+                          {isFirstBowl ? '첫 기록' : change === 0 ? '변화 없음' : formatDelta(change)}
+                        </span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+              {nothingMoved && (
+                <p className="text-[12px] text-[#6B6E73] pt-2">
+                  평소 평균과 같은 점수를 줘서 {profileBefore.count}그릇 평균이 그대로예요.
+                </p>
+              )}
+            </section>
+          )}
+
+          {/* 이번 그릇 한 줄 */}
+          {comment && (
+            <section aria-label="이번 그릇 정리" className="anim-fade-in-up bg-[#F2F2F2] rounded-[6px] px-4 py-3.5">
+              <p className="text-[14px] leading-relaxed">{comment}</p>
+            </section>
+          )}
+        </div>
       </div>
 
-      {/* 3. 하단 액션 버튼 (보더폰 60px 필 버튼) */}
-      {step >= 5 && (
-        <footer className="anim-fade-in-up p-4 bg-white border-t border-[#E2E2E2] space-y-2">
-          <button
-            onClick={onViewTaste}
-            className="w-full h-13 rounded-[60px] bg-[#E60000] text-white text-[15px] font-bold tracking-wide active:scale-98 hover:bg-[#CC0000] transition-all flex items-center justify-center gap-2"
-          >
-            라멘 취향 리포트 확인하기 →
-          </button>
-          <button
-            onClick={onHome}
-            className="w-full h-11 rounded-[60px] border border-[#E2E2E2] hover:border-[#BEBEBE] text-[13px] font-bold text-[#25282B] bg-white hover:bg-[#F9F9F9] transition-all shadow-2xs"
-          >
-            홈으로 돌아가기
-          </button>
-        </footer>
-      )}
+      {/* 하단 고정 CTA */}
+      <footer className="shrink-0 px-4 pt-3 pb-3 bg-white border-t border-[#E2E2E2] space-y-2">
+        <button
+          type="button"
+          onClick={onViewTaste}
+          className="w-full h-13 rounded-[60px] bg-[#E60000] text-white text-[15px] font-bold active:bg-[#CC0000] transition-colors"
+        >
+          내 취향 여권 보기
+        </button>
+        <button
+          type="button"
+          onClick={onHome}
+          className="w-full min-h-11 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2] transition-colors"
+        >
+          홈으로
+        </button>
+      </footer>
     </div>
   )
 }

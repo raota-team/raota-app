@@ -2,6 +2,11 @@ export type TasteNoteKey = 'broth' | 'noodle' | 'seasoning' | 'topping'
 export type TasteNotes = Record<TasteNoteKey, string[]>
 export type RevisitOption = '자주 감' | '가끔 생각남' | '한번이면 충분'
 
+import type { TasteScores } from '@raota/shared'
+
+// 5축 타입은 iOS 앱과 공유한다.
+export type { TasteAxisKey, TasteScores, TasteProfile } from '@raota/shared'
+
 /** 구글 지도 크롤링 원본 CSV 레코드 인터페이스 */
 export interface GoogleShopCsvRecord {
   ramen_shop_id: number | string
@@ -105,11 +110,31 @@ export interface RamenLog {
   photos?: string[]
   note: string
   tasteNotes: TasteNotes
+  /** 5축 평가. 이전 버전 데모 로그에는 없을 수 있다. */
+  scores?: TasteScores
   revisit: RevisitOption
   likes: number
   isLiked: boolean
   isPublic: boolean
   createdAt: string
+  commentCount?: number
+  comments?: RamenLogComment[]
+}
+
+export interface RamenLogComment {
+  id: number
+  logId: number
+  author: {
+    name: string
+    avatar?: string
+    level: string
+  }
+  content: string
+  createdAt: string
+  likes: number
+  isLiked: boolean
+  parentId?: number
+  parentAuthorName?: string
 }
 
 export const TASTE_FIELDS: Array<{ key: TasteNoteKey; label: string; options: string[] }> = [
@@ -161,5 +186,4 @@ export interface NotificationSettings {
   levelUpEnabled: boolean
   shopNewsEnabled: boolean
 }
-
 
