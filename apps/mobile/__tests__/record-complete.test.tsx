@@ -1,4 +1,5 @@
-import { fireEvent, render, within } from "@testing-library/react-native"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { act, fireEvent, render, waitFor, within } from "@testing-library/react-native"
 import { useState, type ReactElement } from "react"
 import { Pressable } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
@@ -8,6 +9,7 @@ import { createInitialPersistedState } from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
 import RecordCompleteScreen from "@/app/(flows)/record/complete"
+import { REMINDER_DECISION_KEY } from "@/src/notifications"
 
 const mockParams: { logId?: string } = {}
 
@@ -31,6 +33,9 @@ jest.mock("lucide-react-native", () => {
     get: (target, property) => (property === "__esModule" ? target.__esModule : Icon),
   })
 })
+
+// 기록 리마인더 권한·예약은 __mocks__/expo-notifications.ts로 흉내 낸다
+jest.mock("expo-notifications")
 
 // jest에는 worklets 네이티브 모듈이 없어 공식 mock을 쓴다. mock에 없는 useReducedMotion만 채운다
 jest.mock("react-native-worklets", () => require("react-native-worklets/src/mock"))
@@ -162,5 +167,65 @@ describe("record complete screen", () => {
     expect(router.replace).toHaveBeenCalledWith("/taste")
     await fireEvent.press(home)
     expect(router.replace).toHaveBeenCalledWith("/native")
+  })
+})
+
+describe("record reminder opt-in on the complete screen", () => {
+  const notifications = jest.requireMock("expo-notifications") as {
+    getPermissionsAsync: jest.Mock
+    requestPermissionsAsync: jest.Mock
+    scheduleNotificationAsync: jest.Mock
+  }
+  const undetermined = { status: "undetermined", granted: false, canAskAgain: true, expires: "never" }
+  const granted = { status: "granted", granted: true, canAskAgain: true, expires: "never" }
+  const prompt = "다음 달 리포트가 나올 즈음 알려드릴까요?"
+  /** 안내는 인장 연출 뒤(0.9초)에 뜬다. 그보다 오래 기다려도 안 뜨는지 본다 */
+  const waitLongerThanPromptDelay = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 1200)))
+
+  beforeEach(async () => {
+    jest.clearAllMocks()
+    notifications.getPermissionsAsync.mockResolvedValue(undetermined)
+    await AsyncStorage.clear()
+  })
+
+  it("explains first, then asks the system permission and schedules reminders", async () => {
+    const view = await renderCreatedLog()
+
+    expect(await view.findByText(prompt, undefined, { timeout: 2000 })).toBeTruthy()
+    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled()
+
+    notifications.getPermissionsAsync.mockResolvedValue(granted)
+    await fireEvent.press(view.getByRole("button", { name: "알림 받기" }))
+
+    await waitFor(() => expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(notifications.scheduleNotificationAsync).toHaveBeenCalled())
+    expect(await AsyncStorage.getItem(REMINDER_DECISION_KEY)).toBe("accepted")
+    await waitFor(() => expect(view.queryByText(prompt)).toBeNull())
+  })
+
+  it("remembers a no without asking the system", async () => {
+    const view = await renderCreatedLog()
+    await fireEvent.press(await view.findByRole("button", { name: "괜찮아요" }, { timeout: 2000 }))
+
+    await waitFor(() => expect(view.queryByText(prompt)).toBeNull())
+    expect(await AsyncStorage.getItem(REMINDER_DECISION_KEY)).toBe("declined")
+    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled()
+  })
+
+  it("does not ask again once an answer is stored", async () => {
+    await AsyncStorage.setItem(REMINDER_DECISION_KEY, "declined")
+    const view = await renderCreatedLog()
+
+    await waitLongerThanPromptDelay()
+    expect(view.queryByText(prompt)).toBeNull()
+  })
+
+  it("quietly reschedules without asking when permission is already granted", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(granted)
+    const view = await renderCreatedLog()
+
+    await waitFor(() => expect(notifications.scheduleNotificationAsync).toHaveBeenCalled())
+    await waitLongerThanPromptDelay()
+    expect(view.queryByText(prompt)).toBeNull()
   })
 })

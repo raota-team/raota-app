@@ -47,6 +47,13 @@
         }
       ],
       [
+        "expo-notifications",
+        {
+          "color": "#E60000",
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/logo.png",

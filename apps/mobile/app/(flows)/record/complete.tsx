@@ -14,9 +14,10 @@ import Animated, {
 } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { TASTE_AXES, scoresFromLog, type RamenLog, type TasteProfile, type TasteScores } from "@raota/shared"
-import { useBowlCount, useLog, useTasteProfile } from "@/src/data"
-import { AppText, Button, EmptyState, LoadingState, SectionHeader, StickyActionBar } from "@/src/components/ui"
+import { MONTHLY_REPORT_TARGET, TASTE_AXES, scoresFromLog, type RamenLog, type TasteProfile, type TasteScores } from "@raota/shared"
+import { useBowlCount, useLog, useMonthlyReports, useTasteProfile } from "@/src/data"
+import { AppText, Button, ConfirmDialog, EmptyState, LoadingState, SectionHeader, StickyActionBar } from "@/src/components/ui"
+import { useRecordReminderPrompt } from "@/src/notifications"
 import { colors, radii, spacing, typography } from "@/src/theme"
 
 /*
@@ -70,6 +71,9 @@ export default function RecordCompleteScreen() {
   const { data: log, isLoading } = useLog(parsedLogId)
   const { data: bowlCount } = useBowlCount()
   const { data: taste } = useTasteProfile(parsedLogId)
+  const { data: monthly } = useMonthlyReports()
+  // 기록을 저장할 때마다 리마인더를 다시 예약하고, 처음이면 알림을 받을지 한 번만 묻는다
+  const reminder = useRecordReminderPrompt(Boolean(log), monthly.current?.recordCount ?? 0)
   const insets = useSafeAreaInsets()
   const reduceMotion = useReducedMotion()
 
@@ -231,6 +235,17 @@ export default function RecordCompleteScreen() {
           ) : null}
         </Animated.View>
       </ScrollView>
+
+      <ConfirmDialog
+        cancelLabel="괜찮아요"
+        confirmLabel="알림 받기"
+        loading={reminder.busy}
+        message={`이번 달 기록이 ${MONTHLY_REPORT_TARGET}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요.`}
+        onCancel={reminder.decline}
+        onConfirm={() => void reminder.accept()}
+        title="다음 달 리포트가 나올 즈음 알려드릴까요?"
+        visible={reminder.visible}
+      />
 
       {/* 하단 고정 CTA. 처음부터 보인다 */}
       <StickyActionBar>

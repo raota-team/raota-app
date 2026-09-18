@@ -7,6 +7,7 @@ import { FlatList, Pressable, StyleSheet, TextInput, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 import type { Shop, ShopCatalogItem } from "@raota/shared"
+import { track } from "@/src/analytics"
 import { useBookmarkedShops, useShops } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
 import { AppText, Chip, EmptyState, IconButton, LoadingState } from "@/src/components/ui"
@@ -128,7 +129,7 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
 }
 
 export default function SelectShopScreen() {
-  const params = useLocalSearchParams<{ mode?: string }>()
+  const params = useLocalSearchParams<{ mode?: string; source?: string }>()
   const { state, actions } = useRaota()
   const shopsQuery = useShops()
   const bookmarked = useBookmarkedShops()
@@ -183,6 +184,10 @@ export default function SelectShopScreen() {
       actions.selectRecordDraftShop(shop.id)
       router.back()
       return
+    }
+    // 기록 시작은 떠 있는 기록 버튼이 이미 셌다(source=fab). 알림 등 다른 입구에서 왔을 때만 여기서 센다
+    if (params.source !== "fab") {
+      track("record_started", { mode, source: params.source === "reminder" ? "reminder" : "select_shop" })
     }
     router.replace({ pathname: "/record/new", params: { shopId: String(shop.id) } })
   }

@@ -39,6 +39,7 @@ import {
   type TasteNotes,
   type TasteScores,
 } from "@raota/shared"
+import { track } from "@/src/analytics"
 import { useShop, useShops } from "@/src/data"
 import {
   RECORD_NOTE_MAX_LENGTH,
@@ -376,6 +377,7 @@ export default function NewRecordScreen() {
     setSaveError(null)
     try {
       const log = await actions.createLog(input)
+      track("record_saved", { hasPhoto: photos.length > 0, scoresComplete: true })
       allowLeave.current = true
       actions.clearRecordDraft()
       router.replace({ pathname: "/record/complete", params: { logId: String(log.id) } })

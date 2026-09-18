@@ -1,485 +1,299 @@
-import { useState } from "react"
-import { router } from "expo-router"
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native"
-import {
-  Check,
-  Eye,
-  EyeOff,
-  Fingerprint,
-  MessageCircle,
-} from "lucide-react-native"
-import {
-  // Keep the flow shell shared with every other native screen.
-  ActionButton,
-  FlowHeader,
-  FlowPage,
-  FlowScroll,
-  InlineNotice,
-  flowStyles,
-  palette,
-} from "../_layout"
+import { useState, type ReactElement } from "react"
+import { router, useLocalSearchParams } from "expo-router"
+import { StatusBar } from "expo-status-bar"
+import * as Haptics from "expo-haptics"
+import { Compass, Soup } from "lucide-react-native"
+import { Image, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import Svg, { Path } from "react-native-svg"
 
+import { DEMO_USER, type AuthProvider } from "@raota/shared"
+import { track } from "@/src/analytics"
+import { AppText, Button, Header, Toast } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
+import { colors, radii, spacing, touchTarget, typography } from "@/src/theme"
 
-type Provider = "kakao" | "google" | "passkey"
+/*
+ * 로그인. 웹 LoginScreen과 같은 구성이다(로고 → 한 줄 소개 → 간편 로그인 → 데모 체험 → 둘러보기).
+ * MVP 로그인 수단은 Apple · 카카오 · Google 세 가지다.
+ * params.mode === "signup"(마이·홈의 "회원가입")이면 같은 화면을 가입 흐름으로 보여준다:
+ * 간편 로그인으로 계정을 만든 뒤 바로 온보딩(닉네임·약관)으로 간다. 데모 체험은 가입 흐름에서 빼 둔다.
+ * 지금은 인증 API가 없어 actions.login({ provider })로 기기 안에서만 로그인한다.
+ * TODO(#44): Apple은 expo-apple-authentication의 signInAsync, 카카오·Google은 각 SDK로 토큰을 받아
+ *   서버 #44(소셜 로그인)에 보내고, 응답의 사용자·신규 여부로 온보딩 이동을 정한다.
+ */
 
-function ProviderButton({
-  provider,
-  label,
-  loading,
-  disabled,
-  onPress,
-}: {
-  provider: Provider
-  label: string
-  loading: boolean
-  disabled: boolean
-  onPress: () => void
-}) {
-  const isPasskey = provider === "passkey"
+type SocialProvider = Extract<AuthProvider, "apple" | "kakao" | "google">
+
+/** 제공자 브랜드 가이드가 정한 색. RAOTA 토큰 밖의 예외라 이 화면에만 둔다 */
+const PROVIDER_BRAND = {
+  kakaoContainer: "#FEE500",
+  kakaoLabel: "#191919",
+  googleBlue: "#4285F4",
+  googleGreen: "#34A853",
+  googleYellow: "#FBBC05",
+  googleRed: "#EA4335",
+} as const
+
+function AppleMark() {
+  return (
+    <Svg height={20} viewBox="0 0 24 24" width={20}>
+      <Path
+        d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
+        fill={colors.white}
+      />
+    </Svg>
+  )
+}
+
+function KakaoMark() {
+  return (
+    <Svg height={20} viewBox="0 0 24 24" width={20}>
+      <Path
+        d="M12 3C6.477 3 2 6.477 2 10.767c0 2.766 1.87 5.187 4.675 6.485-.205.768-.744 2.783-.852 3.203-.133.522.191.516.402.377.275-.182 4.37-2.96 5.09-3.46.88.13 1.777.195 2.685.195 5.523 0 10-3.477 10-7.767C22 6.477 17.523 3 12 3z"
+        fill={PROVIDER_BRAND.kakaoLabel}
+      />
+    </Svg>
+  )
+}
+
+function GoogleMark() {
+  return (
+    <Svg height={20} viewBox="0 0 24 24" width={20}>
+      <Path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill={PROVIDER_BRAND.googleBlue}
+      />
+      <Path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill={PROVIDER_BRAND.googleGreen}
+      />
+      <Path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        fill={PROVIDER_BRAND.googleYellow}
+      />
+      <Path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill={PROVIDER_BRAND.googleRed}
+      />
+    </Svg>
+  )
+}
+
+const PROVIDERS: Array<{ id: SocialProvider; label: string; Mark: () => ReactElement }> = [
+  // Apple 로그인은 다른 간편 로그인보다 눈에 덜 띄면 안 된다(App Store 가이드라인 4.8). 맨 위 검은 버튼
+  { id: "apple", label: "Apple로 계속하기", Mark: AppleMark },
+  { id: "kakao", label: "카카오로 계속하기", Mark: KakaoMark },
+  { id: "google", label: "Google로 계속하기", Mark: GoogleMark },
+]
+
+function ProviderButton({ id, label, Mark, onPress }: (typeof PROVIDERS)[number] & { onPress: () => void }) {
+  const textColor = id === "apple" ? colors.white : id === "kakao" ? PROVIDER_BRAND.kakaoLabel : colors.ink
   return (
     <Pressable
-      accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ busy: loading, disabled }}
-      disabled={disabled || loading}
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
-        styles.providerButton,
-        isPasskey && styles.providerButtonPrimary,
-        (disabled || loading) && styles.providerButtonDisabled,
+        styles.provider,
+        id === "apple" && styles.providerApple,
+        id === "kakao" && styles.providerKakao,
+        id === "google" && styles.providerGoogle,
         pressed && styles.pressed,
       ]}
+      testID={`login-${id}`}
     >
-      <View style={styles.providerIcon}>
-        {provider === "kakao" ? (
-          <MessageCircle color="#3C1E1E" fill="#FEE500" size={19} />
-        ) : provider === "google" ? (
-          <Text style={styles.googleMark}>G</Text>
-        ) : (
-          <Fingerprint color={palette.canvas} size={20} strokeWidth={2} />
-        )}
+      <View style={styles.providerMark}>
+        <Mark />
       </View>
-      {loading ? (
-        <View style={styles.providerLoading}>
-          <ActivityIndicator color={isPasskey ? palette.canvas : palette.ink} />
-          <Text
-            style={[
-              styles.providerLabel,
-              isPasskey && styles.providerLabelInverse,
-            ]}
-          >
-            로그인 중…
-          </Text>
-        </View>
-      ) : (
-        <Text
-          style={[styles.providerLabel, isPasskey && styles.providerLabelInverse]}
-        >
-          {label}
-        </Text>
-      )}
+      <AppText maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.providerLabel, { color: textColor }]}>
+        {label}
+      </AppText>
     </Pressable>
   )
 }
 
 export default function LoginScreen() {
-  const { state, actions } = useRaota()
-  const [emailMode, setEmailMode] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(true)
-  const [loading, setLoading] = useState<Provider | "email" | "guest" | null>(
-    null,
-  )
-  const [error, setError] = useState<string | null>(null)
+  const params = useLocalSearchParams<{ mode?: string }>()
+  const signup = params.mode === "signup"
+  const { state, currentUser, actions } = useRaota()
+  const [notice, setNotice] = useState<string | null>(null)
 
-  const finishLogin = async (input: Parameters<typeof actions.login>[0]) => {
-    setError(null)
-    await Promise.resolve(actions.login(input))
-    if (state.onboardingCompleted) router.replace("/native")
-    else router.replace("/auth/onboarding")
+  const leave = () => {
+    if (router.canGoBack()) router.back()
+    else router.replace("/native")
   }
 
-  const socialLogin = async (provider: Provider) => {
-    setLoading(provider)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 650))
-      await finishLogin({
-        // The local repository keeps the existing AuthProvider union. The
-        // visual passkey entry point is intentionally mapped to the mock
-        // Apple provider until a real passkey service is connected.
-        provider: provider === "passkey" ? "apple" : provider,
-        name:
-          provider === "kakao"
-            ? "카카오 라멘러"
-            : provider === "google"
-              ? "구글 라멘러"
-              : "생체보안 라멘러",
-      })
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  const emailLogin = async () => {
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setError("올바른 이메일 주소를 입력해주세요.")
+  const afterLogin = () => {
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined)
+    // 가입 흐름이면 곧바로 닉네임·약관 단계로 간다
+    if (signup || !state.onboardingCompleted) {
+      router.replace("/auth/onboarding")
       return
     }
-    if (password.length < 8) {
-      setError("비밀번호는 8자 이상 입력해주세요.")
-      return
-    }
-    setLoading("email")
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 650))
-      await finishLogin({
-        provider: "email",
-        email: email.trim(),
-        name: email.split("@")[0],
-      })
-    } finally {
-      setLoading(null)
-    }
+    // 로그인이 필요해 들어온 화면(기록, 마이 등)으로 돌아간다
+    leave()
   }
 
-  const guestLogin = async () => {
-    setLoading("guest")
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 450))
-      await finishLogin({ name: "라멘 탐험가", nickname: "라멘 탐험가" })
-    } finally {
-      setLoading(null)
+  const socialLogin = (provider: SocialProvider) => {
+    // TODO(#44): 실제 인증으로 교체. 지금은 기기 안 더미 로그인
+    actions.login({ provider })
+    track("login", { provider, signup })
+    afterLogin()
+  }
+
+  // 데모 계정은 이 기기에 저장된 사용자가 데모일 때만 다시 켤 수 있다(스토어에 데모 전환 동작이 없다)
+  const demoAvailable = state.user?.id === DEMO_USER.id
+  const demoLogin = () => {
+    if (!demoAvailable) {
+      setNotice("이 기기에는 다른 계정이 있어 데모 계정으로 바꿀 수 없어요.")
+      return
     }
+    actions.login()
+    track("login", { provider: "demo" })
+    afterLogin()
+  }
+
+  // 진짜 비회원으로 둘러본다. 데모 계정으로 들어가지 않는다
+  const browseAsGuest = () => {
+    if (currentUser) actions.logout()
+    router.replace("/native")
   }
 
   return (
-    <FlowPage>
-      <FlowHeader
-        title="로그인"
+    <SafeAreaView edges={["top", "bottom"]} style={styles.root}>
+      <StatusBar style="dark" />
+      <Header
+        backLabel="뒤로가기"
+        onBack={leave}
         right={
           <Pressable
+            accessibilityLabel={signup ? "로그인" : "회원가입"}
             accessibilityRole="button"
-            accessibilityLabel="회원가입"
-            onPress={() => router.push("/auth/onboarding")}
-            style={styles.headerLink}
+            hitSlop={4}
+            onPress={() => router.setParams({ mode: signup ? "login" : "signup" })}
+            style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}
           >
-            <Text style={styles.headerLinkText}>회원가입</Text>
+            <AppText capScale tone="brand" variant="bodyStrong">
+              {signup ? "로그인" : "회원가입"}
+            </AppText>
           </Pressable>
         }
+        title={signup ? "회원가입" : "로그인"}
       />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <FlowScroll contentContainerStyle={styles.content}>
-          <View style={styles.brandBlock}>
-            <View style={styles.logoBox}>
-              <Image
-                source={require("@/assets/images/logo.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.eyebrow}>RAOTA LOGIN</Text>
-            <Text style={styles.heroTitle}>
-              좋았던 한 그릇을{`\n`}
-              <Text style={styles.heroTitleAccent}>잊지 않도록</Text>
-            </Text>
-            <Text style={styles.heroDescription}>
-              가고 싶은 곳, 다녀온 곳, 다시 먹고 싶은 한 그릇을
-              라오타에 모아두세요.
-            </Text>
-          </View>
-
-          {!!error && <InlineNotice text={error} tone="error" />}
-
-          <View style={styles.buttonStack}>
-            <ProviderButton
-              provider="kakao"
-              label="카카오로 시작하기"
-              loading={loading === "kakao"}
-              disabled={loading !== null}
-              onPress={() => socialLogin("kakao")}
-            />
-            <ProviderButton
-              provider="google"
-              label="Google로 시작하기"
-              loading={loading === "google"}
-              disabled={loading !== null}
-              onPress={() => socialLogin("google")}
-            />
-          </View>
-
-          <View style={styles.dividerRow}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>또는</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <ProviderButton
-            provider="passkey"
-            label="패스키로 시작하기"
-            loading={loading === "passkey"}
-            disabled={loading !== null}
-            onPress={() => socialLogin("passkey")}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.brand}>
+          <Image
+            accessibilityIgnoresInvertColors
+            accessibilityLabel="RAOTA"
+            resizeMode="contain"
+            source={require("@/assets/images/logo.png")}
+            style={styles.logo}
           />
+          <AppText accessibilityRole="header" style={styles.center} variant="headline">
+            좋았던 한 그릇을{"\n"}
+            <AppText tone="brand" variant="headline">
+              잊지 않도록
+            </AppText>
+          </AppText>
+          <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="muted" variant="body">
+            {signup
+              ? "간편 로그인으로 가입하고, 닉네임과 약관 동의만 하면 첫 기록을 남길 수 있어요."
+              : "가고 싶은 곳, 다녀온 곳, 다시 먹고 싶은 한 그릇을 라오타에 모아두세요."}
+          </AppText>
+        </View>
 
-          <View style={styles.quickActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={emailMode ? "간편 로그인 접기" : "이메일로 로그인"}
-              accessibilityState={{ expanded: emailMode }}
-              onPress={() => {
-                setEmailMode((value) => !value)
-                setError(null)
-              }}
-              style={styles.emailToggle}
-            >
-              <Text style={styles.emailToggleText}>
-                {emailMode ? "간편 로그인 접기" : "이메일로 로그인"}
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={loading !== null}
-              onPress={guestLogin}
-              style={styles.guestButton}
-            >
-              <Text style={styles.guestText}>
-                {loading === "guest" ? "접속 중…" : "게스트로 둘러보기"}
-              </Text>
-            </Pressable>
-          </View>
+        <View style={styles.providers}>
+          {PROVIDERS.map((provider) => (
+            <ProviderButton key={provider.id} {...provider} onPress={() => socialLogin(provider.id)} />
+          ))}
+        </View>
 
-          {emailMode && (
-            <View style={styles.emailForm}>
-              <Text style={flowStyles.label}>이메일 주소</Text>
-              <TextInput
-                accessibilityLabel="이메일 주소"
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                onChangeText={setEmail}
-                placeholder="ramen@example.com"
-                placeholderTextColor={palette.quiet}
-                returnKeyType="next"
-                style={flowStyles.input}
-                value={email}
-              />
-              <View style={styles.passwordLabelRow}>
-                <Text style={[flowStyles.label, { marginBottom: 0 }]}>비밀번호</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() =>
-                    Alert.alert(
-                      "비밀번호 찾기",
-                      "입력한 이메일로 재설정 안내를 보내드리는 모의 기능입니다.",
-                    )
-                  }
-                  style={styles.resetButton}
-                >
-                  <Text style={styles.resetText}>비밀번호 찾기</Text>
-                </Pressable>
-              </View>
-              <View style={styles.passwordField}>
-                <TextInput
-                  accessibilityLabel="비밀번호"
-                  autoComplete="current-password"
-                  onChangeText={setPassword}
-                  onSubmitEditing={emailLogin}
-                  placeholder="8자 이상 영문, 숫자 조합"
-                  placeholderTextColor={palette.quiet}
-                  returnKeyType="go"
-                  secureTextEntry={!showPassword}
-                  style={[flowStyles.input, { flex: 1, paddingRight: 48 }]}
-                  value={password}
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                  onPress={() => setShowPassword((value) => !value)}
-                  style={styles.eyeButton}
-                >
-                  {showPassword ? (
-                    <EyeOff color={palette.muted} size={20} />
-                  ) : (
-                    <Eye color={palette.muted} size={20} />
-                  )}
-                </Pressable>
-              </View>
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: rememberMe }}
-                onPress={() => setRememberMe((value) => !value)}
-                style={styles.rememberRow}
-              >
-                <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-                  {rememberMe && <Check color={palette.canvas} size={12} strokeWidth={3} />}
-                </View>
-                <Text style={styles.rememberText}>로그인 상태 유지</Text>
-              </Pressable>
-              <ActionButton
-                label="로그인 완료"
-                accessibilityLabel="이메일로 로그인"
-                variant="dark"
-                shape="rounded"
-                loading={loading === "email"}
-                disabled={loading !== null}
-                onPress={emailLogin}
-              />
+        {signup ? null : (
+          <>
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <AppText capScale style={styles.bold} tone="muted" variant="secondary">
+                또는
+              </AppText>
+              <View style={styles.dividerLine} />
             </View>
+
+            <Button
+              accessibilityHint="기록이 쌓여 있는 체험용 계정으로 둘러봐요"
+              leftIcon={<Soup color={colors.onDark} size={16} />}
+              onPress={demoLogin}
+              size="small"
+              title="데모 계정으로 체험"
+              variant="secondary"
+            />
+          </>
+        )}
+
+        <View style={styles.bottom}>
+          <Pressable
+            accessibilityHint="로그인하지 않고 홈으로 가요"
+            accessibilityLabel="로그인 없이 둘러보기"
+            accessibilityRole="button"
+            onPress={browseAsGuest}
+            style={({ pressed }) => [styles.guest, pressed && styles.pressed]}
+          >
+            <Compass color={colors.inkSub} size={16} />
+            <AppText style={styles.bold} tone="sub" variant="body">
+              로그인 없이 둘러보기
+            </AppText>
+          </Pressable>
+          {signup ? null : (
+            <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="muted" variant="meta">
+              처음이면 간편 로그인 뒤 닉네임과 약관 동의만 하면 가입이 끝나요.
+            </AppText>
           )}
-          <Text style={styles.legal}>
-            계속하면 RAOTA의 이용약관과 개인정보 처리방침에 동의한 것으로 간주됩니다.
-          </Text>
-        </FlowScroll>
-      </KeyboardAvoidingView>
-    </FlowPage>
+        </View>
+      </ScrollView>
+      <Toast message={notice ?? ""} onDismiss={() => setNotice(null)} visible={Boolean(notice)} />
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 8, paddingTop: 22, paddingBottom: 36, gap: 14 },
-  headerLink: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
+  root: { flex: 1, backgroundColor: colors.canvas },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.x6,
+    paddingBottom: spacing.x6,
+    gap: spacing.x3,
   },
-  headerLinkText: { color: palette.red, fontSize: 12, fontWeight: "900" },
-  brandBlock: { alignItems: "center", paddingHorizontal: 12, paddingBottom: 7 },
-  logoBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: palette.wash,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  logo: { width: 48, height: 48 },
-  eyebrow: {
-    color: palette.red,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 2,
-    marginBottom: 6,
-  },
-  heroTitle: {
-    color: palette.ink,
-    fontSize: 24,
-    lineHeight: 31,
-    fontWeight: "900",
-    textAlign: "center",
-    letterSpacing: -0.7,
-  },
-  heroTitleAccent: { color: palette.red },
-  heroDescription: {
-    color: palette.muted,
-    fontSize: 12,
-    lineHeight: 19,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  buttonStack: { gap: 10 },
-  providerButton: {
-    alignItems: "center",
-    backgroundColor: palette.canvas,
-    borderColor: palette.line,
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: "row",
-    justifyContent: "center",
+  center: { textAlign: "center" },
+  bold: { fontWeight: "700" },
+  pressed: { opacity: 0.85 },
+  headerLink: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },
+  brand: { alignItems: "center", gap: spacing.x2, marginBottom: spacing.x4 },
+  logo: { width: 56, height: 56, marginBottom: spacing.x1 },
+  providers: { gap: spacing.x2_5 },
+  provider: {
     minHeight: 48,
-    paddingHorizontal: 16,
-    position: "relative",
-  },
-  providerButtonPrimary: { backgroundColor: palette.red, borderColor: palette.red },
-  providerButtonDisabled: { opacity: 0.58 },
-  providerIcon: { left: 15, position: "absolute", width: 22, alignItems: "center" },
-  providerLabel: { color: palette.ink, fontSize: 13, fontWeight: "800" },
-  providerLabelInverse: { color: palette.canvas },
-  providerLoading: { alignItems: "center", flexDirection: "row", gap: 8 },
-  googleMark: { color: "#4285F4", fontSize: 18, fontWeight: "900" },
-  dividerRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 1 },
-  divider: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: palette.line,
-  },
-  dividerText: { color: palette.quiet, fontSize: 11, fontWeight: "700" },
-  quickActions: { flexDirection: "row", gap: 8 },
-  emailToggle: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 8,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: palette.line,
+    borderColor: colors.transparent,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: palette.wash,
+    paddingHorizontal: spacing.x12,
   },
-  emailToggleText: { color: palette.ink, fontSize: 11.5, fontWeight: "800" },
-  emailForm: { borderTopColor: palette.line, borderTopWidth: StyleSheet.hairlineWidth, gap: 10, paddingTop: 12 },
-  passwordLabelRow: {
+  providerApple: { backgroundColor: colors.black, borderColor: colors.black },
+  providerKakao: { backgroundColor: PROVIDER_BRAND.kakaoContainer, borderColor: PROVIDER_BRAND.kakaoContainer },
+  providerGoogle: { backgroundColor: colors.canvas, borderColor: colors.border },
+  providerMark: { position: "absolute", left: spacing.x5, top: 0, bottom: 0, justifyContent: "center" },
+  providerLabel: { ...typography.cardTitle },
+  divider: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x1 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  bottom: { marginTop: "auto", paddingTop: spacing.x8, alignItems: "center", gap: spacing.x1 },
+  guest: {
+    minHeight: touchTarget,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-  },
-  resetButton: {
-    minHeight: 44,
     justifyContent: "center",
-    paddingHorizontal: 4,
-  },
-  resetText: { color: palette.muted, fontSize: 10, fontWeight: "700" },
-  passwordField: { position: "relative", flexDirection: "row" },
-  eyeButton: {
-    position: "absolute",
-    right: 2,
-    top: 2,
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  guestButton: {
-    flex: 1,
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: palette.ink,
-    borderRadius: 8,
-  },
-  guestText: {
-    color: palette.canvas,
-    fontSize: 11.5,
-    fontWeight: "700",
-  },
-  rememberRow: { alignItems: "center", flexDirection: "row", gap: 8, minHeight: 36 },
-  checkbox: { alignItems: "center", borderColor: palette.muted, borderRadius: 3, borderWidth: 1, height: 16, justifyContent: "center", width: 16 },
-  checkboxActive: { backgroundColor: palette.red, borderColor: palette.red },
-  rememberText: { color: palette.muted, fontSize: 11, fontWeight: "600" },
-  pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
-  legal: {
-    color: palette.quiet,
-    fontSize: 11,
-    lineHeight: 17,
-    textAlign: "center",
-    paddingHorizontal: 20,
+    gap: spacing.x1_5,
+    paddingHorizontal: spacing.x3,
   },
 })

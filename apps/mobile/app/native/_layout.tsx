@@ -1,112 +1,127 @@
 import { Tabs } from "expo-router"
-import {
-  Flame,
-  Home,
-  MapPin,
-  MessageSquare,
-  UserRound,
-} from "lucide-react-native"
-import { StyleSheet } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { Home, MapPin, UserRound, type LucideIcon } from "lucide-react-native"
+import { useEffect, useState, type ComponentProps } from "react"
+import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native"
 
-import { colors, fonts } from "@/src/theme"
+import { AppText } from "@/src/components/ui"
+import { colors, spacing } from "@/src/theme"
 
-const BRAND_RED = colors.brand
-const CHARCOAL = colors.text
-const MUTED = colors.textSubtle
+/*
+ * MVP 탭: 홈 · 지도 · 마이 세 개만 둔다(라운지·라멘속보는 앱 MVP 범위 밖).
+ * 탭 바는 아래 목록의 라우트만 그린다. 이 폴더에 다른 화면 파일이 남아 있어도 탭으로 보이지 않는다.
+ * 모양은 웹 App.tsx 탭 바와 같다: 흰 면, 위 1pt 경계, 높이 56 + 하단 inset,
+ * 아이콘 22pt, 라벨 12pt bold, 활성 탭은 빨강과 위쪽 2pt 막대. 키보드가 열리면 숨긴다.
+ */
 
-export default function TabLayout() {
-  const insets = useSafeAreaInsets()
-  const bottomInset = Math.max(insets.bottom, 8)
+type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0]
+
+const TAB_ICONS: Record<string, LucideIcon> = {
+  index: Home,
+  map: MapPin,
+  my: UserRound,
+}
+
+const VISIBLE_TABS = Object.keys(TAB_ICONS)
+
+const TAB_BAR_HEIGHT = 56
+
+function useKeyboardVisible() {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    // iOS는 키보드가 올라오기 시작할 때 숨겨야 탭 바가 키보드 위로 튀지 않는다
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow"
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide"
+    const show = Keyboard.addListener(showEvent, () => setVisible(true))
+    const hide = Keyboard.addListener(hideEvent, () => setVisible(false))
+    return () => {
+      show.remove()
+      hide.remove()
+    }
+  }, [])
+  return visible
+}
+
+export function RaotaTabBar({ state, descriptors, navigation, insets }: TabBarProps) {
+  const keyboardVisible = useKeyboardVisible()
+  if (keyboardVisible) return null
+
+  const routes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name))
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: BRAND_RED,
-        tabBarInactiveTintColor: MUTED,
-        tabBarHideOnKeyboard: true,
-        tabBarItemStyle: { minHeight: 48 },
-        tabBarLabelStyle: {
-          fontFamily: fonts.body,
-          fontSize: 12,
-          fontWeight: "700",
-          letterSpacing: -0.15,
-          marginTop: 1,
-        },
-        tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#ECEDEF",
-          borderTopWidth: StyleSheet.hairlineWidth,
-          elevation: 0,
-          height: 54 + bottomInset,
-          paddingBottom: bottomInset,
-          paddingTop: 7,
-          shadowColor: CHARCOAL,
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.04,
-          shadowRadius: 12,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "홈",
-          tabBarAccessibilityLabel: "홈 탭",
-          tabBarIcon: ({ color, focused }) => (
-            <Home color={color} size={20} strokeWidth={focused ? 2.3 : 1.8} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="map"
-        options={{
-          title: "지도",
-          tabBarAccessibilityLabel: "지도 탭",
-          tabBarIcon: ({ color, focused }) => (
-            <MapPin color={color} size={20} strokeWidth={focused ? 2.3 : 1.8} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="lounge"
-        options={{
-          title: "라운지",
-          tabBarAccessibilityLabel: "라운지 탭",
-          tabBarIcon: ({ color, focused }) => (
-            <MessageSquare
-              color={color}
-              size={20}
-              strokeWidth={focused ? 2.3 : 1.8}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="news"
-        options={{
-          title: "라멘속보",
-          tabBarAccessibilityLabel: "라멘속보 탭",
-          tabBarIcon: ({ color, focused }) => (
-            <Flame color={color} size={20} strokeWidth={focused ? 2.3 : 1.8} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="my"
-        options={{
-          title: "마이",
-          tabBarAccessibilityLabel: "마이 탭",
-          tabBarIcon: ({ color, focused }) => (
-            <UserRound
-              color={color}
-              size={20}
-              strokeWidth={focused ? 2.3 : 1.8}
-            />
-          ),
-        }}
-      />
+    <View accessibilityLabel="주요 메뉴" style={[styles.bar, { paddingBottom: insets.bottom }]}>
+      <View accessibilityRole="tablist" style={styles.row}>
+        {routes.map((route) => {
+          const { options } = descriptors[route.key]
+          const focused = state.routes[state.index]?.key === route.key
+          const label = typeof options.title === "string" ? options.title : route.name
+          const Icon = TAB_ICONS[route.name]
+          const color = focused ? colors.brand : colors.textMuted
+
+          const onPress = () => {
+            const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true })
+            if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params)
+          }
+          const onLongPress = () => navigation.emit({ type: "tabLongPress", target: route.key })
+
+          return (
+            <Pressable
+              accessibilityLabel={`${label} 탭`}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: focused }}
+              key={route.key}
+              onLongPress={onLongPress}
+              onPress={onPress}
+              style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+              testID={`tab-${route.name}`}
+            >
+              {focused ? <View style={styles.activeBar} /> : null}
+              <Icon color={color} size={22} strokeWidth={focused ? 2.3 : 1.8} />
+              <AppText capScale numberOfLines={1} style={[styles.label, { color }]} variant="meta">
+                {label}
+              </AppText>
+            </Pressable>
+          )
+        })}
+      </View>
+    </View>
+  )
+}
+
+export default function TabLayout() {
+  return (
+    <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <RaotaTabBar {...props} />}>
+      <Tabs.Screen name="index" options={{ title: "홈" }} />
+      <Tabs.Screen name="map" options={{ title: "지도" }} />
+      <Tabs.Screen name="my" options={{ title: "마이" }} />
     </Tabs>
   )
 }
+
+const styles = StyleSheet.create({
+  bar: {
+    backgroundColor: colors.canvas,
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    height: TAB_BAR_HEIGHT,
+    paddingHorizontal: spacing.x1,
+  },
+  tab: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.x1,
+  },
+  activeBar: {
+    position: "absolute",
+    top: 0,
+    width: 24,
+    height: 2,
+    backgroundColor: colors.brand,
+  },
+  label: { fontWeight: "700", letterSpacing: -0.15 },
+  pressed: { opacity: 0.7 },
+})

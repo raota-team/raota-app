@@ -104,19 +104,13 @@ describe("authentication and onboarding screens", () => {
     jest.clearAllMocks()
   })
 
-  it("shows inline validation for an invalid email login", async () => {
+  it("offers Apple, Kakao and Google login with a separate demo entry", async () => {
     const view = await renderWithStore(<LoginScreen />)
 
-    await fireEvent.press(view.getByRole("button", { name: "이메일로 로그인" }))
-    await fireEvent.changeText(
-      view.getByLabelText("이메일 주소"),
-      "not-an-email",
-    )
-    await fireEvent.press(view.getByRole("button", { name: "이메일로 로그인" }))
-
-    expect(
-      await view.findByText("올바른 이메일 주소를 입력해주세요."),
-    ).toBeTruthy()
+    for (const name of ["Apple로 계속하기", "카카오로 계속하기", "Google로 계속하기", "데모 계정으로 체험", "로그인 없이 둘러보기"]) {
+      expect(view.getByRole("button", { name })).toBeTruthy()
+    }
+    expect(view.queryByText("이메일로 로그인")).toBeNull()
   })
 
   it("completes onboarding and routes to the tab shell", async () => {
@@ -126,7 +120,9 @@ describe("authentication and onboarding screens", () => {
     }
 
     await fireEvent.changeText(view.getByLabelText("닉네임"), "면탐험가")
-    await fireEvent.press(view.getByRole("button", { name: "RAOTA 시작하기" }))
+    await fireEvent.press(view.getByRole("checkbox", { name: "약관 전체 동의" }))
+    await fireEvent.press(view.getByRole("button", { name: "회원가입 완료" }))
+    await fireEvent.press(await view.findByRole("button", { name: "라오타 시작하기" }))
 
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/native"))
   })
