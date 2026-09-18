@@ -1,819 +1,903 @@
-import { useState } from "react"
-import { router } from "expo-router"
-import {
-  Archive,
-  ChevronRight,
-  History,
-  RefreshCw,
-  Share2,
-  Sparkles,
-} from "lucide-react-native"
-import { Pressable, Share, StyleSheet, View } from "react-native"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { router, useLocalSearchParams } from "expo-router"
+import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
+import { ArrowRight, Check, PenLine, RotateCw, Share2 } from "lucide-react-native"
+import { Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native"
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated"
+import { SafeAreaView } from "react-native-safe-area-context"
 import Svg, { Circle, Line, Polygon, Text as SvgText } from "react-native-svg"
 
-import type { TasteMetric, TasteReport } from "@raota/shared"
-import { useRaota } from "@/src/state/RaotaStore"
 import {
-  ActionButton,
-  FlowHeader,
-  FlowPage,
-  FlowScroll,
-  InlineNotice,
-  Text,
-  flowStyles,
-  palette,
-} from "../_layout"
+  MENU_CATEGORY_NAMES,
+  TASTE_AXES,
+  metricsFromProfile,
+  seoulToday,
+  typeCountsOf,
+  type MenuCategoryName,
+  type MetricItem,
+  type Shop,
+  type TasteIdentity,
+  type TasteProfile,
+} from "@raota/shared"
+import { track } from "@/src/analytics"
+import { AppText, BottomSheet, Button, Header, LoadingState, Tag, Toast } from "@/src/components/ui"
+import {
+  useActivityLevel,
+  useBowlCount,
+  useMyBowls,
+  useMyLogs,
+  useShops,
+  useTasteIdentity,
+  useTasteProfile,
+  useVisitedShops,
+} from "@/src/data"
+import { useRaota } from "@/src/state/RaotaStore"
+import { colors, radii, spacing } from "@/src/theme"
+import { MENU_CATEGORY_COLORS } from "./archive"
 
-const SIZE = 260
-const CENTER = 130
-const RADIUS = 75
+/*
+ * 취향 종합 리포트. 웹 TasteDetailScreen과 같은 구성이다.
+ * 정체성 카드 → 5축 레이더(실제 평균) → 축별 막대 → 종류별 분포 → 자주 간 라멘집 → 다음 한 그릇.
+ * params.analyze === "1"이면 짧은 정리 연출(웹 TasteReportLoading)을 먼저 보여준다. Reduce Motion이면 생략한다.
+ */
 
-const DEFAULT_METRICS: TasteMetric[] = [
-  { key: "brothRichness", label: "국물 농도", score: 4.8, average: 2.9 },
-  { key: "noodleFirmness", label: "면 경도", score: 4.5, average: 2.6 },
-  { key: "saltBalance", label: "염도 밸런스", score: 4.1, average: 2.8 },
-  { key: "umami", label: "타레 감칠맛", score: 4.9, average: 3.1 },
-  { key: "oilRichness", label: "오일 리치함", score: 4.2, average: 2.5 },
-]
+const LOADING_DURATION = 2400
 
-const TOP_VISITED_SHOPS = [
-  {
-    rank: 1,
-    name: "멘야준",
-    branch: "망원 본점",
-    style: "특제 쇼유 라멘",
-    photo:
-      "https://images.unsplash.com/photo-1742633882713-593c13e90231?w=200&h=200&fit=crop&auto=format&q=80",
-    visitCount: 14,
-    sharePct: 33,
-    reason: "총 43그릇 중 14그릇(33%)을 완식한 회원님의 독보적 1위 최애 단골 매장",
-    mustTry: "특제 쇼유 라멘 (면 카타멘 추천)",
-  },
-  {
-    rank: 2,
-    name: "하쿠텐",
-    branch: "연남점",
-    style: "매운 이에케 라멘",
-    photo:
-      "https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=200&h=200&fit=crop&auto=format&q=80",
-    visitCount: 11,
-    sharePct: 26,
-    reason: "초고농도 돈골 스프가 생각날 때마다 꾸준히 찾은 2위 단골 매장",
-    mustTry: "매운 이에케 라멘 (간 보통 / 기름 보통)",
-  },
-  {
-    rank: 3,
-    name: "세상끝의라멘",
-    branch: "합정점",
-    style: "끝라멘 (블랙 쇼유)",
-    photo:
-      "https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=200&h=200&fit=crop&auto=format&q=80",
-    visitCount: 7,
-    sharePct: 16,
-    reason: "진한 흑간장 타레의 묵직한 감칠맛으로 재방문을 거듭한 3위 매장",
-    mustTry: "끝라멘 + 수비드 목살 차슈 추가",
-  },
-]
-
-const STYLE_ROWS = [
-  { name: "돈코츠 (돼지뼈)", pct: 74, count: 18, note: "농후 백탕 · 요코하마 이에케" },
-  { name: "쇼유 (간장)", pct: 62, count: 12, note: "동물계와 해산물 더블 블렌딩" },
-  { name: "토리파이탄 (닭백탕)", pct: 45, count: 8, note: "크리미 거품 육수" },
-  { name: "미소 (된장)", pct: 24, count: 3, note: "삿포로 숙성 적미소 볶음" },
-  { name: "시오 (소금)", pct: 15, count: 2, note: "맑고 깊은 닭청탕 육수" },
-]
-
-const GENERATION_STEPS = [
-  { title: "라멘로그 벡터 추출", desc: "43건의 테이스팅 태그 및 메모 임베딩 분석 중..." },
-  { title: "라멘집 마스터 DB 매핑", desc: "방문 매장의 육수 농도·염도·면발 스펙 결합 중..." },
-  { title: "라멘 입맛 밸런스 연산", desc: "전체 유저 대비 취향 편차 및 매칭 매장 TOP 3 산출 중..." },
-  { title: "AI 정밀 리포트 합성 완료", desc: "RAOTA AI 정밀 검증 스탬프 날인 중..." },
-]
-
-function coord(index: number, value: number) {
-  const angle = (Math.PI * 2 * index) / 5 - Math.PI / 2
-  return {
-    x: CENTER + RADIUS * value * Math.cos(angle),
-    y: CENTER + RADIUS * value * Math.sin(angle),
-  }
+/** 매장 원장의 대표 스타일. 공유 Shop 타입에는 없어서 값이 있을 때만 읽는다 */
+export function shopStyleOf(shop: Shop): string | undefined {
+  const value = (shop as Shop & { style?: unknown }).style
+  return typeof value === "string" && value ? value : undefined
 }
 
-function points(
-  metrics: TasteMetric[],
-  key: "score" | "average",
-  divisor: number,
-) {
-  return metrics
-    .map((metric, index) => {
-      const point = coord(
-        index,
-        Math.max(0, Math.min(1, metric[key] / divisor)),
-      )
-      return `${point.x},${point.y}`
-    })
-    .join(" ")
+export function shopSpecOf(shop: Shop): string | undefined {
+  const value = (shop as Shop & { spec?: unknown }).spec
+  return typeof value === "string" && value ? value : undefined
 }
 
-export function RadarChart({ metrics }: { metrics?: TasteMetric[] }) {
-  const list = metrics && metrics.length === 5 ? metrics : DEFAULT_METRICS
+const categoryOfStyle = (style: string | undefined): MenuCategoryName | null =>
+  style ? (MENU_CATEGORY_NAMES.find((name) => name !== "기타" && style.startsWith(name)) ?? null) : null
+
+function openShop(shop: Shop | undefined) {
+  if (shop) router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shop.id) } })
+}
+
+// ---------------------------------------------------------------------------
+// 종합 리포트 표지 (웹 TasteReportCover). 마이에서도 같은 카드를 쓴다
+// ---------------------------------------------------------------------------
+
+export interface TasteReportCoverProps {
+  recordCount: number
+  identity: TasteIdentity
+  profile: TasteProfile
+  onOpen?: () => void
+  onAnalyze?: () => void
+  /** 0그릇일 때 첫 기록으로 안내 */
+  onStart?: () => void
+}
+
+export function TasteReportCover({ recordCount, identity, profile, onOpen, onAnalyze, onStart }: TasteReportCoverProps) {
+  const empty = recordCount === 0
+  const metrics = metricsFromProfile(profile).filter(
+    (metric) => metric.key === "brothDensity" || metric.key === "noodleFirmness",
+  )
   return (
-    <View
-      accessible
-      accessibilityLabel={`내 취향 레이더 차트. ${list.map((item) => `${item.label} ${item.score.toFixed(1)}점`).join(", ")}`}
-      style={styles.radarWrap}
-    >
-      <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-        {[0.33, 0.66, 1].map((level, idx) => (
-          <Polygon
-            key={level}
-            points={[0, 1, 2, 3, 4]
-              .map((index) => {
-                const point = coord(index, level)
-                return `${point.x},${point.y}`
-              })
-              .join(" ")}
-            fill="none"
-            stroke="#E2E2E2"
-            strokeWidth={1}
-            strokeDasharray={idx === 2 ? undefined : "3 3"}
-          />
-        ))}
-        {[0, 1, 2, 3, 4].map((index) => {
-          const point = coord(index, 1)
-          return (
-            <Line
-              key={index}
-              x1={CENTER}
-              y1={CENTER}
-              x2={point.x}
-              y2={point.y}
-              stroke="#E2E2E2"
-              strokeWidth={1}
-            />
-          )
-        })}
-        {/* 전체 유저 평균 영역 (그레이 점선) */}
-        <Polygon
-          points={points(list, "average", 5)}
-          fill="rgba(126,126,126,0.08)"
-          stroke="#BEBEBE"
-          strokeWidth={1.5}
-          strokeDasharray="4 4"
-        />
-        {/* 내 취향 데이터 영역 (스칼렛 레드) */}
-        <Polygon
-          points={points(list, "score", 5)}
-          fill="rgba(230,0,0,0.14)"
-          stroke={palette.red}
-          strokeWidth={2.5}
-        />
-        {list.map((metric, index) => {
-          const point = coord(index, metric.score / 5)
-          return (
-            <Circle
-              key={`dot-${metric.key}`}
-              cx={point.x}
-              cy={point.y}
-              r={3.5}
-              fill={palette.red}
-              stroke="#FFFFFF"
-              strokeWidth={1.5}
-            />
-          )
-        })}
-        {list.map((metric, index) => {
-          const point = coord(index, 1.28)
-          return (
-            <SvgText
-              key={metric.key}
-              x={point.x}
-              y={point.y}
-              fill="#25282B"
-              fontSize={10}
-              fontWeight="800"
-              textAnchor="middle"
-            >
-              {metric.label} {metric.score.toFixed(1)}
-            </SvgText>
-          )
-        })}
-      </Svg>
-      <View style={styles.legend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: palette.red }]} />
-          <Text style={styles.legendTextBold}>내 취향 DNA</Text>
+    <View style={styles.card}>
+      <View style={styles.coverHead}>
+        <View style={styles.coverHeadLabels}>
+          <View style={styles.inkTag}>
+            <AppText capScale tone="onDark" variant="meta">
+              종합 리포트
+            </AppText>
+          </View>
+          <AppText capScale style={styles.tabular} tone="muted" variant="meta">
+            전체 {recordCount}그릇 기준
+          </AppText>
         </View>
-        <View style={styles.legendItem}>
-          <View style={styles.legendDashedLine} />
-          <Text style={styles.legendText}>라오타 전체 평균</Text>
-        </View>
+        <Image
+          accessibilityLabel="라오타"
+          accessible
+          contentFit="contain"
+          source={require("@/assets/images/logo.png")}
+          style={styles.coverLogo}
+        />
       </View>
+      <View style={styles.coverBody}>
+        <AppText accessibilityRole="header" variant="screenTitle">
+          {identity.title}
+        </AppText>
+        <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
+          {empty ? identity.description : identity.evidence}
+        </AppText>
+      </View>
+      {identity.tags.length > 0 ? (
+        <View accessibilityLabel={`취향 특징: ${identity.tags.join(", ")}`} accessible style={styles.tagRow}>
+          {identity.tags.map((tag) => (
+            <Tag key={tag} label={`#${tag}`} />
+          ))}
+        </View>
+      ) : null}
+      {!empty ? (
+        <View style={styles.coverAxes}>
+          {metrics.map((metric) => (
+            <View
+              accessibilityLabel={`${metric.label} 평균 ${metric.score.toFixed(1)}점, 5점 만점`}
+              accessible
+              key={metric.key}
+              style={styles.flex}
+            >
+              <View style={styles.rowBetween}>
+                <AppText capScale tone="muted" variant="meta">
+                  {metric.label}
+                </AppText>
+                <AppText capScale style={styles.tabular} variant="meta">
+                  {metric.score.toFixed(1)}
+                  <AppText capScale tone="muted" variant="meta">
+                    {" / 5"}
+                  </AppText>
+                </AppText>
+              </View>
+              <View style={styles.steps}>
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <View key={step} style={styles.step}>
+                    <View
+                      style={[styles.stepFill, { width: `${Math.min(1, Math.max(0, metric.score - step + 1)) * 100}%` }]}
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {!empty && (onOpen || onAnalyze) ? (
+        <View style={styles.coverActions}>
+          {onOpen ? (
+            <Button
+              fullWidth
+              onPress={onOpen}
+              rightIcon={<ArrowRight color={colors.onDark} size={16} />}
+              style={styles.noFlex}
+              title="종합 리포트 보기"
+            />
+          ) : null}
+          {onAnalyze ? (
+            <Button
+              leftIcon={<RotateCw color={colors.ink} size={15} />}
+              onPress={onAnalyze}
+              size="small"
+              textStyle={styles.inkText}
+              title="최근 기록으로 다시 정리"
+              variant="ghost"
+            />
+          ) : null}
+        </View>
+      ) : null}
+      {empty && onStart ? (
+        <View style={styles.coverActions}>
+          <Button
+            fullWidth
+            leftIcon={<PenLine color={colors.onDark} size={16} />}
+            onPress={onStart}
+            style={styles.noFlex}
+            title="첫 그릇 기록하기"
+          />
+        </View>
+      ) : null}
     </View>
   )
 }
 
-export function ReportBody({ report }: { report: TasteReport }) {
-  const metrics = report.metrics?.length === 5 ? report.metrics : DEFAULT_METRICS
+// ---------------------------------------------------------------------------
+// 5축 레이더
+// ---------------------------------------------------------------------------
+
+const RADAR_SIZE = 250
+const RADAR_CENTER = 125
+const RADAR_RADIUS = 80
+const RADAR_LABELS = [
+  { x: 125, y: 14 },
+  { x: 220, y: 92 },
+  { x: 184, y: 216 },
+  { x: 66, y: 216 },
+  { x: 30, y: 92 },
+]
+
+function radarPoint(index: number, value: number, center = RADAR_CENTER, radius = RADAR_RADIUS) {
+  const angle = ((Math.PI * 2) / 5) * index - Math.PI / 2
+  return { x: center + radius * value * Math.cos(angle), y: center + radius * value * Math.sin(angle) }
+}
+
+const pointsOf = (values: number[], center?: number, radius?: number) =>
+  values
+    .map((value, index) => {
+      const p = radarPoint(index, value, center, radius)
+      return `${p.x},${p.y}`
+    })
+    .join(" ")
+
+function RadarChart({ metrics }: { metrics: MetricItem[] }) {
+  const summary = metrics.map((metric) => `${metric.label} ${metric.score.toFixed(1)}점`).join(", ")
   return (
-    <>
-      {/* 1. 이전 리포트 아카이브 바로가기 배너 */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="이전 리포트 아카이브 열기"
-        onPress={() => router.push("/taste/archive")}
-        style={styles.archiveBanner}
-      >
-        <View style={styles.archiveBannerLeft}>
-          <History color={palette.red} size={15} />
-          <Text style={styles.archiveBannerText}>이전 리포트 아카이브 (총 3호 보관 중)</Text>
-        </View>
-        <View style={styles.archiveBannerRight}>
-          <Text style={styles.archiveBannerAction}>보관함</Text>
-          <ChevronRight color={palette.red} size={14} />
-        </View>
-      </Pressable>
-
-      {/* 2. 올타임 종합 취향 히어로 카드 (Passport Hero Card) */}
-      <View style={styles.passportHero}>
-        <View style={styles.passportHeroTop}>
-          <Text style={styles.volume}>
-            {report.volume || "VOL. 04"} · {report.period || "2026년 09월 정기호"}
-          </Text>
-          <View style={styles.levelBadge}>
-            <Text style={styles.levelBadgeText}>{report.levelLabel || "Lv.4 라멘 마스터"}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.reportTitle}>{report.title || "진한 돈골파"}</Text>
-        <Text style={styles.quote}>
-          {report.quote ||
-            "“농후한 돈골 육수와 묵직한 오일, 단단한 카타멘의 조화를 가장 사랑하는 진정한 라멘 매니아입니다.”"}
-        </Text>
-
-        {/* 태그 모음 */}
-        <View style={styles.heroTagRow}>
-          {["#이에케마스터", "#농후돈코츠", "#카타멘선호", `#${report.recordCount || 43}그릇학습`].map((t) => (
-            <View key={t} style={styles.heroTag}>
-              <Text style={styles.heroTagText}>{t}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.passportMeta}>
-          <Text style={styles.recordCount}>{report.recordCount || 43}그릇 정밀 분석</Text>
-          <Text style={styles.confidenceText}>AI 신뢰도 98.4%</Text>
-        </View>
-      </View>
-
-      {/* 3. 5축 미각 프로필 레이더 차트 */}
-      <View style={flowStyles.section}>
-        <View style={styles.sectionHeading}>
-          <Text style={flowStyles.sectionTitle}>5축 AI 취향 정밀 레이더</Text>
-          <Text style={styles.strongest}>
-            {report.strongestFeature || "타레 감칠맛 (4.9) · 국물 농도 (4.8)"}
-          </Text>
-        </View>
-        <RadarChart metrics={metrics} />
-        <View style={styles.metricList}>
-          {metrics.map((metric) => (
-            <View key={metric.key} style={styles.metricRow}>
-              <Text style={styles.metricLabel}>{metric.label}</Text>
-              <View style={styles.metricTrack}>
-                <View
-                  style={[
-                    styles.metricFill,
-                    { width: `${Math.min(100, (metric.score / 5) * 100)}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.metricValue}>{metric.score.toFixed(1)}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* 4. 큐레이터 탐험 가이드 (AI Insights) */}
-      <View style={styles.insightSection}>
-        <View style={styles.insightTitleRow}>
-          <Sparkles color={palette.red} fill={palette.red} size={17} />
-          <Text style={styles.insightTitle}>큐레이터 탐험 가이드</Text>
-        </View>
-        {(report.insights && report.insights.length > 0
-          ? report.insights
-          : [
-              "국물 농도보다 타레 본연의 감칠맛과 묵직한 바디감을 극대화한 메뉴에 매우 높은 만족도를 보였습니다.",
-              "면은 부드러운 다가수면보다 씹는 질감이 단단한 카타멘(저가수면) 계열을 집중 소비했습니다.",
-            ]
-        ).map((insight, index) => (
-          <Text key={index} style={styles.insightText}>
-            {index + 1}. {insight}
-          </Text>
+    <View accessibilityLabel={`입맛 5축 레이더. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
+      <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width={RADAR_SIZE + 24}>
+        {[0.2, 0.4, 0.6, 0.8, 1].map((level) => (
+          <Polygon
+            fill="none"
+            key={level}
+            points={pointsOf([level, level, level, level, level])}
+            stroke={colors.border}
+            strokeDasharray={level === 1 ? undefined : "2 2"}
+            strokeWidth={1}
+          />
         ))}
-      </View>
-
-      {/* 5. 최다 방문 단골 매장 TOP 3 */}
-      <View style={flowStyles.section}>
-        <View style={styles.sectionHeading}>
-          <Text style={flowStyles.sectionTitle}>최다 방문 단골 매장 TOP 3</Text>
-          <Text style={styles.subHeadingNote}>누적 완식 그릇 수 기준</Text>
-        </View>
-        <View style={styles.topShopList}>
-          {TOP_VISITED_SHOPS.map((item) => (
-            <Pressable
-              key={item.rank}
-              accessibilityRole="button"
-              onPress={() =>
-                router.push({
-                  pathname: "/shop/[shopId]",
-                  params: { shopId: String(item.rank) },
-                })
-              }
-              style={({ pressed }) => [
-                styles.topShopCard,
-                pressed && { opacity: 0.8 },
-              ]}
-            >
-              <Image source={{ uri: item.photo }} style={styles.topShopThumb} contentFit="cover" />
-              <View style={styles.topShopBody}>
-                <View style={styles.topShopHeaderRow}>
-                  <View style={styles.topShopRankBadge}>
-                    <Text style={styles.topShopRankText}>{item.rank}위</Text>
-                  </View>
-                  <Text style={styles.topShopName}>
-                    {item.name} <Text style={styles.topShopBranch}>· {item.branch}</Text>
-                  </Text>
-                  <View style={styles.topShopSharePill}>
-                    <Text style={styles.topShopShareText}>{item.visitCount}회 ({item.sharePct}%)</Text>
-                  </View>
-                </View>
-                <Text style={styles.topShopMustTry}>추천: {item.mustTry}</Text>
-                <Text numberOfLines={2} style={styles.topShopReason}>{item.reason}</Text>
-              </View>
-              <ChevronRight color={palette.muted} size={16} />
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      {/* 6. 계보별 완식 비율 */}
-      <View style={flowStyles.section}>
-        <View style={styles.sectionHeading}>
-          <Text style={flowStyles.sectionTitle}>계보별 완식 비율</Text>
-          <Text style={styles.subHeadingNote}>전체 소비 라멘 스타일 스펙트럼</Text>
-        </View>
-        <View style={styles.styleRows}>
-          {STYLE_ROWS.map((item) => (
-            <View key={item.name} style={styles.styleRow}>
-              <View style={styles.styleHeader}>
-                <Text style={styles.styleName}>{item.name}</Text>
-                <Text style={styles.stylePercent}>
-                  {item.pct}% · {item.count}그릇
-                </Text>
-              </View>
-              <View style={styles.styleTrack}>
-                <View
-                  style={[styles.styleFill, { width: `${item.pct}%` }]}
-                />
-              </View>
-              <Text style={styles.styleNote}>{item.note}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </>
+        {[0, 1, 2, 3, 4].map((index) => {
+          const p = radarPoint(index, 1)
+          return <Line key={index} stroke={colors.border} strokeWidth={1} x1={RADAR_CENTER} x2={p.x} y1={RADAR_CENTER} y2={p.y} />
+        })}
+        <Polygon
+          fill={colors.brand}
+          fillOpacity={0.12}
+          points={pointsOf(metrics.map((metric) => metric.myVal))}
+          stroke={colors.brand}
+          strokeLinejoin="round"
+          strokeWidth={2.5}
+        />
+        {metrics.map((metric, index) => {
+          const p = radarPoint(index, metric.myVal)
+          return <Circle cx={p.x} cy={p.y} fill={colors.brand} key={metric.key} r={3.5} stroke={colors.canvas} strokeWidth={1.5} />
+        })}
+        {metrics.map((metric, index) => (
+          <SvgText
+            fill={colors.inkSub}
+            fontSize={12}
+            fontWeight="600"
+            key={`${metric.key}-label`}
+            textAnchor="middle"
+            x={RADAR_LABELS[index].x}
+            y={RADAR_LABELS[index].y - 3}
+          >
+            {metric.label}
+          </SvgText>
+        ))}
+        {metrics.map((metric, index) => (
+          <SvgText
+            fill={colors.ink}
+            fontSize={13}
+            fontWeight="800"
+            key={`${metric.key}-score`}
+            textAnchor="middle"
+            x={RADAR_LABELS[index].x}
+            y={RADAR_LABELS[index].y + 13}
+          >
+            {metric.score.toFixed(1)}
+          </SvgText>
+        ))}
+      </Svg>
+    </View>
   )
 }
 
-export default function TasteScreen() {
-  const { currentTasteReport, actions } = useRaota()
-  const [generating, setGenerating] = useState(false)
-  const [stage, setStage] = useState(0)
-  const [progress, setProgress] = useState(15)
-  const [message, setMessage] = useState<string | null>(null)
+// ---------------------------------------------------------------------------
+// 정리 연출 (웹 TasteReportLoading)
+// ---------------------------------------------------------------------------
 
-  const share = async () => {
-    if (!currentTasteReport) return
-    await Share.share({
-      title: `RAOTA ${currentTasteReport.volume || "취향 리포트"}`,
-      message: `나의 RAOTA 라멘 취향은 “${currentTasteReport.title || "진한 돈골파"}”입니다. ${currentTasteReport.recordCount || 43}그릇의 기록으로 AI가 분석했어요.`,
-    })
+const STATUS_MESSAGES = [
+  "라멘 기록을 모으고 있어요",
+  "국물과 면 취향을 살펴보고 있어요",
+  "나의 누적 취향을 정리하고 있어요",
+  "나의 라멘 취향이 정리됐어요",
+]
+const LOADING_SIZE = 260
+const LOADING_CENTER = 130
+const LOADING_RADIUS = 76
+
+function TasteReportLoading({
+  recordCount,
+  metrics,
+  onBack,
+  onComplete,
+}: {
+  recordCount: number
+  metrics: MetricItem[]
+  onBack: () => void
+  onComplete: () => void
+}) {
+  const [stage, setStage] = useState(0)
+  const complete = stage === 3
+  const grow = useSharedValue(0.28)
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
+
+  useEffect(() => {
+    grow.value = withTiming(1, { duration: LOADING_DURATION, easing: Easing.out(Easing.cubic) })
+    const timers = [
+      setTimeout(() => setStage(1), LOADING_DURATION / 3),
+      setTimeout(() => setStage(2), (LOADING_DURATION * 2) / 3),
+      setTimeout(() => setStage(3), LOADING_DURATION),
+      setTimeout(() => onCompleteRef.current(), LOADING_DURATION + 500),
+    ]
+    return () => timers.forEach(clearTimeout)
+  }, [grow])
+
+  const shapeStyle = useAnimatedStyle(() => ({ transform: [{ scale: grow.value }] }))
+  const activeAxis = complete ? -1 : [0, 1, 3][stage]
+  const labelPos = [
+    { x: 130, y: 40 },
+    { x: 222, y: 90 },
+    { x: 184, y: 216 },
+    { x: 76, y: 216 },
+    { x: 38, y: 90 },
+  ]
+
+  return (
+    <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.root}>
+      <StatusBar style="dark" />
+      <Header onBack={onBack} title="종합 취향 리포트" />
+      <ScrollView contentContainerStyle={styles.loadingBody}>
+        <AppText accessibilityRole="header" style={styles.center} variant="headline">
+          {"나의 라멘 취향을\n정리하고 있어요"}
+        </AppText>
+        <AppText style={[styles.center, styles.gapTop3]} tone="sub" variant="body">
+          기록한 {recordCount}그릇을 바탕으로 분석해요
+        </AppText>
+        <View accessible={false} importantForAccessibility="no-hide-descendants" style={styles.loadingRadar}>
+          <Svg height={LOADING_SIZE} style={StyleSheet.absoluteFill} width={LOADING_SIZE}>
+            {[0.33, 0.66, 1].map((level) => (
+              <Polygon
+                fill={level === 0.33 ? colors.brandWeak : "none"}
+                key={level}
+                points={pointsOf([level, level, level, level, level], LOADING_CENTER, LOADING_RADIUS)}
+                stroke={colors.border}
+                strokeWidth={1}
+              />
+            ))}
+            {[0, 1, 2, 3, 4].map((index) => {
+              const p = radarPoint(index, 1, LOADING_CENTER, LOADING_RADIUS)
+              return (
+                <Line key={index} stroke={colors.border} strokeWidth={1} x1={LOADING_CENTER} x2={p.x} y1={LOADING_CENTER} y2={p.y} />
+              )
+            })}
+            {metrics.map((metric, index) => (
+              <SvgText
+                fill={index === activeAxis ? colors.brand : colors.inkSub}
+                fontSize={12}
+                fontWeight={index === activeAxis ? "600" : "500"}
+                key={metric.key}
+                textAnchor="middle"
+                x={labelPos[index].x}
+                y={labelPos[index].y}
+              >
+                {metric.label}
+              </SvgText>
+            ))}
+          </Svg>
+          <Animated.View style={[StyleSheet.absoluteFill, shapeStyle]}>
+            <Svg height={LOADING_SIZE} width={LOADING_SIZE}>
+              <Polygon
+                fill={colors.brand}
+                fillOpacity={0.1}
+                points={pointsOf(metrics.map((metric) => metric.myVal), LOADING_CENTER, LOADING_RADIUS)}
+                stroke={colors.brand}
+                strokeLinejoin="round"
+                strokeWidth={2}
+              />
+            </Svg>
+          </Animated.View>
+        </View>
+        <View accessibilityLiveRegion="polite" accessibilityRole="text" style={styles.loadingStatus}>
+          {complete ? <Check color={colors.brand} size={16} /> : <View style={styles.dot} />}
+          <AppText tone="sub" variant="body">
+            {STATUS_MESSAGES[stage]}
+          </AppText>
+        </View>
+      </ScrollView>
+      <View style={styles.loadingFooter}>
+        <Button
+          onPress={onComplete}
+          rightIcon={<ArrowRight color={colors.inkSub} size={16} />}
+          size="small"
+          textStyle={styles.subText}
+          title="결과 바로 보기"
+          variant="ghost"
+        />
+      </View>
+    </SafeAreaView>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 화면
+// ---------------------------------------------------------------------------
+
+function seoulTime(now = new Date()) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now)
+}
+
+export default function TasteReportScreen() {
+  const { analyze } = useLocalSearchParams<{ analyze?: string }>()
+  const reduceMotion = useReducedMotion()
+  const { height: windowHeight } = useWindowDimensions()
+  const { currentUser } = useRaota()
+  const { data: recordCount, isLoading } = useBowlCount()
+  const { data: taste } = useTasteProfile()
+  const { data: identity } = useTasteIdentity()
+  const { data: bowls } = useMyBowls()
+  const { data: visits } = useVisitedShops()
+  const { data: myLogs } = useMyLogs()
+  const { data: shops } = useShops()
+  const { data: level } = useActivityLevel()
+
+  const profile = taste.profile
+  const metrics = useMemo(() => metricsFromProfile(profile), [profile])
+  const typeCounts = useMemo(() => typeCountsOf(bowls), [bowls])
+  const typeTotal = MENU_CATEGORY_NAMES.reduce((sum, name) => sum + typeCounts[name], 0)
+  const topShops = visits.slice(0, 3)
+  // 앱 설치 전 원장이 있는 계정만 "앱에서 남긴 기록이 더해졌다"고 알린다
+  const appCount = myLogs.length
+  const hasBaseLedger = recordCount > appCount
+
+  const [generating, setGenerating] = useState(analyze === "1" && recordCount > 0 && !reduceMotion)
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const [shareFallback, setShareFallback] = useState(false)
+  const tracked = useRef(false)
+  const scrollRef = useRef<ScrollView>(null)
+
+  useEffect(() => {
+    if (generating || isLoading || tracked.current) return
+    tracked.current = true
+    track("report_viewed", { kind: "overall", bowls: recordCount })
+  }, [generating, isLoading, recordCount])
+
+  const shopByName = (name: string) => shops.find((shop) => shop.name === name)
+
+  // 다음 한 그릇: 가장 적게 먹은 종류(기타 제외)를 파는 원장 매장. 안 가 본 곳을 먼저 고른다
+  const suggestion = useMemo(() => {
+    if (typeTotal === 0) return null
+    const ranked = MENU_CATEGORY_NAMES.filter((name) => name !== "기타").sort((a, b) => typeCounts[a] - typeCounts[b])
+    for (const category of ranked) {
+      const candidates = shops.filter((shop) => categoryOfStyle(shopStyleOf(shop)) === category)
+      if (!candidates.length) continue
+      const unvisited = candidates.find((shop) => !visits.some((visit) => visit.name === shop.name))
+      return { category, count: typeCounts[category], shop: unvisited ?? candidates[0] }
+    }
+    return null
+  }, [shops, typeCounts, typeTotal, visits])
+
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/native/my"))
+
+  const finishGeneration = () => {
+    setGenerating(false)
+    setGeneratedAt(seoulTime())
+    setToast(`전체 ${recordCount}그릇으로 취향을 다시 정리했어요`)
+    scrollRef.current?.scrollTo({ y: 0, animated: false })
   }
 
-  const regenerate = async () => {
-    setGenerating(true)
-    setMessage(null)
-    setStage(0)
-    setProgress(15)
+  const restart = () => {
+    setToast(null)
+    if (reduceMotion) finishGeneration()
+    else setGenerating(true)
+  }
 
-    const t1 = setTimeout(() => {
-      setStage(1)
-      setProgress(45)
-    }, 1100)
+  const shareText = [
+    `라오타 취향 리포트${currentUser?.nickname ? ` · ${currentUser.nickname}` : ""}`,
+    identity.title,
+    identity.evidence,
+    metrics.map((metric) => `${metric.label} ${metric.score.toFixed(1)}`).join(" · "),
+    topShops.length ? `자주 간 라멘집: ${topShops.map((shop) => `${shop.name} ${shop.visitCount}그릇`).join(", ")}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n")
 
-    const t2 = setTimeout(() => {
-      setStage(2)
-      setProgress(75)
-    }, 2300)
-
-    const t3 = setTimeout(() => {
-      setStage(3)
-      setProgress(100)
-    }, 3400)
-
-    const t4 = setTimeout(async () => {
-      setGenerating(false)
-      await Promise.resolve(actions.refreshTasteReport())
-      setMessage("최신 라멘로그 데이터가 반영된 AI 정밀 리포트가 발행되었습니다.")
-    }, 4300)
-
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-      clearTimeout(t3)
-      clearTimeout(t4)
+  const handleShare = async () => {
+    try {
+      // iOS 공유 시트. 취소(dismissedAction)면 조용히 닫고, 공유 여부는 앱이 확인할 수 없으니 성공 표시도 하지 않는다
+      await Share.share({ title: "라오타 취향 리포트", message: shareText })
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return
+      setShareFallback(true)
     }
   }
 
   if (generating) {
-    const currentStep = GENERATION_STEPS[stage] || GENERATION_STEPS[0]
-    return (
-      <FlowPage dark>
-        <FlowHeader title="취향 리포트 재발행" dark />
-        <View style={styles.generatePage}>
-          <View style={styles.generateCoreBox}>
-            <RefreshCw color={palette.red} size={42} />
-          </View>
-          <Text accessibilityLiveRegion="polite" style={styles.generateTitle}>
-            {currentStep.title}
-          </Text>
-          <Text style={styles.generateCopy}>
-            {currentStep.desc}
-          </Text>
-
-          <View style={styles.generateTrack}>
-            <View
-              style={[
-                styles.generateFill,
-                { width: `${progress}%` },
-              ]}
-            />
-          </View>
-
-          <View style={styles.generateStepIndicator}>
-            <Text style={styles.generateStepText}>
-              단계 {stage + 1} / 4 ({progress}%)
-            </Text>
-          </View>
-        </View>
-      </FlowPage>
-    )
+    return <TasteReportLoading metrics={metrics} onBack={goBack} onComplete={finishGeneration} recordCount={recordCount} />
   }
 
   return (
-    <FlowPage>
-      <FlowHeader
-        title="라멘 취향 리포트"
-        subtitle="AI 엔진 정밀 분석"
+    <SafeAreaView edges={["top", "left", "right"]} style={styles.root}>
+      <StatusBar style="dark" />
+      <Header
+        onBack={goBack}
         right={
-          <View style={styles.headerActionRow}>
+          recordCount > 0 ? (
             <Pressable
+              accessibilityLabel="취향 리포트 공유"
               accessibilityRole="button"
-              accessibilityLabel="리포트 공유"
-              onPress={share}
-              style={styles.headerButton}
+              onPress={handleShare}
+              style={({ pressed }) => [styles.shareButton, pressed && styles.pressedWash]}
             >
-              <Share2 color={palette.ink} size={19} />
+              <Share2 color={colors.ink} size={16} />
+              <AppText capScale variant="bodyStrong">
+                공유
+              </AppText>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="지난 리포트 보관함 보기"
-              onPress={() => router.push("/taste/archive")}
-              style={styles.headerButton}
-            >
-              <Archive color={palette.ink} size={19} />
-            </Pressable>
-          </View>
+          ) : undefined
         }
+        title="취향 종합 리포트"
       />
-      {currentTasteReport ? (
-        <FlowScroll contentContainerStyle={styles.content}>
-          {!!message && (
-            <InlineNotice
-              text={message}
-              tone={message.includes("못했") ? "error" : "success"}
-            />
-          )}
-          <ReportBody report={currentTasteReport} />
-          <View style={styles.actions}>
-            <ActionButton
-              label="친구에게 리포트 공유"
-              shape="rounded"
-              icon={<Share2 color={palette.canvas} size={18} />}
-              onPress={share}
-            />
-            <ActionButton
-              label="최신 기록으로 다시 분석"
-              variant="secondary"
-              shape="rounded"
-              icon={<RefreshCw color={palette.ink} size={18} />}
-              onPress={regenerate}
-            />
-          </View>
-        </FlowScroll>
+      {isLoading ? (
+        <LoadingState fullScreen label="취향을 불러오는 중…" />
       ) : (
-        <View style={styles.empty}>
-          <Sparkles color={palette.red} size={38} />
-          <Text style={styles.emptyTitle}>
-            아직 발행된 취향 리포트가 없어요
-          </Text>
-          <Text style={flowStyles.secondary}>
-            라멘로그를 남기면 국물·면·타레 취향을 분석해 첫 감정서를
-            만들어드려요.
-          </Text>
-          <View style={{ width: "100%", marginTop: 10 }}>
-            <ActionButton
-              label="첫 기록 시작하기"
-              onPress={() => router.push("/record/select-shop")}
-            />
+        <ScrollView contentContainerStyle={styles.scroll} ref={scrollRef} showsVerticalScrollIndicator={false}>
+          <View style={styles.top}>
+            {hasBaseLedger && appCount > 0 ? (
+              <View accessibilityRole="text" style={styles.notice}>
+                <Check color={colors.brand} size={16} />
+                <AppText style={styles.flex} variant="secondary">
+                  앱에서 남긴 기록 {appCount}그릇이 아래 수치에 더해졌어요.
+                </AppText>
+              </View>
+            ) : null}
+            <TasteReportCover identity={identity} profile={profile} recordCount={recordCount} />
+            <AppText capScale style={styles.gapTop2} tone="muted" variant="meta">
+              {generatedAt ? `${seoulToday()} ${generatedAt}에 다시 정리함` : `${seoulToday()} 기준`}
+            </AppText>
           </View>
-        </View>
+
+          {recordCount === 0 ? (
+            <View style={[styles.section, styles.emptySection]}>
+              <AppText accessibilityRole="header" style={styles.center} variant="screenTitle">
+                아직 보여드릴 취향이 없어요
+              </AppText>
+              <AppText style={[styles.center, styles.gapTop2]} tone="sub" variant="body">
+                {"첫 그릇을 기록하면\n5축 점수와 종류별 분포가 여기에 쌓여요."}
+              </AppText>
+              <Button
+                onPress={() => router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })}
+                style={styles.gapTop5}
+                title="첫 그릇 기록하기"
+              />
+            </View>
+          ) : (
+            <>
+              <View style={styles.section}>
+                <AppText accessibilityRole="header" variant="sectionTitle">
+                  입맛 5축
+                </AppText>
+                <AppText style={styles.gapTop1} tone="sub" variant="secondary">
+                  기록마다 매긴 5축 점수의 평균이에요. 바깥쪽일수록 5점에 가까워요.
+                </AppText>
+                <RadarChart metrics={metrics} />
+                <View style={styles.axisList}>
+                  {metrics.map((metric, index) => {
+                    const lean = metric.score >= 3 ? TASTE_AXES[index].high : TASTE_AXES[index].low
+                    return (
+                      <View
+                        accessibilityLabel={`${metric.label} 평균 ${metric.score.toFixed(1)}점, ${lean}`}
+                        accessible
+                        key={metric.key}
+                        style={[styles.axisRow, index > 0 && styles.rowDivider]}
+                      >
+                        <AppText style={styles.axisLabel} variant="bodyStrong">
+                          {metric.label}
+                        </AppText>
+                        <View style={styles.track}>
+                          <View style={[styles.trackFill, { width: `${metric.myVal * 100}%` }]} />
+                        </View>
+                        <AppText style={[styles.axisScore, styles.tabular]} variant="bodyStrong">
+                          {metric.score.toFixed(1)}
+                        </AppText>
+                        <AppText capScale style={styles.axisLean} tone="muted" variant="meta">
+                          {lean}
+                        </AppText>
+                      </View>
+                    )
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <View style={styles.rowBetween}>
+                  <AppText accessibilityRole="header" variant="sectionTitle">
+                    종류별로 먹은 라멘
+                  </AppText>
+                  <AppText capScale style={styles.tabular} tone="muted" variant="secondary">
+                    전체 {typeTotal}그릇
+                  </AppText>
+                </View>
+                <View style={styles.typeList}>
+                  {MENU_CATEGORY_NAMES.map((name) => {
+                    const count = typeCounts[name]
+                    const pct = typeTotal ? Math.round((count / typeTotal) * 100) : 0
+                    return (
+                      <View accessibilityLabel={`${name} ${count}그릇, ${pct}%`} accessible key={name} style={styles.typeRow}>
+                        <AppText style={styles.typeName} variant="bodyStrong">
+                          {name}
+                        </AppText>
+                        <View style={[styles.track, styles.trackThick]}>
+                          <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: MENU_CATEGORY_COLORS[name].fill }]} />
+                        </View>
+                        <AppText capScale style={[styles.typeValue, styles.tabular]} tone="sub" variant="secondary">
+                          <AppText capScale variant="secondary" style={styles.heavy}>
+                            {count}그릇
+                          </AppText>
+                          {` · ${pct}%`}
+                        </AppText>
+                      </View>
+                    )
+                  })}
+                </View>
+              </View>
+
+              {topShops.length > 0 ? (
+                <View style={styles.section}>
+                  <AppText accessibilityRole="header" variant="sectionTitle">
+                    자주 간 라멘집
+                  </AppText>
+                  <AppText style={styles.gapTop1} tone="sub" variant="secondary">
+                    전체 {typeTotal}그릇 중 가장 많이 기록한 세 곳이에요.
+                  </AppText>
+                  <View style={styles.gapTop2}>
+                    {topShops.map((visit, index) => {
+                      const shop = shopByName(visit.name)
+                      return (
+                        <Pressable
+                          accessibilityLabel={`${index + 1}위 ${visit.name}${visit.branch ? ` ${visit.branch}` : ""}, ${visit.topMenu}, ${visit.visitCount}그릇`}
+                          accessibilityRole={shop ? "button" : "text"}
+                          disabled={!shop}
+                          key={visit.name}
+                          onPress={() => openShop(shop)}
+                          style={({ pressed }) => [styles.listRow, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
+                        >
+                          <View style={styles.thumb}>
+                            {visit.photo ? (
+                              <Image contentFit="cover" source={{ uri: visit.photo }} style={styles.thumbImage} transition={150} />
+                            ) : (
+                              <AppText tone="sub" variant="cardTitle">
+                                {visit.name.slice(0, 1)}
+                              </AppText>
+                            )}
+                            <View style={styles.rankBadge}>
+                              <AppText capScale tone="onDark" variant="meta">
+                                {index + 1}
+                              </AppText>
+                            </View>
+                          </View>
+                          <View style={styles.flex}>
+                            <AppText numberOfLines={1} variant="cardTitle">
+                              {visit.name}
+                              {visit.branch ? <AppText tone="sub" variant="secondary">{` ${visit.branch}`}</AppText> : null}
+                            </AppText>
+                            <AppText numberOfLines={1} tone="sub" variant="secondary">
+                              {visit.topMenu} · 마지막 {visit.lastVisited.slice(5).replace("-", ".")}
+                            </AppText>
+                          </View>
+                          <AppText style={styles.tabular} variant="bodyStrong">
+                            {visit.visitCount}그릇
+                          </AppText>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                </View>
+              ) : null}
+
+              {suggestion ? (
+                <View style={styles.section}>
+                  <AppText accessibilityRole="header" variant="sectionTitle">
+                    다음에 맛볼 한 그릇
+                  </AppText>
+                  <AppText style={styles.gapTop1} tone="sub" variant="secondary">
+                    {suggestion.count === 0
+                      ? `${suggestion.category}는 아직 기록이 없어요.`
+                      : `${suggestion.category}는 ${suggestion.count}그릇으로 가장 적었어요.`}{" "}
+                    이 종류로 폭을 넓혀보세요.
+                  </AppText>
+                  <Pressable
+                    accessibilityLabel={`${suggestion.shop.name}${suggestion.shop.branch ? ` ${suggestion.shop.branch}` : ""} 매장 보기`}
+                    accessibilityRole="button"
+                    onPress={() => openShop(suggestion.shop)}
+                    style={({ pressed }) => [styles.listRow, styles.gapTop1, pressed && styles.pressedWash]}
+                  >
+                    <View style={styles.thumb}>
+                      {suggestion.shop.photos[0] ? (
+                        <Image contentFit="cover" source={{ uri: suggestion.shop.photos[0] }} style={styles.thumbImage} transition={150} />
+                      ) : null}
+                    </View>
+                    <View style={styles.flex}>
+                      <AppText numberOfLines={1} variant="cardTitle">
+                        {suggestion.shop.name}
+                        {suggestion.shop.branch ? (
+                          <AppText tone="sub" variant="secondary">{` ${suggestion.shop.branch}`}</AppText>
+                        ) : null}
+                      </AppText>
+                      <AppText numberOfLines={1} tone="sub" variant="secondary">
+                        {[shopStyleOf(suggestion.shop), shopSpecOf(suggestion.shop)].filter(Boolean).join(" · ")}
+                      </AppText>
+                    </View>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              <View style={[styles.section, styles.bottom]}>
+                <Button
+                  leftIcon={<RotateCw color={colors.onDark} size={16} />}
+                  onPress={restart}
+                  title="최근 기록으로 다시 정리"
+                  variant="secondary"
+                />
+                <AppText style={[styles.center, styles.gapTop2]} tone="sub" variant="secondary">
+                  새 기록을 남기면 이 화면의 수치는 이미 더해져 있어요. 다시 정리하면 처음부터 다시 훑어봐요.
+                </AppText>
+              </View>
+            </>
+          )}
+        </ScrollView>
       )}
-    </FlowPage>
+
+      <Toast message={toast ?? ""} onDismiss={() => setToast(null)} visible={Boolean(toast)} />
+
+      <BottomSheet
+        description="아래 내용을 길게 눌러 복사해 주세요."
+        footer={<Button onPress={() => setShareFallback(false)} title="닫기" variant="secondary" />}
+        onClose={() => setShareFallback(false)}
+        title="공유하지 못했어요"
+        visible={shareFallback}
+      >
+        <ScrollView contentContainerStyle={styles.fallbackContent} style={[styles.fallbackBox, { maxHeight: windowHeight * 0.34 }]}>
+          <AppText selectable variant="secondary">
+            {shareText}
+          </AppText>
+        </ScrollView>
+        <AppText capScale style={styles.gapTop2} tone="muted" variant="meta">
+          {currentUser?.nickname ?? "라오타 회원"} · Lv.{level.number} {level.title}
+        </AppText>
+      </BottomSheet>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  headerActionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-  },
-  headerButton: {
-    width: 38,
-    height: 38,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: { paddingTop: 14, paddingBottom: 28, gap: 14 },
-  
-  // Archive banner
-  archiveBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-    borderColor: "#EAEAEA",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  archiveBannerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  archiveBannerText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#25282B",
-  },
-  archiveBannerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-  },
-  archiveBannerAction: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: palette.red,
-  },
-
-  // Hero Card
-  passportHero: {
-    backgroundColor: "#25282B",
-    borderRadius: 12,
-    padding: 20,
-  },
-  passportHeroTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  volume: {
-    color: palette.red,
-    fontSize: 11.5,
-    fontWeight: "800",
-    letterSpacing: 0.4,
-  },
-  levelBadge: {
-    backgroundColor: palette.red,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  levelBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "800",
-  },
-  reportTitle: {
-    color: palette.canvas,
-    fontSize: 27,
-    lineHeight: 33,
-    fontWeight: "900",
-    letterSpacing: -0.6,
-    marginTop: 8,
-  },
-  quote: {
-    color: "rgba(255,255,255,0.76)",
-    fontSize: 13.5,
-    lineHeight: 20,
-    marginTop: 10,
-  },
-  heroTagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 14,
-  },
-  heroTag: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-  heroTagText: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 10.5,
-    fontWeight: "600",
-  },
-  passportMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopColor: "rgba(255,255,255,0.15)",
+  root: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  noFlex: { flex: 0 },
+  center: { textAlign: "center" },
+  heavy: { fontWeight: "800", color: colors.ink },
+  inkText: { color: colors.ink },
+  subText: { color: colors.inkSub, fontWeight: "500" },
+  tabular: { fontVariant: ["tabular-nums"] },
+  rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2 },
+  gapTop1: { marginTop: spacing.x1 },
+  gapTop2: { marginTop: spacing.x2 },
+  gapTop3: { marginTop: spacing.x3 },
+  gapTop5: { marginTop: spacing.x5 },
+  pressedWash: { backgroundColor: colors.canvasSoft },
+  scroll: { paddingBottom: spacing.x8 },
+  top: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x5 },
+  section: {
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.x5,
+    borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  recordCount: { color: "rgba(255,255,255,0.75)", fontSize: 11.5, fontWeight: "700" },
-  confidenceText: { color: palette.red, fontSize: 11, fontWeight: "800" },
-
-  sectionHeading: { gap: 3 },
-  subHeadingNote: { color: palette.muted, fontSize: 11 },
-  strongest: { color: palette.red, fontSize: 11, fontWeight: "700" },
-  
-  radarWrap: { alignItems: "center", marginTop: 4 },
-  legend: { flexDirection: "row", gap: 16, marginTop: 4 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendDot: { width: 9, height: 9, borderRadius: 5 },
-  legendDashedLine: { width: 16, height: 2, backgroundColor: "#BEBEBE" },
-  legendTextBold: { color: "#25282B", fontSize: 10.5, fontWeight: "800" },
-  legendText: { color: "#7E7E7E", fontSize: 10.5, fontWeight: "600" },
-
-  metricList: { gap: 9, marginTop: 14 },
-  metricRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  metricLabel: {
-    width: 75,
-    color: palette.ink,
-    fontSize: 12,
-    fontWeight: "700",
+  emptySection: { paddingVertical: spacing.x10, alignItems: "stretch" },
+  bottom: { paddingBottom: spacing.x8 },
+  notice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.x2,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.x3,
+    paddingVertical: spacing.x2_5,
+    marginBottom: spacing.x4,
   },
-  metricTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: palette.wash,
-    overflow: "hidden",
-  },
-  metricFill: { height: 6, borderRadius: 3, backgroundColor: palette.red },
-  metricValue: {
-    width: 28,
-    color: palette.ink,
-    fontSize: 12,
-    fontWeight: "800",
-    textAlign: "right",
-  },
-
-  insightSection: {
-    backgroundColor: palette.wash,
-    borderRadius: 12,
-    padding: 16,
-    gap: 8,
-  },
-  insightTitleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  insightTitle: { color: palette.ink, fontSize: 16, fontWeight: "800" },
-  insightText: { color: palette.ink, fontSize: 13, lineHeight: 19 },
-
-  // Top visited shops
-  topShopList: { gap: 10, marginTop: 10 },
-  topShopCard: {
+  shareButton: {
+    minHeight: 44,
+    paddingHorizontal: spacing.x3,
+    borderRadius: radii.pill,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 8,
-    borderColor: "#EAEAEA",
+    gap: spacing.x1_5,
+  },
+  card: {
+    backgroundColor: colors.canvas,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    padding: 10,
+    padding: spacing.x4,
   },
-  topShopThumb: {
-    width: 60,
-    height: 60,
-    borderRadius: 6,
-    backgroundColor: palette.wash,
+  coverHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.x3,
+    paddingBottom: spacing.x3,
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
   },
-  topShopBody: { flex: 1, minWidth: 0 },
-  topShopHeaderRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  topShopRankBadge: {
-    backgroundColor: "rgba(230,0,0,0.1)",
-    borderRadius: 3,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
+  coverHeadLabels: { flex: 1, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x2 },
+  inkTag: { backgroundColor: colors.ink, borderRadius: radii.xs, paddingHorizontal: spacing.x2, paddingVertical: spacing.x1 },
+  coverLogo: { width: 32, height: 32 },
+  coverBody: { paddingTop: spacing.x4 },
+  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
+  coverAxes: {
+    flexDirection: "row",
+    gap: spacing.x4,
+    marginTop: spacing.x4,
+    paddingTop: spacing.x3,
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
   },
-  topShopRankText: { color: palette.red, fontSize: 10, fontWeight: "900" },
-  topShopName: { color: palette.ink, fontSize: 13.5, fontWeight: "800", flexShrink: 1 },
-  topShopBranch: { color: palette.muted, fontSize: 11, fontWeight: "500" },
-  topShopSharePill: {
-    backgroundColor: palette.wash,
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1.5,
-    marginLeft: "auto",
+  steps: { flexDirection: "row", gap: spacing.x1, marginTop: spacing.x2 },
+  step: { flex: 1, height: 4, borderRadius: radii.xs, backgroundColor: colors.canvasSoft, overflow: "hidden" },
+  stepFill: { height: "100%", backgroundColor: colors.brand },
+  coverActions: { marginTop: spacing.x4, gap: spacing.x1 },
+  radarWrap: { alignItems: "center", paddingVertical: spacing.x2 },
+  axisList: { borderTopColor: colors.border, borderTopWidth: 1 },
+  axisRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x2_5 },
+  rowDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+  axisLabel: { width: 84 },
+  axisScore: { width: 30, textAlign: "right" },
+  axisLean: { width: 64, textAlign: "right" },
+  track: { flex: 1, height: 6, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden" },
+  trackThick: { height: 8 },
+  trackFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
+  typeList: { marginTop: spacing.x4, gap: spacing.x3 },
+  typeRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
+  typeName: { width: 52 },
+  typeValue: { width: 92, textAlign: "right" },
+  listRow: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x3,
+    paddingVertical: spacing.x3,
   },
-  topShopShareText: { color: palette.muted, fontSize: 9.5, fontWeight: "700" },
-  topShopMustTry: { color: palette.red, fontSize: 11, fontWeight: "700", marginTop: 2 },
-  topShopReason: { color: palette.muted, fontSize: 11, lineHeight: 15, marginTop: 2 },
-
-  // Style rows
-  styleRows: { gap: 12, marginTop: 12 },
-  styleRow: { gap: 4 },
-  styleHeader: { flexDirection: "row", justifyContent: "space-between" },
-  styleName: { color: palette.ink, fontSize: 12.5, fontWeight: "800" },
-  stylePercent: { color: palette.red, fontSize: 11.5, fontWeight: "800" },
-  styleTrack: {
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: palette.wash,
+  thumb: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.sm,
+    backgroundColor: colors.canvasSoft,
     overflow: "hidden",
-  },
-  styleFill: { height: 7, borderRadius: 4, backgroundColor: palette.ink },
-  styleNote: { color: palette.muted, fontSize: 10.5 },
-
-  actions: { gap: 8, marginTop: 6 },
-  generatePage: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 28,
   },
-  generateCoreBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(255,255,255,0.06)",
+  thumbImage: { width: "100%", height: "100%" },
+  rankBadge: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: spacing.x1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.ink,
+  },
+  fallbackBox: {
+    backgroundColor: colors.canvasSoft,
+    borderColor: colors.border,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: radii.sm,
   },
-  generateTitle: {
-    color: palette.canvas,
-    fontSize: 20,
-    fontWeight: "900",
-    marginTop: 22,
-  },
-  generateCopy: {
-    color: "rgba(255,255,255,0.62)",
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: "center",
-    marginTop: 6,
-  },
-  generateTrack: {
-    width: "100%",
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.13)",
-    marginTop: 28,
-    overflow: "hidden",
-  },
-  generateFill: { height: 4, backgroundColor: palette.red },
-  generateStepIndicator: { marginTop: 10 },
-  generateStepText: { color: "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: "700" },
-  empty: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 28,
-    gap: 10,
-  },
-  emptyTitle: {
-    color: palette.ink,
-    fontSize: 20,
-    fontWeight: "800",
-    textAlign: "center",
-  },
+  fallbackContent: { padding: spacing.x3 },
+  loadingBody: { flexGrow: 1, justifyContent: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
+  loadingRadar: { width: LOADING_SIZE, height: LOADING_SIZE, alignSelf: "center", marginVertical: spacing.x6 },
+  loadingStatus: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.x2, minHeight: 24 },
+  dot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
+  loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingBottom: spacing.x4, paddingTop: spacing.x2 },
 })
