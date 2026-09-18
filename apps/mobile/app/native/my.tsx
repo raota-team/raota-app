@@ -8,6 +8,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowD
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import {
+  LEGAL_CONTACT_EMAIL,
   RAMEN_ACTIVITY_LEVELS,
   RAMEN_TYPES,
   monthKeyOfDate,
@@ -16,7 +17,6 @@ import {
   type DemoBowl,
   type Shop,
 } from "@raota/shared"
-import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
 import RecordFab from "@/src/components/RecordFab"
 import { AppText, BottomSheet, Button, ConfirmDialog, EmptyState, Toast } from "@/src/components/ui"
 import {
@@ -46,7 +46,6 @@ import { TasteReportCover, shopSpecOf, shopStyleOf } from "../(flows)/taste/inde
 type ActivityTab = "logs" | "visits" | "saved"
 type VisitSort = "count" | "recent" | "name"
 
-const CONTACT_EMAIL = "contact@raota.net"
 const LEVEL_OPACITY = [0.25, 0.45, 0.7, 1]
 const CELL = 12
 const CELL_GAP = 3
@@ -96,14 +95,20 @@ function buildCalendar(bowls: DemoBowl[], start: string, end: string) {
   return { weeks, monthLabels, total }
 }
 
+/** 약관 전문은 시트가 아니라 별도 화면(스와이프 뒤로가기)으로 연다 */
+function openLegal(doc: "terms" | "privacy") {
+  router.push({ pathname: "/legal/[doc]", params: { doc } })
+}
+
 // ---------------------------------------------------------------------------
 // 비회원
 // ---------------------------------------------------------------------------
 
-function GuestView({ onPolicy }: { onPolicy: (type: PolicyType) => void }) {
+function GuestView() {
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.root}>
       <ScrollView contentContainerStyle={styles.guest}>
+        <View style={styles.guestBody}>
         <Image
           accessibilityLabel="라오타"
           accessible
@@ -125,13 +130,14 @@ function GuestView({ onPolicy }: { onPolicy: (type: PolicyType) => void }) {
             variant="outline"
           />
         </View>
+        </View>
         <View style={styles.policyLinks}>
-          <Button onPress={() => onPolicy("terms")} size="small" textStyle={styles.linkText} title="이용약관" variant="ghost" />
+          <Button onPress={() => openLegal("terms")} size="small" textStyle={styles.linkText} title="이용약관" variant="ghost" />
           <AppText tone="muted" variant="meta">
             ·
           </AppText>
           <Button
-            onPress={() => onPolicy("privacy")}
+            onPress={() => openLegal("privacy")}
             size="small"
             textStyle={styles.linkText}
             title="개인정보처리방침"
@@ -148,17 +154,11 @@ function GuestView({ onPolicy }: { onPolicy: (type: PolicyType) => void }) {
 // ---------------------------------------------------------------------------
 
 export default function MyScreen() {
-  const [policy, setPolicy] = useState<PolicyType | null>(null)
   const { currentUser } = useRaota()
-  return (
-    <>
-      {currentUser ? <MemberView onPolicy={setPolicy} /> : <GuestView onPolicy={setPolicy} />}
-      <PolicySheet onClose={() => setPolicy(null)} type={policy} />
-    </>
-  )
+  return currentUser ? <MemberView /> : <GuestView />
 }
 
-function MemberView({ onPolicy }: { onPolicy: (type: PolicyType) => void }) {
+function MemberView() {
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
   const focused = useIsFocused()
@@ -733,10 +733,18 @@ function MemberView({ onPolicy }: { onPolicy: (type: PolicyType) => void }) {
               value={user.email || "등록된 이메일 없음"}
             />
             <AccountRow label="선호 스타일" onChange={() => setSheet("style")} value={user.favoriteRamenType || "아직 안 정했어요"} />
-            <LinkRow label="이용약관" onPress={() => onPolicy("terms")} />
-            <LinkRow label="개인정보처리방침" onPress={() => onPolicy("privacy")} />
-            <LinkRow label={`문의하기 · ${CONTACT_EMAIL}`} onPress={() => void Linking.openURL(`mailto:${CONTACT_EMAIL}`)} />
             <Button onPress={() => setDialog("logout")} style={styles.gapTop3} title="로그아웃" variant="utility" />
+          </View>
+
+          {/* 약관·문의: 설정 앱처럼 계정 아래 조용한 목록으로 둔다 */}
+          <View style={styles.card}>
+            <LinkRow first label="이용약관" onPress={() => openLegal("terms")} />
+            <LinkRow label="개인정보처리방침" onPress={() => openLegal("privacy")} />
+            <LinkRow
+              label="문의하기"
+              onPress={() => void Linking.openURL(`mailto:${LEGAL_CONTACT_EMAIL}`).catch(() => undefined)}
+              value={LEGAL_CONTACT_EMAIL}
+            />
           </View>
           <View style={styles.withdrawRow}>
             <Button
@@ -973,18 +981,25 @@ function AccountRow({ label, value, onChange, first = false }: { label: string; 
   )
 }
 
-function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
+function LinkRow({ label, onPress, value, first }: { label: string; onPress: () => void; value?: string; first?: boolean }) {
   return (
     <Pressable
-      accessibilityLabel={label}
+      accessibilityLabel={value ? `${label}, ${value}` : label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.accountRow, styles.rowDivider, pressed && styles.pressedWash]}
+      style={({ pressed }) => [styles.accountRow, !first && styles.rowDivider, pressed && styles.pressedWash]}
     >
       <AppText numberOfLines={1} style={styles.shrink} variant="body">
         {label}
       </AppText>
-      <ChevronRight color={colors.textMuted} size={16} />
+      <View style={styles.linkTrail}>
+        {value ? (
+          <AppText numberOfLines={1} tone="muted" variant="secondary">
+            {value}
+          </AppText>
+        ) : null}
+        <ChevronRight color={colors.textMuted} size={16} />
+      </View>
     </Pressable>
   )
 }
@@ -1009,12 +1024,15 @@ const styles = StyleSheet.create({
   pressedDim: { opacity: 0.7 },
   linkText: { color: colors.inkSub, ...typography.secondary },
   // 비회원
-  guest: { flexGrow: 1, justifyContent: "center", paddingHorizontal: spacing.gutter, paddingVertical: spacing.x10 },
+  guest: { flexGrow: 1, paddingHorizontal: spacing.gutter, paddingTop: spacing.x10, paddingBottom: spacing.x2 },
+  guestBody: { flex: 1, justifyContent: "center" },
   guestLogo: { width: 64, height: 64, alignSelf: "center" },
   guestActions: { marginTop: spacing.x7, gap: spacing.x2_5 },
-  policyLinks: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: spacing.x6 },
+  policyLinks: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: spacing.x8 },
+  linkTrail: { flexDirection: "row", alignItems: "center", gap: spacing.x1, flexShrink: 1 },
   // 차콜 프로필
-  scroll: { paddingBottom: spacing.x16 + spacing.x8 },
+  // 마지막 줄(회원 탈퇴)은 가운데 정렬이라 오른쪽 아래 기록 버튼과 겹치지 않는다. 탭 막대에 붙여 둔다
+  scroll: { paddingBottom: spacing.x4 },
   overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.ink },
   profile: { backgroundColor: colors.ink, paddingHorizontal: spacing.gutter, paddingBottom: spacing.x4 },
   profileTop: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },

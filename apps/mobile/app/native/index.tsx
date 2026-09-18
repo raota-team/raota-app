@@ -2,12 +2,11 @@ import * as Location from "expo-location"
 import { router } from "expo-router"
 import { ChevronRight, Sparkles } from "lucide-react-native"
 import { useEffect, useMemo, useState } from "react"
-import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
+import { Image, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg"
 
 import type { Shop, ShopCatalogItem, TasteIdentity, TasteProfile } from "@raota/shared"
-import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
 import RecordFab from "@/src/components/RecordFab"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, LoadingState } from "@/src/components/ui"
@@ -17,7 +16,6 @@ import { distanceBetweenCoordinates } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, maxFontScale, radii, spacing, touchTarget } from "@/src/theme"
 
-const CONTACT_EMAIL = "contact@raota.net"
 /** 떠 있는 기록 버튼(56pt)과 여백만큼 목록 끝을 비워 마지막 줄을 가리지 않는다 */
 const FAB_CLEARANCE = 96
 
@@ -162,7 +160,6 @@ export default function HomeScreen() {
   const tasteProfile = useTasteProfile()
   const tasteIdentity = useTasteIdentity()
   const origin = useKnownLocation()
-  const [policy, setPolicy] = useState<PolicyType | null>(null)
   const loggedIn = Boolean(currentUser?.isLoggedIn)
 
   /** 위치가 있으면 실제 거리로 다시 계산한다 */
@@ -493,51 +490,8 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* 6. 약관 · 문의 푸터 */}
-        <View style={styles.footer}>
-          <View accessibilityLabel="약관 및 문의" style={styles.footerLinks}>
-            <Pressable
-              accessibilityLabel="이용약관 보기"
-              accessibilityRole="button"
-              onPress={() => setPolicy("terms")}
-              style={({ pressed }) => [styles.footerButton, pressed && styles.pressedDim]}
-            >
-              <AppText capScale style={styles.bold} tone="muted" variant="meta">
-                이용약관
-              </AppText>
-            </Pressable>
-            <AppText aria-hidden capScale style={styles.dot} variant="meta">
-              ·
-            </AppText>
-            <Pressable
-              accessibilityLabel="개인정보처리방침 보기"
-              accessibilityRole="button"
-              onPress={() => setPolicy("privacy")}
-              style={({ pressed }) => [styles.footerButton, pressed && styles.pressedDim]}
-            >
-              <AppText capScale style={styles.bold} variant="meta">
-                개인정보처리방침
-              </AppText>
-            </Pressable>
-          </View>
-          <Pressable
-            accessibilityHint="메일 앱을 열어요"
-            accessibilityLabel={`문의하기, ${CONTACT_EMAIL}`}
-            accessibilityRole="link"
-            onPress={() => void Linking.openURL(`mailto:${CONTACT_EMAIL}`).catch(() => undefined)}
-            style={({ pressed }) => [styles.footerButton, pressed && styles.pressedDim]}
-          >
-            <AppText capScale style={styles.bold} tone="muted" variant="meta">
-              {`문의하기 · ${CONTACT_EMAIL}`}
-            </AppText>
-          </Pressable>
-          <AppText capScale tone="muted" variant="meta">
-            © 2026 RAOTA · 라멘에 진심인 사람들
-          </AppText>
-        </View>
       </ScrollView>
 
-      <PolicySheet onClose={() => setPolicy(null)} type={policy} />
       <RecordFab />
     </View>
   )
@@ -670,7 +624,4 @@ const styles = StyleSheet.create({
   index: { width: 20, textAlign: "center", fontWeight: "700", fontVariant: ["tabular-nums"] },
   mapLink: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", gap: spacing.x0_5, marginVertical: -spacing.x2 },
 
-  footer: { alignItems: "center", paddingHorizontal: spacing.gutter, paddingTop: spacing.x8, paddingBottom: spacing.x6 },
-  footerLinks: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center" },
-  footerButton: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },
 })

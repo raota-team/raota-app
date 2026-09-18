@@ -136,11 +136,12 @@ describe("my screen (demo account)", () => {
     expect(view.getByRole("button", { name: "회원가입" })).toBeTruthy()
   })
 
-  it("opens the terms sheet from the account section", async () => {
+  it("opens the full terms page from the info section", async () => {
     const view = await renderScreen(<MyScreen />)
     await view.findByText("뿡")
     await fireEvent.press(view.getByRole("button", { name: "이용약관" }))
-    expect(view.getByText("policy:terms")).toBeTruthy()
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/legal/[doc]", params: { doc: "terms" } })
+    expect(view.getByRole("button", { name: "문의하기, contact@raota.net" })).toBeTruthy()
   })
 
   it("shows a natural empty state for a new member with zero bowls", async () => {

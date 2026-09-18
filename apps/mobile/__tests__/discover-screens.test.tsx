@@ -1,6 +1,6 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native"
 import { useState, type ReactElement } from "react"
-import { Linking, Pressable } from "react-native"
+import { Pressable } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import { createInitialPersistedState } from "@/src/data/fixtures"
@@ -112,14 +112,11 @@ describe("home", () => {
     expect(view.queryByRole("button", { name: /알림/ })).toBeNull()
   })
 
-  it("opens the contact mail and the curator", async () => {
-    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true)
+  it("opens the curator and leaves legal links to My and login", async () => {
     const view = await renderScreen(<HomeScreen />)
-    await fireEvent.press(await view.findByRole("link", { name: /문의하기/ }))
-    expect(openURL).toHaveBeenCalledWith("mailto:contact@raota.net")
-    await fireEvent.press(view.getByRole("button", { name: "오늘 뭐 먹지? AI 라멘 큐레이터" }))
+    await fireEvent.press(await view.findByRole("button", { name: "오늘 뭐 먹지? AI 라멘 큐레이터" }))
     expect(router.push).toHaveBeenCalledWith("/ai-recommend")
-    openURL.mockRestore()
+    expect(view.queryByText(/문의하기/)).toBeNull()
   })
 
   it("lets guests browse and offers login and sign-up", async () => {
