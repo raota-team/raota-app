@@ -218,6 +218,7 @@ export default function HomeScreen() {
     const pool = shops.filter((shop) => shop.id !== todayPick?.id)
     return personal ? personalRecommendations(pool, tasteIdentity.data, tasteProfile.data.profile) : fallbackRecommendations(pool)
   }, [personal, shops, tasteIdentity.data, tasteProfile.data.profile, todayPick?.id])
+  const [topRecommendation, ...otherRecommendations] = recommendations
   const recommendTitle = personal && currentUser ? `${currentUser.nickname}님이 좋아할 라멘집` : "처음이라면 여기부터"
   const recommendMeta = personal ? `${tasteIdentity.data.total}그릇 취향 기준` : "라멘로그 · 거리 기준"
 
@@ -353,11 +354,6 @@ export default function HomeScreen() {
               </View>
 
               <View style={styles.pickTitle}>
-                {pickCatalog.style ? (
-                  <AppText capScale style={styles.bold} tone="brand" variant="meta">
-                    {pickCatalog.style}
-                  </AppText>
-                ) : null}
                 <AppText numberOfLines={2} variant="headline">
                   {todayPick.name}
                   {todayPick.branch ? (
@@ -366,16 +362,16 @@ export default function HomeScreen() {
                     </AppText>
                   ) : null}
                 </AppText>
-                {pickCatalog.spec ? (
+                {pickCatalog.style || pickCatalog.spec ? (
                   <AppText tone="sub" variant="secondary">
-                    {pickCatalog.spec}
+                    {[pickCatalog.style, pickCatalog.spec].filter(Boolean).join(" · ")}
                   </AppText>
                 ) : null}
               </View>
 
               {todayPick.description ? (
                 <View style={styles.pickQuote}>
-                  <AppText accessible={false} style={styles.quoteMark} tone="brand">
+                  <AppText accessible={false} style={styles.quoteMark}>
                     {"\u201C"}
                   </AppText>
                   <AppText numberOfLines={3} style={styles.quoteText} variant="body">
@@ -409,52 +405,85 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {/* 4. 추천 라멘집. 숫자 일치도 대신 추천 이유 한 줄을 보여준다 */}
-        {recommendations.length ? (
-          <View style={styles.section}>
-            <SectionHead
-              right={
-                <AppText capScale style={styles.bold} tone="muted" variant="meta">
-                  {recommendMeta}
-                </AppText>
-              }
-              title={recommendTitle}
-            />
-            <View style={styles.listCard}>
-              {recommendations.map(({ shop, reason }, index) => (
-                <Pressable
-                  accessibilityLabel={`추천 ${index + 1}위, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${reason}, 매장 상세 보기`}
-                  accessibilityRole="button"
-                  key={shop.id}
-                  onPress={() => openShop(shop.id)}
-                  style={({ pressed }) => [styles.row, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
-                >
-                  <View style={[styles.rank, index < 3 ? styles.rankTop : styles.rankRest]}>
-                    <AppText capScale style={styles.rankText} tone={index < 3 ? "onDark" : "muted"} variant="meta">
-                      {index + 1}
-                    </AppText>
-                  </View>
-                  <Thumb size={48} uri={shop.photos[0]} />
-                  <View style={styles.rowBody}>
-                    <View style={styles.nameLine}>
-                      <AppText numberOfLines={1} style={styles.flexShrink} variant="cardTitle">
-                        {shop.name}
-                      </AppText>
-                      {shop.branch ? (
-                        <AppText capScale numberOfLines={1} style={styles.branch} tone="muted" variant="meta">
-                          {shop.branch}
-                        </AppText>
-                      ) : null}
-                    </View>
-                    <AppText capScale numberOfLines={1} style={styles.rowSub} tone="sub" variant="secondary">
-                      {reason}
-                    </AppText>
-                  </View>
-                </Pressable>
-              ))}
+        {/* 4. 추천 라멘집: 홈의 정점. 차콜 면을 화면 끝까지 깔고 1위는 사진으로 크게, 2~5위는 줄로 보여준다.
+            숫자 일치도 대신 추천 이유 한 줄을 쓴다 */}
+        {topRecommendation ? (
+          <View style={styles.recommendBand}>
+            <View style={styles.recommendHead}>
+              <AppText accessibilityRole="header" style={styles.flex} tone="onDark" variant="sectionTitle">
+                {recommendTitle}
+              </AppText>
+              <AppText capScale style={styles.bold} tone="onDarkMuted" variant="meta">
+                {recommendMeta}
+              </AppText>
             </View>
+
+            <Pressable
+              accessibilityLabel={`추천 1위, ${topRecommendation.shop.name}${topRecommendation.shop.branch ? ` ${topRecommendation.shop.branch}` : ""}, ${topRecommendation.reason}, 매장 상세 보기`}
+              accessibilityRole="button"
+              onPress={() => openShop(topRecommendation.shop.id)}
+              style={({ pressed }) => pressed && styles.pressedDim}
+            >
+              <View style={styles.recommendPhoto}>
+                <ResilientUriImage
+                  accessibilityLabel=""
+                  style={StyleSheet.absoluteFill}
+                  uri={topRecommendation.shop.photos[0]}
+                />
+              </View>
+              <View style={styles.recommendTop}>
+                <AppText capScale style={styles.recommendRankTop} tone="onDark">
+                  1
+                </AppText>
+                <View style={styles.rowBody}>
+                  <AppText numberOfLines={1} tone="onDark" variant="screenTitle">
+                    {topRecommendation.shop.name}
+                    {topRecommendation.shop.branch ? (
+                      <AppText tone="onDarkMuted" variant="secondary">
+                        {`  ${topRecommendation.shop.branch}`}
+                      </AppText>
+                    ) : null}
+                  </AppText>
+                  <AppText numberOfLines={2} style={styles.rowSub} tone="onDarkMuted" variant="secondary">
+                    {topRecommendation.reason}
+                  </AppText>
+                </View>
+                <ChevronRight color={colors.onDarkMuted} size={20} />
+              </View>
+            </Pressable>
+
+            {otherRecommendations.map(({ shop, reason }, index) => (
+              <Pressable
+                accessibilityLabel={`추천 ${index + 2}위, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${reason}, 매장 상세 보기`}
+                accessibilityRole="button"
+                key={shop.id}
+                onPress={() => openShop(shop.id)}
+                style={({ pressed }) => [styles.recommendRow, pressed && styles.pressedDim]}
+              >
+                <AppText capScale style={styles.recommendRank} tone="onDark">
+                  {index + 2}
+                </AppText>
+                <Thumb size={48} uri={shop.photos[0]} />
+                <View style={styles.rowBody}>
+                  <View style={styles.nameLine}>
+                    <AppText numberOfLines={1} style={styles.flexShrink} tone="onDark" variant="cardTitle">
+                      {shop.name}
+                    </AppText>
+                    {shop.branch ? (
+                      <AppText capScale numberOfLines={1} style={styles.branch} tone="onDarkMuted" variant="meta">
+                        {shop.branch}
+                      </AppText>
+                    ) : null}
+                  </View>
+                  <AppText capScale numberOfLines={1} style={styles.rowSub} tone="onDarkMuted" variant="secondary">
+                    {reason}
+                  </AppText>
+                </View>
+              </Pressable>
+            ))}
+
             {personal ? null : (
-              <AppText style={styles.recommendHint} tone="muted" variant="secondary">
+              <AppText style={styles.recommendHint} tone="onDarkMuted" variant="secondary">
                 {loggedIn ? "라멘을 기록하면 내 취향에 맞춰 추천이 바뀌어요." : "로그인하고 기록하면 내 취향에 맞춰 추천이 바뀌어요."}
               </AppText>
             )}
@@ -614,7 +643,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x2_5,
     paddingVertical: spacing.x1,
     borderRadius: radii.xs,
-    backgroundColor: colors.brand,
+    backgroundColor: colors.ink,
   },
   pickTitle: { marginTop: spacing.x4, gap: spacing.x1 },
   pickQuote: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x4 },
@@ -648,16 +677,34 @@ const styles = StyleSheet.create({
     minHeight: touchTarget,
   },
   rowDivider: { borderTopWidth: 1, borderTopColor: colors.border },
-  rank: { width: 24, height: 24, borderRadius: radii.pill, alignItems: "center", justifyContent: "center" },
-  rankTop: { backgroundColor: colors.ink },
-  rankRest: { backgroundColor: colors.canvasSoft },
-  rankText: { fontWeight: "800", fontVariant: ["tabular-nums"] },
   thumb: { borderRadius: radii.sm },
   rowBody: { flex: 1, minWidth: 0 },
   nameLine: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1_5, minWidth: 0 },
   branch: { fontWeight: "700", flexShrink: 0 },
   rowSub: { marginTop: spacing.x0_5 },
-  recommendHint: { marginTop: spacing.x2 },
+  recommendHint: { marginTop: spacing.x4 },
+  // 차콜 면은 화면 끝까지. 위아래 여백을 넉넉히 둬 스크롤 중 한 번 쉬어 가는 자리가 된다
+  recommendBand: {
+    marginTop: spacing.x4,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.x6,
+    paddingBottom: spacing.x5,
+    backgroundColor: colors.ink,
+  },
+  recommendHead: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2, marginBottom: spacing.x4 },
+  recommendPhoto: { width: "100%", aspectRatio: 16 / 9, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.inkSub },
+  recommendTop: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingTop: spacing.x3, paddingBottom: spacing.x4 },
+  recommendRankTop: { width: 28, fontSize: 28, lineHeight: 32, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  recommendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x3,
+    minHeight: touchTarget,
+    paddingVertical: spacing.x3,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.inkSub,
+  },
+  recommendRank: { width: 28, fontSize: 17, lineHeight: 24, fontWeight: "800", fontVariant: ["tabular-nums"] },
   metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
   dot: { color: colors.textFaint },
   index: { width: 20, textAlign: "center", fontWeight: "700", fontVariant: ["tabular-nums"] },
