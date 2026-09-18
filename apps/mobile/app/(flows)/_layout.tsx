@@ -434,12 +434,7 @@ export default function FlowLayout() {
   const { currentUser } = useRaota()
   const segments = useSegments()
   const section = segments[1]
-  const page = segments[2]
-  const needsAccount =
-    section === "record" ||
-    section === "taste" ||
-    section === "notifications" ||
-    (section === "community" && page === "new")
+  const needsAccount = section === "record" || section === "taste"
 
   if (needsAccount && !currentUser) {
     return <Redirect href="/auth/login" />

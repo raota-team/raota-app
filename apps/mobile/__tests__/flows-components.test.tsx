@@ -8,7 +8,6 @@ import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider } from "@/src/state/RaotaStore"
 import LoginScreen from "@/app/(flows)/auth/login"
 import OnboardingScreen from "@/app/(flows)/auth/onboarding"
-import NotificationsScreen from "@/app/(flows)/notifications"
 import NewRecordScreen from "@/app/(flows)/record/new"
 import SelectShopScreen from "@/app/(flows)/record/select-shop"
 
@@ -150,7 +149,7 @@ describe("authentication and onboarding screens", () => {
   })
 })
 
-describe("record and notification screens", () => {
+describe("record screens", () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -258,16 +257,5 @@ describe("record and notification screens", () => {
     await fireEvent.changeText(view.getByLabelText("가게 검색"), "없는가게")
 
     expect(view.getByText("검색 결과가 없어요")).toBeTruthy()
-  })
-
-  it("disables category switches when the master notification switch is off", async () => {
-    const view = await renderWithStore(<NotificationsScreen />)
-
-    await fireEvent.press(view.getByLabelText("알림 설정"))
-    await fireEvent(view.getByLabelText("푸시 알림 알림"), "valueChange", false)
-
-    await waitFor(() =>
-      expect(view.getByLabelText("공감 알림").props.disabled).toBe(true),
-    )
   })
 })
