@@ -22,7 +22,7 @@ import { colors, radii, spacing, typography } from "@/src/theme"
 
 /*
  * 기록 완료. 웹 RecordCompleteScreen과 같은 구성이다.
- * 인장 → "N번째 그릇" → 이번 그릇 티켓 → 취향 여권 변화(5축) → 이번 그릇 한 줄 → 하단 고정 CTA.
+ * 인장 → "N번째 그릇" → 이번 그릇 티켓 → 내 취향 변화(5축) → 이번 그릇 한 줄 → 하단 고정 CTA.
  * 저장이 끝난 화면이므로 스와이프 뒤로가기로 작성 화면에 돌아가지 않는다.
  */
 
@@ -220,7 +220,7 @@ export default function RecordCompleteScreen() {
             </View>
           </View>
 
-          {/* 취향 여권 변화 */}
+          {/* 내 취향 변화 */}
           {scores && taste.before && taste.delta ? (
             <TasteDeltaSection after={taste.profile} before={taste.before} delta={taste.delta} scores={scores} />
           ) : null}
@@ -272,11 +272,11 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
   const nothingMoved = !isFirstBowl && TASTE_AXES.every((axis) => delta[axis.key] === 0)
 
   return (
-    <View accessibilityLabel="취향 여권 변화" style={styles.deltaSection}>
+    <View accessibilityLabel="내 취향 변화" style={styles.deltaSection}>
       <SectionHeader
         meta={isFirstBowl ? "첫 그릇" : `${before.count}그릇 → ${after.count}그릇 평균`}
         style={styles.deltaHead}
-        title="취향 여권 변화"
+        title="내 취향 변화"
       />
       {TASTE_AXES.map((axis, index) => {
         const change = delta[axis.key]

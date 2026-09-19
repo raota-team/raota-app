@@ -99,7 +99,7 @@ function renderScreen(element: ReactElement) {
 async function renderCreatedLog() {
   const view = await renderScreen(<CreateThenComplete />)
   await fireEvent.press(view.getByRole("button", { name: "기록 생성" }))
-  await view.findByLabelText("취향 여권 변화")
+  await view.findByLabelText("내 취향 변화")
   return view
 }
 
@@ -123,7 +123,7 @@ describe("record complete screen", () => {
 
   it("shows the five-axis change with an arrow and a two-decimal delta", async () => {
     const view = await renderCreatedLog()
-    const section = view.getByLabelText("취향 여권 변화")
+    const section = view.getByLabelText("내 취향 변화")
 
     expect(within(section).getByText("42그릇 → 43그릇 평균")).toBeTruthy()
     // 육수 농도: 42그릇 평균 3.9에 5점 → 반올림 전 3.9256 → "3.90 → 3.93", +0.03
@@ -142,8 +142,8 @@ describe("record complete screen", () => {
     const view = await renderScreen(<RecordCompleteScreen />)
 
     expect(await view.findByText("특제 쇼유 라멘")).toBeTruthy()
-    expect(view.queryByLabelText("취향 여권 변화")).toBeNull()
-    expect(view.queryByText("취향 여권 변화")).toBeNull()
+    expect(view.queryByLabelText("내 취향 변화")).toBeNull()
+    expect(view.queryByText("내 취향 변화")).toBeNull()
   })
 
   it("shows the empty state for an unknown logId", async () => {

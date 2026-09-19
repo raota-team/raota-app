@@ -583,7 +583,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                 아직 이 가게 기록이 없어요
               </AppText>
               <AppText style={[styles.center, styles.emptyBody]} tone="muted" variant="secondary">
-                {loggedIn ? "먹어본 라멘을 5축으로 남겨보세요." : "로그인하고 이 가게의 첫 기록을 남겨보세요."}
+                {loggedIn ? "먹어본 라멘의 맛을 기록해보세요." : "로그인하고 이 가게의 첫 기록을 남겨보세요."}
               </AppText>
               <Button
                 accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}

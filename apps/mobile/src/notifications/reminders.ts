@@ -88,7 +88,7 @@ export function planRecordReminders({ monthCount, lastRecordAt, now = new Date()
       identifier: REMINDER_IDS.inactive,
       kind: "inactive",
       title: "지난주에 먹은 라멘, 남겨볼까요?",
-      body: "가게를 고르면 바로 5축으로 기록할 수 있어요.",
+      body: "가게를 고르면 바로 맛을 기록할 수 있어요.",
       url: REMINDER_DEEP_LINK,
       date: inactiveDate,
     })

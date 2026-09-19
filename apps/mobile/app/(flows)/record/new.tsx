@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as ImagePicker from "expo-image-picker"
 import DateTimePicker from "@react-native-community/datetimepicker"
-import { AlertCircle, CalendarDays, ChevronDown, ImagePlus, LogIn, X } from "lucide-react-native"
+import { AlertCircle, CalendarDays, ImagePlus, LogIn, X } from "lucide-react-native"
 import {
   AccessibilityInfo,
   ActionSheetIOS,
@@ -21,7 +21,7 @@ import {
   View,
   findNodeHandle,
 } from "react-native"
-import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
+import { useReducedMotion } from "react-native-reanimated"
 import { SafeAreaView } from "react-native-safe-area-context"
 
 import {
@@ -65,7 +65,7 @@ import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@
 
 /*
  * 라멘 기록하기. 웹 RecordScreen과 같은 순서다.
- * 한 그릇 정보 → 5축 평가 → 사진 → 메모 → 맛 태그(접힘) → 공개 여부, 하단 고정 저장 바.
+ * 한 그릇 정보 → 맛 평가(5항목) → 맛 태그(펼침) → 사진 → 메모 → 공개 여부, 하단 고정 저장 바.
  * 저장 버튼은 항상 누를 수 있고, 빠진 항목이 있으면 첫 항목으로 스크롤하며 VoiceOver 포커스를 옮긴다.
  */
 
@@ -155,7 +155,6 @@ export default function NewRecordScreen() {
   const [photos, setPhotos] = useState<string[]>([])
   const [note, setNote] = useState("")
   const [tasteNotes, setTasteNotes] = useState<TasteNotes>(EMPTY_TASTE_NOTES)
-  const [isTagsOpen, setIsTagsOpen] = useState(false)
   const [isPublic, setIsPublic] = useState(true)
   const [attempted, setAttempted] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -273,14 +272,6 @@ export default function NewRecordScreen() {
   useEffect(() => {
     setSaveError(null)
   }, [shop?.id, menuName, ramenType, visitedAt, scores, revisit, photos, note, tasteNotes, isPublic])
-
-  // 맛 태그 펼침 화살표. Reduce Motion이면 바로 바뀐다.
-  const chevron = useSharedValue(0)
-  useEffect(() => {
-    const target = isTagsOpen ? 180 : 0
-    chevron.value = reduceMotion ? target : withTiming(target, { duration: 200 })
-  }, [chevron, isTagsOpen, reduceMotion])
-  const chevronStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${chevron.value}deg` }] }))
 
   const goBack = () => {
     if (router.canGoBack()) router.back()
@@ -477,7 +468,7 @@ export default function NewRecordScreen() {
         <Header backLabel="뒤로가기" onBack={goBack} title="라멘 기록하기" />
         <EmptyState
           actionLabel="로그인하기"
-          description="기록은 계정에 저장돼요. 로그인하면 5축 취향 리포트도 함께 쌓여요."
+          description="기록은 계정에 저장돼요. 로그인하면 취향 리포트도 함께 쌓여요."
           icon={<LogIn color={colors.textMuted} size={32} />}
           onAction={() => router.replace("/auth/login")}
           style={styles.flex}
@@ -660,9 +651,9 @@ export default function NewRecordScreen() {
 
             {/* 2. 5축 평가 */}
             <View style={styles.section}>
-              <SectionHeader meta="필수" title="5축 평가" />
+              <SectionHeader meta="필수" title="맛 평가" />
               <AppText style={styles.sectionLead} tone="muted" variant="secondary">
-                다섯 축이 모여 취향 여권이 갱신됩니다.
+                다섯 항목을 매기면 내 취향 리포트에 반영돼요.
               </AppText>
               <View style={styles.axes}>
                 {SCORE_AXES.map((axis, index) => (
@@ -756,7 +747,38 @@ export default function NewRecordScreen() {
 
             <View style={styles.divider} />
 
-            {/* 3. 사진 (선택) */}
+            {/* 3. 맛 태그 (선택). 누르기만 하면 되는 가장 쉬운 참여라 점수 바로 아래에 펼쳐 둔다 */}
+            <View style={styles.section}>
+              <SectionHeader
+                meta={selectedTagCount > 0 ? `선택 · ${selectedTagCount}개` : "선택"}
+                style={styles.sectionHeadTight}
+                title="맛 태그"
+              />
+              <View style={styles.tagsPanel}>
+                {TASTE_FIELDS.map((field) => (
+                  <View key={field.key}>
+                    <AppText style={styles.tagLabel} variant="bodyStrong">
+                      {field.label}
+                    </AppText>
+                    <View accessibilityLabel={field.label} style={styles.chips}>
+                      {field.options.map((option) => (
+                        <Chip
+                          accessibilityLabel={`${field.label} ${option}`}
+                          key={option}
+                          label={option}
+                          onPress={() => toggleTasteNote(field.key, option)}
+                          selected={tasteNotes[field.key].includes(option)}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* 4. 사진 (선택) */}
             <View style={styles.section}>
               <SectionHeader meta={`선택 · 최대 ${RECORD_PHOTO_MAX}장`} style={styles.sectionHeadTight} title="사진" />
               <ScrollView
@@ -804,7 +826,7 @@ export default function NewRecordScreen() {
 
             <View style={styles.divider} />
 
-            {/* 4. 메모 (선택) */}
+            {/* 5. 메모 (선택) */}
             <View style={styles.section}>
               <SectionHeader
                 meta={`선택 · ${note.length}/${RECORD_NOTE_MAX_LENGTH}`}
@@ -824,55 +846,6 @@ export default function NewRecordScreen() {
                 textAlignVertical="top"
                 value={note}
               />
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* 5. 맛 태그 더 남기기 (선택, 접힘) */}
-            <View>
-              <Pressable
-                accessibilityHint={isTagsOpen ? "맛 태그를 접어요" : "국물, 면, 간, 토핑 태그를 펼쳐요"}
-                accessibilityLabel={`맛 태그 더 남기기, 선택${selectedTagCount > 0 ? `, ${selectedTagCount}개 선택` : ""}`}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: isTagsOpen }}
-                onPress={() => setIsTagsOpen((open) => !open)}
-                style={({ pressed }) => [styles.tagsToggle, pressed && styles.pressedSoft]}
-              >
-                <View style={styles.flexShrink}>
-                  <AppText variant="sectionTitle">맛 태그 더 남기기</AppText>
-                  <AppText style={styles.tagsSub} tone="muted" variant="secondary">
-                    {`선택 · 국물, 면, 간, 토핑${selectedTagCount > 0 ? ` · ${selectedTagCount}개 선택` : ""}`}
-                  </AppText>
-                </View>
-                <Animated.View style={chevronStyle}>
-                  <ChevronDown color={colors.textMuted} size={20} />
-                </Animated.View>
-              </Pressable>
-              {isTagsOpen ? (
-                <Animated.View entering={reduceMotion ? undefined : FadeIn.duration(200)} style={styles.tagsPanel}>
-                  {TASTE_FIELDS.map((field) => (
-                    <View key={field.key}>
-                      <View style={styles.labelRow}>
-                        <AppText variant="bodyStrong">{field.label}</AppText>
-                        <AppText capScale style={styles.bold} tone="muted" variant="meta">
-                          {`${tasteNotes[field.key].length}개 선택`}
-                        </AppText>
-                      </View>
-                      <View accessibilityLabel={field.label} style={styles.chips}>
-                        {field.options.map((option) => (
-                          <Chip
-                            accessibilityLabel={`${field.label} ${option}`}
-                            key={option}
-                            label={option}
-                            onPress={() => toggleTasteNote(field.key, option)}
-                            selected={tasteNotes[field.key].includes(option)}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  ))}
-                </Animated.View>
-              ) : null}
             </View>
 
             <View style={styles.divider} />
@@ -1088,16 +1061,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tagsToggle: {
-    minHeight: 56,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.x3,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.x3,
-  },
   tagsSub: { marginTop: spacing.x0_5 },
-  tagsPanel: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.x6, gap: spacing.x5 },
+  tagsPanel: { gap: spacing.x4 },
+  tagLabel: { marginBottom: spacing.x2 },
   publicRow: {
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.x4,

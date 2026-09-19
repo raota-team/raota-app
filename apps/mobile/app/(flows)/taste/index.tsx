@@ -225,7 +225,7 @@ const pointsOf = (values: number[], center?: number, radius?: number) =>
 function RadarChart({ metrics }: { metrics: MetricItem[] }) {
   const summary = metrics.map((metric) => `${metric.label} ${metric.score.toFixed(1)}점`).join(", ")
   return (
-    <View accessibilityLabel={`입맛 5축 레이더. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
+    <View accessibilityLabel={`항목별 맛 평가 그래프. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
       <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width={RADAR_SIZE + 24}>
         {[0.2, 0.4, 0.6, 0.8, 1].map((level) => (
           <Polygon
@@ -562,7 +562,7 @@ export default function TasteReportScreen() {
                 아직 보여드릴 취향이 없어요
               </AppText>
               <AppText style={[styles.center, styles.gapTop2]} tone="sub" variant="body">
-                {"첫 그릇을 기록하면\n5축 점수와 종류별 분포가 여기에 쌓여요."}
+                {"첫 그릇을 기록하면\n맛 평가와 종류별 분포가 여기에 쌓여요."}
               </AppText>
               <Button
                 onPress={() => router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })}
@@ -574,10 +574,10 @@ export default function TasteReportScreen() {
             <>
               <View style={styles.section}>
                 <AppText accessibilityRole="header" variant="sectionTitle">
-                  입맛 5축
+                  항목별 맛 평가
                 </AppText>
                 <AppText style={styles.gapTop1} tone="sub" variant="secondary">
-                  기록마다 매긴 5축 점수의 평균이에요. 바깥쪽일수록 5점에 가까워요.
+                  기록마다 매긴 맛 평가의 평균이에요. 바깥쪽일수록 5점에 가까워요.
                 </AppText>
                 <RadarChart metrics={metrics} />
                 <View style={styles.axisList}>
