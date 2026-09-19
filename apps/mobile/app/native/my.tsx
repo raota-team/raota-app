@@ -3,10 +3,9 @@ import { router, useIsFocused } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as Haptics from "expo-haptics"
-import { Award, Bookmark, ChevronRight, MapPin, Search } from "lucide-react-native"
+import { Award, Bookmark, ChevronRight, MapPin, Search, Settings } from "lucide-react-native"
 import {
   ActivityIndicator,
-  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,9 +18,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import {
-  LEGAL_CONTACT_EMAIL,
   RAMEN_ACTIVITY_LEVELS,
-  RAMEN_TYPES,
   monthKeyOfDate,
   seoulMonthKey,
   seoulToday,
@@ -29,7 +26,7 @@ import {
   type Shop,
 } from "@raota/shared"
 import RecordFab from "@/src/components/RecordFab"
-import { AppText, BottomSheet, Button, ConfirmDialog, EmptyState, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, EmptyState, Toast } from "@/src/components/ui"
 import {
   useActivityLevel,
   useBookmarkedShops,
@@ -195,11 +192,7 @@ function MemberView() {
   const [visitSort, setVisitSort] = useState<VisitSort>("count")
   const [visitQuery, setVisitQuery] = useState("")
   const [savedQuery, setSavedQuery] = useState("")
-  const [sheet, setSheet] = useState<"grade" | "style" | "email" | null>(null)
-  const [dialog, setDialog] = useState<"logout" | "withdraw" | null>(null)
-  const [newEmail, setNewEmail] = useState("")
-  const [emailError, setEmailError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [sheet, setSheet] = useState<"grade" | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const calendarRef = useRef<ScrollView>(null)
 
@@ -265,45 +258,10 @@ function MemberView() {
     setTab(next)
   }
 
-  const saveStyle = async (style: string) => {
-    haptic()
-    await actions.updateProfile({ favoriteRamenType: style })
-    setSheet(null)
-    setToast(`선호 스타일을 '${style}'로 바꿨어요`)
-  }
-
-  const saveEmail = async () => {
-    const trimmed = newEmail.trim()
-    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setEmailError("이메일 형식이 아니에요. 예: ramen@example.com")
-      return
-    }
-    setBusy(true)
-    try {
-      await actions.updateProfile({ email: trimmed })
-      setSheet(null)
-      setToast("이메일 주소를 바꿨어요")
-    } catch {
-      setEmailError("저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.")
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const unsave = (shop: Shop) => {
     haptic()
     actions.toggleBookmark(shop.id)
     setToast(`'${shop.name}' 저장을 해제했어요`)
-  }
-
-  const withdraw = async () => {
-    setBusy(true)
-    try {
-      await actions.withdraw()
-    } finally {
-      setBusy(false)
-      setDialog(null)
-    }
   }
 
   const stats = [
@@ -349,6 +307,16 @@ function MemberView() {
                 라오타 라멘클럽 회원{user.membershipNo ? ` · ${user.membershipNo}` : ""}
               </AppText>
             </View>
+            <Pressable
+              accessibilityHint="계정, 약관, 로그아웃"
+              accessibilityLabel="설정"
+              accessibilityRole="button"
+              hitSlop={4}
+              onPress={() => router.push("/settings")}
+              style={({ pressed }) => [styles.settingsButton, pressed && styles.pressedDim]}
+            >
+              <Settings color={colors.onDark} size={22} />
+            </Pressable>
           </View>
 
           <View style={styles.stats}>
@@ -761,44 +729,6 @@ function MemberView() {
             </View>
           ) : null}
 
-          {/* 계정 */}
-          <View style={styles.card}>
-            <AppText accessibilityRole="header" style={styles.accountTitle} variant="sectionTitle">
-              계정
-            </AppText>
-            <AccountRow
-              first
-              label="이메일"
-              onChange={() => {
-                setNewEmail(user.email ?? "")
-                setEmailError(null)
-                setSheet("email")
-              }}
-              value={user.email || "등록된 이메일 없음"}
-            />
-            <AccountRow label="선호 스타일" onChange={() => setSheet("style")} value={user.favoriteRamenType || "아직 안 정했어요"} />
-            <Button onPress={() => setDialog("logout")} style={styles.gapTop3} title="로그아웃" variant="utility" />
-          </View>
-
-          {/* 약관·문의: 설정 앱처럼 계정 아래 조용한 목록으로 둔다 */}
-          <View style={styles.card}>
-            <LinkRow first label="이용약관" onPress={() => openLegal("terms")} />
-            <LinkRow label="개인정보처리방침" onPress={() => openLegal("privacy")} />
-            <LinkRow
-              label="문의하기"
-              onPress={() => void Linking.openURL(`mailto:${LEGAL_CONTACT_EMAIL}`).catch(() => undefined)}
-              value={LEGAL_CONTACT_EMAIL}
-            />
-          </View>
-          <View style={styles.withdrawRow}>
-            <Button
-              onPress={() => setDialog("withdraw")}
-              size="small"
-              textStyle={styles.withdrawText}
-              title="회원 탈퇴"
-              variant="ghost"
-            />
-          </View>
         </View>
       </ScrollView>
 
@@ -848,106 +778,6 @@ function MemberView() {
         </ScrollView>
       </BottomSheet>
 
-      <BottomSheet
-        description="가장 즐겨 먹는 종류를 골라 주세요. 프로필에 표시돼요."
-        onClose={() => setSheet(null)}
-        title="선호 라멘 스타일"
-        visible={sheet === "style"}
-      >
-        <View accessibilityLabel="라멘 스타일" accessibilityRole="radiogroup" style={styles.styleGrid}>
-          {RAMEN_TYPES.map((style) => {
-            const selected = user.favoriteRamenType === style
-            return (
-              <Pressable
-                accessibilityLabel={style}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected }}
-                key={style}
-                onPress={() => void saveStyle(style)}
-                style={({ pressed }) => [styles.styleOption, selected && styles.styleSelected, pressed && !selected && styles.pressedWash]}
-              >
-                <AppText tone={selected ? "brand" : "ink"} variant="bodyStrong">
-                  {style}
-                </AppText>
-                {selected ? (
-                  <AppText capScale tone="brand" variant="meta">
-                    선택됨
-                  </AppText>
-                ) : null}
-              </Pressable>
-            )
-          })}
-        </View>
-      </BottomSheet>
-
-      <BottomSheet
-        description="계정 안내를 받을 이메일 주소를 입력해 주세요."
-        dismissOnBackdropPress={!busy}
-        footer={
-          <View style={styles.sheetActions}>
-            <Button disabled={busy} fullWidth onPress={() => setSheet(null)} title="취소" variant="outline" />
-            <Button fullWidth loading={busy} onPress={() => void saveEmail()} title="저장" />
-          </View>
-        }
-        onClose={() => !busy && setSheet(null)}
-        title="이메일 변경"
-        visible={sheet === "email"}
-      >
-        <AppText nativeID="email-label" variant="bodyStrong">
-          새 이메일 주소
-        </AppText>
-        <TextInput
-          accessibilityLabel="새 이메일 주소"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect={false}
-          editable={!busy}
-          keyboardType="email-address"
-          onChangeText={(value) => {
-            setNewEmail(value)
-            setEmailError(null)
-          }}
-          onSubmitEditing={() => void saveEmail()}
-          placeholder="ramen@example.com"
-          placeholderTextColor={colors.textMuted}
-          returnKeyType="done"
-          style={[styles.input, emailError ? styles.inputInvalid : null]}
-          textContentType="emailAddress"
-          value={newEmail}
-        />
-        {emailError ? (
-          <AppText accessibilityLiveRegion="polite" style={styles.gapTop1} tone="critical" variant="secondary">
-            {emailError}
-          </AppText>
-        ) : null}
-      </BottomSheet>
-
-      <ConfirmDialog
-        confirmLabel="로그아웃"
-        message="기록과 취향 리포트는 계정에 그대로 남아 있어요."
-        onCancel={() => setDialog(null)}
-        onConfirm={() => {
-          setDialog(null)
-          actions.logout()
-        }}
-        title="로그아웃할까요?"
-        visible={dialog === "logout"}
-      />
-      <ConfirmDialog
-        confirmLabel="탈퇴하기"
-        destructive
-        loading={busy}
-        message={[
-          "탈퇴하면 바로 로그아웃되고, 30일 뒤 같은 계정으로 다시 가입할 수 있어요.",
-          "",
-          "30일 동안 같은 소셜 계정으로 재가입할 수 없어요.",
-          "30일이 지나면 라멘로그, 취향 리포트, 저장한 매장이 모두 지워져요.",
-        ].join("\n")}
-        onCancel={() => !busy && setDialog(null)}
-        onConfirm={() => void withdraw()}
-        title="회원 탈퇴"
-        visible={dialog === "withdraw"}
-      />
     </View>
   )
 }
@@ -1000,54 +830,6 @@ function SearchField({
   )
 }
 
-function AccountRow({ label, value, onChange, first = false }: { label: string; value: string; onChange: () => void; first?: boolean }) {
-  return (
-    <View style={[styles.accountRow, !first && styles.rowDivider]}>
-      <AppText tone="sub" variant="body">
-        {label}
-      </AppText>
-      <View style={[styles.rowGap, styles.shrink]}>
-        <AppText numberOfLines={1} style={styles.shrink} variant="bodyStrong">
-          {value}
-        </AppText>
-        <Pressable
-          accessibilityLabel={`${label} 변경`}
-          accessibilityRole="button"
-          onPress={onChange}
-          style={({ pressed }) => [styles.changeButton, pressed && styles.pressedWash]}
-        >
-          <AppText capScale style={styles.bold} variant="secondary">
-            변경
-          </AppText>
-        </Pressable>
-      </View>
-    </View>
-  )
-}
-
-function LinkRow({ label, onPress, value, first }: { label: string; onPress: () => void; value?: string; first?: boolean }) {
-  return (
-    <Pressable
-      accessibilityLabel={value ? `${label}, ${value}` : label}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.accountRow, !first && styles.rowDivider, pressed && styles.pressedWash]}
-    >
-      <AppText numberOfLines={1} style={styles.shrink} variant="body">
-        {label}
-      </AppText>
-      <View style={styles.linkTrail}>
-        {value ? (
-          <AppText numberOfLines={1} tone="muted" variant="secondary">
-            {value}
-          </AppText>
-        ) : null}
-        <ChevronRight color={colors.textMuted} size={16} />
-      </View>
-    </Pressable>
-  )
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
@@ -1073,13 +855,13 @@ const styles = StyleSheet.create({
   guestLogo: { width: 64, height: 64, alignSelf: "center" },
   guestActions: { marginTop: spacing.x7, gap: spacing.x2_5 },
   policyLinks: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: spacing.x8 },
-  linkTrail: { flexDirection: "row", alignItems: "center", gap: spacing.x1, flexShrink: 1 },
   // 차콜 프로필
-  // 마지막 줄(회원 탈퇴)은 가운데 정렬이라 오른쪽 아래 기록 버튼과 겹치지 않는다. 탭 막대에 붙여 둔다
-  scroll: { paddingBottom: spacing.x4 },
+  // 목록 끝이 오른쪽 아래 기록 버튼에 가리지 않을 만큼 비운다(계정·약관은 설정 화면으로 옮겼다)
+  scroll: { paddingBottom: 96 },
   overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.ink },
   profile: { backgroundColor: colors.ink, paddingHorizontal: spacing.gutter, paddingBottom: spacing.x4 },
   profileTop: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
+  settingsButton: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center", marginRight: -spacing.x2 },
   avatar: {
     width: 56,
     height: 56,
@@ -1172,17 +954,6 @@ const styles = StyleSheet.create({
   savedRow: { flexDirection: "row", alignItems: "center", gap: spacing.x1 },
   iconButton: { width: 44, height: 44, borderRadius: radii.pill, alignItems: "center", justifyContent: "center" },
   // 계정
-  accountRow: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.x3,
-    paddingVertical: spacing.x1,
-  },
-  changeButton: { minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.x2, borderRadius: radii.sm },
-  accountTitle: { marginBottom: spacing.x1 },
-  withdrawRow: { alignItems: "center" },
   loadMore: {
     minHeight: touchTarget,
     flexDirection: "row",
@@ -1192,38 +963,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  withdrawText: { color: colors.inkSub, fontWeight: "500", textDecorationLine: "underline", ...typography.secondary },
   toast: { bottom: 88 },
   // 시트
   levelList: { marginTop: spacing.x4, borderColor: colors.border, borderTopWidth: 1, borderBottomWidth: 1 },
   levelRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingHorizontal: spacing.x1, paddingVertical: spacing.x3 },
   levelCurrent: { backgroundColor: colors.brandWeak },
-  styleGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
-  styleOption: {
-    flexBasis: "48%",
-    flexGrow: 1,
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.x3,
-    borderRadius: radii.sm,
-    borderColor: colors.border,
-    borderWidth: 1,
-  },
-  styleSelected: { borderColor: colors.brand, backgroundColor: colors.brandWeak },
-  sheetActions: { flexDirection: "row", gap: spacing.x2 },
-  input: {
-    minHeight: 48,
-    marginTop: spacing.x1_5,
-    paddingHorizontal: spacing.x3,
-    borderRadius: radii.sm,
-    backgroundColor: colors.surfaceInput,
-    borderColor: colors.border,
-    borderWidth: 1,
-    color: colors.ink,
-    ...typography.body,
-    fontSize: 16,
-  },
-  inputInvalid: { borderColor: colors.critical },
 })

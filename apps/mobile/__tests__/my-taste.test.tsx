@@ -7,6 +7,7 @@ import { createInitialPersistedState } from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider } from "@/src/state/RaotaStore"
 import MyScreen from "@/app/native/my"
+import SettingsScreen from "@/app/(flows)/settings"
 import TasteReportScreen from "@/app/(flows)/taste/index"
 import MonthlyTasteScreen from "@/app/(flows)/taste/archive"
 import MonthlyTasteReportScreen from "@/app/(flows)/taste/[reportId]"
@@ -20,6 +21,7 @@ jest.mock("expo-router", () => {
   Stack.Screen = () => null
   return {
     Stack,
+    Redirect: ({ href }: { href: string }) => React.createElement(View, { testID: `redirect:${href}` }),
     router: { back: jest.fn(), canGoBack: jest.fn(() => true), push: jest.fn(), replace: jest.fn() },
     useIsFocused: jest.fn(() => true),
     useLocalSearchParams: jest.fn(() => mockParams),
@@ -119,8 +121,14 @@ describe("my screen (demo account)", () => {
     expect(view.getByText("'멘야준' 저장을 해제했어요")).toBeTruthy()
   })
 
-  it("confirms logout in a dialog and then shows only the guest prompt", async () => {
-    const view = await renderScreen(<MyScreen />)
+  it("confirms logout in settings and then My shows only the guest prompt", async () => {
+    // 마이와 설정을 같은 스토어에 함께 띄워, 설정에서 로그아웃하면 마이가 비회원 화면으로 바뀌는지 본다
+    const view = await renderScreen(
+      <>
+        <MyScreen />
+        <SettingsScreen />
+      </>,
+    )
     await view.findByText("뿡")
 
     await fireEvent.press(view.getByRole("button", { name: "로그아웃" }))
@@ -134,6 +142,8 @@ describe("my screen (demo account)", () => {
     expect(view.queryByText("진한 돈골파")).toBeNull()
     expect(view.getByRole("button", { name: "로그인" })).toBeTruthy()
     expect(view.getByRole("button", { name: "회원가입" })).toBeTruthy()
+    // 로그아웃한 설정 화면은 마이로 돌아간다
+    expect(view.getByTestId("redirect:/native/my")).toBeTruthy()
   })
 
   it("shows five recent bowls first and loads five more at a time", async () => {
@@ -148,9 +158,17 @@ describe("my screen (demo account)", () => {
     expect(remaining()).toBe(total - 10)
   })
 
-  it("opens the full terms page from the info section", async () => {
+  it("moves account, terms and contact into settings behind the gear button", async () => {
     const view = await renderScreen(<MyScreen />)
     await view.findByText("뿡")
+    expect(view.queryByRole("button", { name: "로그아웃" })).toBeNull()
+    await fireEvent.press(view.getByRole("button", { name: "설정" }))
+    expect(router.push).toHaveBeenCalledWith("/settings")
+  })
+
+  it("opens the full terms page and contact from settings", async () => {
+    const view = await renderScreen(<SettingsScreen />)
+    await view.findByText("bbung@raota.net")
     await fireEvent.press(view.getByRole("button", { name: "이용약관" }))
     expect(router.push).toHaveBeenCalledWith({ pathname: "/legal/[doc]", params: { doc: "terms" } })
     expect(view.getByRole("button", { name: "문의하기, contact@raota.net" })).toBeTruthy()
