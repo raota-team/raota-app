@@ -57,6 +57,18 @@ export interface GoogleShopCsvRecord {
 }
 
 /** 앱 내 정형화된 라멘 매장 인터페이스 (raota-front 스펙 일치) */
+/**
+ * AI가 라멘로그·리뷰를 요약한 매장 소개(서버가 만든다). 매장 상세 "가게 소개" 자리에 들어간다.
+ * 화면은 글과 함께 "AI가 요약했어요" 표시만 붙인다.
+ */
+export interface ShopAISummary {
+  text: string
+  /** 한눈에 보는 특징 2~4개 */
+  keywords?: string[]
+  /** 생성일 YYYY-MM-DD */
+  generatedAt?: string
+}
+
 export interface Shop {
   id: number
   name: string
@@ -84,6 +96,8 @@ export interface Shop {
   naverMapId?: string
   photos: string[]
   tags: string[]
+  /** AI 요약 소개. 없으면 description(가게 소개)을 보여준다 */
+  aiSummary?: ShopAISummary
   matchScore: number
   distanceM: number
   reviews: Array<{

@@ -176,6 +176,17 @@ describe("shop detail", () => {
     openURL.mockRestore()
   })
 
+  it("shows the AI summary as the shop intro with only an AI-made label", async () => {
+    mockParams.shopId = "1"
+    const view = await renderScreen(<ShopDetailScreen />)
+    await view.findByText(/^멘야준/)
+
+    expect(view.getByText("가게 소개")).toBeTruthy()
+    expect(view.getByLabelText("AI가 요약했어요")).toBeTruthy()
+    expect(view.getByText("#단단한 면")).toBeTruthy()
+    expect(view.queryByText(/개를 AI가 요약/)).toBeNull()
+  })
+
   it("puts call, Naver Map, CatchTable and Instagram shortcuts under the shop intro", async () => {
     const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true)
     mockParams.shopId = "1"

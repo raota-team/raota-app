@@ -101,7 +101,7 @@ function openShop(shopId: number) {
 /** 원장 매장의 표시용 텍스트(스타일·특징·태그·소개). 추천 이유를 판정할 때 쓴다 */
 function shopText(shop: Shop) {
   const catalog = catalogOf(shop)
-  return [catalog.style, catalog.spec, shop.description, ...shop.tags].filter(Boolean).join(" ")
+  return [catalog.style, catalog.spec, shop.aiSummary?.text, shop.description, ...shop.tags].filter(Boolean).join(" ")
 }
 
 const SOUP_KEYS: Record<string, string[]> = {
@@ -233,7 +233,10 @@ export default function HomeScreen() {
   }, [origin, shopsQuery.data])
 
   /** 오늘의 픽: 원장에서 소개글과 사진이 있는 첫 매장 (웹과 같은 에디터 픽) */
-  const todayPick = useMemo(() => shops.find((shop) => shop.description && shop.photos[0]) ?? shops[0] ?? null, [shops])
+  const todayPick = useMemo(
+    () => shops.find((shop) => (shop.aiSummary || shop.description) && shop.photos[0]) ?? shops[0] ?? null,
+    [shops],
+  )
   /** 가까운 순 상위 5곳. 바로 위 오늘의 픽과 겹치지 않게 뺀다 */
   const nearby = useMemo(
     () => shops.filter((shop) => shop.id !== todayPick?.id).sort((a, b) => a.distanceM - b.distanceM).slice(0, 5),
@@ -474,14 +477,22 @@ export default function HomeScreen() {
                 ) : null}
               </View>
 
-              {todayPick.description ? (
+              {/* 소개 인용: AI 요약이 있으면 그 글과 출처 표시, 없으면 가게가 쓴 소개 */}
+              {todayPick.aiSummary || todayPick.description ? (
                 <View style={styles.pickQuote}>
                   <AppText accessible={false} style={styles.quoteMark}>
                     {"\u201C"}
                   </AppText>
-                  <AppText numberOfLines={3} style={styles.quoteText} variant="body">
-                    {todayPick.description}
-                  </AppText>
+                  <View style={styles.quoteBody}>
+                    <AppText numberOfLines={3} style={styles.quoteText} variant="body">
+                      {todayPick.aiSummary?.text ?? todayPick.description}
+                    </AppText>
+                    {todayPick.aiSummary ? (
+                      <AppText capScale style={styles.quoteSource} tone="muted" variant="meta">
+                        AI가 요약했어요
+                      </AppText>
+                    ) : null}
+                  </View>
                 </View>
               ) : null}
 
@@ -846,7 +857,9 @@ const styles = StyleSheet.create({
   pickQuote: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x4 },
   // 여는 따옴표는 글자 크기로만 강조한다(장식 도형 없이)
   quoteMark: { fontSize: 36, lineHeight: 36, fontWeight: "800", marginTop: -spacing.x1 },
-  quoteText: { flex: 1, lineHeight: 23 },
+  quoteBody: { flex: 1 },
+  quoteText: { lineHeight: 23 },
+  quoteSource: { marginTop: spacing.x1 },
   facts: {
     flexDirection: "row",
     flexWrap: "wrap",

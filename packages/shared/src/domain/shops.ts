@@ -77,6 +77,12 @@ export const SHOP_CATALOG: ShopCatalogItem[] = [
       riceRefill: '요청 시 무료 제공',
     },
     description: '진한 동물계 육수 및 단단한 자가제면 식감을 자랑하며, 맑은 쇼유 타레 특유의 높은 감칠맛을 보유하고 있는 망원동의 대표 라멘집입니다.',
+    // 더미: 서버 AI 요약이 붙으면 이 값을 그대로 받는다
+    aiSummary: {
+      text: '국물이 진하면서도 쇼유 향이 깔끔하게 남는다는 기록이 가장 많아요. 1.5mm 자가제면은 단단한 편이라 면을 중시하는 분들이 자주 추천하고, 주말 점심에는 웨이팅이 길다는 이야기가 이어져요.',
+      keywords: ['진한 육수', '단단한 면', '주말 웨이팅'],
+      generatedAt: '2026-09-18',
+    },
     reviews: [
       {
         author: '하니 (라멘마니아)',
@@ -140,6 +146,12 @@ export const SHOP_CATALOG: ShopCatalogItem[] = [
     matchScore: 75,
     distanceM: 1400,
     description: '곱게 거품 낸 농후한 닭 육수와 부드러운 수비드 차슈로 사랑받는 토리파이탄 전문점입니다.',
+    // 더미: 서버 AI 요약이 붙으면 이 값을 그대로 받는다
+    aiSummary: {
+      text: '거품 낸 닭 육수가 크리미하고 묵직하다는 평이 많고, 수비드 차슈가 부드럽다는 기록이 자주 보여요. 간이 센 편이라 밥을 곁들이는 분들이 많아요.',
+      keywords: ['크리미한 닭 육수', '수비드 차슈', '간은 센 편'],
+      generatedAt: '2026-09-18',
+    },
   },
   {
     ...unknownShop,

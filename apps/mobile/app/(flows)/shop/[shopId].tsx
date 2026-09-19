@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics"
 import { router, useLocalSearchParams } from "expo-router"
-import { Bookmark, CalendarCheck, ChevronDown, ChevronLeft, ImageOff, Map as MapIcon, MapPin, PenLine, Phone, Store } from "lucide-react-native"
+import { Bookmark, CalendarCheck, ChevronDown, ChevronLeft, ImageOff, Map as MapIcon, MapPin, PenLine, Phone, Sparkles, Store } from "lucide-react-native"
 import { useEffect, useRef, useState } from "react"
 import {
   Linking,
@@ -370,8 +370,35 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           ) : null}
         </View>
 
-        {/* 3. 가게 소개 */}
-        {shop.description ? (
+        {/* 3. 가게 소개: AI 요약이 있으면 그 글에 "AI가 요약했어요" 표시만 붙이고, 없으면 가게가 쓴 소개 */}
+        {shop.aiSummary ? (
+          <View style={styles.intro}>
+            <View style={styles.introHead}>
+              <Store color={colors.ink} size={16} />
+              <AppText accessibilityRole="header" style={[styles.bold, styles.flex]} variant="secondary">
+                가게 소개
+              </AppText>
+              <View accessibilityLabel="AI가 요약했어요" accessible style={styles.aiBadge}>
+                <Sparkles color={colors.brand} size={12} />
+                <AppText capScale style={styles.bold} tone="muted" variant="meta">
+                  AI가 요약했어요
+                </AppText>
+              </View>
+            </View>
+            <AppText variant="body">{shop.aiSummary.text}</AppText>
+            {shop.aiSummary.keywords?.length ? (
+              <View style={styles.summaryKeywords}>
+                {shop.aiSummary.keywords.map((keyword) => (
+                  <View key={keyword} style={styles.summaryKeyword}>
+                    <AppText capScale style={styles.bold} variant="meta">
+                      {`#${keyword}`}
+                    </AppText>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : shop.description ? (
           <View style={styles.intro}>
             <View style={styles.introHead}>
               <Store color={colors.ink} size={16} />
@@ -720,6 +747,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvasSoft,
   },
   introHead: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginBottom: spacing.x1_5 },
+  summaryKeywords: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
+  summaryKeyword: { backgroundColor: colors.canvas, borderRadius: radii.xs, paddingHorizontal: spacing.x2, paddingVertical: spacing.x1 },
+  aiBadge: { flexDirection: "row", alignItems: "center", gap: spacing.x1 },
 
   section: { paddingHorizontal: spacing.gutter, marginTop: spacing.x5 },
   sectionTitle: { marginBottom: spacing.x2_5 },
