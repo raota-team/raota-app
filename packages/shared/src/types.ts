@@ -78,6 +78,8 @@ export interface Shop {
   websiteUri?: string
   instagramUrl?: string
   catchTableUrl?: string
+  /** 카카오 로컬 place_url. 카카오 데이터 중 저장이 허용된 값이며 앱 밖(브라우저·카카오맵 앱)으로만 연다 */
+  kakaoPlaceUrl?: string
   photos: string[]
   tags: string[]
   matchScore: number

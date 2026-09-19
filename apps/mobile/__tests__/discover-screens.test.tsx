@@ -1,6 +1,6 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native"
 import { useState, type ReactElement } from "react"
-import { Pressable } from "react-native"
+import { Linking, Pressable } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import { createInitialPersistedState } from "@/src/data/fixtures"
@@ -150,6 +150,23 @@ describe("shop detail", () => {
     expect(view.queryByText(/일치도/)).toBeNull()
     expect(view.queryByText(/전화번호/)).toBeNull()
     expect(track).toHaveBeenCalledWith("shop_viewed", { shopId: 2 })
+  })
+
+  it("sends photos, menus and the address to Kakao Map outside the app", async () => {
+    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true)
+    mockParams.shopId = "2"
+    const view = await renderScreen(<ShopDetailScreen />)
+    await view.findByText(/^후쿠 라멘/)
+
+    // place_url이 아직 없는 매장은 이름으로 카카오맵 검색을 연다
+    await fireEvent.press(view.getByRole("link", { name: "카카오맵에서 사진·메뉴 보기" }))
+    expect(openURL).toHaveBeenLastCalledWith(`https://map.kakao.com/link/search/${encodeURIComponent("후쿠 라멘 합정점")}`)
+
+    await fireEvent.press(view.getByRole("link", { name: /^주소, / }))
+    expect(openURL).toHaveBeenLastCalledWith(
+      `https://map.kakao.com/link/map/${encodeURIComponent("후쿠 라멘 합정점")},37.5492,126.915`,
+    )
+    openURL.mockRestore()
   })
 
   it("toggles the bookmark with analytics and starts a record for this shop", async () => {

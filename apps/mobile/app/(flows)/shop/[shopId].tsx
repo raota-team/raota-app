@@ -1,10 +1,9 @@
 import * as Haptics from "expo-haptics"
 import { router, useLocalSearchParams } from "expo-router"
-import { Bookmark, CalendarCheck, ChevronDown, ChevronLeft, ImageOff, MapPin, PenLine, Phone, Store } from "lucide-react-native"
+import { Bookmark, CalendarCheck, ChevronDown, ChevronLeft, ExternalLink, ImageOff, MapPin, PenLine, Phone, Store } from "lucide-react-native"
 import { useEffect, useRef, useState } from "react"
 import {
   Linking,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -47,6 +46,15 @@ function businessLabel(shop: Shop): { label: string; open: boolean } {
     default:
       return { label: "영업 정보 확인 필요", open: false }
   }
+}
+
+/**
+ * 카카오맵 매장 페이지. 사진·메뉴·리뷰는 저장할 수 없어서 카카오맵으로 넘긴다.
+ * place_url이 아직 연결되지 않은 매장은 이름으로 카카오맵 검색을 연다.
+ */
+function kakaoMapUrl(shop: Shop) {
+  if (shop.kakaoPlaceUrl) return shop.kakaoPlaceUrl
+  return `https://map.kakao.com/link/search/${encodeURIComponent(`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}`)}`
 }
 
 function InstagramIcon({ color, size = 16 }: { color: string; size?: number }) {
@@ -173,13 +181,10 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     void Linking.openURL(url).catch(() => setToast("링크를 열 수 없어요"))
   }
 
+  /** 주소는 카카오맵에 이 좌표로 핀을 찍어 연다 */
   const openInMaps = () => {
-    const query = encodeURIComponent(`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}`)
-    const url =
-      Platform.OS === "ios"
-        ? `http://maps.apple.com/?q=${query}&ll=${shop.lat},${shop.lng}`
-        : `https://maps.google.com/?q=${shop.lat},${shop.lng}`
-    openUrl(url)
+    const label = encodeURIComponent(`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}`)
+    openUrl(`https://map.kakao.com/link/map/${label},${shop.lat},${shop.lng}`)
   }
 
   const selectPhoto = (index: number) => {
@@ -506,6 +511,19 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             </>
           ) : null}
 
+          <Pressable
+            accessibilityHint="카카오맵 앱이나 브라우저로 열어요"
+            accessibilityLabel="카카오맵에서 사진·메뉴 보기"
+            accessibilityRole="link"
+            onPress={() => openUrl(kakaoMapUrl(shop))}
+            style={({ pressed }) => [styles.linkButton, styles.kakaoButton, pressed && styles.darkPressed]}
+          >
+            <ExternalLink color={colors.onDark} size={16} />
+            <AppText capScale style={styles.bold} tone="onDark" variant="secondary">
+              카카오맵에서 사진·메뉴 보기
+            </AppText>
+          </Pressable>
+
           {links.length ? (
             <View style={styles.links}>
               {links.map((link) => (
@@ -723,7 +741,8 @@ const styles = StyleSheet.create({
   hourToday: { borderWidth: 1, borderColor: colors.onDarkMuted },
   hourDay: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   phone: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
-  links: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x4 },
+  kakaoButton: { flex: 0, marginTop: spacing.x4 },
+  links: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x2 },
   linkButton: {
     flex: 1,
     height: touchTarget,
