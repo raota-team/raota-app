@@ -1,6 +1,6 @@
-import { router } from "expo-router"
+import { router, useLocalSearchParams } from "expo-router"
 import { Check, ChevronDown, ChevronRight, List, Map as MapIcon, MapPin, Search, Soup, X } from "lucide-react-native"
-import { useMemo, useState, type ReactElement } from "react"
+import { useEffect, useMemo, useState, type ReactElement } from "react"
 import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -75,6 +75,13 @@ export function useMapFilters(origin: Coordinate | null) {
   const [menu, setMenu] = useState("ALL")
   const [onlyOpen, setOnlyOpen] = useState(false)
   const [sort, setSort] = useState<MapSort>("distance")
+
+  // 홈의 "스타일로 찾기"가 지도 탭으로 넘기는 메뉴 필터(예: ?menu=쇼유). 모르는 값은 무시한다.
+  // 같은 값으로 다시 들어오면 탭 파라미터가 바뀌지 않아 효과가 다시 돌지 않는다(사용자가 필터를 직접 풀었을 때).
+  const params = useLocalSearchParams<{ menu?: string }>()
+  useEffect(() => {
+    if (params.menu && MENU_OPTIONS.some((option) => option.value === params.menu)) setMenu(params.menu)
+  }, [params.menu])
 
   const mapShops = useMemo<MapShop[]>(
     () =>

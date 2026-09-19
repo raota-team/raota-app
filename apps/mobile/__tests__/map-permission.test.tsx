@@ -8,6 +8,8 @@ import MapScreen from "@/app/native/map"
 
 jest.mock("expo-router", () => ({
   router: { push: jest.fn() },
+  // 홈 "스타일로 찾기"가 넘기는 메뉴 필터 파라미터. 이 테스트에서는 없다
+  useLocalSearchParams: jest.fn(() => ({})),
 }))
 
 jest.mock("lucide-react-native", () => {
