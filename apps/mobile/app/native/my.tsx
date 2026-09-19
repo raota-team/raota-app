@@ -54,8 +54,14 @@ import { TasteReportCover, shopSpecOf, shopStyleOf } from "../(flows)/taste/inde
 type ActivityTab = "logs" | "visits" | "saved"
 type VisitSort = "count" | "recent" | "name"
 
-/** 최근 기록은 5개씩 보여주고 스크롤 끝에서 5개씩 더 붙인다 */
+/**
+ * 최근 기록은 예전 카드 크기(5줄) 상자 안에서 스크롤한다. 상자 끝에 닿으면 5개씩 더 붙이고,
+ * 상자를 바로 넘길 수 있도록 처음에는 두 쪽(10개)을 불러 둔다.
+ */
 const RECENT_PAGE_SIZE = 5
+const RECENT_VISIBLE_ROWS = 5
+/** 줄 높이: 썸네일 48 + 위아래 12 */
+const RECENT_ROW_HEIGHT = 72
 
 const LEVEL_OPACITY = [0.25, 0.45, 0.7, 1]
 const CELL = 12
@@ -187,7 +193,7 @@ function MemberView() {
   const { data: shops } = useShops()
 
   const [tab, setTab] = useState<ActivityTab>("logs")
-  const [recentLimit, setRecentLimit] = useState(RECENT_PAGE_SIZE)
+  const [recentLimit, setRecentLimit] = useState(RECENT_PAGE_SIZE * 2)
   const [period, setPeriod] = useState("1y")
   const [visitSort, setVisitSort] = useState<VisitSort>("count")
   const [visitQuery, setVisitQuery] = useState("")
@@ -215,11 +221,11 @@ function MemberView() {
   const loadMoreRecent = () => {
     if (hasMoreRecent) setRecentLimit((limit) => limit + RECENT_PAGE_SIZE)
   }
-  const onScroll = ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (tab !== "logs" || !hasMoreRecent) return
+  const onRecentScroll = ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!hasMoreRecent) return
     const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
-    // 목록 끝이 화면 아래에서 한 화면 거리 안으로 들어오면 다음 5개를 붙인다
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - layoutMeasurement.height) loadMoreRecent()
+    // 상자 끝에서 두 줄 거리 안으로 들어오면 다음 5개를 붙인다
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - RECENT_ROW_HEIGHT * 2) loadMoreRecent()
   }
 
   const recentLogs = bowls.slice(0, recentLimit).map((bowl) => {
@@ -281,8 +287,6 @@ function MemberView() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardDismissMode="interactive"
-        onScroll={onScroll}
-        scrollEventThrottle={200}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -523,7 +527,15 @@ function MemberView() {
                   ) : null}
                 </View>
                 {recentLogs.length ? (
-                  recentLogs.map((log, index) => (
+                  <ScrollView
+                    accessibilityLabel="최근 기록 목록"
+                    nestedScrollEnabled
+                    onScroll={onRecentScroll}
+                    scrollEventThrottle={100}
+                    showsVerticalScrollIndicator
+                    style={styles.recentBox}
+                  >
+                  {recentLogs.map((log, index) => (
                     <Pressable
                       accessibilityLabel={`${log.name}${log.shop?.branch ? ` ${log.shop.branch}` : ""}, ${log.menu}, ${log.type}, ${shortDate(log.date)}`}
                       accessibilityRole={log.shop ? "button" : "text"}
@@ -546,9 +558,8 @@ function MemberView() {
                         {shortDate(log.date)}
                       </AppText>
                     </Pressable>
-                  ))
-                ) : null}
-                {recentLogs.length && hasMoreRecent ? (
+                  ))}
+                {hasMoreRecent ? (
                   // 스크롤로 불러오지만, VoiceOver·스위치 제어 사용자를 위해 눌러서도 더 불러온다
                   <Pressable
                     accessibilityLabel={`기록 더 보기, ${bowls.length - recentLogs.length}그릇 남음`}
@@ -562,7 +573,8 @@ function MemberView() {
                     </AppText>
                   </Pressable>
                 ) : null}
-                {recentLogs.length ? null : (
+                  </ScrollView>
+                ) : (
                   <EmptyState
                     actionLabel="첫 그릇 기록하기"
                     description="첫 그릇을 남기면 여기에 쌓여요."
@@ -954,6 +966,8 @@ const styles = StyleSheet.create({
   savedRow: { flexDirection: "row", alignItems: "center", gap: spacing.x1 },
   iconButton: { width: 44, height: 44, borderRadius: radii.pill, alignItems: "center", justifyContent: "center" },
   // 계정
+  // 예전 카드 크기(5줄)만큼만 보이고 그 안에서 스크롤한다
+  recentBox: { maxHeight: RECENT_ROW_HEIGHT * RECENT_VISIBLE_ROWS + spacing.x1 },
   loadMore: {
     minHeight: touchTarget,
     flexDirection: "row",

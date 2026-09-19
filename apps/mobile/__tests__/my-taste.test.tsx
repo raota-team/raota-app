@@ -146,16 +146,18 @@ describe("my screen (demo account)", () => {
     expect(view.getByTestId("redirect:/native/my")).toBeTruthy()
   })
 
-  it("shows five recent bowls first and loads five more at a time", async () => {
+  it("scrolls recent bowls inside a five-row box and loads five more at a time", async () => {
     const view = await renderScreen(<MyScreen />)
     await view.findByText("뿡")
     const remaining = () =>
       Number(/(\d+)그릇 남음/.exec(view.getByRole("button", { name: /^기록 더 보기/ }).props.accessibilityLabel)?.[1])
     const total = Number(/총 (\d+)그릇/.exec(view.getByText(/^총 \d+그릇$/).props.children.join(""))?.[1])
 
-    expect(remaining()).toBe(total - 5)
-    await fireEvent.press(view.getByRole("button", { name: /^기록 더 보기/ }))
+    // 상자에는 5줄이 보이고, 넘겨 볼 수 있게 다음 5개까지 미리 불러 둔다
+    expect(view.getByLabelText("최근 기록 목록")).toBeTruthy()
     expect(remaining()).toBe(total - 10)
+    await fireEvent.press(view.getByRole("button", { name: /^기록 더 보기/ }))
+    expect(remaining()).toBe(total - 15)
   })
 
   it("moves account, terms and contact into settings behind the gear button", async () => {
