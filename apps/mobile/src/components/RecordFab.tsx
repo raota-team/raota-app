@@ -7,6 +7,7 @@ import {
   ActionSheetIOS,
   Alert,
   Animated,
+  Easing,
   Linking,
   PanResponder,
   Platform,
@@ -49,7 +50,10 @@ const DRAG_THRESHOLD = 8
 const MENU_GAP = spacing.x2_5
 const MENU_ITEM_GAP = spacing.x2
 const MENU_HEIGHT = MENU_ITEMS.length * touchTarget + (MENU_ITEMS.length - 1) * MENU_ITEM_GAP
-const MENU_DURATION = 150
+/** 펼침 전체 길이. 항목마다 조금씩 늦게 출발해 버튼에서 차례로 펼쳐진다 */
+const MENU_DURATION = 360
+/** 한 항목이 움직이는 구간(전체 0~1 중). 나머지는 항목 사이 시차로 쓴다 */
+const ITEM_SPAN = 0.6
 /** 웹 렌더링에는 네이티브 드라이버가 없다 */
 const NATIVE_DRIVER = Platform.OS !== "web"
 
@@ -285,7 +289,12 @@ export default function RecordFab() {
       menuProgress.setValue(1)
       return
     }
-    Animated.timing(menuProgress, { toValue: 1, duration: MENU_DURATION, useNativeDriver: NATIVE_DRIVER }).start()
+    Animated.timing(menuProgress, {
+      toValue: 1,
+      duration: MENU_DURATION,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: NATIVE_DRIVER,
+    }).start()
   }, [menuProgress, open, reduceMotion])
 
   const handlePress = useCallback(() => {
@@ -293,8 +302,9 @@ export default function RecordFab() {
       router.push("/auth/login")
       return
     }
-    setOpen((previous) => !previous)
-  }, [currentUser])
+    if (!open) lightHaptic()
+    setOpen(!open)
+  }, [currentUser, open])
 
   const choose = (mode: RecordMode) => {
     setOpen(false)
@@ -333,13 +343,18 @@ export default function RecordFab() {
       style={StyleSheet.absoluteFill}
     >
       {open ? (
-        <Pressable
-          accessible={false}
-          importantForAccessibility="no"
-          onPress={() => setOpen(false)}
-          style={styles.backdrop}
-          testID="record-fab-backdrop"
-        />
+        <Animated.View
+          pointerEvents="box-none"
+          style={[styles.backdropWrap, { opacity: menuProgress.interpolate({ inputRange: [0, 0.4], outputRange: [0, 1], extrapolate: "clamp" }) }]}
+        >
+          <Pressable
+            accessible={false}
+            importantForAccessibility="no"
+            onPress={() => setOpen(false)}
+            style={styles.backdrop}
+            testID="record-fab-backdrop"
+          />
+        </Animated.View>
       ) : null}
 
       {open ? (
@@ -349,17 +364,29 @@ export default function RecordFab() {
             styles.menu,
             menuPlacement,
             { alignItems: onLeftEdge ? "flex-start" : "flex-end" },
-            {
-              opacity: menuProgress,
-              transform: [
-                {
-                  translateY: menuProgress.interpolate({ inputRange: [0, 1], outputRange: [menuBelow ? -8 : 8, 0] }),
-                },
-              ],
-            },
           ]}
         >
-          {MENU_ITEMS.map(({ mode, label, Icon }) => (
+          {MENU_ITEMS.map(({ mode, label, Icon }, index) => {
+            // 버튼에 가까운 항목부터 차례로 나온다. 멀리 있는 항목일수록 버튼 쪽에서 더 길게 미끄러져 나온다
+            const order = menuBelow ? index : MENU_ITEMS.length - 1 - index
+            const start = (order * (1 - ITEM_SPAN)) / Math.max(1, MENU_ITEMS.length - 1)
+            const itemProgress = menuProgress.interpolate({
+              inputRange: [start, start + ITEM_SPAN],
+              outputRange: [0, 1],
+              extrapolate: "clamp",
+            })
+            const travel = (order + 1) * (touchTarget + MENU_ITEM_GAP) * 0.5
+            return (
+            <Animated.View
+              key={mode}
+              style={{
+                opacity: itemProgress,
+                transform: [
+                  { translateY: itemProgress.interpolate({ inputRange: [0, 1], outputRange: [menuBelow ? -travel : travel, 0] }) },
+                  { scale: itemProgress.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
+                ],
+              }}
+            >
             <Pressable
               accessibilityLabel={label}
               accessibilityRole="button"
@@ -380,7 +407,9 @@ export default function RecordFab() {
                 <Icon color={colors.brand} size={18} strokeWidth={2.2} />
               </View>
             </Pressable>
-          ))}
+            </Animated.View>
+            )
+          })}
         </Animated.View>
       ) : null}
 
@@ -410,7 +439,12 @@ export default function RecordFab() {
           ]}
         >
           {open ? (
-            <X color={colors.onDark} size={22} strokeWidth={2.5} />
+            // 펜이 X로 바뀌며 반 바퀴 돈다
+            <Animated.View
+              style={{ transform: [{ rotate: menuProgress.interpolate({ inputRange: [0, 1], outputRange: ["-90deg", "0deg"] }) }] }}
+            >
+              <X color={colors.onDark} size={22} strokeWidth={2.5} />
+            </Animated.View>
           ) : (
             <PenLine color={colors.onDark} size={22} strokeWidth={2.5} />
           )}
@@ -422,6 +456,7 @@ export default function RecordFab() {
 
 const styles = StyleSheet.create({
   bold: { fontWeight: "700" },
+  backdropWrap: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
   backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.overlay },
   fabWrap: { position: "absolute", width: FAB_SIZE, height: FAB_SIZE },
   fab: {
