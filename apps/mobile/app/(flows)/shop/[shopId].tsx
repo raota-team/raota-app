@@ -199,43 +199,11 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     void Linking.openURL(links.app).catch(() => openUrl(links.web))
   }
 
-  /** 매장 바로가기: 데이터가 있는 것만 보여준다(전화번호·예약·인스타그램이 없는 매장은 네이버 지도만) */
-  const quickActions = [
-    shop.phone
-      ? {
-          key: "phone",
-          label: "전화",
-          hint: `${shop.phone}로 전화를 걸어요`,
-          icon: <Phone color={colors.ink} size={20} />,
-          onPress: () => openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`),
-        }
-      : null,
-    {
-      key: "naver",
-      label: "네이버 지도",
-      hint: "네이버 지도에서 사진·메뉴·길찾기를 봐요",
-      icon: <MapIcon color={colors.ink} size={20} />,
-      onPress: openNaverMap,
-    },
-    shop.catchTableUrl
-      ? {
-          key: "catchtable",
-          label: "캐치테이블",
-          hint: "캐치테이블에서 예약·웨이팅을 해요",
-          icon: <CalendarCheck color={colors.ink} size={20} />,
-          onPress: () => openUrl(shop.catchTableUrl!),
-        }
-      : null,
-    shop.instagramUrl
-      ? {
-          key: "instagram",
-          label: "인스타그램",
-          hint: "매장 인스타그램을 열어요",
-          icon: <InstagramIcon color={colors.ink} size={20} />,
-          onPress: () => openUrl(shop.instagramUrl!),
-        }
-      : null,
-  ].filter((action): action is NonNullable<typeof action> => action !== null)
+  /** 차콜 섹션 아래 외부 링크. 데이터가 있는 것만 보여준다 */
+  const links = [
+    shop.instagramUrl ? { key: "instagram", label: "인스타그램", url: shop.instagramUrl } : null,
+    shop.catchTableUrl ? { key: "catchtable", label: "캐치테이블", url: shop.catchTableUrl } : null,
+  ].filter((link): link is { key: string; label: string; url: string } => link !== null)
 
   const selectPhoto = (index: number) => {
     setPhotoIndex(index)
@@ -377,26 +345,6 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               ))}
             </View>
           ) : null}
-
-          {/* 매장 바로가기: 전화 · 네이버 지도 · 캐치테이블 · 인스타그램 */}
-          <View style={styles.quickActions}>
-            {quickActions.map((action) => (
-              <Pressable
-                accessibilityHint={action.hint}
-                accessibilityLabel={action.label}
-                accessibilityRole="link"
-                key={action.key}
-                onPress={action.onPress}
-                style={({ pressed }) => [styles.quickAction, pressed && styles.quickPressed]}
-              >
-                {action.icon}
-                {/* 좁은 화면(SE)에서는 "네이버 / 지도"처럼 두 줄로 접힌다 */}
-                <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={[styles.bold, styles.center]} variant="meta">
-                  {action.label}
-                </AppText>
-              </Pressable>
-            ))}
-          </View>
         </View>
 
         {/* 3. 가게 소개 */}
@@ -581,6 +529,42 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             </>
           ) : null}
 
+          <Pressable
+            accessibilityHint="네이버 지도 앱이나 브라우저로 열어요"
+            accessibilityLabel="네이버 지도에서 사진·메뉴 보기"
+            accessibilityRole="link"
+            onPress={openNaverMap}
+            style={({ pressed }) => [styles.naverButton, pressed && styles.darkPressed]}
+          >
+            <MapIcon color={colors.onDark} size={16} />
+            <AppText capScale style={styles.bold} tone="onDark" variant="secondary">
+              네이버 지도에서 사진·메뉴 보기
+            </AppText>
+          </Pressable>
+
+          {links.length ? (
+            <View style={styles.links}>
+              {links.map((link) => (
+                <Pressable
+                  accessibilityHint="외부 앱이나 브라우저로 열어요"
+                  accessibilityLabel={link.label}
+                  accessibilityRole="link"
+                  key={link.key}
+                  onPress={() => openUrl(link.url)}
+                  style={({ pressed }) => [styles.linkButton, pressed && styles.darkPressed]}
+                >
+                  {link.key === "instagram" ? (
+                    <InstagramIcon color={colors.onDark} />
+                  ) : (
+                    <CalendarCheck color={colors.onDark} size={16} />
+                  )}
+                  <AppText capScale style={styles.bold} tone="onDark" variant="secondary">
+                    {link.label}
+                  </AppText>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </View>
 
         {/* 6. 내 라멘로그: 이 매장에서 내가 남긴 기록만 */}
@@ -778,21 +762,31 @@ const styles = StyleSheet.create({
   hourToday: { borderWidth: 1, borderColor: colors.onDarkMuted },
   hourDay: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   phone: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
-  // 매장 바로가기: 같은 폭의 칸, 아이콘 위 · 이름 아래(지도·예약 앱의 매장 페이지와 같은 배치)
-  quickActions: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x5 },
-  quickAction: {
-    flex: 1,
-    minHeight: 64,
+  // 차콜 섹션 아래 외부 링크(예전 모양). 네이버 지도는 한 줄 전체, 인스타그램·캐치테이블은 반씩.
+  // 네이버 버튼은 flex 없이 높이를 고정해 세로 묶음 안에서 찌그러지지 않게 한다
+  naverButton: {
+    height: touchTarget,
+    marginTop: spacing.x4,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.x1,
-    paddingHorizontal: spacing.x1,
+    gap: spacing.x2,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.canvas,
+    borderColor: colors.onDarkMuted,
   },
-  quickPressed: { backgroundColor: colors.canvasSoft },
+  links: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x2 },
+  linkButton: {
+    flex: 1,
+    height: touchTarget,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.x2,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.onDarkMuted,
+  },
 
   reviews: { paddingHorizontal: spacing.gutter, marginTop: spacing.x6 },
   reviewsHead: {
