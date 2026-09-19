@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics"
 import { router, useLocalSearchParams } from "expo-router"
-import { Bookmark, CalendarCheck, ChevronDown, ChevronLeft, ExternalLink, ImageOff, MapPin, PenLine, Phone, Store } from "lucide-react-native"
+import { Bookmark, CalendarCheck, ChevronDown, ChevronLeft, ImageOff, Map as MapIcon, MapPin, PenLine, Phone, Store } from "lucide-react-native"
 import { useEffect, useRef, useState } from "react"
 import {
   Linking,
@@ -48,13 +48,19 @@ function businessLabel(shop: Shop): { label: string; open: boolean } {
   }
 }
 
+/** 네이버 지도 앱에 넘기는 호출 앱 이름(번들 ID) */
+const NAVER_APP_NAME = "com.raota.app"
+
 /**
- * 카카오맵 매장 페이지. 사진·메뉴·리뷰는 저장할 수 없어서 카카오맵으로 넘긴다.
- * place_url이 아직 연결되지 않은 매장은 이름으로 카카오맵 검색을 연다.
+ * 네이버 지도 매장 페이지. 사진·메뉴·리뷰는 앱에 저장하지 않고 네이버 지도로 넘긴다.
+ * 앱이 있으면 앱(nmap://)으로, 없으면 웹으로 연다. 매장 URL이 아직 연결되지 않은 매장은 이름으로 검색한다.
  */
-function kakaoMapUrl(shop: Shop) {
-  if (shop.kakaoPlaceUrl) return shop.kakaoPlaceUrl
-  return `https://map.kakao.com/link/search/${encodeURIComponent(`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}`)}`
+function naverMapLinks(shop: Shop) {
+  const query = encodeURIComponent(`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}`)
+  return {
+    app: `nmap://search?query=${query}&appname=${NAVER_APP_NAME}`,
+    web: shop.naverPlaceUrl ?? `https://map.naver.com/p/search/${query}`,
+  }
 }
 
 function InstagramIcon({ color, size = 16 }: { color: string; size?: number }) {
@@ -117,6 +123,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const galleryRef = useRef<ScrollView>(null)
   const [photoIndex, setPhotoIndex] = useState(0)
   const [hoursOpen, setHoursOpen] = useState(false)
+  /** 방금 띄운 알림이 "저장했어요"인지(빨간 저장 표시를 붙인다) */
+  const [toastSaved, setToastSaved] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   const loggedIn = Boolean(currentUser?.isLoggedIn)
@@ -141,10 +149,6 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     { label: "육수 추가", value: shop.servicePerks?.soupRefill },
     { label: "양념", value: shop.servicePerks?.condiments },
   ].filter((perk): perk is { label: string; value: string } => Boolean(perk.value))
-  const links = [
-    shop.instagramUrl ? { key: "instagram", label: "인스타그램", url: shop.instagramUrl } : null,
-    shop.catchTableUrl ? { key: "catchtable", label: "캐치테이블", url: shop.catchTableUrl } : null,
-  ].filter((link): link is { key: string; label: string; url: string } => link !== null)
   const metaParts = [
     shop.distanceM > 0 ? formatDistance(shop.distanceM) : null,
     shop.reviewCount > 0 ? `라멘로그 ${shop.reviewCount.toLocaleString()}개` : null,
@@ -165,6 +169,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     actions.toggleBookmark(shop.id)
     track("bookmark_toggled", { shopId: shop.id, saved: next })
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined)
+    setToastSaved(next)
     setToast(next ? "가고 싶은 라멘집에 저장했어요" : "가고 싶어요에서 뺐어요")
   }
 
@@ -178,14 +183,59 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   }
 
   const openUrl = (url: string) => {
-    void Linking.openURL(url).catch(() => setToast("링크를 열 수 없어요"))
+    void Linking.openURL(url).catch(() => {
+      setToastSaved(false)
+      setToast("링크를 열 수 없어요")
+    })
   }
 
-  /** 주소는 카카오맵에 이 좌표로 핀을 찍어 연다 */
-  const openInMaps = () => {
-    const label = encodeURIComponent(`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}`)
-    openUrl(`https://map.kakao.com/link/map/${label},${shop.lat},${shop.lng}`)
+  /** 네이버 지도(사진·메뉴·길찾기). 매장 URL이 있으면 그 페이지, 없으면 앱 → 웹 순으로 검색을 연다 */
+  const openNaverMap = () => {
+    const links = naverMapLinks(shop)
+    if (shop.naverPlaceUrl) {
+      openUrl(links.web)
+      return
+    }
+    void Linking.openURL(links.app).catch(() => openUrl(links.web))
   }
+
+  /** 매장 바로가기: 데이터가 있는 것만 보여준다(전화번호·예약·인스타그램이 없는 매장은 네이버 지도만) */
+  const quickActions = [
+    shop.phone
+      ? {
+          key: "phone",
+          label: "전화",
+          hint: `${shop.phone}로 전화를 걸어요`,
+          icon: <Phone color={colors.ink} size={20} />,
+          onPress: () => openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`),
+        }
+      : null,
+    {
+      key: "naver",
+      label: "네이버 지도",
+      hint: "네이버 지도에서 사진·메뉴·길찾기를 봐요",
+      icon: <MapIcon color={colors.ink} size={20} />,
+      onPress: openNaverMap,
+    },
+    shop.catchTableUrl
+      ? {
+          key: "catchtable",
+          label: "캐치테이블",
+          hint: "캐치테이블에서 예약·웨이팅을 해요",
+          icon: <CalendarCheck color={colors.ink} size={20} />,
+          onPress: () => openUrl(shop.catchTableUrl!),
+        }
+      : null,
+    shop.instagramUrl
+      ? {
+          key: "instagram",
+          label: "인스타그램",
+          hint: "매장 인스타그램을 열어요",
+          icon: <InstagramIcon color={colors.ink} size={20} />,
+          onPress: () => openUrl(shop.instagramUrl!),
+        }
+      : null,
+  ].filter((action): action is NonNullable<typeof action> => action !== null)
 
   const selectPhoto = (index: number) => {
     setPhotoIndex(index)
@@ -327,6 +377,26 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               ))}
             </View>
           ) : null}
+
+          {/* 매장 바로가기: 전화 · 네이버 지도 · 캐치테이블 · 인스타그램 */}
+          <View style={styles.quickActions}>
+            {quickActions.map((action) => (
+              <Pressable
+                accessibilityHint={action.hint}
+                accessibilityLabel={action.label}
+                accessibilityRole="link"
+                key={action.key}
+                onPress={action.onPress}
+                style={({ pressed }) => [styles.quickAction, pressed && styles.quickPressed]}
+              >
+                {action.icon}
+                {/* 좁은 화면(SE)에서는 "네이버 / 지도"처럼 두 줄로 접힌다 */}
+                <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={[styles.bold, styles.center]} variant="meta">
+                  {action.label}
+                </AppText>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         {/* 3. 가게 소개 */}
@@ -371,10 +441,10 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
 
           {shop.address ? (
             <Pressable
-              accessibilityHint="지도 앱에서 위치를 열어요"
+              accessibilityHint="네이버 지도에서 위치를 열어요"
               accessibilityLabel={`주소, ${shop.address}`}
               accessibilityRole="link"
-              onPress={openInMaps}
+              onPress={openNaverMap}
               style={({ pressed }) => [styles.darkRow, pressed && styles.darkPressed]}
             >
               <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
@@ -511,42 +581,6 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             </>
           ) : null}
 
-          <Pressable
-            accessibilityHint="카카오맵 앱이나 브라우저로 열어요"
-            accessibilityLabel="카카오맵에서 사진·메뉴 보기"
-            accessibilityRole="link"
-            onPress={() => openUrl(kakaoMapUrl(shop))}
-            style={({ pressed }) => [styles.linkButton, styles.kakaoButton, pressed && styles.darkPressed]}
-          >
-            <ExternalLink color={colors.onDark} size={16} />
-            <AppText capScale style={styles.bold} tone="onDark" variant="secondary">
-              카카오맵에서 사진·메뉴 보기
-            </AppText>
-          </Pressable>
-
-          {links.length ? (
-            <View style={styles.links}>
-              {links.map((link) => (
-                <Pressable
-                  accessibilityHint="외부 앱이나 브라우저로 열어요"
-                  accessibilityLabel={link.label}
-                  accessibilityRole="link"
-                  key={link.key}
-                  onPress={() => openUrl(link.url)}
-                  style={({ pressed }) => [styles.linkButton, pressed && styles.darkPressed]}
-                >
-                  {link.key === "instagram" ? (
-                    <InstagramIcon color={colors.onDark} />
-                  ) : (
-                    <CalendarCheck color={colors.onDark} size={16} />
-                  )}
-                  <AppText capScale style={styles.bold} tone="onDark" variant="secondary">
-                    {link.label}
-                  </AppText>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
         </View>
 
         {/* 6. 내 라멘로그: 이 매장에서 내가 남긴 기록만 */}
@@ -641,7 +675,10 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
         />
       </StickyActionBar>
 
+      {/* 아래쪽 차콜 섹션 위에서도 묻히지 않게 흰 알림(경계·그림자)으로 띄운다 */}
       <Toast
+        appearance="light"
+        icon={toastSaved ? <Bookmark color={colors.brand} fill={colors.brand} size={18} /> : undefined}
         message={toast ?? ""}
         onDismiss={() => setToast(null)}
         style={{ bottom: TOAST_OFFSET + insets.bottom }}
@@ -741,19 +778,21 @@ const styles = StyleSheet.create({
   hourToday: { borderWidth: 1, borderColor: colors.onDarkMuted },
   hourDay: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   phone: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
-  kakaoButton: { flex: 0, marginTop: spacing.x4 },
-  links: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x2 },
-  linkButton: {
+  // 매장 바로가기: 같은 폭의 칸, 아이콘 위 · 이름 아래(지도·예약 앱의 매장 페이지와 같은 배치)
+  quickActions: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x5 },
+  quickAction: {
     flex: 1,
-    height: touchTarget,
-    flexDirection: "row",
+    minHeight: 64,
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.x2,
+    gap: spacing.x1,
+    paddingHorizontal: spacing.x1,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.onDarkMuted,
+    borderColor: colors.border,
+    backgroundColor: colors.canvas,
   },
+  quickPressed: { backgroundColor: colors.canvasSoft },
 
   reviews: { paddingHorizontal: spacing.gutter, marginTop: spacing.x6 },
   reviewsHead: {

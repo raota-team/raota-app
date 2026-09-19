@@ -152,20 +152,42 @@ describe("shop detail", () => {
     expect(track).toHaveBeenCalledWith("shop_viewed", { shopId: 2 })
   })
 
-  it("sends photos, menus and the address to Kakao Map outside the app", async () => {
-    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true)
+  it("sends photos, menus and the address to Naver Map, app first then web", async () => {
+    // 네이버 지도 앱이 없으면 앱 주소 열기가 실패하고 웹으로 넘어간다
+    const openURL = jest
+      .spyOn(Linking, "openURL")
+      .mockImplementation((url: string) => (url.startsWith("nmap://") ? Promise.reject(new Error("no app")) : Promise.resolve(true)))
     mockParams.shopId = "2"
     const view = await renderScreen(<ShopDetailScreen />)
     await view.findByText(/^후쿠 라멘/)
+    const query = encodeURIComponent("후쿠 라멘 합정점")
 
-    // place_url이 아직 없는 매장은 이름으로 카카오맵 검색을 연다
-    await fireEvent.press(view.getByRole("link", { name: "카카오맵에서 사진·메뉴 보기" }))
-    expect(openURL).toHaveBeenLastCalledWith(`https://map.kakao.com/link/search/${encodeURIComponent("후쿠 라멘 합정점")}`)
+    // 매장 URL이 아직 없는 매장은 이름으로 네이버 지도 검색을 연다
+    await fireEvent.press(view.getByRole("link", { name: "네이버 지도" }))
+    expect(openURL).toHaveBeenCalledWith(`nmap://search?query=${query}&appname=com.raota.app`)
+    await waitFor(() => expect(openURL).toHaveBeenLastCalledWith(`https://map.naver.com/p/search/${query}`))
 
     await fireEvent.press(view.getByRole("link", { name: /^주소, / }))
-    expect(openURL).toHaveBeenLastCalledWith(
-      `https://map.kakao.com/link/map/${encodeURIComponent("후쿠 라멘 합정점")},37.5492,126.915`,
-    )
+    await waitFor(() => expect(openURL).toHaveBeenLastCalledWith(`https://map.naver.com/p/search/${query}`))
+    // 전화번호·예약·인스타그램이 없는 매장은 네이버 지도만 보여준다
+    expect(view.queryByRole("link", { name: "전화" })).toBeNull()
+    expect(view.queryByRole("link", { name: "캐치테이블" })).toBeNull()
+    openURL.mockRestore()
+  })
+
+  it("offers call, reservation and Instagram shortcuts when the shop has them", async () => {
+    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true)
+    mockParams.shopId = "1"
+    const view = await renderScreen(<ShopDetailScreen />)
+    await view.findByText(/^멘야준/)
+
+    await fireEvent.press(view.getByRole("link", { name: "전화" }))
+    expect(openURL).toHaveBeenLastCalledWith("tel:070-7798-2512".replace(/-/g, ""))
+    await fireEvent.press(view.getByRole("link", { name: "캐치테이블" }))
+    expect(openURL).toHaveBeenLastCalledWith("https://app.catchtable.co.kr/ct/shop/menyajun")
+    await fireEvent.press(view.getByRole("link", { name: "인스타그램" }))
+    expect(openURL).toHaveBeenLastCalledWith("https://instagram.com/menyajun_official")
+    expect(view.queryByText(/카카오맵/)).toBeNull()
     openURL.mockRestore()
   })
 
