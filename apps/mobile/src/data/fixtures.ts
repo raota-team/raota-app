@@ -9,7 +9,7 @@ import type {
   TasteReport,
   UserProfile,
 } from "@raota/shared"
-import { DEMO_USER, SHOP_CATALOG } from "@raota/shared"
+import { DEMO_USER, SHOP_CATALOG, findShopById } from "@raota/shared"
 
 const RAMEN_PHOTO_1 =
   "https://images.unsplash.com/photo-1742633882713-593c13e90231?w=1000&h=760&fit=crop&auto=format&q=82"
@@ -23,6 +23,279 @@ const RAMEN_PHOTO_3 =
  * 확인되지 않은 전화·링크·리뷰·영업시간은 원장에서 비어 있고, 화면은 빈 상태를 보여준다.
  */
 export const SHOPS: Shop[] = SHOP_CATALOG
+
+/** 라멘로그의 가게 표기는 원장에서 가져온다(이름·지점을 손으로 옮겨 적다 어긋나지 않게) */
+function logShop(shopId: number): RamenLog["shop"] {
+  const shop = findShopById(shopId)
+  if (!shop) throw new Error(`fixtures: 원장에 없는 매장 id ${shopId}`)
+  return { id: shop.id, name: shop.name, branch: shop.branch, location: shop.address.split(" ").slice(0, 2).join(" ") }
+}
+
+/**
+ * 라운지 피드용 다른 사용자들의 공개 라멘로그.
+ * 데모 계정(user-demo)의 기록은 넣지 않는다. 데모 숫자(42그릇)는 공유 원장(DEMO_BOWLS)에서만 나온다.
+ * TODO(API): GET /lounge/logs 응답으로 바뀌면 이 목록은 테스트 전용으로만 남긴다
+ */
+const LOUNGE_FEED_LOGS: RamenLog[] = [
+  {
+    id: 4,
+    author: { id: "user-feed-104", name: "면발탐정", level: "라멘집 탐험가 (Lv.3)" },
+    shop: logShop(7),
+    menuName: "이에케 라멘",
+    ramenType: "돈코츠",
+    visitedAt: "2026. 09. 18",
+    imageUrl: RAMEN_PHOTO_2,
+    photos: [RAMEN_PHOTO_2],
+    note: "면 단단하게, 기름 보통으로 주문. 김 세 장에 밥까지 말아 먹으니 완벽한 저녁이었어요. 시금치가 생각보다 많이 들어가서 좋았음.",
+    tasteNotes: {
+      broth: ["진해요", "기름져요"],
+      noodle: ["단단해요"],
+      seasoning: ["짭짤해요", "밥 생각나요"],
+      topping: ["구성 알차요"],
+    },
+    scores: { satisfaction: 4, brothDensity: 5, noodleFirmness: 4, topping: 4, revisit: 5 },
+    revisit: "자주 감",
+    likes: 5,
+    isLiked: false,
+    isPublic: true,
+    createdAt: "2026-09-18T20:14:00+09:00",
+    commentCount: 1,
+    comments: [
+      {
+        id: 104,
+        logId: 4,
+        author: { id: "user-feed-106", name: "합정야식러", level: "라멘 입문자 (Lv.2)" },
+        content: "이에케는 밥이랑 같이 먹어야 제맛이죠. 마늘 넣어보셨어요?",
+        createdAt: "2026-09-18T21:02:00+09:00",
+        likes: 1,
+        isLiked: false,
+      },
+    ],
+  },
+  {
+    id: 5,
+    author: { id: "user-feed-105", name: "국물한모금", level: "라멘 미식가 (Lv.5)" },
+    shop: logShop(9),
+    menuName: "도미 시오 라멘",
+    ramenType: "시오",
+    visitedAt: "2026. 09. 16",
+    imageUrl: null,
+    photos: [],
+    note: "도미 뼈 육수가 맑은데도 끝맛이 길게 남아요. 유자 껍질 조금 올라간 게 포인트. 간이 약한 편이라 슴슴한 걸 좋아하면 추천합니다.",
+    tasteNotes: {
+      broth: ["깔끔해요", "어패류 향"],
+      noodle: ["부드러워요"],
+      seasoning: ["슴슴해요"],
+      topping: ["파 향 좋아요"],
+    },
+    scores: { satisfaction: 5, brothDensity: 1, noodleFirmness: 2, topping: 3, revisit: 5 },
+    revisit: "자주 감",
+    likes: 12,
+    isLiked: false,
+    isPublic: true,
+    createdAt: "2026-09-16T12:48:00+09:00",
+    commentCount: 0,
+    comments: [],
+  },
+  {
+    id: 6,
+    author: { id: "user-201", name: "멘마수집가", level: "라멘 미식가 (Lv.5)" },
+    shop: logShop(10),
+    menuName: "니보시 쇼유 라멘",
+    ramenType: "쇼유",
+    visitedAt: "2026. 09. 14",
+    imageUrl: RAMEN_PHOTO_1,
+    photos: [RAMEN_PHOTO_1, RAMEN_PHOTO_3],
+    note: "멸치 향이 첫 모금부터 확 올라옴. 호불호는 있겠지만 니보시 좋아하면 무조건. 멘마가 두껍고 아삭해서 따로 추가할 만해요.",
+    tasteNotes: {
+      broth: ["감칠맛 좋아요", "어패류 향"],
+      noodle: ["탄력 있어요"],
+      seasoning: ["딱 좋아요"],
+      topping: ["멘마 좋아요"],
+    },
+    scores: { satisfaction: 4, brothDensity: 3, noodleFirmness: 4, topping: 5, revisit: 3 },
+    revisit: "가끔 생각남",
+    likes: 41,
+    isLiked: false,
+    isPublic: true,
+    createdAt: "2026-09-14T19:30:00+09:00",
+    commentCount: 2,
+    comments: [
+      {
+        id: 105,
+        logId: 6,
+        author: { id: "user-feed-105", name: "국물한모금", level: "라멘 미식가 (Lv.5)" },
+        content: "멘마 추가 팁 감사합니다. 다음엔 꼭 추가해볼게요.",
+        createdAt: "2026-09-14T20:11:00+09:00",
+        likes: 2,
+        isLiked: false,
+      },
+      {
+        id: 106,
+        logId: 6,
+        author: { id: "user-feed-107", name: "시오러버", level: "라멘집 단골 (Lv.4)" },
+        content: "니보시 향이 강하다고 해서 망설였는데 용기 내볼게요.",
+        createdAt: "2026-09-15T09:40:00+09:00",
+        likes: 0,
+        isLiked: false,
+      },
+    ],
+  },
+  {
+    id: 7,
+    author: { id: "user-feed-106", name: "합정야식러", level: "라멘 입문자 (Lv.2)" },
+    shop: logShop(4),
+    menuName: "블랙 쇼유 라멘",
+    ramenType: "쇼유",
+    visitedAt: "2026. 09. 12",
+    imageUrl: null,
+    photos: [],
+    note: "색은 새까만데 생각보다 짜지 않아요. 차슈 덮밥 세트로 먹었는데 양이 많아서 배불렀어요.",
+    tasteNotes: {
+      broth: ["진해요"],
+      noodle: ["국물이 잘 배어요", "양 많아요"],
+      seasoning: ["딱 좋아요"],
+      topping: ["차슈 좋아요"],
+    },
+    scores: { satisfaction: 3, brothDensity: 4, noodleFirmness: 3, topping: 4, revisit: 3 },
+    revisit: "가끔 생각남",
+    likes: 3,
+    isLiked: false,
+    isPublic: true,
+    createdAt: "2026-09-12T22:05:00+09:00",
+    commentCount: 0,
+    comments: [],
+  },
+  {
+    id: 8,
+    author: { id: "user-feed-107", name: "시오러버", level: "라멘집 단골 (Lv.4)" },
+    shop: logShop(8),
+    menuName: "유자 시오 라멘",
+    ramenType: "시오",
+    visitedAt: "2026. 09. 10",
+    imageUrl: RAMEN_PHOTO_3,
+    photos: [RAMEN_PHOTO_3],
+    note: "닭 청탕에 유자 향이 은은하게 올라와서 여름 끝자락에 딱이었어요. 면이 얇아서 빨리 먹는 게 좋아요.",
+    tasteNotes: {
+      broth: ["깔끔해요", "감칠맛 좋아요"],
+      noodle: ["부드러워요"],
+      seasoning: ["슴슴해요"],
+      topping: ["파 향 좋아요", "계란 좋아요"],
+    },
+    scores: { satisfaction: 4, brothDensity: 2, noodleFirmness: 2, topping: 4, revisit: 5 },
+    revisit: "자주 감",
+    likes: 27,
+    isLiked: false,
+    isPublic: true,
+    createdAt: "2026-09-10T13:22:00+09:00",
+    commentCount: 1,
+    comments: [
+      {
+        id: 107,
+        logId: 8,
+        author: { id: "user-201", name: "멘마수집가", level: "라멘 미식가 (Lv.5)" },
+        content: "여기 계란 반숙 정도가 정말 좋더라고요.",
+        createdAt: "2026-09-10T15:03:00+09:00",
+        likes: 3,
+        isLiked: false,
+      },
+    ],
+  },
+  {
+    id: 9,
+    author: { id: "user-feed-102", name: "토리파이탄러버", level: "라멘집 단골 (Lv.4)" },
+    shop: logShop(6),
+    menuName: "토리파이탄 라멘",
+    ramenType: "돈코츠",
+    visitedAt: "2026. 09. 07",
+    imageUrl: RAMEN_PHOTO_2,
+    photos: [RAMEN_PHOTO_2, RAMEN_PHOTO_1],
+    note: "거품이 곱게 올라간 닭백탕. 걸쭉한 편이라 면에 국물이 잘 붙어요. 중간에 식초 조금 넣으면 끝까지 안 물려요.",
+    tasteNotes: {
+      broth: ["진해요", "감칠맛 좋아요"],
+      noodle: ["국물이 잘 배어요"],
+      seasoning: ["딱 좋아요"],
+      topping: ["차슈 좋아요"],
+    },
+    scores: { satisfaction: 5, brothDensity: 5, noodleFirmness: 3, topping: 4, revisit: 5 },
+    revisit: "자주 감",
+    likes: 9,
+    isLiked: false,
+    isPublic: true,
+    createdAt: "2026-09-07T18:45:00+09:00",
+    commentCount: 0,
+    comments: [],
+  },
+  {
+    id: 10,
+    author: { id: "user-feed-108", name: "주말면식가", level: "라멘집 탐험가 (Lv.3)" },
+    shop: logShop(5),
+    menuName: "오리 쇼유 라멘",
+    ramenType: "쇼유",
+    visitedAt: "2026. 09. 05",
+    imageUrl: RAMEN_PHOTO_1,
+    photos: [RAMEN_PHOTO_1],
+    note: "오리 기름 향이 은은하고 국물이 맑아서 해장으로도 괜찮을 듯. 웨이팅 20분 정도 있었어요.",
+    tasteNotes: {
+      broth: ["깔끔해요", "감칠맛 좋아요"],
+      noodle: ["탄력 있어요"],
+      seasoning: ["딱 좋아요"],
+      topping: ["차슈 좋아요"],
+    },
+    scores: { satisfaction: 4, brothDensity: 2, noodleFirmness: 3, topping: 3, revisit: 3 },
+    revisit: "가끔 생각남",
+    likes: 16,
+    isLiked: false,
+    isPublic: true,
+    createdAt: "2026-09-05T12:10:00+09:00",
+    commentCount: 0,
+    comments: [],
+  },
+  {
+    id: 11,
+    author: { id: "user-feed-104", name: "면발탐정", level: "라멘집 탐험가 (Lv.3)" },
+    shop: logShop(2),
+    menuName: "삿포로 미소 라멘",
+    ramenType: "미소",
+    visitedAt: "2026. 09. 03",
+    imageUrl: RAMEN_PHOTO_3,
+    photos: [RAMEN_PHOTO_3],
+    note: "숙주 불향이 진짜 좋아요. 국물이 뜨거워서 끝까지 식지 않음. 버터 토핑 추가 추천합니다.",
+    tasteNotes: {
+      broth: ["진해요", "기름져요"],
+      noodle: ["탄력 있어요"],
+      seasoning: ["짭짤해요"],
+      topping: ["구성 알차요"],
+    },
+    scores: { satisfaction: 5, brothDensity: 4, noodleFirmness: 4, topping: 5, revisit: 5 },
+    revisit: "자주 감",
+    likes: 52,
+    isLiked: false,
+    isPublic: true,
+    createdAt: "2026-09-03T19:05:00+09:00",
+    commentCount: 2,
+    comments: [
+      {
+        id: 108,
+        logId: 11,
+        author: { id: "user-feed-103", name: "미소천사", level: "라멘집 탐험가 (Lv.3)" },
+        content: "버터 추가 조합 인정합니다. 콘도 같이 넣으면 더 좋아요.",
+        createdAt: "2026-09-03T20:30:00+09:00",
+        likes: 5,
+        isLiked: false,
+      },
+      {
+        id: 109,
+        logId: 11,
+        author: { id: "user-feed-108", name: "주말면식가", level: "라멘집 탐험가 (Lv.3)" },
+        content: "이번 주말에 가보려고요. 웨이팅은 어느 정도였나요?",
+        createdAt: "2026-09-04T11:15:00+09:00",
+        likes: 0,
+        isLiked: false,
+      },
+    ],
+  },
+]
 
 export const INITIAL_LOGS: RamenLog[] = [
   {
@@ -47,6 +320,7 @@ export const INITIAL_LOGS: RamenLog[] = [
       seasoning: ["딱 좋아요"],
       topping: ["차슈 좋아요", "계란 좋아요"],
     },
+    scores: { satisfaction: 5, brothDensity: 4, noodleFirmness: 4, topping: 5, revisit: 5 },
     revisit: "자주 감",
     likes: 38,
     isLiked: false,
@@ -107,6 +381,7 @@ export const INITIAL_LOGS: RamenLog[] = [
       seasoning: ["딱 좋아요", "밥 생각나요"],
       topping: ["차슈 좋아요", "구성 알차요"],
     },
+    scores: { satisfaction: 5, brothDensity: 5, noodleFirmness: 3, topping: 4, revisit: 5 },
     revisit: "자주 감",
     likes: 24,
     isLiked: true,
@@ -154,12 +429,14 @@ export const INITIAL_LOGS: RamenLog[] = [
       seasoning: ["짭짤해요"],
       topping: ["차슈 좋아요", "파 향 좋아요"],
     },
+    scores: { satisfaction: 4, brothDensity: 4, noodleFirmness: 4, topping: 4, revisit: 3 },
     revisit: "가끔 생각남",
     likes: 19,
     isLiked: false,
     isPublic: true,
     createdAt: "2026-08-29T13:10:00+09:00",
   },
+  ...LOUNGE_FEED_LOGS,
 ]
 
 /** 데모 계정은 웹과 같은 공유 원장의 DEMO_USER를 쓴다(42그릇, Lv.4 라멘집 단골). */
@@ -587,6 +864,8 @@ export const INITIAL_PERSISTED_STATE: PersistedAppStateV1 = {
   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
   tasteReports: INITIAL_TASTE_REPORTS,
   currentTasteReportId: "vol-04",
+  hiddenAuthorIds: [],
+  contentReports: [],
 }
 
 export function createInitialPersistedState(): PersistedAppStateV1 {

@@ -393,9 +393,22 @@ export interface TasteReport {
   changeSummary?: string
 }
 
+/** 라운지 신고 사유. 앱 심사 가이드라인 1.2(사용자 제작 콘텐츠)의 신고 기능 */
+export type ContentReportReason = "spam" | "abuse" | "sexual" | "privacy" | "other"
+
+export interface ContentReport {
+  id: string
+  kind: "log" | "comment"
+  /** 신고한 라멘로그 또는 댓글의 id */
+  targetId: number
+  reason: ContentReportReason
+  createdAt: string
+}
+
 /**
  * 로컬 저장소의 첫 공개 스키마. 새 필드는 optional로 추가하지 말고 다음
  * 버전으로 migrate해 오래 설치된 앱의 데이터를 안전하게 읽는다.
+ * (hiddenAuthorIds·contentReports는 필수 필드로 추가하고, 없는 옛 저장본은 migratePersistedState가 빈 배열로 채운다)
  */
 export interface PersistedAppStateV1 {
   version: 1
@@ -410,4 +423,8 @@ export interface PersistedAppStateV1 {
   notificationSettings: NotificationSettings
   tasteReports: TasteReport[]
   currentTasteReportId: string | null
+  /** 라운지에서 숨긴 사용자(작성자 id). 그 사람의 라멘로그와 댓글을 보이지 않게 한다 */
+  hiddenAuthorIds: string[]
+  /** 이 기기에서 보낸 신고. 서버 신고 API가 붙기 전까지의 기록이다 */
+  contentReports: ContentReport[]
 }

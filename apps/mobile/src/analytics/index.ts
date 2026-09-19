@@ -15,6 +15,12 @@ export type AnalyticsEvent =
   | "ai_recommend_requested"
   | "reminder_scheduled"
   | "reminder_opened"
+  // 라운지(라멘로그 피드). 속성에는 기록·댓글 id나 본문을 넣지 않는다
+  | "lounge_viewed"
+  | "log_liked"
+  | "log_commented"
+  | "content_reported"
+  | "author_hidden"
 
 export type AnalyticsProps = Record<string, string | number | boolean | null>
 

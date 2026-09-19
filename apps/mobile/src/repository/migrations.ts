@@ -3,6 +3,7 @@ import type {
   CommunityAuthor,
   CommunityComment,
   CommunityPost,
+  ContentReport,
   NotificationSettings,
   PersistedAppStateV1,
   RamenLog,
@@ -43,6 +44,25 @@ function cleanNumberIds(value: unknown): number[] {
       ),
     ),
   ]
+}
+
+/** 숨긴 사용자 id 목록. 빈 문자열과 중복은 버린다 */
+function cleanStringIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.filter((item): item is string => isString(item) && item.trim().length > 0))]
+}
+
+const REPORT_REASONS: ReadonlyArray<ContentReport["reason"]> = ["spam", "abuse", "sexual", "privacy", "other"]
+
+function isContentReport(value: unknown): value is ContentReport {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    (value.kind === "log" || value.kind === "comment") &&
+    isFiniteNumber(value.targetId) &&
+    REPORT_REASONS.includes(value.reason as ContentReport["reason"]) &&
+    isString(value.createdAt)
+  )
 }
 
 function isCommunityAuthor(value: unknown): value is CommunityAuthor {
@@ -344,5 +364,10 @@ export function migratePersistedState(raw: unknown): PersistedAppStateV1 {
       tasteReports.some((report) => report.id === requestedReportId)
         ? requestedReportId
         : (tasteReports[0]?.id ?? null),
+    // 라운지 숨김·신고는 나중에 추가한 필드다. 없는 옛 저장본은 빈 목록으로 시작한다
+    hiddenAuthorIds: cleanStringIds(raw.hiddenAuthorIds),
+    contentReports: Array.isArray(raw.contentReports)
+      ? raw.contentReports.filter(isContentReport)
+      : [],
   }
 }

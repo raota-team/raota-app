@@ -1,6 +1,8 @@
 import type {
   CommunityComment,
   CommunityPost,
+  ContentReport,
+  ContentReportReason,
   CreateCommunityCommentInput,
   CreateCommunityPostInput,
   CreateRamenLogCommentInput,
@@ -40,6 +42,7 @@ import {
   migratePersistedState,
   type RaotaRepository,
 } from "../repository"
+import { track } from "../analytics"
 import { validateRecordDraft } from "../domain/record"
 import {
   clearPersistedMediaDirectory,
@@ -101,6 +104,9 @@ export type RaotaAction =
       payload: Partial<NotificationSettings>
     }
   | { type: "REFRESH_TASTE_REPORT"; payload: TasteReport }
+  | { type: "HIDE_AUTHOR"; payload: string }
+  | { type: "UNHIDE_AUTHOR"; payload: string }
+  | { type: "REPORT_CONTENT"; payload: ContentReport }
 
 /** 데모 계정의 찜 목록(웹과 같은 DEMO_SAVED_SHOP_NAMES) */
 function demoBookmarkIds(): number[] {
@@ -131,6 +137,8 @@ export function selectPersistedState(state: RaotaState): PersistedAppStateV1 {
     notificationSettings: state.notificationSettings,
     tasteReports: state.tasteReports,
     currentTasteReportId: state.currentTasteReportId,
+    hiddenAuthorIds: state.hiddenAuthorIds,
+    contentReports: state.contentReports,
   }
 }
 
@@ -418,6 +426,16 @@ export function raotaReducer(
         ],
         currentTasteReportId: action.payload.id,
       }
+    case "HIDE_AUTHOR":
+      // 자기 자신은 숨길 수 없다
+      if (!action.payload || action.payload === state.user?.id || state.hiddenAuthorIds.includes(action.payload)) return state
+      return { ...state, hiddenAuthorIds: [...state.hiddenAuthorIds, action.payload] }
+    case "UNHIDE_AUTHOR":
+      return state.hiddenAuthorIds.includes(action.payload)
+        ? { ...state, hiddenAuthorIds: state.hiddenAuthorIds.filter((id) => id !== action.payload) }
+        : state
+    case "REPORT_CONTENT":
+      return { ...state, contentReports: [...state.contentReports, action.payload] }
   }
 }
 
@@ -582,7 +600,16 @@ function createWithdrawnState(): PersistedAppStateV1 {
     notifications: [],
     tasteReports: [],
     currentTasteReportId: null,
+    hiddenAuthorIds: [],
+    contentReports: [],
   }
+}
+
+export interface ReportContentInput {
+  kind: ContentReport["kind"]
+  /** 라멘로그 id 또는 댓글 id */
+  id: number
+  reason: ContentReportReason
 }
 
 export interface RaotaActions {
@@ -615,6 +642,18 @@ export interface RaotaActions {
   updateNotificationSettings(settings: Partial<NotificationSettings>): void
   refreshTasteReport(): TasteReport
   dismissStorageError(): void
+  /**
+   * 라운지에서 이 사용자의 라멘로그와 댓글을 숨긴다(앱 심사 가이드라인 1.2 차단 기능).
+   * 로그인하지 않았거나 자기 자신이면 false
+   */
+  hideAuthor(authorId: string): boolean
+  /** 숨김을 되돌린다(토스트의 "되돌리기") */
+  unhideAuthor(authorId: string): void
+  /**
+   * 라멘로그·댓글 신고. 지금은 기기 안에만 남기고, 신고한 사람에게는 그 글을 더 보여주지 않는다.
+   * 로그인하지 않았으면 null
+   */
+  reportContent(input: ReportContentInput): ContentReport | null
 }
 
 export interface RaotaContextValue {
@@ -682,7 +721,9 @@ export function RaotaProvider({
     [
       state.bookmarkedShopIds,
       state.communityPosts,
+      state.contentReports,
       state.currentTasteReportId,
+      state.hiddenAuthorIds,
       state.logs,
       state.notificationSettings,
       state.notifications,
@@ -1118,6 +1159,42 @@ export function RaotaProvider({
     state.user?.visitedCount,
   ])
 
+  const hideAuthor = useCallback(
+    (authorId: string): boolean => {
+      const user = selectCurrentUser(state)
+      if (!user || !authorId || authorId === user.id) return false
+      dispatch({ type: "HIDE_AUTHOR", payload: authorId })
+      // TODO(API): POST /users/{authorId}/block — 서버가 차단 목록을 계정에 저장하면 기기를 바꿔도 유지된다
+      track("author_hidden")
+      return true
+    },
+    [state],
+  )
+  const unhideAuthor = useCallback((authorId: string) => {
+    dispatch({ type: "UNHIDE_AUTHOR", payload: authorId })
+    // TODO(API): DELETE /users/{authorId}/block
+  }, [])
+  const reportContent = useCallback(
+    (input: ReportContentInput): ContentReport | null => {
+      const user = selectCurrentUser(state)
+      if (!user) return null
+      const existing = state.contentReports.find((report) => report.kind === input.kind && report.targetId === input.id)
+      if (existing) return existing
+      const report: ContentReport = {
+        id: `report-${input.kind}-${input.id}-${Date.now()}`,
+        kind: input.kind,
+        targetId: input.id,
+        reason: input.reason,
+        createdAt: new Date().toISOString(),
+      }
+      dispatch({ type: "REPORT_CONTENT", payload: report })
+      // TODO(API): POST /reports { targetType, targetId, reason } — 지금은 서버가 없어 기기 안에만 남는다(운영 검토는 API 연결 후)
+      track("content_reported", { kind: input.kind, reason: input.reason })
+      return report
+    },
+    [state],
+  )
+
   const actions = useMemo<RaotaActions>(
     () => ({
       login,
@@ -1143,6 +1220,9 @@ export function RaotaProvider({
       updateNotificationSettings,
       refreshTasteReport,
       dismissStorageError,
+      hideAuthor,
+      unhideAuthor,
+      reportContent,
     }),
     [
       addComment,
@@ -1154,17 +1234,20 @@ export function RaotaProvider({
       deleteLog,
       deleteNotification,
       dismissStorageError,
+      hideAuthor,
       login,
       logout,
       markAllNotificationsRead,
       markNotificationRead,
       refreshTasteReport,
+      reportContent,
       selectRecordDraftShop,
       startRecordDraft,
       toggleBookmark,
       toggleLogLike,
       toggleShopSubscription,
       togglePostLike,
+      unhideAuthor,
       updateNotificationSettings,
       updateProfile,
       withdraw,

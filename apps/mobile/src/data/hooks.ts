@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import {
   DEMO_BASE_PROFILE,
   DEMO_BOWLS,
@@ -20,6 +20,7 @@ import {
   type DemoBowl,
   type PastReportItem,
   type RamenLog,
+  type RamenLogComment,
   type Shop,
   type ShopVisit,
   type TasteIdentity,
@@ -27,6 +28,14 @@ import {
   type TasteScores,
 } from "@raota/shared"
 
+import {
+  LOUNGE_PAGE_SIZE,
+  isLogVisibleTo,
+  selectLoungeLogs,
+  selectVisibleComments,
+  type LoungeSort,
+  type LoungeViewer,
+} from "../domain/lounge"
 import { useRaota } from "../state/RaotaStore"
 
 /**
@@ -193,4 +202,86 @@ export function useActivityLevel(): Query<ReturnType<typeof getRamenActivityLeve
   const count = useBowlCount()
   const data = useMemo(() => getRamenActivityLevel(count.data), [count.data])
   return { ...count, data }
+}
+
+// ---------------------------------------------------------------------------
+// 라운지(라멘로그 피드)
+// ---------------------------------------------------------------------------
+
+/** 지금 보는 사람 기준의 숨김·신고 목록 */
+function useLoungeViewer(): LoungeViewer {
+  const { currentUser, state } = useRaota()
+  const userId = currentUser?.id ?? null
+  return useMemo(
+    () => ({ userId, hiddenAuthorIds: state.hiddenAuthorIds, reports: state.contentReports }),
+    [state.contentReports, state.hiddenAuthorIds, userId],
+  )
+}
+
+export interface LoungeFeedOptions {
+  /** "전체" 또는 RAMEN_TYPES 중 하나 */
+  type: string
+  sort: LoungeSort
+  pageSize?: number
+}
+
+export interface LoungeFeed extends Query<RamenLog[]> {
+  /** 필터에 맞는 전체 수(아직 안 불러온 것 포함) */
+  total: number
+  hasMore: boolean
+  /** 다음 쪽을 이어 붙인다. 필터·정렬이 바뀌면 첫 쪽부터 다시 */
+  loadMore(): void
+}
+
+/**
+ * 라운지 피드. 공개 라멘로그만, 숨긴 사용자와 내가 신고한 글은 뺀다. 내 공개 기록도 여기 올라온다.
+ * 한 번에 pageSize(10)개씩 보여준다.
+ */
+export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: LoungeFeedOptions): LoungeFeed {
+  const { state } = useRaota()
+  const status = useQueryState()
+  const viewer = useLoungeViewer()
+  // 댓글도 숨긴 사람·신고한 댓글을 뺀 목록으로 바꿔 둔다. 카드의 댓글 수가 상세 화면과 같아야 한다
+  const all = useMemo(
+    () =>
+      selectLoungeLogs(state.logs, { type, sort }, viewer).map((log) => ({
+        ...log,
+        comments: selectVisibleComments(log, viewer),
+      })),
+    [sort, state.logs, type, viewer],
+  )
+
+  const key = `${type}|${sort}`
+  const [paging, setPaging] = useState({ key, count: pageSize })
+  const count = paging.key === key ? paging.count : pageSize
+  const loadMore = useCallback(() => {
+    // TODO(API): GET /lounge/logs?type=&sort=&cursor=<마지막 항목의 nextCursor>&limit=10 응답을 이어 붙인다.
+    // 지금은 로컬 목록을 10개씩 더 보여준다
+    setPaging((prev) => ({ key, count: (prev.key === key ? prev.count : pageSize) + pageSize }))
+  }, [key, pageSize])
+
+  const data = useMemo(() => all.slice(0, count), [all, count])
+  return { data, ...status, total: all.length, hasMore: all.length > count, loadMore }
+}
+
+export interface LoungeLogDetail {
+  log: RamenLog
+  /** 등록순. 숨긴 사람·신고한 댓글은 빠져 있다 */
+  comments: RamenLogComment[]
+}
+
+/**
+ * 라멘로그 상세와 댓글. 없는 기록, 남의 비공개 기록, 숨긴 사람의 기록, 내가 신고한 기록이면 data가 null이다.
+ * TODO(API): GET /logs/{id} + GET /logs/{id}/comments?cursor= 로 바꾼다
+ */
+export function useLoungeLog(logId: number | null | undefined): Query<LoungeLogDetail | null> {
+  const { getLog } = useRaota()
+  const status = useQueryState()
+  const viewer = useLoungeViewer()
+  const log = logId ? getLog(logId) : undefined
+  const data = useMemo(() => {
+    if (!log || !isLogVisibleTo(log, viewer)) return null
+    return { log, comments: selectVisibleComments(log, viewer) }
+  }, [log, viewer])
+  return { data, ...status }
 }
