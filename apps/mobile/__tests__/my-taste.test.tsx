@@ -136,6 +136,18 @@ describe("my screen (demo account)", () => {
     expect(view.getByRole("button", { name: "회원가입" })).toBeTruthy()
   })
 
+  it("shows five recent bowls first and loads five more at a time", async () => {
+    const view = await renderScreen(<MyScreen />)
+    await view.findByText("뿡")
+    const remaining = () =>
+      Number(/(\d+)그릇 남음/.exec(view.getByRole("button", { name: /^기록 더 보기/ }).props.accessibilityLabel)?.[1])
+    const total = Number(/총 (\d+)그릇/.exec(view.getByText(/^총 \d+그릇$/).props.children.join(""))?.[1])
+
+    expect(remaining()).toBe(total - 5)
+    await fireEvent.press(view.getByRole("button", { name: /^기록 더 보기/ }))
+    expect(remaining()).toBe(total - 10)
+  })
+
   it("opens the full terms page from the info section", async () => {
     const view = await renderScreen(<MyScreen />)
     await view.findByText("뿡")
@@ -163,7 +175,7 @@ describe("taste report", () => {
     const view = await renderScreen(<TasteReportScreen />)
 
     expect(await view.findByText("진한 돈골파")).toBeTruthy()
-    expect(view.getByLabelText(/^입맛 5축 레이더\. 전체 만족도 4\.3점, 육수 농도 3\.9점/)).toBeTruthy()
+    expect(view.getByLabelText(/^항목별 맛 평가 그래프\. 전체 만족도 4\.3점, 육수 농도 3\.9점/)).toBeTruthy()
     expect(view.getByLabelText("돈코츠 14그릇, 33%")).toBeTruthy()
     expect(view.getByText("자주 간 라멘집")).toBeTruthy()
     expect(track).toHaveBeenCalledWith("report_viewed", { kind: "overall", bowls: 42 })

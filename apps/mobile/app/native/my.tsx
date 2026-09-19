@@ -4,7 +4,18 @@ import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as Haptics from "expo-haptics"
 import { Award, Bookmark, ChevronRight, MapPin, Search } from "lucide-react-native"
-import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native"
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+  useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import {
@@ -33,7 +44,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, maxFontScale, radii, spacing, typography } from "@/src/theme"
+import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 import { MonthlyTastePreview } from "../(flows)/taste/archive"
 import { TasteReportCover, shopSpecOf, shopStyleOf } from "../(flows)/taste/index"
 
@@ -45,6 +56,9 @@ import { TasteReportCover, shopSpecOf, shopStyleOf } from "../(flows)/taste/inde
 
 type ActivityTab = "logs" | "visits" | "saved"
 type VisitSort = "count" | "recent" | "name"
+
+/** 최근 기록은 5개씩 보여주고 스크롤 끝에서 5개씩 더 붙인다 */
+const RECENT_PAGE_SIZE = 5
 
 const LEVEL_OPACITY = [0.25, 0.45, 0.7, 1]
 const CELL = 12
@@ -176,6 +190,7 @@ function MemberView() {
   const { data: shops } = useShops()
 
   const [tab, setTab] = useState<ActivityTab>("logs")
+  const [recentLimit, setRecentLimit] = useState(RECENT_PAGE_SIZE)
   const [period, setPeriod] = useState("1y")
   const [visitSort, setVisitSort] = useState<VisitSort>("count")
   const [visitQuery, setVisitQuery] = useState("")
@@ -202,7 +217,19 @@ function MemberView() {
     return buildCalendar(bowls, `${period}-01-01`, end)
   }, [bowls, period, today])
 
-  const recentLogs = bowls.slice(0, 5).map((bowl) => {
+  const hasMoreRecent = recentLimit < bowls.length
+  // TODO(API): 서버 목록 조회(커서 페이지)로 바꾸면 여기서 다음 페이지를 요청한다
+  const loadMoreRecent = () => {
+    if (hasMoreRecent) setRecentLimit((limit) => limit + RECENT_PAGE_SIZE)
+  }
+  const onScroll = ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (tab !== "logs" || !hasMoreRecent) return
+    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
+    // 목록 끝이 화면 아래에서 한 화면 거리 안으로 들어오면 다음 5개를 붙인다
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - layoutMeasurement.height) loadMoreRecent()
+  }
+
+  const recentLogs = bowls.slice(0, recentLimit).map((bowl) => {
     const shop = shopByName(bowl.shop)
     const log = myLogs.find((item) => item.shop.name === bowl.shop && item.menuName === bowl.menu)
     return { ...bowl, shop, name: bowl.shop, photo: log?.imageUrl ?? shop?.photos[0] }
@@ -296,6 +323,8 @@ function MemberView() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardDismissMode="interactive"
+        onScroll={onScroll}
+        scrollEventThrottle={200}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -519,9 +548,9 @@ function MemberView() {
                   <AppText accessibilityRole="header" variant="sectionTitle">
                     최근 기록
                   </AppText>
-                  {recentLogs.length > 0 ? (
-                    <AppText capScale tone="muted" variant="meta">
-                      최근 {recentLogs.length}그릇
+                  {bowls.length > 0 ? (
+                    <AppText capScale style={styles.tabular} tone="muted" variant="meta">
+                      총 {bowls.length}그릇
                     </AppText>
                   ) : null}
                 </View>
@@ -550,7 +579,22 @@ function MemberView() {
                       </AppText>
                     </Pressable>
                   ))
-                ) : (
+                ) : null}
+                {recentLogs.length && hasMoreRecent ? (
+                  // 스크롤로 불러오지만, VoiceOver·스위치 제어 사용자를 위해 눌러서도 더 불러온다
+                  <Pressable
+                    accessibilityLabel={`기록 더 보기, ${bowls.length - recentLogs.length}그릇 남음`}
+                    accessibilityRole="button"
+                    onPress={loadMoreRecent}
+                    style={({ pressed }) => [styles.loadMore, pressed && styles.pressedWash]}
+                  >
+                    <ActivityIndicator color={colors.textMuted} size="small" />
+                    <AppText tone="muted" variant="secondary">
+                      이전 기록 불러오는 중
+                    </AppText>
+                  </Pressable>
+                ) : null}
+                {recentLogs.length ? null : (
                   <EmptyState
                     actionLabel="첫 그릇 기록하기"
                     description="첫 그릇을 남기면 여기에 쌓여요."
@@ -1139,6 +1183,15 @@ const styles = StyleSheet.create({
   changeButton: { minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.x2, borderRadius: radii.sm },
   accountTitle: { marginBottom: spacing.x1 },
   withdrawRow: { alignItems: "center" },
+  loadMore: {
+    minHeight: touchTarget,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.x2,
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   withdrawText: { color: colors.inkSub, fontWeight: "500", textDecorationLine: "underline", ...typography.secondary },
   toast: { bottom: 88 },
   // 시트
