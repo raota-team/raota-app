@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams, useNavigation } from "expo-router"
 import { StatusBar } from "expo-status-bar"
@@ -80,6 +81,17 @@ const REVISIT_AXIS = TASTE_AXES.find((axis) => axis.key === "revisit") ?? {
   low: "한 번이면 충분",
   high: "자주 갈래요",
 }
+/**
+ * 맛 평가 항목의 모양과 한 마디. 만족도·토핑은 좋고 나쁨이라 차오르는 원,
+ * 육수 농도·면 삶기는 좋고 나쁨이 아닌 취향의 위치라 선 위의 점으로 고른다
+ */
+const AXIS_PRESENTATION: Record<ScoreAxisKey, { kind: "quality" | "spectrum"; hero?: boolean; words: readonly string[] }> = {
+  satisfaction: { kind: "quality", hero: true, words: ["아쉬웠어요", "그저 그랬어요", "괜찮았어요", "맛있었어요", "인생 라멘이에요"] },
+  brothDensity: { kind: "spectrum", words: ["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"] },
+  noodleFirmness: { kind: "spectrum", words: ["아주 부드럽게", "부드러운 편", "중간", "단단한 편", "아주 단단하게"] },
+  topping: { kind: "quality", words: ["아쉬움", "조금 아쉬움", "보통", "좋음", "훌륭함"] },
+}
+
 /** 낮은 점수부터 높은 점수 순. 양 끝 설명(low · high)과 방향을 맞춘다 */
 const REVISIT_CHOICES = [...REVISIT_OPTIONS].reverse()
 /** 기록 하나에 붙일 수 있는 사진 수. 서버 sort_order 0~2와 맞춘다 */
@@ -659,7 +671,9 @@ export default function NewRecordScreen() {
                 {SCORE_AXES.map((axis, index) => (
                   <ScoreSegment
                     high={axis.high}
+                    hero={AXIS_PRESENTATION[axis.key].hero}
                     index={index + 1}
+                    kind={AXIS_PRESENTATION[axis.key].kind}
                     invalid={attempted && missingAxes.has(axis.key)}
                     key={axis.key}
                     label={axis.label}
@@ -668,7 +682,9 @@ export default function NewRecordScreen() {
                     ref={(node) => {
                       axisRefs.current[axis.key] = node
                     }}
+                    style={AXIS_PRESENTATION[axis.key].hero ? styles.heroAxis : undefined}
                     value={scores[axis.key] ?? null}
+                    words={AXIS_PRESENTATION[axis.key].words}
                   />
                 ))}
 
@@ -712,11 +728,15 @@ export default function NewRecordScreen() {
                           accessibilityRole="radio"
                           accessibilityState={{ checked: selected }}
                           key={option}
-                          onPress={() => setRevisit(option)}
+                          onPress={() => {
+                            if (Platform.OS !== "web" && revisit !== option) void Haptics.selectionAsync().catch(() => undefined)
+                            setRevisit(option)
+                          }}
                           style={({ pressed }) => [
                             styles.segmentCell,
                             index > 0 && styles.segmentDivider,
                             selected && styles.segmentSelected,
+                            attempted && missingAxes.has("revisit") && styles.revisitInvalid,
                             pressed && !selected && styles.pressed,
                           ]}
                         >
@@ -732,14 +752,6 @@ export default function NewRecordScreen() {
                         </Pressable>
                       )
                     })}
-                  </View>
-                  <View style={styles.scoreEnds}>
-                    <AppText capScale tone="muted" variant="meta">
-                      {REVISIT_AXIS.low}
-                    </AppText>
-                    <AppText capScale tone="muted" variant="meta">
-                      {REVISIT_AXIS.high}
-                    </AppText>
                   </View>
                 </View>
               </View>
@@ -1001,25 +1013,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.x2,
   },
-  segment: {
-    flexDirection: "row",
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-  },
-  segmentInvalid: { borderColor: colors.brand },
+  // 전체 만족도는 크게 따로 세우고 아래 항목들과 선으로 나눈다
+  heroAxis: { paddingBottom: spacing.x6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  // 재방문 의사: 선택지는 세 개의 알약(선택은 빨강)
+  segment: { flexDirection: "row", gap: spacing.x2 },
+  segmentInvalid: {},
   segmentCell: {
     flex: 1,
     minHeight: touchTarget,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.x1,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
     backgroundColor: colors.canvas,
   },
-  segmentDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
-  segmentSelected: { backgroundColor: colors.brand },
-  scoreEnds: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.x1_5 },
+  segmentDivider: {},
+  revisitInvalid: { borderColor: colors.brand },
+  segmentSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
   photoScroller: { marginHorizontal: -spacing.gutter },
   photoRow: { paddingHorizontal: spacing.gutter, gap: spacing.x2 },
   photoAdd: {

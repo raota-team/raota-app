@@ -17,6 +17,7 @@ import {
   type ViewStyle,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context"
+import * as Haptics from "expo-haptics"
 import { forwardRef, useEffect, type PropsWithChildren, type ReactNode } from "react"
 
 import {
@@ -409,74 +410,133 @@ export interface ScoreSegmentProps {
   high: string
   value: number | null
   onChange: (value: number) => void
-  /** 제출을 시도했는데 비어 있으면 빨간 테두리와 안내를 보여준다 */
+  /**
+   * quality: 좋고 나쁨. 고른 점수까지 차오른다(별점처럼). hero면 크게 그리고 한 마디 반응을 붙인다.
+   * spectrum: 좋고 나쁨이 아닌 취향의 위치(맑음↔진함). 선 위의 한 점을 고른다.
+   */
+  kind?: "quality" | "spectrum"
+  hero?: boolean
+  /** 1~5점 각각의 한 마디("맛있었어요", "진한 편"). 없으면 "N점" */
+  words?: readonly string[]
+  /** 제출을 시도했는데 비어 있으면 빨간 안내를 보여준다 */
   invalid?: boolean
   /** 화면 순서 번호(1~5). 축 이름 앞에 붙는다 */
   index?: number
   style?: StyleProp<ViewStyle>
 }
 
+const SCORES = [1, 2, 3, 4, 5] as const
+
 /**
- * 5축 평가 한 줄. 1~5 세그먼트, 각 칸 44pt 이상, 선택은 빨강.
+ * 맛 평가 한 줄. 칸마다 44pt 이상, 고르면 가벼운 선택 햅틱.
  * VoiceOver: radiogroup + radio(checked), 라벨은 "육수 농도 4점, 진함 쪽".
- * ref는 첫 번째 칸에 걸려 빠진 항목으로 포커스를 옮길 때 쓴다.
+ * ref는 첫 번째 칸 묶음에 걸려 빠진 항목으로 스크롤할 때 쓴다.
  */
 export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSegment(
-  { label, low, high, value, onChange, invalid = false, index, style },
+  { label, low, high, value, onChange, kind = "quality", hero = false, words, invalid = false, index, style },
   ref,
 ) {
   const lean = (score: number) => (score <= 2 ? `${low} 쪽` : score >= 4 ? `${high} 쪽` : "보통")
+  const word = value ? (words?.[value - 1] ?? `${value}점`) : null
+  const choose = (score: number) => {
+    if (Platform.OS !== "web" && score !== value) void Haptics.selectionAsync().catch(() => undefined)
+    onChange(score)
+  }
+  const status = invalid && !value ? "골라주세요" : word ?? "미선택"
+
   return (
     <View style={style}>
       <View style={styles.scoreHead}>
-        <AppText variant="bodyStrong">
-          {index ? <AppText tone="muted" variant="bodyStrong">{`${index}  `}</AppText> : null}
+        <AppText variant={hero ? "sectionTitle" : "bodyStrong"}>
+          {index ? <AppText tone="muted" variant={hero ? "sectionTitle" : "bodyStrong"}>{`${index}  `}</AppText> : null}
           {label}
         </AppText>
-        <AppText capScale tone={invalid ? "critical" : value ? "ink" : "muted"} variant="meta">
-          {value ? `${value}점` : invalid ? "골라주세요" : "미선택"}
-        </AppText>
+        {hero ? null : (
+          <AppText capScale style={styles.scoreWord} tone={invalid && !value ? "critical" : value ? "ink" : "muted"} variant="secondary">
+            {status}
+          </AppText>
+        )}
       </View>
+
       <View
         accessibilityLabel={label}
         accessibilityRole="radiogroup"
         ref={ref}
-        style={[styles.segment, invalid && styles.segmentInvalid]}
+        style={kind === "spectrum" ? styles.spectrum : styles.quality}
       >
-        {[1, 2, 3, 4, 5].map((score) => {
+        {/* 스펙트럼은 다섯 점을 잇는 선 위에서 고른다 */}
+        {kind === "spectrum" ? <View pointerEvents="none" style={[styles.spectrumTrack, invalid && !value && styles.trackInvalid]} /> : null}
+        {SCORES.map((score) => {
           const selected = value === score
+          // 고른 점수는 진한 빨강, 그 아래 점수는 옅은 빨강으로 차오른다(한 화면에 진한 빨강은 하나씩)
+          const filled = kind === "quality" && value !== null && score < value
           return (
             <Pressable
               accessibilityLabel={`${label} ${score}점, ${lean(score)}`}
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
+              hitSlop={kind === "spectrum" ? { top: 6, bottom: 6 } : undefined}
               key={score}
-              onPress={() => onChange(score)}
-              style={({ pressed }) => [
-                styles.segmentCell,
-                score > 1 && styles.segmentDivider,
-                selected && styles.segmentSelected,
-                pressed && !selected && styles.pressedWashBg,
-              ]}
+              onPress={() => choose(score)}
+              style={({ pressed }) => [styles.scoreCell, pressed && !selected && styles.pressedDimScore]}
             >
-              <NativeText
-                maxFontSizeMultiplier={maxFontScale}
-                style={[typography.bodyStrong, { color: selected ? colors.onDark : colors.ink }]}
-              >
-                {score}
-              </NativeText>
+              {kind === "spectrum" ? (
+                selected ? (
+                  <View style={styles.spectrumPick}>
+                    <NativeText maxFontSizeMultiplier={maxFontScale} style={[typography.bodyStrong, styles.onDarkText]}>
+                      {score}
+                    </NativeText>
+                  </View>
+                ) : (
+                  <View style={[styles.spectrumDot, invalid && !value && styles.dotInvalid]} />
+                )
+              ) : (
+                <View
+                  style={[
+                    styles.qualityDot,
+                    hero && styles.qualityDotHero,
+                    filled && styles.qualityDotFilled,
+                    kind === "quality" && selected && styles.qualityDotSelected,
+                    invalid && !value && styles.dotInvalid,
+                  ]}
+                >
+                  <NativeText
+                    maxFontSizeMultiplier={maxFontScale}
+                    style={[
+                      hero ? typography.sectionTitle : typography.bodyStrong,
+                      { color: selected ? colors.onDark : filled ? colors.brand : colors.ink },
+                    ]}
+                  >
+                    {score}
+                  </NativeText>
+                </View>
+              )}
             </Pressable>
           )
         })}
       </View>
-      <View style={styles.scoreEnds}>
-        <AppText capScale tone="muted" variant="meta">
-          {low}
+
+      {hero ? (
+        // 고른 점수에 한 마디로 답한다. 비어 있으면 양 끝 설명
+        <AppText
+          accessibilityLiveRegion="polite"
+          capScale
+          style={styles.heroWord}
+          tone={invalid && !value ? "critical" : value ? "ink" : "muted"}
+          variant={value ? "cardTitle" : "secondary"}
+        >
+          {value ? word : invalid ? "골라주세요" : `${low} ← → ${high}`}
         </AppText>
-        <AppText capScale tone="muted" variant="meta">
-          {high}
-        </AppText>
-      </View>
+      ) : (
+        <View style={styles.scoreEnds}>
+          <AppText capScale tone="muted" variant="meta">
+            {low}
+          </AppText>
+          <AppText capScale tone="muted" variant="meta">
+            {high}
+          </AppText>
+        </View>
+      )}
     </View>
   )
 })
@@ -858,23 +918,47 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.x2,
   },
-  segment: {
-    flexDirection: "row",
-    borderRadius: radii.sm,
+  scoreWord: { fontWeight: "700" },
+  pressedDimScore: { opacity: 0.6 },
+  quality: { flexDirection: "row", justifyContent: "space-between" },
+  spectrum: { flexDirection: "row", justifyContent: "space-between" },
+  scoreCell: { flex: 1, minHeight: touchTarget, alignItems: "center", justifyContent: "center" },
+  // 좋고 나쁨: 원이 고른 점수까지 차오른다
+  qualityDot: {
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: "hidden",
-  },
-  segmentInvalid: { borderColor: colors.brand },
-  segmentCell: {
-    flex: 1,
-    minHeight: touchTarget,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.canvas,
   },
-  segmentDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
-  segmentSelected: { backgroundColor: colors.brand },
+  qualityDotHero: { width: 56, height: 56 },
+  qualityDotFilled: { backgroundColor: colors.brandWeak, borderColor: colors.brandWeak },
+  qualityDotSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
+  // 취향 위치: 다섯 칸의 가운데를 잇는 선(첫 칸 중앙 10% ~ 마지막 칸 중앙 90%)
+  spectrumTrack: { position: "absolute", left: "10%", right: "10%", top: "50%", height: 2, marginTop: -1, backgroundColor: colors.border },
+  trackInvalid: { backgroundColor: colors.brand },
+  spectrumDot: {
+    width: 14,
+    height: 14,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    borderColor: colors.textFaint,
+    backgroundColor: colors.canvas,
+  },
+  spectrumPick: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.brand,
+  },
+  onDarkText: { color: colors.onDark },
+  dotInvalid: { borderColor: colors.brand },
+  heroWord: { marginTop: spacing.x2, textAlign: "center" },
   scoreEnds: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.x1_5 },
   card: {
     backgroundColor: colors.canvas,
