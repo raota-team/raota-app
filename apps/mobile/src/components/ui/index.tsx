@@ -585,6 +585,13 @@ export interface ToastProps {
   onDismiss?: () => void
   actionLabel?: string
   onAction?: () => void
+  /**
+   * dark: 기본(잉크 알약). light: 흰 알약 + 경계 + 그림자. 차콜 면 위에서도 묻히지 않아야 하는 화면
+   * (매장 상세처럼 아래쪽에 차콜 섹션이 있는 곳)에서 쓴다
+   */
+  appearance?: "dark" | "light"
+  /** 문구 앞 아이콘(예: 저장 표시). 색은 호출하는 쪽이 appearance에 맞춘다 */
+  icon?: ReactNode
   style?: StyleProp<ViewStyle>
 }
 
@@ -604,6 +611,8 @@ export function Toast({
   onDismiss,
   actionLabel,
   onAction,
+  appearance = "dark",
+  icon,
   style,
 }: ToastProps) {
   useEffect(() => {
@@ -617,14 +626,19 @@ export function Toast({
     <View
       accessibilityLiveRegion="polite"
       accessibilityRole="alert"
-      style={[styles.toast, { backgroundColor: toastColors[variant] }, style]}
+      style={[
+        styles.toast,
+        appearance === "light" ? styles.toastLight : { backgroundColor: toastColors[variant] },
+        style,
+      ]}
     >
-      <AppText style={styles.flex} tone="onDark" variant="secondary">
+      {icon}
+      <AppText style={[styles.flex, appearance === "light" && styles.bold]} tone={appearance === "light" ? "ink" : "onDark"} variant="secondary">
         {message}
       </AppText>
       {actionLabel && onAction ? (
         <Pressable accessibilityRole="button" onPress={onAction} style={styles.toastAction}>
-          <AppText style={styles.underline} tone="onDark" variant="secondary">
+          <AppText style={styles.underline} tone={appearance === "light" ? "ink" : "onDark"} variant="secondary">
             {actionLabel}
           </AppText>
         </Pressable>
@@ -982,6 +996,7 @@ const styles = StyleSheet.create({
     ...shadows.floating,
   },
   toastAction: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x1 },
+  toastLight: { backgroundColor: colors.canvas, borderWidth: 1, borderColor: colors.border },
   stateContainer: { alignItems: "center", justifyContent: "center", padding: spacing.x8 },
   stateIcon: { marginBottom: spacing.x3 },
   stateDescription: { marginTop: spacing.x1_5 },
