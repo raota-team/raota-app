@@ -1,19 +1,20 @@
 import * as Location from "expo-location"
 import { router } from "expo-router"
-import { ChevronRight, Sparkles } from "lucide-react-native"
+import { ChevronRight, Heart, MessageCircle, Sparkles } from "lucide-react-native"
 import { useEffect, useMemo, useState } from "react"
 import { Image, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { seoulToday, type Shop, type ShopCatalogItem, type TasteIdentity, type TasteProfile } from "@raota/shared"
+import { monthKeyOfDate, seoulMonthKey, seoulToday, type RamenLog, type Shop, type ShopCatalogItem, type TasteIdentity, type TasteProfile } from "@raota/shared"
 import RecordFab from "@/src/components/RecordFab"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, LoadingState } from "@/src/components/ui"
-import { useShops, useTasteIdentity, useTasteProfile } from "@/src/data/hooks"
+import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { distanceBetweenCoordinates } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, maxFontScale, radii, spacing, touchTarget } from "@/src/theme"
+import { MENU_OPTIONS } from "./map.web"
 
 /** 떠 있는 기록 버튼(56pt)과 여백만큼 목록 끝을 비워 마지막 줄을 가리지 않는다 */
 /** 목록 끝이 오른쪽 아래 기록 버튼에 가리지 않을 여백. "더 보기" 줄이 있으면 그 줄이 대신 자리를 채운다 */
@@ -35,6 +36,32 @@ function statusOf(shop: Shop): { label: string; open: boolean } {
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
+
+/** 서울 시각으로 지금이 어느 끼니인지. 인사 문구에만 쓴다 */
+function mealOfNow(now = new Date()) {
+  const hour = (now.getUTCHours() + 9) % 24
+  if (hour >= 5 && hour < 11) return "아침"
+  if (hour >= 11 && hour < 16) return "점심"
+  if (hour >= 16 && hour < 22) return "저녁"
+  return "야식"
+}
+
+/** "2026-09-16" → 오늘과 며칠 차이인지(서울 날짜 기준) */
+function daysSince(isoDate: string, today = seoulToday()) {
+  const toUtc = (value: string) => {
+    const [year, month, day] = value.split("-").map(Number)
+    return Date.UTC(year, month - 1, day)
+  }
+  return Math.max(0, Math.round((toUtc(today) - toUtc(isoDate)) / 86_400_000))
+}
+
+/** 라운지 미리보기 카드 한 장의 사진. 사진 없는 기록은 미리보기에 넣지 않는다 */
+function logPhoto(log: RamenLog) {
+  return log.photos?.[0] ?? log.imageUrl ?? null
+}
+
+const STYLE_TILE = 88
+const LOUNGE_CARD = 232
 
 /** "2026-09-19" → "9월 19일 (토)" */
 function formatPickDate(isoDate: string) {
@@ -226,6 +253,36 @@ export default function HomeScreen() {
   const recommendMeta = personal ? `${tasteIdentity.data.total}그릇 취향 기준` : "라멘로그 · 거리 기준"
 
   const compactHeader = width < 360
+  const bowls = useMyBowls()
+  const monthKey = seoulMonthKey()
+  const monthCount = bowls.data.filter((bowl) => monthKeyOfDate(bowl.date) === monthKey).length
+  const lastBowl = bowls.data[0]
+  const statusLine = lastBowl
+    ? `이번 달 ${monthCount}그릇 · 마지막 기록 ${daysSince(lastBowl.date) === 0 ? "오늘" : `${daysSince(lastBowl.date)}일 전`}`
+    : "아직 기록이 없어요 · 첫 그릇을 남겨 보세요"
+
+  /** 스타일로 찾기: 지도 메뉴 필터와 같은 기준으로 매장이 있는 스타일만, 사진은 그 스타일 첫 매장의 대표 사진 */
+  const styleTiles = useMemo(
+    () =>
+      MENU_OPTIONS.filter((option) => option.value !== "ALL").flatMap((option) => {
+        const matches = shops.filter((shop) => {
+          const catalog = catalogOf(shop)
+          return option.keys.some(
+            (key) => (catalog.style ?? "").includes(key) || (catalog.spec ?? "").includes(key) || shop.tags.some((tag) => tag.includes(key)),
+          )
+        })
+        const photo = matches.find((shop) => shop.photos[0])?.photos[0]
+        return photo ? [{ value: option.value, label: option.short, count: matches.length, photo }] : []
+      }),
+    [shops],
+  )
+
+  /** 라운지 미리보기: 최신 공개 기록 중 사진이 있는 것. 오늘의 픽 매장은 반복하지 않는다 */
+  const loungeFeed = useLoungeLogs({ type: "전체", sort: "latest", pageSize: 12 })
+  const loungePreview = useMemo(
+    () => loungeFeed.data.filter((log) => logPhoto(log) && log.shop.id !== todayPick?.id).slice(0, 5),
+    [loungeFeed.data, todayPick?.id],
+  )
   const pickCatalog = todayPick ? catalogOf(todayPick) : {}
   const pickFacts = todayPick ? pickFactsOf(todayPick) : []
   const pickDateLabel = formatPickDate(seoulToday())
@@ -257,22 +314,7 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {loggedIn && currentUser ? (
-            <Pressable
-              accessibilityHint="마이 탭으로 이동해요"
-              accessibilityLabel={`${currentUser.nickname}님, 반갑습니다`}
-              accessibilityRole="button"
-              onPress={() => router.navigate("/native/my")}
-              style={({ pressed }) => [styles.greeting, pressed && styles.pressedDim]}
-            >
-              <AppText capScale numberOfLines={1} style={styles.bold} variant="secondary">
-                <AppText style={styles.bold} tone="brand" variant="secondary">
-                  {currentUser.nickname}
-                </AppText>
-                님, 반갑습니다
-              </AppText>
-            </Pressable>
-          ) : (
+          {loggedIn && currentUser ? null : (
             <View style={styles.authRow}>
               <Pressable
                 accessibilityLabel="로그인"
@@ -298,6 +340,32 @@ export default function HomeScreen() {
               )}
             </View>
           )}
+        </View>
+
+        {/* 1-1. 인사: 지금 끼니에 맞춘 한 줄과 내 기록 현황(회원) */}
+        <View style={styles.hero}>
+          {loggedIn && currentUser ? (
+            <AppText numberOfLines={1} style={styles.bold} tone="sub" variant="secondary">
+              {`${currentUser.nickname}님, 반갑습니다`}
+            </AppText>
+          ) : null}
+          <AppText accessibilityRole="header" style={styles.heroTitle} variant="headline">
+            {`오늘 ${mealOfNow()}은\n어떤 라멘으로 할까요?`}
+          </AppText>
+          {loggedIn && currentUser ? (
+            <Pressable
+              accessibilityHint="마이 탭에서 기록을 봐요"
+              accessibilityLabel={statusLine}
+              accessibilityRole="button"
+              onPress={() => router.navigate("/native/my")}
+              style={({ pressed }) => [styles.statusLine, pressed && styles.pressedDim]}
+            >
+              <AppText capScale numberOfLines={1} style={[styles.bold, styles.flexShrink]} tone="sub" variant="secondary">
+                {statusLine}
+              </AppText>
+              <ChevronRight color={colors.inkSub} size={16} />
+            </Pressable>
+          ) : null}
         </View>
 
         {/* 2. AI 라멘 큐레이터 배너 */}
@@ -326,9 +394,43 @@ export default function HomeScreen() {
 
         {shopsQuery.isLoading ? <LoadingState label="라멘집을 불러오는 중…" /> : null}
 
+        {/* 2-1. 스타일로 찾기: 사진 타일을 가로로 넘기고, 누르면 지도 탭이 그 메뉴로 걸러진다 */}
+        {styleTiles.length ? (
+          <View style={styles.sectionFirst}>
+            <SectionHead title="스타일로 찾기" />
+            <ScrollView
+              contentContainerStyle={styles.tileRow}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.bleed}
+            >
+              {styleTiles.map((tile) => (
+                <Pressable
+                  accessibilityHint="지도 탭에서 이 스타일만 보여줘요"
+                  accessibilityLabel={`${tile.label} 라멘집 ${tile.count}곳`}
+                  accessibilityRole="button"
+                  key={tile.value}
+                  onPress={() => router.navigate({ pathname: "/native/map", params: { menu: tile.value } })}
+                  style={({ pressed }) => [styles.tile, pressed && styles.pressedDim]}
+                >
+                  <View style={styles.tilePhoto}>
+                    <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={tile.photo} />
+                  </View>
+                  <AppText capScale numberOfLines={1} style={[styles.bold, styles.tileLabel]} variant="secondary">
+                    {tile.label}
+                  </AppText>
+                  <AppText capScale style={styles.tileLabel} tone="muted" variant="meta">
+                    {`${tile.count}곳`}
+                  </AppText>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
+
         {/* 3. 오늘의 픽: 목록 카드와 다르게 잡지 한 면처럼 보인다(날짜 · 사진 · 이름 · 소개 인용 · 고른 이유) */}
         {todayPick ? (
-          <View style={styles.sectionFirst}>
+          <View style={styleTiles.length ? styles.section : styles.sectionFirst}>
             <SectionHead
               right={
                 <AppText capScale style={styles.bold} tone="muted" variant="meta">
@@ -493,6 +595,71 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
+        {/* 4-1. 라운지 미리보기: 다른 사람들이 막 올린 라멘로그를 가로로 넘긴다 */}
+        {loungePreview.length ? (
+          <View style={styles.section}>
+            <SectionHead
+              right={
+                <Pressable
+                  accessibilityLabel="라운지 가기"
+                  accessibilityRole="button"
+                  hitSlop={{ top: 8, bottom: 8 }}
+                  onPress={() => router.navigate("/native/lounge")}
+                  style={({ pressed }) => [styles.mapLink, pressed && styles.pressedDim]}
+                >
+                  <AppText capScale style={styles.bold} tone="muted" variant="secondary">
+                    라운지 가기
+                  </AppText>
+                  <ChevronRight color={colors.textMuted} size={16} />
+                </Pressable>
+              }
+              title="라운지 새 라멘로그"
+            />
+            <ScrollView
+              contentContainerStyle={styles.loungeRow}
+              decelerationRate="fast"
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToAlignment="start"
+              snapToInterval={LOUNGE_CARD + spacing.x3}
+              style={styles.bleed}
+            >
+              {loungePreview.map((log) => {
+                const comments = log.comments?.length ?? log.commentCount ?? 0
+                return (
+                  <Pressable
+                    accessibilityLabel={`${log.author.name}의 라멘로그, ${log.shop.name} ${log.menuName}, 공감 ${log.likes}, 댓글 ${comments}`}
+                    accessibilityRole="button"
+                    key={log.id}
+                    onPress={() => router.push({ pathname: "/log/[logId]", params: { logId: String(log.id) } })}
+                    style={({ pressed }) => [styles.loungeCard, pressed && styles.pressedDim]}
+                  >
+                    <View style={styles.loungePhoto}>
+                      <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={logPhoto(log) ?? undefined} />
+                    </View>
+                    <AppText numberOfLines={1} style={styles.loungeTitle} variant="cardTitle">
+                      {log.menuName}
+                    </AppText>
+                    <AppText numberOfLines={1} tone="sub" variant="secondary">
+                      {`${log.shop.name} · ${log.author.name}`}
+                    </AppText>
+                    <View style={styles.loungeMeta}>
+                      <Heart color={colors.textMuted} size={12} />
+                      <AppText capScale style={styles.tabular} tone="muted" variant="meta">
+                        {log.likes}
+                      </AppText>
+                      <MessageCircle color={colors.textMuted} size={12} />
+                      <AppText capScale style={styles.tabular} tone="muted" variant="meta">
+                        {comments}
+                      </AppText>
+                    </View>
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+
         {/* 5. 가까운 라멘집 (거리 순) */}
         {nearby.length ? (
           <View style={styles.section}>
@@ -619,7 +786,22 @@ const styles = StyleSheet.create({
   },
   signupPressed: { backgroundColor: colors.brandPressed },
 
+  hero: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, gap: spacing.x1 },
+  heroTitle: { marginTop: spacing.x0_5 },
+  statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x0_5, minHeight: touchTarget, alignSelf: "flex-start", marginBottom: -spacing.x2 },
   bannerWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4 },
+  // 가로로 넘기는 줄은 좌우 여백 밖까지 흐르고, 첫 칸만 여백에 맞춘다
+  bleed: { marginHorizontal: -spacing.gutter },
+  tileRow: { paddingHorizontal: spacing.gutter, gap: spacing.x3 },
+  tile: { width: STYLE_TILE },
+  tilePhoto: { width: STYLE_TILE, height: STYLE_TILE, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvasSoft },
+  tileLabel: { marginTop: spacing.x1, textAlign: "center" },
+  loungeRow: { paddingHorizontal: spacing.gutter, gap: spacing.x3 },
+  loungeCard: { width: LOUNGE_CARD },
+  loungePhoto: { width: LOUNGE_CARD, height: 156, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvasSoft },
+  loungeTitle: { marginTop: spacing.x2 },
+  loungeMeta: { flexDirection: "row", alignItems: "center", gap: spacing.x1, marginTop: spacing.x1 },
+  tabular: { fontVariant: ["tabular-nums"] },
   banner: {
     flexDirection: "row",
     alignItems: "center",
