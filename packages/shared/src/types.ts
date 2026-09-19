@@ -80,8 +80,8 @@ export interface Shop {
   catchTableUrl?: string
   /** 카카오 로컬 place_url. 카카오 데이터 중 저장이 허용된 값이며 앱 밖(브라우저·카카오맵 앱)으로만 연다 */
   kakaoPlaceUrl?: string
-  /** 네이버 지도 매장 페이지 URL. 매장 상세의 "네이버 지도" 바로가기가 연다(없으면 이름으로 검색) */
-  naverPlaceUrl?: string
+  /** 네이버 매장 ID(서버 naver_map_id). 매장 상세 "네이버 지도" 버튼이 이 매장 페이지를 바로 연다(없으면 이름으로 검색) */
+  naverMapId?: string
   photos: string[]
   tags: string[]
   matchScore: number

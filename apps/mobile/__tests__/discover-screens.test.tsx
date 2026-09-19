@@ -162,32 +162,35 @@ describe("shop detail", () => {
     await view.findByText(/^후쿠 라멘/)
     const query = encodeURIComponent("후쿠 라멘 합정점")
 
-    // 매장 URL이 아직 없는 매장은 이름으로 네이버 지도 검색을 연다
-    await fireEvent.press(view.getByRole("link", { name: "네이버 지도에서 사진·메뉴 보기" }))
+    // 네이버 매장 ID가 아직 없는 매장은 이름으로 네이버 지도 검색을 연다
+    await fireEvent.press(view.getByRole("link", { name: "네이버 지도" }))
     expect(openURL).toHaveBeenCalledWith(`nmap://search?query=${query}&appname=com.raota.app`)
     await waitFor(() => expect(openURL).toHaveBeenLastCalledWith(`https://map.naver.com/p/search/${query}`))
 
     await fireEvent.press(view.getByRole("link", { name: /^주소, / }))
     await waitFor(() => expect(openURL).toHaveBeenLastCalledWith(`https://map.naver.com/p/search/${query}`))
     // 전화번호·예약·인스타그램이 없는 매장은 네이버 지도만 보여준다
-    expect(view.queryByRole("link", { name: /^전화번호/ })).toBeNull()
+    expect(view.queryByRole("link", { name: "전화" })).toBeNull()
     expect(view.queryByRole("link", { name: "캐치테이블" })).toBeNull()
+    expect(view.queryByRole("link", { name: "인스타그램" })).toBeNull()
     openURL.mockRestore()
   })
 
-  it("keeps the phone row and the Instagram and CatchTable buttons in the detail section", async () => {
+  it("puts call, Naver Map, CatchTable and Instagram shortcuts under the shop intro", async () => {
     const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true)
     mockParams.shopId = "1"
     const view = await renderScreen(<ShopDetailScreen />)
     await view.findByText(/^멘야준/)
 
-    await fireEvent.press(view.getByRole("link", { name: "전화번호, 070-7798-2512" }))
+    await fireEvent.press(view.getByRole("link", { name: "전화" }))
     expect(openURL).toHaveBeenLastCalledWith("tel:070-7798-2512".replace(/-/g, ""))
     await fireEvent.press(view.getByRole("link", { name: "캐치테이블" }))
     expect(openURL).toHaveBeenLastCalledWith("https://app.catchtable.co.kr/ct/shop/menyajun")
     await fireEvent.press(view.getByRole("link", { name: "인스타그램" }))
     expect(openURL).toHaveBeenLastCalledWith("https://instagram.com/menyajun_official")
     expect(view.queryByText(/카카오맵/)).toBeNull()
+    // 차콜 섹션의 전화번호 줄(정보)은 그대로 남는다
+    expect(view.getByRole("link", { name: "전화번호, 070-7798-2512" })).toBeTruthy()
     openURL.mockRestore()
   })
 
