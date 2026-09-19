@@ -9,7 +9,7 @@ import { colors, spacing } from "@/src/theme"
 /*
  * MVP 탭: 홈 · 지도 · 마이 세 개만 둔다(라운지·라멘속보는 앱 MVP 범위 밖).
  * 탭 바는 아래 목록의 라우트만 그린다. 이 폴더에 다른 화면 파일이 남아 있어도 탭으로 보이지 않는다.
- * 모양은 웹 App.tsx 탭 바와 같다: 흰 면, 위 1pt 경계, 높이 56 + 하단 inset,
+ * 모양은 웹 App.tsx 탭 바와 같다: 흰 면, 위 1pt 경계, 높이 52 + 하단 inset(홈 인디케이터 쪽 8pt는 겹쳐 쓴다),
  * 아이콘 22pt, 라벨 12pt bold, 활성 탭은 빨강과 위쪽 2pt 막대. 키보드가 열리면 숨긴다.
  */
 
@@ -23,7 +23,12 @@ const TAB_ICONS: Record<string, LucideIcon> = {
 
 const VISIBLE_TABS = Object.keys(TAB_ICONS)
 
-const TAB_BAR_HEIGHT = 56
+const TAB_BAR_HEIGHT = 52
+/**
+ * 홈 인디케이터가 있는 기기에서 inset(34pt)을 그대로 더하면 라벨 아래가 휑해 보인다.
+ * 인디케이터 위쪽 여유 8pt는 탭 바가 겹쳐 써서 시스템 탭 바(49 + 34)와 비슷한 높이로 맞춘다
+ */
+const HOME_INDICATOR_OVERLAP = 8
 
 function useKeyboardVisible() {
   const [visible, setVisible] = useState(false)
@@ -48,7 +53,7 @@ export function RaotaTabBar({ state, descriptors, navigation, insets }: TabBarPr
   const routes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name))
 
   return (
-    <View accessibilityLabel="주요 메뉴" style={[styles.bar, { paddingBottom: insets.bottom }]}>
+    <View accessibilityLabel="주요 메뉴" style={[styles.bar, { paddingBottom: Math.max(0, insets.bottom - HOME_INDICATOR_OVERLAP) }]}>
       <View accessibilityRole="tablist" style={styles.row}>
         {routes.map((route) => {
           const { options } = descriptors[route.key]

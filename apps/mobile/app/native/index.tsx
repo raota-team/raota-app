@@ -16,6 +16,7 @@ import { useRaota } from "@/src/state/RaotaStore"
 import { colors, maxFontScale, radii, spacing, touchTarget } from "@/src/theme"
 
 /** 떠 있는 기록 버튼(56pt)과 여백만큼 목록 끝을 비워 마지막 줄을 가리지 않는다 */
+/** 목록 끝이 오른쪽 아래 기록 버튼에 가리지 않을 여백. "더 보기" 줄이 있으면 그 줄이 대신 자리를 채운다 */
 const FAB_CLEARANCE = 96
 
 /** 원장의 표시용 필드(스타일, 한 줄 특징). API 응답에 없으면 빈 문자열 */
@@ -213,6 +214,8 @@ export default function HomeScreen() {
   )
   /** 추천: 기록이 있는 로그인 사용자는 취향 기반 랭킹, 그 외에는 라멘로그·거리 기준 */
   const personal = loggedIn && tasteProfile.data.profile.count > 0 && Boolean(tasteIdentity.data.leader)
+  /** 가까운 목록에 다 못 보여준 매장 수. 지도 탭에는 전부 있다 */
+  const moreNearbyCount = Math.max(0, shops.length - (todayPick ? 1 : 0) - nearby.length)
   /** 오늘의 픽으로 이미 소개한 매장은 아래 목록에서 다시 보여주지 않는다 */
   const recommendations = useMemo(() => {
     const pool = shops.filter((shop) => shop.id !== todayPick?.id)
@@ -230,7 +233,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.root}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: FAB_CLEARANCE }}
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: moreNearbyCount > 0 ? spacing.x8 : FAB_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       >
         {/* 1. 헤더: 로고 · 인사 (MVP에는 알림 벨이 없다) */}
@@ -559,9 +562,21 @@ export default function HomeScreen() {
                 )
               })}
             </View>
+            {moreNearbyCount > 0 ? (
+              <Pressable
+                accessibilityLabel={`라멘집 ${moreNearbyCount}곳 더 지도에서 보기`}
+                accessibilityRole="button"
+                onPress={() => router.navigate("/native/map")}
+                style={({ pressed }) => [styles.moreNearby, pressed && styles.pressedDim]}
+              >
+                <AppText capScale style={styles.bold} tone="sub" variant="secondary">
+                  {`라멘집 ${moreNearbyCount}곳 더 지도에서 보기`}
+                </AppText>
+                <ChevronRight color={colors.inkSub} size={16} />
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
-
       </ScrollView>
 
       <RecordFab />
@@ -708,6 +723,8 @@ const styles = StyleSheet.create({
   metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
   dot: { color: colors.textFaint },
   index: { width: 20, textAlign: "center", fontWeight: "700", fontVariant: ["tabular-nums"] },
+  // 왼쪽 정렬: 오른쪽 아래 기록 버튼과 겹치지 않는다
+  moreNearby: { flexDirection: "row", alignItems: "center", gap: spacing.x0_5, minHeight: touchTarget, marginTop: spacing.x2, alignSelf: "flex-start" },
   mapLink: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", gap: spacing.x0_5, marginVertical: -spacing.x2 },
 
 })
