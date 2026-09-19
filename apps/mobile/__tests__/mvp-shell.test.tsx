@@ -113,12 +113,12 @@ describe("MVP tab bar", () => {
     return { props, navigation }
   }
 
-  it("shows only 홈 · 지도 · 마이 and marks the active tab", async () => {
+  it("shows only 홈 · 지도 · 라운지 · 마이 and marks the active tab", async () => {
     const { props } = tabProps(0)
     const view = await render(<RaotaTabBar {...props} />)
 
-    expect(view.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual(["홈 탭", "지도 탭", "마이 탭"])
-    expect(view.queryByText("라운지")).toBeNull()
+    expect(view.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual(["홈 탭", "지도 탭", "라운지 탭", "마이 탭"])
+    expect(view.getByText("라운지")).toBeTruthy()
     expect(view.queryByText("라멘속보")).toBeNull()
     expect(view.getByRole("tab", { name: "홈 탭" }).props.accessibilityState).toEqual({ selected: true })
   })

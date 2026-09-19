@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router"
-import { Home, MapPin, UserRound, type LucideIcon } from "lucide-react-native"
+import { Home, MapPin, MessagesSquare, UserRound, type LucideIcon } from "lucide-react-native"
 import { useEffect, useState, type ComponentProps } from "react"
 import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native"
 
@@ -7,8 +7,9 @@ import { AppText } from "@/src/components/ui"
 import { colors, spacing } from "@/src/theme"
 
 /*
- * MVP 탭: 홈 · 지도 · 마이 세 개만 둔다(라운지·라멘속보는 앱 MVP 범위 밖).
- * 탭 바는 아래 목록의 라우트만 그린다. 이 폴더에 다른 화면 파일이 남아 있어도 탭으로 보이지 않는다.
+ * MVP 탭: 홈 · 지도 · 라운지 · 마이 네 개. 라운지는 다른 사람들의 공개 라멘로그(공감 · 댓글 · 신고 · 숨기기)만 두고,
+ * 커뮤니티 게시판과 라멘속보는 앱 MVP 범위 밖이다.
+ * 탭 바는 TAB_ICONS에 있는 라우트만 그리고, 순서는 아래 Tabs.Screen 순서를 따른다. 이 폴더에 다른 화면 파일이 남아 있어도 탭으로 보이지 않는다.
  * 모양은 웹 App.tsx 탭 바와 같다: 흰 면, 위 1pt 경계, 높이 52 + 하단 inset(홈 인디케이터 쪽 8pt는 겹쳐 쓴다),
  * 아이콘 22pt, 라벨 12pt bold, 활성 탭은 빨강과 위쪽 2pt 막대. 키보드가 열리면 숨긴다.
  */
@@ -18,6 +19,7 @@ type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>
 const TAB_ICONS: Record<string, LucideIcon> = {
   index: Home,
   map: MapPin,
+  lounge: MessagesSquare,
   my: UserRound,
 }
 
@@ -97,6 +99,7 @@ export default function TabLayout() {
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <RaotaTabBar {...props} />}>
       <Tabs.Screen name="index" options={{ title: "홈" }} />
       <Tabs.Screen name="map" options={{ title: "지도" }} />
+      <Tabs.Screen name="lounge" options={{ title: "라운지" }} />
       <Tabs.Screen name="my" options={{ title: "마이" }} />
     </Tabs>
   )
