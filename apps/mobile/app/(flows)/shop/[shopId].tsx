@@ -18,11 +18,11 @@ import Svg, { Path } from "react-native-svg"
 import type { Shop, ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, Button, EmptyState, Header, IconButton, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
+import { AppText, Button, EmptyState, Header, IconButton, LoadingState, RamenTypeTag, Screen, Sticker, StickyActionBar, Tag, Toast } from "@/src/components/ui"
 import { useBookmarkedShops, useMyLogs, useShop } from "@/src/data/hooks"
 import { naverMapLinks } from "@/src/domain/naverMap"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, radii, spacing, touchTarget } from "@/src/theme"
+import { colors, line, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
 
 const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
 const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
@@ -63,7 +63,7 @@ function goBack() {
   else router.replace("/native")
 }
 
-/** 차콜 면 안의 1pt 구분선. 흰색 15%를 토큰(onDark) + 투명도로 만든다 */
+/** 차콜 면 안의 1pt 구분선. 흰색 18%를 토큰(onDark) + 투명도로 만든다 */
 function DarkDivider() {
   return <View style={styles.darkDivider} />
 }
@@ -274,7 +274,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           <View pointerEvents="box-none" style={[styles.heroControls, { top: insets.top + spacing.x2 }]}>
             <IconButton
               accessibilityLabel="뒤로가기"
-              icon={<ChevronLeft color={colors.onDark} size={22} />}
+              icon={<ChevronLeft color={colors.ink} size={22} />}
               onImage
               onPress={goBack}
             />
@@ -282,7 +282,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
               accessibilityLabel={saved ? "가고 싶어요 저장 취소" : "가고 싶어요에 저장"}
               accessibilityState={{ selected: saved }}
-              icon={<Bookmark color={saved ? colors.brand : colors.onDark} fill={saved ? colors.brand : "transparent"} size={20} />}
+              icon={<Bookmark color={saved ? colors.brand : colors.ink} fill={saved ? colors.brand : colors.transparent} size={20} />}
               onImage
               onPress={toggleSave}
             />
@@ -326,22 +326,18 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                 <AppText capScale style={styles.dot} variant="meta">
                   ·
                 </AppText>
-                <AppText capScale style={styles.bold} tone="muted" variant="meta">
+                <AppText capScale style={styles.bold} tone="sub" variant="meta">
                   {part}
                 </AppText>
               </View>
             ))}
           </View>
 
-          {shop.style ? (
-            <AppText style={[styles.bold, styles.styleLine]} tone="muted" variant="secondary">
-              {shop.style}
-            </AppText>
-          ) : null}
+          {shop.style ? <RamenTypeTag style={styles.styleLine} type={shop.style} /> : null}
           <AppText accessibilityRole="header" style={styles.name} variant="screenTitle">
             {shop.name}
             {shop.branch ? (
-              <AppText style={styles.bold} tone="muted" variant="screenTitle">
+              <AppText style={styles.bold} tone="sub" variant="screenTitle">
                 {` · ${shop.branch}`}
               </AppText>
             ) : null}
@@ -352,7 +348,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             </AppText>
           ) : null}
           {shop.address ? (
-            <AppText style={styles.address} tone="muted" variant="secondary">
+            <AppText style={styles.address} tone="sub" variant="secondary">
               {shop.address}
             </AppText>
           ) : null}
@@ -360,11 +356,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           {shop.tags.length ? (
             <View accessibilityLabel={`특징: ${shop.tags.join(", ")}`} style={styles.tags}>
               {shop.tags.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <AppText capScale style={styles.bold} variant="meta">
-                    {tag}
-                  </AppText>
-                </View>
+                <Tag key={tag} label={tag} />
               ))}
             </View>
           ) : null}
@@ -378,22 +370,15 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               <AppText accessibilityRole="header" style={[styles.bold, styles.flex]} variant="secondary">
                 가게 소개
               </AppText>
-              <View accessibilityLabel="AI가 요약했어요" accessible style={styles.aiBadge}>
-                <Sparkles color={colors.brand} size={12} />
-                <AppText capScale style={styles.bold} tone="muted" variant="meta">
-                  AI가 요약했어요
-                </AppText>
+              <View accessibilityLabel="AI가 요약했어요" accessible>
+                <Sticker icon={<Sparkles color={colors.ink} size={12} />} label="AI가 요약했어요" />
               </View>
             </View>
             <AppText variant="body">{shop.aiSummary.text}</AppText>
             {shop.aiSummary.keywords?.length ? (
               <View style={styles.summaryKeywords}>
                 {shop.aiSummary.keywords.map((keyword) => (
-                  <View key={keyword} style={styles.summaryKeyword}>
-                    <AppText capScale style={styles.bold} variant="meta">
-                      {`#${keyword}`}
-                    </AppText>
-                  </View>
+                  <Tag key={keyword} label={`#${keyword}`} />
                 ))}
               </View>
             ) : null}
@@ -419,7 +404,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               accessibilityRole="link"
               key={shortcut.key}
               onPress={shortcut.onPress}
-              style={({ pressed }) => [styles.shortcut, pressed && styles.shortcutPressed]}
+              style={({ pressed }) => [styles.shortcut, pressed && styles.pressedInto]}
             >
               {shortcut.icon}
               <AppText capScale numberOfLines={1} style={styles.bold} variant="secondary">
@@ -605,7 +590,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             <AppText accessibilityRole="header" style={styles.flexShrink} variant="sectionTitle">
               내 라멘로그
               {shopLogs.length ? (
-                <AppText style={styles.bold} tone="muted" variant="sectionTitle">
+                <AppText style={styles.bold} tone="sub" variant="sectionTitle">
                   {` ${shopLogs.length}`}
                 </AppText>
               ) : null}
@@ -633,7 +618,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                     <AppText numberOfLines={1} variant="cardTitle">
                       {log.menuName}
                     </AppText>
-                    <AppText capScale numberOfLines={1} style={styles.logMeta} tone="muted" variant="meta">
+                    <AppText capScale numberOfLines={1} style={styles.logMeta} tone="sub" variant="meta">
                       {meta.join(" · ")}
                     </AppText>
                     {log.note ? (
@@ -650,7 +635,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               <AppText style={styles.center} variant="cardTitle">
                 아직 이 가게 기록이 없어요
               </AppText>
-              <AppText style={[styles.center, styles.emptyBody]} tone="muted" variant="secondary">
+              <AppText style={[styles.center, styles.emptyBody]} tone="sub" variant="secondary">
                 {loggedIn ? "먹어본 라멘의 맛을 기록해보세요." : "로그인하고 이 가게의 첫 기록을 남겨보세요."}
               </AppText>
               <Button
@@ -674,11 +659,12 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           accessibilityLabel={saved ? "저장됨, 가고 싶어요 취소" : "가고 싶어요"}
           fullWidth
           leftIcon={
-            compact ? undefined : <Bookmark color={saved ? colors.brand : colors.ink} fill={saved ? colors.brand : "transparent"} size={18} />
+            compact ? undefined : (
+              <Bookmark color={saved ? colors.brand : colors.ink} fill={saved ? colors.brand : colors.transparent} size={18} />
+            )
           }
           onPress={toggleSave}
-          style={[styles.stickyButton, saved && styles.savedButton]}
-          textStyle={saved ? styles.savedText : undefined}
+          style={styles.stickyButton}
           title={saved ? "저장됨" : "가고 싶어요"}
           variant="outline"
         />
@@ -705,16 +691,23 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1, minWidth: 0 },
   bold: { fontWeight: "700" },
   medium: { fontWeight: "500" },
   center: { textAlign: "center" },
   dot: { color: colors.textFaint },
+  // 그림자가 있는 키는 누르면 그림자 속으로 들어간다
+  pressedInto: pressInto(2),
   scrollContent: { paddingBottom: spacing.x8 },
 
-  hero: { aspectRatio: 4 / 3, backgroundColor: colors.canvasSoft },
+  hero: {
+    aspectRatio: 4 / 3,
+    borderBottomWidth: line.base,
+    borderBottomColor: colors.outline,
+    backgroundColor: colors.canvasSoft,
+  },
   noPhoto: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.x2 },
   heroControls: {
     position: "absolute",
@@ -725,31 +718,31 @@ const styles = StyleSheet.create({
   },
   thumbStrip: { position: "absolute", left: 0, right: 0, bottom: spacing.x3 },
   thumbRow: { gap: spacing.x2, paddingHorizontal: spacing.x4 },
-  thumb: { width: 48, height: 48, borderRadius: radii.sm, borderWidth: 2, overflow: "hidden", backgroundColor: colors.canvasSoft },
+  // 48pt 썸네일은 8pt 모서리 + 2pt 선. 고른 사진만 빨강 선
+  thumb: { width: 48, height: 48, borderRadius: radii.md, borderWidth: line.base, overflow: "hidden", backgroundColor: colors.canvasSoft },
   thumbActive: { borderColor: colors.brand },
-  thumbIdle: { borderColor: colors.onDarkMuted, opacity: 0.75 },
+  thumbIdle: { borderColor: colors.onDark },
 
   headline: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5 },
   metaLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: spacing.x2, rowGap: spacing.x1 },
   metaPart: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   styleLine: { marginTop: spacing.x3 },
-  name: { marginTop: spacing.x0_5 },
+  name: { marginTop: spacing.x2 },
   spec: { marginTop: spacing.x1_5 },
   address: { marginTop: spacing.x1 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
-  tag: { backgroundColor: colors.canvasSoft, borderRadius: radii.xs, paddingHorizontal: spacing.x2_5, paddingVertical: spacing.x1 },
 
   intro: {
     marginHorizontal: spacing.gutter,
     marginTop: spacing.x5,
     padding: spacing.x4,
     borderRadius: radii.sm,
-    backgroundColor: colors.canvasSoft,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
   },
   introHead: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginBottom: spacing.x1_5 },
   summaryKeywords: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
-  summaryKeyword: { backgroundColor: colors.canvas, borderRadius: radii.xs, paddingHorizontal: spacing.x2, paddingVertical: spacing.x1 },
-  aiBadge: { flexDirection: "row", alignItems: "center", gap: spacing.x1 },
 
   section: { paddingHorizontal: spacing.gutter, marginTop: spacing.x5 },
   sectionTitle: { marginBottom: spacing.x2_5 },
@@ -760,7 +753,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.x2_5,
     paddingHorizontal: spacing.x3,
     borderRadius: radii.sm,
-    backgroundColor: colors.canvasSoft,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
   },
   perkValue: { marginTop: spacing.x0_5 },
 
@@ -783,7 +778,7 @@ const styles = StyleSheet.create({
   darkPressed: { opacity: 0.7 },
   darkKey: { flexShrink: 0 },
   darkValue: { flex: 1, textAlign: "right" },
-  darkDivider: { height: 1, backgroundColor: colors.onDark, opacity: 0.15 },
+  darkDivider: { height: 1, backgroundColor: colors.onDarkLine },
   hoursPreview: { flexDirection: "row", alignItems: "center", gap: spacing.x2, flexShrink: 1 },
   chevronUp: { transform: [{ rotate: "180deg" }] },
   hoursList: { paddingTop: spacing.x1, paddingBottom: spacing.x3 },
@@ -797,8 +792,8 @@ const styles = StyleSheet.create({
   hourToday: { borderWidth: 1, borderColor: colors.onDarkMuted },
   hourDay: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   phone: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
-  // 가게 소개 아래 바로가기: 흰 면 + 1pt 경계, 아이콘과 이름을 한 줄에(예전 차콜 버튼과 같은 모양)
-  shortcuts: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2, paddingHorizontal: spacing.gutter, marginTop: spacing.x4 },
+  // 가게 소개 아래 바로가기: 흰 키(2pt 먹선 + 번지지 않는 그림자). 그림자만큼 칸 사이를 10pt로 둔다
+  shortcuts: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2_5, paddingHorizontal: spacing.gutter, marginTop: spacing.x4 },
   shortcut: {
     flexBasis: "40%",
     flexGrow: 1,
@@ -808,11 +803,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.x2,
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
+    ...shadows.hardS,
   },
-  shortcutPressed: { backgroundColor: colors.canvasSoft },
 
   reviews: { paddingHorizontal: spacing.gutter, marginTop: spacing.x6 },
   reviewsHead: {
@@ -828,15 +823,13 @@ const styles = StyleSheet.create({
   reviewDivider: { borderTopWidth: 1, borderTopColor: colors.border },
   reviewText: { marginTop: spacing.x1 },
   logRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3 },
-  logPhoto: { width: 56, height: 56, borderRadius: radii.sm },
+  logPhoto: { width: 56, height: 56, borderRadius: radii.sm, borderWidth: line.base, borderColor: colors.outline },
   logMeta: { marginTop: spacing.x0_5 },
   reviewsEmpty: { alignItems: "center", paddingVertical: spacing.x8 },
   emptyBody: { marginTop: spacing.x1 },
-  firstRecord: { marginTop: spacing.x4, borderColor: colors.ink },
+  firstRecord: { marginTop: spacing.x4 },
 
   stickyBar: { paddingHorizontal: spacing.x4 },
   stickyButton: { paddingHorizontal: spacing.x3 },
   stickyPrimary: { flex: 1.3 },
-  savedButton: { borderColor: colors.brand, backgroundColor: colors.brandWeak },
-  savedText: { color: colors.brand },
 })
