@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   searchInput: { ...typography.body, flex: 1, minWidth: 0, height: "100%", color: colors.ink, paddingVertical: 0 },
-  clearButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  clearButton: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center" },
   // "목록으로 보기"는 누를 수 있는 키
   toggle: {
     height: touchTarget,
@@ -696,7 +696,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     overflow: "hidden",
   },
-  sortButton: { minHeight: 36, justifyContent: "center", paddingHorizontal: spacing.x2_5 },
+  sortButton: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2_5 },
   sortButtonDivided: { borderLeftWidth: line.base, borderLeftColor: colors.outline },
   sortButtonActive: { backgroundColor: colors.ink },
   listDivider: { height: 1, backgroundColor: colors.border },

@@ -18,6 +18,7 @@ import {
   type ViewStyle,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context"
+import { RAMEN_TYPES } from "@raota/shared"
 import * as Haptics from "expo-haptics"
 import { forwardRef, useEffect, type PropsWithChildren, type ReactNode } from "react"
 
@@ -451,14 +452,18 @@ export function Sticker({ label, tone = "yolk", icon, style, ...props }: Sticker
 }
 
 /**
- * 라멘 종류 태그(쇼유, 돈코츠, 시오…). 매장·라멘로그·지도 어디서나 같은 노랑 스티커 모양으로 나온다.
- * 기록은 종류(RAMEN_TYPES), 매장은 원장의 대표 스타일(style)을 넘긴다. style은 "쇼유 라멘"처럼 적혀 있어서
- * 뒤의 "라멘"을 떼고 같은 글자로 보여 준다(데이터는 바꾸지 않는다). "토리파이탄"처럼 원장에만 있는 스타일도 그대로 나온다.
+ * 라멘 종류 태그(쇼유, 돈코츠, 시오…). 기록은 종류(RAMEN_TYPES), 매장은 원장의 대표 스타일(style)을 넘긴다.
+ * style은 "쇼유 라멘"처럼 적혀 있어서 뒤의 "라멘"을 떼고 같은 글자로 보여 준다(데이터는 바꾸지 않는다).
+ *
+ * 노랑 스티커는 RAMEN_TYPES 아홉 가지에만 준다. "토리파이탄"처럼 원장에만 있고 기록할 수 없는 스타일은
+ * 흰 태그로 그려서, 사용자가 "이 종류로 기록할 수 있겠다"고 오해하지 않게 한다.
+ * RAMEN_TYPES에 토리파이탄을 넣으려면 서버 명세의 RamenType부터 함께 바꿔야 한다(DESIGN.md 참고).
  */
 export function RamenTypeTag({ type, style }: { type: string; style?: StyleProp<ViewStyle> }) {
   const label = type.replace(/\s*라멘$/, "").trim()
   // 종류가 비었거나 그냥 "라멘"(원장에 없는 가게의 기본값)이면 알려 주는 것이 없으므로 그리지 않는다
   if (!label) return null
+  if (!RAMEN_TYPES.includes(label)) return <Tag label={label} style={style} />
   return <Sticker accessibilityLabel={`라멘 종류 ${label}`} label={label} style={style} />
 }
 

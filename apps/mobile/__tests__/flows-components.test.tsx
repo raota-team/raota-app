@@ -179,7 +179,10 @@ describe("record screens", () => {
       ),
     ).toBeTruthy()
     const save = view.getByRole("button", { name: "기록 저장하기, 남은 필수 6개" })
-    expect(save.props.accessibilityState).toMatchObject({ disabled: true })
+    // 미완성이어도 눌리는 버튼이다(누르면 빠진 첫 항목으로 데려다준다).
+    // disabled를 주면 VoiceOver가 "흐림"으로 읽어 이 길이 화면을 못 보는 사용자에게만 닫힌다
+    expect(save.props.accessibilityState?.disabled).toBeFalsy()
+    expect(save.props.accessibilityHint).toBe("누르면 빠진 첫 항목으로 이동해요")
 
     await fireEvent.press(save)
 
