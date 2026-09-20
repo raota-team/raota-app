@@ -432,7 +432,12 @@ export interface StickerProps extends Omit<ViewProps, "style" | "children"> {
  */
 export function Sticker({ label, tone = "yolk", icon, style, ...props }: StickerProps) {
   return (
-    <View {...props} style={[styles.sticker, tone === "ink" && styles.stickerInk, style]}>
+    <View
+      // 라벨을 준 스티커는 하나로 묶어 읽는다. 묶지 않으면 라벨이 무시되고 안쪽 글씨만 읽힌다
+      accessible={props.accessibilityLabel ? true : undefined}
+      {...props}
+      style={[styles.sticker, tone === "ink" && styles.stickerInk, style]}
+    >
       {icon}
       <NativeText
         maxFontSizeMultiplier={maxFontScale}
