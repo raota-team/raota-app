@@ -13,7 +13,7 @@ import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile 
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { distanceBetweenCoordinates } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, maxFontScale, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
+import { colors, line, maxFontScale, pressFade, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
 import { MENU_OPTIONS } from "./map.web"
 
 /** 떠 있는 기록 버튼(56pt)과 여백만큼 목록 끝을 비워 마지막 줄을 가리지 않는다 */
@@ -362,7 +362,7 @@ export default function HomeScreen() {
               accessibilityLabel={statusLine}
               accessibilityRole="button"
               onPress={() => router.navigate("/native/my")}
-              style={({ pressed }) => [styles.statusLine, pressed && styles.pressedDim]}
+              style={({ pressed }) => [styles.statusLine, pressed && styles.pressedWash]}
             >
               <AppText capScale numberOfLines={1} style={[styles.bold, styles.flexShrink]} tone="sub" variant="secondary">
                 {statusLine}
@@ -415,7 +415,7 @@ export default function HomeScreen() {
                   accessibilityRole="button"
                   key={tile.value}
                   onPress={() => router.navigate({ pathname: "/native/map", params: { menu: tile.value } })}
-                  style={({ pressed }) => [styles.tile, pressed && styles.pressedDim]}
+                  style={({ pressed }) => [styles.tile, pressed && pressFade]}
                 >
                   <View style={styles.tilePhoto}>
                     <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={tile.photo} />
@@ -445,7 +445,7 @@ export default function HomeScreen() {
               accessibilityLabel={`오늘의 픽, ${todayPick.name}${todayPick.branch ? ` ${todayPick.branch}` : ""}, ${pickCatalog.spec ?? ""}, 매장 상세 보기`}
               accessibilityRole="button"
               onPress={() => openShop(todayPick.id)}
-              style={({ pressed }) => [styles.pickCard, pressed && styles.pressedDim]}
+              style={({ pressed }) => [styles.pickCard, pressed && pressFade]}
             >
               <View style={styles.pickPhoto}>
                 <ResilientUriImage
@@ -538,7 +538,7 @@ export default function HomeScreen() {
               accessibilityLabel={`추천 1위, ${topRecommendation.shop.name}${topRecommendation.shop.branch ? ` ${topRecommendation.shop.branch}` : ""}, ${topRecommendation.reason}, 매장 상세 보기`}
               accessibilityRole="button"
               onPress={() => openShop(topRecommendation.shop.id)}
-              style={({ pressed }) => [styles.recommendCard, pressed && styles.pressedDim]}
+              style={({ pressed }) => [styles.recommendCard, pressed && pressFade]}
             >
               <View style={styles.recommendPhoto}>
                 <ResilientUriImage
@@ -576,9 +576,9 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 key={shop.id}
                 onPress={() => openShop(shop.id)}
-                style={({ pressed }) => [styles.recommendRow, pressed && styles.pressedDim]}
+                style={({ pressed }) => [styles.recommendRow, pressed && pressFade]}
               >
-                <AppText capScale style={styles.recommendRank} tone="onDark">
+                <AppText capScale style={styles.recommendRank} tone="onDark" variant="cardTitle">
                   {index + 2}
                 </AppText>
                 <Thumb size={48} uri={shop.photos[0]} />
@@ -618,7 +618,7 @@ export default function HomeScreen() {
                   accessibilityRole="button"
                   hitSlop={{ top: 8, bottom: 8 }}
                   onPress={() => router.navigate("/native/lounge")}
-                  style={({ pressed }) => [styles.mapLink, pressed && styles.pressedDim]}
+                  style={({ pressed }) => [styles.mapLink, pressed && styles.pressedWash]}
                 >
                   <AppText capScale style={styles.bold} tone="sub" variant="secondary">
                     라운지 가기
@@ -645,7 +645,7 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     key={log.id}
                     onPress={() => router.push({ pathname: "/log/[logId]", params: { logId: String(log.id) } })}
-                    style={({ pressed }) => [styles.loungeCard, pressed && styles.pressedDim]}
+                    style={({ pressed }) => [styles.loungeCard, pressed && pressFade]}
                   >
                     <View style={styles.loungePhoto}>
                       <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={logPhoto(log) ?? undefined} />
@@ -688,7 +688,7 @@ export default function HomeScreen() {
                   accessibilityRole="button"
                   hitSlop={{ top: 8, bottom: 8 }}
                   onPress={() => router.navigate("/native/map")}
-                  style={({ pressed }) => [styles.mapLink, pressed && styles.pressedDim]}
+                  style={({ pressed }) => [styles.mapLink, pressed && styles.pressedWash]}
                 >
                   <AppText capScale style={styles.bold} tone="sub" variant="secondary">
                     지도에서 보기
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1, minWidth: 0 },
   bold: { fontWeight: "700" },
-  pressedDim: { opacity: 0.7 },
+  // 흰 면의 카드·목록 행은 canvasSoft 배경으로, 사진이 깔린 것과 먹색 면 위의 행은 pressFade로 누른다
   pressedWash: { backgroundColor: colors.canvasSoft },
   // 그림자가 있는 키는 누르면 그림자 속으로 들어간다
   pressedInto: pressInto(2),
@@ -1010,7 +1010,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.onDarkLine,
   },
-  recommendRank: { width: 28, fontSize: 17, lineHeight: 24, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  recommendRank: { width: 28, fontVariant: ["tabular-nums"] },
   metaLine: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
   dot: { color: colors.textFaint },
   index: { width: 20, textAlign: "center", fontWeight: "700", fontVariant: ["tabular-nums"] },

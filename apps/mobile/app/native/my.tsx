@@ -348,7 +348,8 @@ function MemberView() {
 
           <Pressable
             accessibilityHint="등급 안내를 열어요"
-            accessibilityLabel={`Lv.${level.number} ${level.title}, ${level.nextLevel ? `다음 등급까지 ${level.nextLevel.min - recordCount}그릇` : "최고 등급"}`}
+            // 등급은 라멘로그 수로만 정해진다(getRamenActivityLevel). 시트를 열지 않아도 기준을 알 수 있게 라벨에 붙인다
+            accessibilityLabel={`Lv.${level.number} ${level.title}, ${level.nextLevel ? `다음 등급까지 ${level.nextLevel.min - recordCount}그릇` : "최고 등급"}, 라멘로그 수를 기준으로 정해져요`}
             accessibilityRole="button"
             onPress={() => setSheet("grade")}
             style={({ pressed }) => [styles.gradeTile, pressed && styles.pressedWash]}
@@ -970,7 +971,7 @@ const styles = StyleSheet.create({
     gap: spacing.x3,
     paddingVertical: spacing.x3,
   },
-  rowDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+  rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
   thumb: {
     backgroundColor: colors.canvasSoft,
     borderColor: colors.outline,
@@ -1004,7 +1005,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.x2,
     borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
   },
   toast: { bottom: 88 },
   // 시트

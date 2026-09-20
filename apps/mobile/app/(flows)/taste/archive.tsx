@@ -194,7 +194,7 @@ export function MonthlyTastePreview({
         accessibilityLabel={months.length > 1 ? "월별 분포 비교하기" : "월별 분포 보기"}
         accessibilityRole="button"
         onPress={onOpen}
-        style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.linkRow, pressed && styles.pressedWash]}
       >
         <AppText variant="bodyStrong">{months.length > 1 ? "월별 분포 비교하기" : "월별 분포 보기"}</AppText>
         <ArrowRight color={colors.ink} size={16} />
@@ -565,10 +565,11 @@ const styles = StyleSheet.create({
   gapTop2: { marginTop: spacing.x2 },
   gapTop4: { marginTop: spacing.x4 },
   gapTop6: { marginTop: spacing.x6 },
-  pressed: { opacity: 0.6 },
+  // 흰 카드 안의 행이라 누름은 canvasSoft 배경이다(자체 불투명도를 만들지 않는다)
+  pressedWash: { backgroundColor: colors.canvasSoft },
   scroll: { paddingBottom: spacing.x8 },
   section: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.x5 },
-  sectionDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+  sectionDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
   card: {
     backgroundColor: colors.canvas,
     borderColor: colors.outline,
@@ -612,7 +613,7 @@ const styles = StyleSheet.create({
   table: { marginTop: spacing.x4 },
   tableHead: { minHeight: 0, borderBottomColor: colors.border, borderBottomWidth: 1, paddingBottom: spacing.x3 },
   tableRow: { flexDirection: "row", alignItems: "center", minHeight: 44 },
-  rowDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+  rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
   colName: { flex: 1.3 },
   colNum: { flex: 1, textAlign: "right" },
   compareSummary: { marginTop: spacing.x2, paddingTop: spacing.x4, borderTopColor: colors.border, borderTopWidth: 1 },

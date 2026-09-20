@@ -532,7 +532,7 @@ function RestartButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel="다시 추천받기"
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.restart, pressed && styles.pressedDim]}
+      style={({ pressed }) => [styles.restart, pressed && styles.pressedWash]}
     >
       <RotateCcw color={colors.ink} size={16} />
       <AppText variant="bodyStrong">다시 추천받기</AppText>
@@ -682,7 +682,6 @@ const styles = StyleSheet.create({
   bold: { fontWeight: "700" },
   center: { textAlign: "center" },
   pressedWash: { backgroundColor: colors.canvasSoft },
-  pressedDim: { opacity: 0.7 },
   stepCount: { fontVariant: ["tabular-nums"], paddingRight: spacing.x3 },
 
   body: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, paddingBottom: spacing.x6 },
@@ -759,7 +758,8 @@ const styles = StyleSheet.create({
   resultBody: { padding: spacing.x4, borderTopWidth: line.base, borderTopColor: colors.outline },
   resultName: { marginTop: spacing.x2 },
   resultSpec: { marginTop: spacing.x1_5 },
-  quote: { marginTop: spacing.x3, paddingLeft: spacing.x3, borderLeftWidth: 1, borderLeftColor: colors.ink },
+  // 가게 소개는 꾸미지 않은 본문으로 둔다(세로줄 장식 없음)
+  quote: { marginTop: spacing.x3 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
 
   conditions: { marginTop: spacing.x5 },
@@ -783,7 +783,18 @@ const styles = StyleSheet.create({
   conditionIconApplied: { backgroundColor: colors.ink },
   conditionIconRef: { backgroundColor: colors.canvas },
   conditionNote: { marginTop: spacing.x0_5 },
-  restart: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, minHeight: touchTarget, alignSelf: "flex-start", marginTop: spacing.x3 },
+  // 그림자 없는 키라 누름은 canvasSoft 배경. 글씨 위치는 그대로 두고 음수 여백으로 누름 면만 넓힌다
+  restart: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x1_5,
+    minHeight: touchTarget,
+    alignSelf: "flex-start",
+    marginTop: spacing.x3,
+    marginHorizontal: -spacing.x2,
+    paddingHorizontal: spacing.x2,
+    borderRadius: radii.sm,
+  },
 
   loadingHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.x4, paddingVertical: spacing.x2 },
   headerSpacer: { width: touchTarget },

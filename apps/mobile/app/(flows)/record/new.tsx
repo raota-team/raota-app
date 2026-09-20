@@ -1024,7 +1024,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.x2,
   },
   // 전체 만족도는 크게 따로 세우고 아래 항목들과 선으로 나눈다
-  heroAxis: { paddingBottom: spacing.x6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  heroAxis: { paddingBottom: spacing.x6, borderBottomWidth: 1, borderBottomColor: colors.border },
   // 재방문 의사: 선택지는 세 개의 알약 칩(1.5pt 먹선, 선택은 빨강 면)
   segment: { flexDirection: "row", gap: spacing.x2 },
   segmentInvalid: {},

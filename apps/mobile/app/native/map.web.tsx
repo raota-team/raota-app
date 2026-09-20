@@ -290,7 +290,7 @@ export function MapHeader({
             accessibilityLabel="필터 초기화"
             accessibilityRole="button"
             onPress={filters.resetFilters}
-            style={({ pressed }) => [styles.resetButton, pressed && styles.resetPressed]}
+            style={({ pressed }) => [styles.resetButton, pressed && styles.pressedWash]}
           >
             <X color={colors.ink} size={16} />
           </Pressable>
@@ -358,7 +358,7 @@ export function QuickView({ shop }: { shop: MapShop | null }) {
         accessibilityLabel={`${shopLabel(shop)}, 매장 상세 보기`}
         accessibilityRole="button"
         onPress={() => openShop(shop.id)}
-        style={({ pressed }) => [styles.quickRow, pressed && styles.pressedDim]}
+        style={({ pressed }) => [styles.quickRow, pressed && styles.pressedWash]}
       >
         <ResilientUriImage accessibilityLabel="" style={styles.quickPhoto} uri={shop.photos[0]} />
         <View style={styles.flexBody}>
@@ -396,9 +396,11 @@ export function QuickView({ shop }: { shop: MapShop | null }) {
 // 목록
 // ---------------------------------------------------------------------------
 
-function ListRow({ shop }: { shop: MapShop }) {
+/** narrow는 iPhone SE 폭. 한 줄에 다 넣으면 라스트오더가 잘려 영업 정보를 잃는다 */
+function ListRow({ shop, narrow }: { shop: MapShop; narrow: boolean }) {
   const status = statusOf(shop)
   const line = [shop.style, shop.spec].filter(Boolean).join(" · ")
+  const lastOrder = shop.lastOrder ? `라스트오더 ${shop.lastOrder}` : null
   return (
     <Pressable
       accessibilityLabel={`${shopLabel(shop)}${shop.lastOrder ? `, 라스트오더 ${shop.lastOrder}` : ""}, 매장 상세 보기`}
@@ -417,7 +419,7 @@ function ListRow({ shop }: { shop: MapShop }) {
             {line}
           </AppText>
         ) : null}
-        <View style={styles.listMeta}>
+        <View style={[styles.listMeta, narrow && styles.listMetaWrap]}>
           <AppText capScale numberOfLines={1} style={[styles.bold, styles.noShrink]} tone={status.open ? "positive" : "sub"} variant="meta">
             {`● ${status.label}`}
           </AppText>
@@ -427,15 +429,22 @@ function ListRow({ shop }: { shop: MapShop }) {
           <AppText capScale numberOfLines={1} style={[styles.bold, styles.noShrink]} tone="sub" variant="meta">
             {formatDistance(shop.distanceM)}
           </AppText>
-          {shop.lastOrder ? (
-            <>
-              <AppText capScale style={styles.dot} variant="meta">
-                ·
+          {lastOrder ? (
+            narrow ? (
+              // 좁은 폭에서는 같은 정보 묶음 안에서 줄만 바꾼다(390폭은 지금처럼 한 줄)
+              <AppText capScale numberOfLines={1} style={[styles.bold, styles.metaLine]} tone="sub" variant="meta">
+                {lastOrder}
               </AppText>
-              <AppText capScale numberOfLines={1} style={[styles.bold, styles.flexShrink]} tone="sub" variant="meta">
-                {`라스트오더 ${shop.lastOrder}`}
-              </AppText>
-            </>
+            ) : (
+              <>
+                <AppText capScale style={styles.dot} variant="meta">
+                  ·
+                </AppText>
+                <AppText capScale numberOfLines={1} style={[styles.bold, styles.flexShrink]} tone="sub" variant="meta">
+                  {lastOrder}
+                </AppText>
+              </>
+            )
           ) : null}
         </View>
       </View>
@@ -444,6 +453,9 @@ function ListRow({ shop }: { shop: MapShop }) {
 }
 
 export function ShopListView({ filters, notice }: { filters: MapFilters; notice?: ReactElement | null }) {
+  const { width } = useWindowDimensions()
+  /** 머리의 필터와 같은 기준. 이 아래에서는 한 줄 메타가 잘린다 */
+  const narrow = width < 375
   return (
     <FlatList
       ListEmptyComponent={
@@ -495,7 +507,7 @@ export function ShopListView({ filters, notice }: { filters: MapFilters; notice?
       keyExtractor={(shop) => String(shop.id)}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
-      renderItem={({ item }) => <ListRow shop={item} />}
+      renderItem={({ item }) => <ListRow narrow={narrow} shop={item} />}
       showsVerticalScrollIndicator={false}
     />
   )
@@ -510,7 +522,7 @@ export function LocationNotice({ message, actionLabel, onAction }: { message: st
         {message}
       </AppText>
       {actionLabel && onAction ? (
-        <Pressable accessibilityLabel={actionLabel} accessibilityRole="button" onPress={onAction} style={({ pressed }) => [styles.noticeAction, pressed && styles.pressedDim]}>
+        <Pressable accessibilityLabel={actionLabel} accessibilityRole="button" onPress={onAction} style={({ pressed }) => [styles.noticeAction, pressed && styles.pressedWash]}>
           <AppText capScale style={styles.bold} variant="secondary">
             {actionLabel}
           </AppText>
@@ -560,7 +572,7 @@ const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1, minWidth: 0 },
   flexShrinkGrow: { flex: 1, minWidth: 0 },
   pressedInto: pressInto(2),
-  pressedDim: { opacity: 0.8 },
+  // 흰 면의 행·칩·키는 canvasSoft 배경으로 눌린다(그림자 있는 키만 pressInto)
   pressedWash: { backgroundColor: colors.canvasSoft },
   dot: { color: colors.textFaint },
   noShrink: { flexShrink: 0 },
@@ -647,7 +659,6 @@ const styles = StyleSheet.create({
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
-  resetPressed: { backgroundColor: colors.canvasSoft },
   optionList: { gap: spacing.x0_5 },
   option: {
     minHeight: touchTarget,
@@ -671,7 +682,8 @@ const styles = StyleSheet.create({
   },
   quickEmpty: { paddingVertical: spacing.x3 },
   quickRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3_5 },
-  quickPhoto: { width: 64, height: 64, borderRadius: radii.md, borderWidth: line.base, borderColor: colors.outline },
+  // 48pt를 넘는 사진이라 8pt가 아니라 12pt 모서리다(8pt는 48pt 이하 썸네일과 지도 핀에만)
+  quickPhoto: { width: 64, height: 64, borderRadius: radii.sm, borderWidth: line.base, borderColor: colors.outline },
   titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
 
@@ -718,6 +730,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     overflow: "hidden",
   },
+  listMetaWrap: { flexWrap: "wrap" },
+  // 줄을 바꿔 붙는 라스트오더. 위 줄과는 listMeta의 gap(6pt)만큼 떨어진다
+  metaLine: { width: "100%" },
   notice: {
     flexDirection: "row",
     alignItems: "center",
@@ -730,5 +745,5 @@ const styles = StyleSheet.create({
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
-  noticeAction: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },
+  noticeAction: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2, borderRadius: radii.sm },
 })

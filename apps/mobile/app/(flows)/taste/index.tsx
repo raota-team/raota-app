@@ -218,27 +218,34 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
     <View accessibilityLabel={`항목별 맛 평가 그래프. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
       {/* 좁은 화면에서도 잘리지 않게 폭은 카드에 맞추고 모양은 viewBox가 지킨다 */}
       <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width="100%">
-        {[0.2, 0.4, 0.6, 0.8, 1].map((level) => (
+        {/* 바로 앞 로딩 레이더와 같은 재료를 쓴다: 바깥 오각형은 2pt 먹선으로 두른 흰 면, 안쪽 눈금과 축은 1.5pt 보조선 */}
+        <Polygon
+          fill={colors.canvas}
+          points={pointsOf([1, 1, 1, 1, 1])}
+          stroke={colors.outline}
+          strokeLinejoin="round"
+          strokeWidth={line.base}
+        />
+        {[0.2, 0.4, 0.6, 0.8].map((level) => (
           <Polygon
             fill="none"
             key={level}
             points={pointsOf([level, level, level, level, level])}
-            stroke={colors.border}
-            strokeDasharray={level === 1 ? undefined : "2 2"}
-            strokeWidth={1}
+            stroke={colors.outline}
+            strokeLinejoin="round"
+            strokeWidth={line.thin}
           />
         ))}
         {[0, 1, 2, 3, 4].map((index) => {
           const p = radarPoint(index, 1)
-          return <Line key={index} stroke={colors.border} strokeWidth={1} x1={RADAR_CENTER} x2={p.x} y1={RADAR_CENTER} y2={p.y} />
+          return <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={RADAR_CENTER} x2={p.x} y1={RADAR_CENTER} y2={p.y} />
         })}
         <Polygon
           fill={colors.brand}
-          fillOpacity={0.12}
           points={pointsOf(metrics.map((metric) => metric.myVal))}
-          stroke={colors.brand}
+          stroke={colors.outline}
           strokeLinejoin="round"
-          strokeWidth={2.5}
+          strokeWidth={line.base}
         />
         {metrics.map((metric, index) => {
           const p = radarPoint(index, metric.myVal)
@@ -248,7 +255,7 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
           <SvgText
             fill={colors.inkSub}
             fontSize={12}
-            fontWeight="600"
+            fontWeight="800"
             key={`${metric.key}-label`}
             textAnchor="middle"
             x={RADAR_LABELS[index].x}
@@ -675,6 +682,8 @@ export default function TasteReportScreen() {
                           onPress={() => openShop(shop)}
                           style={({ pressed }) => [styles.listRow, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
                         >
+                          {/* 순위는 사진 위에 얹지 않고 줄 맨 앞에 둔다. 홈의 추천 순위와 같은 노랑 스티커다 */}
+                          <Sticker label={String(index + 1)} style={styles.rankBadge} />
                           <View style={styles.thumb}>
                             {visit.photo ? (
                               <Image contentFit="cover" source={{ uri: visit.photo }} style={styles.thumbImage} transition={150} />
@@ -683,11 +692,6 @@ export default function TasteReportScreen() {
                                 {visit.name.slice(0, 1)}
                               </AppText>
                             )}
-                            <View style={styles.rankBadge}>
-                              <AppText capScale tone="onDark" variant="meta">
-                                {index + 1}
-                              </AppText>
-                            </View>
                           </View>
                           <View style={styles.flex}>
                             <AppText numberOfLines={1} variant="cardTitle">
@@ -871,7 +875,7 @@ const styles = StyleSheet.create({
   axisList: { borderTopColor: colors.border, borderTopWidth: 1 },
   // 카드 안에서도 막대가 충분히 보이도록 고정 칸과 사이 간격을 조금 줄였다
   axisRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2_5, paddingVertical: spacing.x2_5 },
-  rowDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+  rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
   axisLabel: { width: 80 },
   axisScore: { width: 30, textAlign: "right" },
   axisLean: { width: 64, textAlign: "right" },
@@ -902,17 +906,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   thumbImage: { width: "100%", height: "100%" },
-  rankBadge: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: spacing.x1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.ink,
-  },
+  // 1·2·3의 글자 폭이 달라도 썸네일 줄이 맞도록 최소 폭을 준다
+  rankBadge: { alignSelf: "center", minWidth: 28, justifyContent: "center" },
   fallbackBox: {
     backgroundColor: colors.canvas,
     borderColor: colors.outline,

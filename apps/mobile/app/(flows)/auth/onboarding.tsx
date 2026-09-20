@@ -25,7 +25,7 @@ import { track } from "@/src/analytics"
 import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
 import { AppText, Button, Chip, Header } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, pressFade, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
  * 회원가입(온보딩). 웹 RegisterScreen과 같은 구성이다.
@@ -87,7 +87,7 @@ function CheckRow({
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       onPress={() => onChange(!checked)}
-      style={({ pressed }) => [styles.checkRow, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.checkRow, pressed && styles.pressedWash]}
     >
       <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
         {checked ? <Check color={colors.onDark} size={14} strokeWidth={3} /> : null}
@@ -272,7 +272,7 @@ export default function OnboardingScreen() {
               accessibilityLabel="로그인"
               accessibilityRole="button"
               onPress={() => router.replace("/auth/login")}
-              style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.headerLink, pressed && styles.pressedWash]}
             >
               <AppText capScale tone="brand" variant="bodyStrong">
                 로그인
@@ -311,7 +311,7 @@ export default function OnboardingScreen() {
                 accessibilityLabel="프로필 사진 선택"
                 accessibilityRole="button"
                 onPress={() => void pickAvatar()}
-                style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.avatar, pressed && pressFade]}
               >
                 {avatar ? (
                   <Image accessibilityLabel="고른 프로필 사진" contentFit="cover" source={{ uri: avatar }} style={styles.fill} />
@@ -418,13 +418,16 @@ export default function OnboardingScreen() {
                   accessibilityRole="button"
                   key={tag}
                   onPress={() => setBio(tag)}
-                  style={({ pressed }) => [styles.quickTag, pressed && styles.pressed]}
+                  style={styles.quickTag}
                 >
-                  <View style={styles.quickTagPill}>
-                    <AppText capScale tone="sub" variant="secondary">
-                      + {tag}
-                    </AppText>
-                  </View>
+                  {/* 누름은 칩 면에만 보인다. 44pt 터치 영역까지 칠하면 알약 밖으로 회색 사각이 번진다 */}
+                  {({ pressed }) => (
+                    <View style={[styles.quickTagPill, pressed && styles.pressedWash]}>
+                      <AppText capScale tone="sub" variant="secondary">
+                        + {tag}
+                      </AppText>
+                    </View>
+                  )}
                 </Pressable>
               ))}
             </ScrollView>
@@ -448,7 +451,7 @@ export default function OnboardingScreen() {
                 accessibilityLabel="서비스 이용약관 보기"
                 accessibilityRole="button"
                 onPress={() => setPolicy("terms")}
-                style={({ pressed }) => [styles.viewLink, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.viewLink, pressed && styles.pressedWash]}
               >
                 <AppText capScale style={styles.underline} tone="sub" variant="secondary">
                   보기
@@ -466,7 +469,7 @@ export default function OnboardingScreen() {
                 accessibilityLabel="개인정보 수집 및 이용 동의 보기"
                 accessibilityRole="button"
                 onPress={() => setPolicy("privacy")}
-                style={({ pressed }) => [styles.viewLink, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.viewLink, pressed && styles.pressedWash]}
               >
                 <AppText capScale style={styles.underline} tone="sub" variant="secondary">
                   보기
@@ -511,7 +514,7 @@ export default function OnboardingScreen() {
                 accessibilityLabel="로그인하기"
                 accessibilityRole="button"
                 onPress={() => router.replace("/auth/login")}
-                style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.headerLink, pressed && styles.pressedWash]}
               >
                 <AppText style={styles.underline} variant="bodyStrong">
                   로그인하기
@@ -552,8 +555,9 @@ const styles = StyleSheet.create({
   bold: { fontWeight: "700" },
   underline: { textDecorationLine: "underline" },
   tabular: { fontVariant: ["tabular-nums"] },
-  pressed: { opacity: 0.7 },
-  headerLink: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },
+  // 흰·미색 면 위의 행과 링크는 canvasSoft 배경으로 눌린다. 사진이 깔리는 자리만 pressFade
+  pressedWash: { backgroundColor: colors.canvasSoft },
+  headerLink: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2, borderRadius: radii.sm },
   content: {
     paddingHorizontal: spacing.gutter,
     paddingTop: spacing.x6,
@@ -605,10 +609,9 @@ const styles = StyleSheet.create({
   },
   field: { gap: spacing.x1_5 },
   fieldHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  // 입력칸은 흰 면 + 2pt 먹선 + 12pt. 오류일 때만 선 색이 바뀐다
+  // 입력칸은 흰 면 + 2pt 먹선 + 12pt. 글씨는 다른 화면과 같은 typography.body(14)다. 오류일 때만 선 색이 바뀐다
   input: {
     ...typography.body,
-    fontSize: 15,
     minHeight: 48,
     borderWidth: line.base,
     borderColor: colors.outline,
@@ -619,7 +622,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   inputError: { borderColor: colors.critical },
-  textarea: { minHeight: 72, fontSize: 14 },
+  textarea: { minHeight: 72 },
   fieldNote: { marginTop: spacing.x0_5 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5 },
   quickTags: { gap: spacing.x1 },
@@ -650,7 +653,14 @@ const styles = StyleSheet.create({
   },
   checkBoxOn: { backgroundColor: colors.brand },
   checkStrong: { fontWeight: "800" },
-  viewLink: { minHeight: touchTarget, minWidth: touchTarget, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.x2 },
+  viewLink: {
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.x2,
+    borderRadius: radii.sm,
+  },
   submit: { marginTop: -spacing.x2 },
   loginRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", marginTop: -spacing.x4 },
   doneContent: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x8, paddingBottom: spacing.x4 },

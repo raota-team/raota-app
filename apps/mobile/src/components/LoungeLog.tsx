@@ -106,7 +106,7 @@ export function LogAuthorRow({ log, own, onMore }: LogAuthorRowProps) {
           accessibilityRole="button"
           hitSlop={{ top: 6, bottom: 6 }}
           onPress={() => openShopDetail(log.shop.id)}
-          style={({ pressed }) => [styles.shopLink, pressed && styles.pressedDim]}
+          style={({ pressed }) => [styles.shopLink, pressed && styles.pressedWash]}
         >
           <Store color={colors.textMuted} size={14} strokeWidth={2} />
           <AppText capScale numberOfLines={1} style={[styles.shrink, styles.bold]} tone="sub" variant="secondary">
@@ -301,6 +301,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onM
         ) : null}
 
         <View style={styles.cardText}>
+          {/* 한 카드에 날짜는 하나만 둔다. 방문일은 접근성 라벨과 상세에 그대로 있다 */}
           <View style={styles.titleBlock}>
             <View style={styles.titleRow}>
               <AppText numberOfLines={2} style={styles.flex} variant="cardTitle">
@@ -308,9 +309,6 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onM
               </AppText>
               <RamenTypeTag type={log.ramenType} />
             </View>
-            <AppText capScale numberOfLines={1} tone="muted" variant="meta">
-              {`${visit} 방문`}
-            </AppText>
           </View>
 
           {summary ? (
@@ -328,7 +326,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onM
         <LikeButton count={log.likes} liked={log.isLiked} onPress={() => onLike(log)} />
         <CommentCountButton count={commentCount} onPress={() => openLogDetail(log.id)} />
         <AppText capScale numberOfLines={1} style={styles.time} tone="muted" variant="meta">
-          {formatRelativeTime(log.createdAt)}
+          {`${formatRelativeTime(log.createdAt)} 작성`}
         </AppText>
       </View>
     </View>
@@ -587,7 +585,7 @@ const styles = StyleSheet.create({
   tabular: { fontVariant: ["tabular-nums"] },
   shrink: { flexShrink: 1 },
   shrinkMore: { flexShrink: 2 },
-  pressedDim: { opacity: 0.7 },
+  // 흰 카드 위의 행·칩은 canvasSoft 배경으로 누른다(불투명도를 따로 만들지 않는다)
   pressedWash: { backgroundColor: colors.canvasSoft },
 
   avatar: { alignItems: "center", justifyContent: "center" },

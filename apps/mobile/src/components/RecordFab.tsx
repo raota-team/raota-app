@@ -23,7 +23,7 @@ import { track } from "../analytics"
 import { useMonthlyReports } from "../data"
 import { scheduleTestReminder, type PlannedReminder } from "../notifications"
 import { useRaota } from "../state/RaotaStore"
-import { colors, line, pressInto, radii, shadows, spacing, touchTarget } from "../theme"
+import { colors, line, pressFade, pressInto, radii, shadows, spacing, touchTarget } from "../theme"
 import { AppText } from "./ui"
 
 /*
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   // 어두운 뒤판 위에서는 먹선이 묻히므로 흰 선으로 바꾼다
   fabOpen: { backgroundColor: colors.ink, borderColor: colors.onDark, shadowOpacity: 0 },
   pressed: pressInto(3),
-  menuItemPressed: { opacity: 0.85 },
+  menuItemPressed: pressFade,
   menu: { position: "absolute", gap: MENU_ITEM_GAP },
   menuItem: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: touchTarget },
   menuItemLeft: { flexDirection: "row-reverse" },
