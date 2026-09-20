@@ -85,10 +85,10 @@ line:
   base: "2.5px"
   strong: "3px"
 hard-shadow:
-  s: "3px 3px 0 {colors.ink}"
-  m: "4px 4px 0 {colors.ink}"
-  l: "6px 6px 0 {colors.ink}"
-  on-ink: "5px 5px 0 {colors.brand}"
+  s: "2px 2px 0 {colors.ink}"
+  m: "3px 3px 0 {colors.ink}"
+  l: "4px 4px 0 {colors.ink}"
+  on-ink: "4px 4px 0 {colors.brand}"
 spacing:
   x1: "4px"
   x2: "8px"
@@ -143,7 +143,7 @@ components:
     typography: "{typography.secondary}"
     rounded: "{rounded.pill}"
     border: "{line.thin} solid {colors.ink}"
-    shadow: "2px 2px 0 {colors.ink}"
+    shadow: "{hard-shadow.s}"
     height: "44px"
   tag:
     backgroundColor: "{colors.canvas}"
@@ -287,12 +287,13 @@ RAOTA Mobile은 라멘 전문지의 선명한 편집 감각과 개인 취향 여
 
 ```ts
 line:       { thin: 2, base: 2.5, strong: 3 }            // 칩·스티커 / 카드·버튼·사진 / 주인공 카드·탭 바·하단 바
-hardShadow: { s: { x: 3, y: 3 }, m: { x: 4, y: 4 }, l: { x: 6, y: 6 } } // blur 0, 색은 ink
-onInk:      { x: 5, y: 5, color: brand }                  // 먹색 섹션 위의 카드는 빨강 그림자
+hardShadow: { s: { x: 2, y: 2 }, m: { x: 3, y: 3 }, l: { x: 4, y: 4 } } // blur 0, 색은 ink
+onInk:      { x: 4, y: 4, color: brand }                  // 먹색 섹션 위의 카드는 빨강 그림자
 ```
 
 - **선.** 카드, 버튼, 사진, 입력칸, 아이콘 버튼은 모두 `ink` 선을 두른다. 굵기는 2 · 2.5 · 3pt 세 가지만 쓰고 한 부품 안에서 섞지 않는다. 사진도 예외 없이 선을 두른다.
-- **그림자는 높이가 아니라 무게다.** `s`(3pt)는 버튼 · 칩 · 아이콘 버튼 · 작은 목록 카드, `m`(4pt)은 보통 카드, `l`(6pt)은 한 화면에 한두 개뿐인 주인공 카드(오늘의 큐레이션, 종합 리포트, 라멘로그 카드, 지도 퀵뷰)에 쓴다. 그림자 방향은 항상 오른쪽 아래.
+- 그림자는 얇게 쓴다(2 · 3 · 4pt). 선이 이미 굵어서 그림자까지 두꺼우면 화면이 무거워진다.
+- **그림자는 높이가 아니라 무게다.** `s`(2pt)는 버튼 · 칩 · 아이콘 버튼 · 작은 목록 카드, `m`(3pt)은 보통 카드, `l`(4pt)은 한 화면에 한두 개뿐인 주인공 카드(오늘의 큐레이션, 종합 리포트, 라멘로그 카드, 지도 퀵뷰)에 쓴다. 그림자 방향은 항상 오른쪽 아래.
 - **The Press-Into-Shadow Rule.** 누를 수 있는 것은 누르는 동안 그림자 크기만큼 오른쪽 아래로 움직이고 그림자가 사라진다(식권 발매기 버튼처럼 눌린다). 이것이 유일한 누름 표현이다. opacity나 scale을 섞지 않는다. Reduce Motion에서는 이동 애니메이션 없이 즉시 바뀐다.
 - **면.** 화면 바탕 `paper`, 카드 · 버튼 `canvas`(흰색), 행동 `brand`, 표시 `yolk`, 무거운 섹션 `ink`. 먹색 섹션 안에서는 선을 흰색으로, 카드 그림자를 빨강(`onInk`)으로 바꾼다.
 - **점선.** 아직 없는 것(빈 상태)과 사용자가 쓴 글(메모 인용)은 2pt 점선 상자로 구분한다.
@@ -340,7 +341,7 @@ onInk:      { x: 5, y: 5, color: brand }                  // 먹색 섹션 위�
 
 ### 칩, 세그먼트, 탭
 
-- 필터·선택 칩은 흰 면 + 2pt 선 알약, 선택은 빨강 면 + 흰 글씨 + 2pt 그림자. 선택 상태를 `accessibilityState.selected`로 알린다.
+- 필터·선택 칩은 흰 면 + 2pt 선 알약, 선택은 빨강 면 + 흰 글씨 + `s` 그림자. 선택 상태를 `accessibilityState.selected`로 알린다.
 - 라운지의 정렬(최신순 / 공감순)은 2.5pt 선으로 두른 12pt 사각 두 칸. 선택된 칸은 먹색 면 + 흰 글씨, 칸 사이는 2.5pt 선.
 - 하단 탭: 흰 면 + 위쪽 3pt 먹선. 아이콘 22pt(선 2.5), 라벨 12pt 800, 비활성은 `ink`. 활성 탭은 빨강 12pt 블록(2.5pt 선 + `s` 그림자) 안에 흰 아이콘 · 라벨. 위쪽 빨강 막대는 없앤다. 키보드가 열리면 숨긴다.
 
@@ -426,7 +427,7 @@ onInk:      { x: 5, y: 5, color: brand }                  // 먹색 섹션 위�
 - **Do** iPhone SE와 Pro Max, 큰 Dynamic Type에서 제목, 하단 CTA, 키보드 입력, 긴 한글 문구를 확인한다.
 - **Do** 이미지·위치·저장이 실패해도 사용자가 다른 방법으로 작업을 끝낼 수 있게 한다.
 - **Do** 로그아웃하면 이전 계정의 상태(기록 완료 배너, 찜, 알림, 공감)를 모두 지운다.
-- **Do** 선은 2 · 2.5 · 3pt, 그림자는 3 · 4 · 6pt, 모서리는 6 · 12 · 16pt · 알약 안에서만 고른다. 누를 수 있는 것은 눌렸을 때 그림자 속으로 들어가게 한다.
+- **Do** 선은 2 · 2.5 · 3pt, 그림자는 2 · 3 · 4pt, 모서리는 6 · 12 · 16pt · 알약 안에서만 고른다. 누를 수 있는 것은 눌렸을 때 그림자 속으로 들어가게 한다.
 
 ### Don't
 
