@@ -22,7 +22,9 @@ import { forwardRef, useEffect, type PropsWithChildren, type ReactNode } from "r
 
 import {
   colors,
+  line,
   maxFontScale,
+  pressInto,
   radii,
   shadows,
   spacing,
@@ -31,7 +33,8 @@ import {
 } from "../../theme"
 
 /*
- * RAOTA 공통 부품. 모양은 apps/mobile/DESIGN.md와 웹 프로토타입(src/)을 따른다.
+ * RAOTA 공통 부품. 모양은 apps/mobile/DESIGN.md(네오 브루탈리즘 라이트)를 따른다.
+ * 부품의 테두리는 2pt 먹선, 번지지 않는 그림자는 누를 수 있는 것(버튼, 사진 위 아이콘 버튼)에만 있다.
  * 새 화면은 hex나 임의 크기 대신 여기 부품과 src/theme 토큰만 쓴다.
  */
 
@@ -226,8 +229,8 @@ export function SectionHeader({ title, meta, metaTone = "muted", style }: Sectio
 // ---------------------------------------------------------------------------
 
 /**
- * primary 빨강 알약 · secondary 잉크 알약 · outline 흰 면 + 경계 알약 ·
- * utility 2pt 사각형 · ghost 글씨만 · danger 되돌릴 수 없는 행동(빨강)
+ * primary 빨강 · secondary 먹색 · outline 흰 면: 12pt 사각 + 2pt 먹선 + 번지지 않는 그림자(누르면 그림자 속으로 들어간다).
+ * utility 6pt 사각 + 1.5pt 선(그림자 없음) · ghost 글씨만 · danger 되돌릴 수 없는 행동(빨강)
  */
 export type ButtonVariant = "primary" | "secondary" | "outline" | "utility" | "ghost" | "danger"
 export type ButtonSize = "small" | "medium" | "large"
@@ -245,12 +248,22 @@ export interface ButtonProps extends Omit<PressableProps, "children" | "style"> 
 }
 
 const buttonVariants: Record<ButtonVariant, ViewStyle> = {
-  primary: { backgroundColor: colors.brand, borderColor: colors.brand, borderRadius: radii.pill },
-  secondary: { backgroundColor: colors.ink, borderColor: colors.ink, borderRadius: radii.pill },
-  outline: { backgroundColor: colors.canvas, borderColor: colors.border, borderRadius: radii.pill },
-  utility: { backgroundColor: colors.canvas, borderColor: colors.ink, borderRadius: radii.xs },
-  ghost: { backgroundColor: colors.transparent, borderColor: colors.transparent, borderRadius: radii.pill },
-  danger: { backgroundColor: colors.brand, borderColor: colors.brand, borderRadius: radii.pill },
+  primary: { backgroundColor: colors.brand, borderColor: colors.outline, borderRadius: radii.sm, ...shadows.hardS },
+  secondary: { backgroundColor: colors.ink, borderColor: colors.outline, borderRadius: radii.sm, ...shadows.hardS },
+  outline: { backgroundColor: colors.canvas, borderColor: colors.outline, borderRadius: radii.sm, ...shadows.hardS },
+  utility: { backgroundColor: colors.canvas, borderColor: colors.outline, borderRadius: radii.xs, borderWidth: line.thin },
+  ghost: { backgroundColor: colors.transparent, borderColor: colors.transparent, borderRadius: radii.sm },
+  danger: { backgroundColor: colors.brand, borderColor: colors.outline, borderRadius: radii.sm, ...shadows.hardS },
+}
+
+/** 그림자가 있는 버튼은 누르면 그림자 속으로 들어간다. 없는 버튼은 옅은 면으로 바뀐다 */
+const buttonHasShadow: Record<ButtonVariant, boolean> = {
+  primary: true,
+  secondary: true,
+  outline: true,
+  utility: false,
+  ghost: false,
+  danger: true,
 }
 
 const buttonTextColor: Record<ButtonVariant, string> = {
@@ -264,7 +277,7 @@ const buttonTextColor: Record<ButtonVariant, string> = {
 
 const buttonSizes: Record<ButtonSize, ViewStyle> = {
   small: { minHeight: touchTarget, paddingHorizontal: spacing.x4 },
-  medium: { minHeight: 48, paddingHorizontal: spacing.x5 },
+  medium: { minHeight: 50, paddingHorizontal: spacing.x5 },
   large: { minHeight: 52, paddingHorizontal: spacing.x6 },
 }
 
@@ -296,7 +309,7 @@ export function Button({
         buttonVariants[variant],
         buttonSizes[size],
         fullWidth && styles.fullWidth,
-        pressed && !unavailable && (variant === "outline" || variant === "utility" || variant === "ghost" ? styles.pressedWash : styles.pressedDim),
+        pressed && !unavailable && (buttonHasShadow[variant] ? styles.pressedInto : styles.pressedWash),
         unavailable && styles.disabled,
         style,
       ]}
@@ -318,12 +331,12 @@ export interface IconButtonProps extends Omit<PressableProps, "children" | "styl
   /** VoiceOver가 읽을 이름. 아이콘 전용 버튼에는 필수 */
   accessibilityLabel: string
   icon: ReactNode
-  /** 사진 위처럼 어두운 면에 올릴 때 */
+  /** 사진 위에 띄울 때: 흰 12pt 사각 + 2pt 먹선 + 번지지 않는 그림자. 아이콘은 ink 색으로 넘긴다 */
   onImage?: boolean
   style?: StyleProp<ViewStyle>
 }
 
-/** 44pt 원형 아이콘 버튼 */
+/** 44pt 아이콘 버튼. 기본은 테두리 없는 12pt 사각(헤더·시트), onImage는 사진 위에 뜨는 흰 키 */
 export function IconButton({ icon, onImage = false, style, ...props }: IconButtonProps) {
   return (
     <Pressable
@@ -332,7 +345,7 @@ export function IconButton({ icon, onImage = false, style, ...props }: IconButto
       style={({ pressed }) => [
         styles.iconButton,
         onImage && styles.iconButtonOnImage,
-        pressed && (onImage ? styles.pressedDim : styles.pressedWash),
+        pressed && (onImage ? styles.pressedInto : styles.pressedWash),
         style,
       ]}
     >
@@ -353,7 +366,7 @@ export interface ChipProps extends Omit<PressableProps, "children" | "style"> {
   textStyle?: StyleProp<TextStyle>
 }
 
-/** 흰 면 + 경계 알약, 선택은 빨강. 선택 상태를 VoiceOver에 알린다 */
+/** 흰 면 + 1.5pt 먹선 알약, 선택은 빨강 면. 그림자는 없다. 선택 상태를 VoiceOver에 알린다 */
 export function Chip({
   label,
   selected = false,
@@ -390,7 +403,7 @@ export function Chip({
   )
 }
 
-/** 읽기 전용 태그. 2pt 모서리, 회색 면 */
+/** 읽기 전용 태그. 흰 면 + 1.5pt 먹선 + 6pt 모서리 */
 export function Tag({ label, style }: { label: string; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[styles.tag, style]}>
@@ -399,6 +412,38 @@ export function Tag({ label, style }: { label: string; style?: StyleProp<ViewSty
       </AppText>
     </View>
   )
+}
+
+export interface StickerProps {
+  label: string
+  /** yolk: 표시(기본). ink: 먹색 면 + 흰 글씨("종합 리포트" 같은 묶음 이름) */
+  tone?: "yolk" | "ink"
+  icon?: ReactNode
+  style?: StyleProp<ViewStyle>
+}
+
+/**
+ * 표시 스티커. 노랑 면 + 1.5pt 먹선 + 6pt 모서리. 기울이지 않는다.
+ * "오늘의 픽", "AI가 요약했어요", 추천 1위처럼 읽기만 하는 표시에 쓰고 버튼에는 쓰지 않는다. 한 화면에 세 개까지.
+ */
+export function Sticker({ label, tone = "yolk", icon, style }: StickerProps) {
+  return (
+    <View style={[styles.sticker, tone === "ink" && styles.stickerInk, style]}>
+      {icon}
+      <NativeText
+        maxFontSizeMultiplier={maxFontScale}
+        numberOfLines={1}
+        style={[typography.meta, styles.stickerText, { color: tone === "ink" ? colors.onDark : colors.ink }]}
+      >
+        {label}
+      </NativeText>
+    </View>
+  )
+}
+
+/** 라멘 종류 태그(쇼유, 돈코츠, 시오…). 매장·라멘로그·지도 어디서나 같은 노랑 스티커 모양으로 나온다 */
+export function RamenTypeTag({ type, style }: { type: string; style?: StyleProp<ViewStyle> }) {
+  return <Sticker label={type} style={style} />
 }
 
 export interface ScoreSegmentProps {
@@ -553,7 +598,7 @@ export interface CardProps extends PropsWithChildren {
   testID?: string
 }
 
-/** 흰 면, 6pt, 1pt 경계, 그림자 없음. 카드 안에 카드를 넣지 않는다 */
+/** 흰 면, 12pt, 2pt 먹선, 그림자 없음. 카드 안에 카드를 넣지 않는다 */
 export function Card({ children, onPress, accessibilityLabel, style, contentStyle, testID }: CardProps) {
   if (onPress) {
     return (
@@ -586,7 +631,7 @@ export interface ToastProps {
   actionLabel?: string
   onAction?: () => void
   /**
-   * dark: 기본(잉크 알약). light: 흰 알약 + 경계 + 그림자. 차콜 면 위에서도 묻히지 않아야 하는 화면
+   * dark: 기본(먹색 블록). light: 흰 블록 + 2pt 먹선. 먹색 면 위에서도 묻히지 않아야 하는 화면
    * (매장 상세처럼 아래쪽에 차콜 섹션이 있는 곳)에서 쓴다
    */
   appearance?: "dark" | "light"
@@ -602,7 +647,7 @@ const toastColors: Record<FeedbackVariant, string> = {
   informative: colors.ink,
 }
 
-/** 잉크 알약 토스트. 성공·실패를 색만으로 구분하지 않도록 문구에 결과를 쓴다 */
+/** 먹색 12pt 블록 토스트. 성공·실패를 색만으로 구분하지 않도록 문구에 결과를 쓴다 */
 export function Toast({
   visible,
   message,
@@ -751,7 +796,7 @@ export interface BottomSheetProps extends PropsWithChildren {
   footer?: ReactNode
 }
 
-/** 입력이 필요한 짧은 과제용. 12pt 윗모서리, 36×4 손잡이, 검정 50% 뒤판 */
+/** 입력이 필요한 짧은 과제용. 12pt 윗모서리 + 2pt 먹선, 36×4 손잡이, 검정 50% 뒤판 */
 export function BottomSheet({
   visible,
   onClose,
@@ -868,7 +913,7 @@ const styles = StyleSheet.create({
   textCenter: { textAlign: "center" },
   bold: { fontWeight: "700" },
   underline: { textDecorationLine: "underline" },
-  screen: { flex: 1, backgroundColor: colors.canvas },
+  screen: { flex: 1, backgroundColor: colors.paper },
   screenContent: { flexGrow: 1 },
   header: {
     minHeight: 56,
@@ -878,7 +923,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.paper,
   },
   headerSide: { minWidth: touchTarget, minHeight: touchTarget, justifyContent: "center" },
   headerRight: { alignItems: "flex-end" },
@@ -890,14 +935,20 @@ const styles = StyleSheet.create({
     height: touchTarget,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
   },
-  iconButtonOnImage: { backgroundColor: "rgba(0, 0, 0, 0.5)" },
+  iconButtonOnImage: {
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.base,
+    ...shadows.hardS,
+  },
   pressedWash: { backgroundColor: colors.canvasSoft },
   pressedWashBg: { backgroundColor: colors.canvasSoft },
   pressedDim: { opacity: 0.85 },
+  pressedInto: pressInto(2),
   button: {
-    borderWidth: 1,
+    borderWidth: line.base,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -911,21 +962,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x4,
     borderRadius: radii.pill,
     backgroundColor: colors.canvas,
-    borderColor: colors.border,
-    borderWidth: 1,
+    borderColor: colors.outline,
+    borderWidth: line.thin,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.x1_5,
   },
-  chipSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
+  chipSelected: { backgroundColor: colors.brand, borderColor: colors.outline },
   tag: {
     alignSelf: "flex-start",
-    backgroundColor: colors.canvasSoft,
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.thin,
     borderRadius: radii.xs,
-    paddingHorizontal: spacing.x2,
+    paddingHorizontal: 9,
     paddingVertical: spacing.x1,
   },
+  sticker: {
+    alignSelf: "flex-start",
+    minHeight: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x1,
+    backgroundColor: colors.yolk,
+    borderColor: colors.outline,
+    borderWidth: line.thin,
+    borderRadius: radii.xs,
+    paddingHorizontal: 9,
+  },
+  stickerInk: { backgroundColor: colors.ink },
+  stickerText: { fontWeight: "800" },
   scoreHead: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -942,15 +1009,15 @@ const styles = StyleSheet.create({
     width: touchTarget,
     height: touchTarget,
     borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.canvas,
   },
-  qualityDotHero: { width: 56, height: 56 },
-  qualityDotFilled: { backgroundColor: colors.brandWeak, borderColor: colors.brandWeak },
-  qualityDotSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
+  qualityDotHero: { width: 56, height: 56, borderWidth: line.base },
+  qualityDotFilled: { backgroundColor: colors.brandWeak },
+  qualityDotSelected: { backgroundColor: colors.brand },
   // 취향 위치: 다섯 칸의 가운데를 잇는 선(첫 칸 중앙 10% ~ 마지막 칸 중앙 90%)
   spectrumTrack: { position: "absolute", left: "10%", right: "10%", top: "50%", height: 2, marginTop: -1, backgroundColor: colors.border },
   trackInvalid: { backgroundColor: colors.brand },
@@ -958,8 +1025,8 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: radii.pill,
-    borderWidth: 2,
-    borderColor: colors.textFaint,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
   spectrumPick: {
@@ -969,6 +1036,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.brand,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
   },
   onDarkText: { color: colors.onDark },
   dotInvalid: { borderColor: colors.brand },
@@ -977,8 +1046,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.canvas,
     borderRadius: radii.sm,
-    borderColor: colors.border,
-    borderWidth: 1,
+    borderColor: colors.outline,
+    borderWidth: line.base,
     padding: spacing.x4,
   },
   toast: {
@@ -987,16 +1056,15 @@ const styles = StyleSheet.create({
     right: spacing.gutter,
     bottom: spacing.x6,
     minHeight: touchTarget,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.x5,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.x4,
     paddingVertical: spacing.x3,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.x3,
-    ...shadows.floating,
   },
   toastAction: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x1 },
-  toastLight: { backgroundColor: colors.canvas, borderWidth: 1, borderColor: colors.border },
+  toastLight: { backgroundColor: colors.canvas, borderWidth: line.base, borderColor: colors.outline },
   stateContainer: { alignItems: "center", justifyContent: "center", padding: spacing.x8 },
   stateIcon: { marginBottom: spacing.x3 },
   stateDescription: { marginTop: spacing.x1_5 },
@@ -1013,8 +1081,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     gap: spacing.x2,
     backgroundColor: colors.canvas,
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.outline,
+    borderTopWidth: line.base,
   },
   stickyActions: { flexDirection: "row", gap: spacing.x2 },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
@@ -1023,8 +1091,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
+    borderColor: colors.outline,
+    borderWidth: line.base,
+    borderBottomWidth: 0,
     overflow: "hidden",
-    ...shadows.floating,
   },
   sheetHandle: {
     width: 36,
@@ -1061,7 +1131,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x5,
     paddingTop: spacing.x6,
     paddingBottom: spacing.x5,
-    ...shadows.floating,
+    borderColor: colors.outline,
+    borderWidth: line.base,
   },
   dialogMessage: { marginTop: spacing.x2 },
   dialogActions: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x5 },
