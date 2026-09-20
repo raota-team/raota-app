@@ -25,7 +25,7 @@ import {
 import { track } from "@/src/analytics"
 import { AppText, Chip, EmptyState, Header, LoadingState } from "@/src/components/ui"
 import { useMonthlyReports, useMyBowls } from "@/src/data"
-import { colors, radii, spacing } from "@/src/theme"
+import { colors, line, radii, spacing } from "@/src/theme"
 
 /*
  * 월별 취향 변화. 웹 MonthlyTasteScreen과 같은 구성이다.
@@ -77,13 +77,13 @@ export function MenuDistributionChart({
                 <AppText
                   capScale
                   style={selected ? styles.bold : undefined}
-                  tone={selected ? "ink" : "muted"}
+                  tone={selected ? "ink" : "sub"}
                   variant="meta"
                 >
                   {shortReportMonth(report, includeYear)}
                   {inProgress ? " · 집계 중" : selected && !compact ? " · 선택한 달" : ""}
                 </AppText>
-                <AppText capScale style={styles.tabular} tone="muted" variant="meta">
+                <AppText capScale style={styles.tabular} tone="sub" variant="meta">
                   {total}그릇
                 </AppText>
               </View>
@@ -114,7 +114,7 @@ export function MenuDistributionChart({
                       </View>
                     ))
                 ) : (
-                  <AppText capScale style={styles.barEmpty} tone="muted" variant="meta">
+                  <AppText capScale style={styles.barEmpty} tone="sub" variant="meta">
                     기록 없음
                   </AppText>
                 )}
@@ -127,7 +127,7 @@ export function MenuDistributionChart({
         {MENU_CATEGORY_NAMES.map((name) => (
           <View key={name} style={styles.legendItem}>
             <View style={[styles.swatch, { backgroundColor: MENU_CATEGORY_COLORS[name].fill }]} />
-            <AppText capScale tone="muted" variant="meta">
+            <AppText capScale tone="sub" variant="meta">
               {name}
             </AppText>
           </View>
@@ -439,17 +439,17 @@ function MonthDetail({
         </AppText>
         <View accessibilityLabel={`${selected.period} 라멘 종류별 그릇 수와 비율`} style={styles.table}>
           <View style={[styles.tableRow, styles.tableHead]}>
-            <AppText capScale style={styles.colName} tone="muted" variant="secondary">
+            <AppText capScale style={styles.colName} tone="sub" variant="secondary">
               종류
             </AppText>
-            <AppText capScale style={styles.colNum} tone="muted" variant="secondary">
+            <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
               그릇 수
             </AppText>
-            <AppText capScale style={styles.colNum} tone="muted" variant="secondary">
+            <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
               비율
             </AppText>
             {canCompare ? (
-              <AppText capScale style={styles.colNum} tone="muted" variant="secondary">
+              <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
                 변화
               </AppText>
             ) : null}
@@ -506,7 +506,7 @@ function MonthDetail({
                 "이전 기록과 메뉴 비율이 같아요."
               )}
             </AppText>
-            <AppText style={styles.gapTop1} tone="muted" variant="meta">
+            <AppText style={styles.gapTop1} tone="sub" variant="meta">
               %p는 두 달의 비율 차이예요. 비율은 그릇 수를 기준으로 반올림했어요.
             </AppText>
           </View>
@@ -555,7 +555,7 @@ export default function MonthlyTasteScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
   bold: { fontWeight: "700" },
   tabular: { fontVariant: ["tabular-nums"] },
@@ -571,9 +571,9 @@ const styles = StyleSheet.create({
   sectionDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
   card: {
     backgroundColor: colors.canvas,
-    borderColor: colors.border,
+    borderColor: colors.outline,
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: line.base,
     padding: spacing.x4,
   },
   divider: { height: 1, backgroundColor: colors.border, marginTop: spacing.x3, marginBottom: spacing.x3 },
@@ -590,16 +590,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   chartHead: { flexDirection: "row", justifyContent: "space-between", marginBottom: spacing.x2 },
-  bar: { flexDirection: "row", overflow: "hidden", backgroundColor: colors.canvasSoft },
+  // 막대 색은 데이터에서 온다. 트랙만 1.5pt 먹선으로 두른다
+  bar: {
+    flexDirection: "row",
+    overflow: "hidden",
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.thin,
+  },
   barCompact: { height: 12, borderRadius: radii.xs },
   barFull: { height: 36, borderRadius: radii.sm },
   barPart: { height: "100%", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   barEmpty: { margin: "auto", alignSelf: "center" },
   legend: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.x4, rowGap: spacing.x2, marginTop: spacing.x4 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
-  swatch: { width: 10, height: 10, borderRadius: radii.xs },
+  // 옅은 데이터 색(기타·시오)도 미색 바탕에서 보이도록 1.5pt 먹선을 두른다
+  swatch: { width: 10, height: 10, borderRadius: radii.xs, borderColor: colors.outline, borderWidth: line.thin },
   monthChips: { gap: spacing.x2, paddingHorizontal: spacing.gutter, paddingVertical: spacing.x4 },
-  note: { marginTop: spacing.x3, paddingLeft: spacing.x3, borderLeftColor: colors.ink, borderLeftWidth: 1 },
+  // 메모 인용은 색 세로줄 없이 본문 그대로 둔다
+  note: { marginTop: spacing.x3 },
   table: { marginTop: spacing.x4 },
   tableHead: { minHeight: 0, borderBottomColor: colors.border, borderBottomWidth: 1, paddingBottom: spacing.x3 },
   tableRow: { flexDirection: "row", alignItems: "center", minHeight: 44 },

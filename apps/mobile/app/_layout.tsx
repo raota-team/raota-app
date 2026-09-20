@@ -84,7 +84,7 @@ export default function RootLayout() {
   useAppOpenTracking()
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+    <View style={{ flex: 1, backgroundColor: colors.paper }}>
       <RaotaProvider>
         <HydratedNavigation />
       </RaotaProvider>
@@ -134,7 +134,7 @@ function HydratedNavigation() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: colors.canvas },
+          contentStyle: { backgroundColor: colors.paper },
           animation: "slide_from_right",
           gestureEnabled: true,
         }}
@@ -164,13 +164,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 18,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.paper,
   },
   wordmark: {
     color: colors.ink,
     fontFamily: fonts.display,
     fontSize: 36,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   dot: { color: colors.brand },
 })

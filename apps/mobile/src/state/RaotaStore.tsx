@@ -1164,7 +1164,7 @@ export function RaotaProvider({
       const user = selectCurrentUser(state)
       if (!user || !authorId || authorId === user.id) return false
       dispatch({ type: "HIDE_AUTHOR", payload: authorId })
-      // TODO(API): POST /users/{authorId}/block — 서버가 차단 목록을 계정에 저장하면 기기를 바꿔도 유지된다
+      // TODO(API): remoteWrites.hideAuthor(authorId) (PUT /members/{memberId}/block) — 서버가 차단 목록을 계정에 저장하면 기기를 바꿔도 유지된다
       track("author_hidden")
       return true
     },
@@ -1172,7 +1172,7 @@ export function RaotaProvider({
   )
   const unhideAuthor = useCallback((authorId: string) => {
     dispatch({ type: "UNHIDE_AUTHOR", payload: authorId })
-    // TODO(API): DELETE /users/{authorId}/block
+    // TODO(API): remoteWrites.unhideAuthor(authorId) (DELETE /members/{memberId}/block)
   }, [])
   const reportContent = useCallback(
     (input: ReportContentInput): ContentReport | null => {
@@ -1188,7 +1188,7 @@ export function RaotaProvider({
         createdAt: new Date().toISOString(),
       }
       dispatch({ type: "REPORT_CONTENT", payload: report })
-      // TODO(API): POST /reports { targetType, targetId, reason } — 지금은 서버가 없어 기기 안에만 남는다(운영 검토는 API 연결 후)
+      // TODO(API): remoteWrites.reportContent(input) (POST /reports { targetType, targetId, reason }) — 지금은 서버가 없어 기기 안에만 남는다(운영 검토는 API 연결 후)
       track("content_reported", { kind: input.kind, reason: input.reason })
       return report
     },

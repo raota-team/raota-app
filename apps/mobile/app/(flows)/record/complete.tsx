@@ -16,9 +16,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { MONTHLY_REPORT_TARGET, TASTE_AXES, scoresFromLog, type RamenLog, type TasteProfile, type TasteScores } from "@raota/shared"
 import { useBowlCount, useLog, useMonthlyReports, useTasteProfile } from "@/src/data"
-import { AppText, Button, ConfirmDialog, EmptyState, LoadingState, SectionHeader, StickyActionBar } from "@/src/components/ui"
+import {
+  AppText,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  LoadingState,
+  RamenTypeTag,
+  SectionHeader,
+  StickyActionBar,
+  Tag,
+} from "@/src/components/ui"
 import { useRecordReminderPrompt } from "@/src/notifications"
-import { colors, radii, spacing, typography } from "@/src/theme"
+import { colors, line, radii, spacing } from "@/src/theme"
 
 /*
  * 기록 완료. 웹 RecordCompleteScreen과 같은 구성이다.
@@ -198,16 +208,8 @@ export default function RecordCompleteScreen() {
               </View>
               <View style={styles.flex}>
                 <View style={styles.tagRow}>
-                  <View style={[styles.pill, styles.pillOutline]}>
-                    <AppText capScale variant="meta">
-                      {log.ramenType}
-                    </AppText>
-                  </View>
-                  <View style={[styles.pill, styles.pillSoft]}>
-                    <AppText capScale variant="meta">
-                      {log.revisit}
-                    </AppText>
-                  </View>
+                  <RamenTypeTag type={log.ramenType} />
+                  <Tag label={log.revisit} />
                 </View>
                 <AppText numberOfLines={1} style={styles.menu} variant="cardTitle">
                   {log.menuName}
@@ -275,6 +277,7 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
     <View accessibilityLabel="내 취향 변화" style={styles.deltaSection}>
       <SectionHeader
         meta={isFirstBowl ? "첫 그릇" : `${before.count}그릇 → ${after.count}그릇 평균`}
+        metaTone="sub"
         style={styles.deltaHead}
         title="내 취향 변화"
       />
@@ -293,7 +296,7 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
           >
             <View style={styles.flex}>
               <AppText variant="bodyStrong">{axis.label}</AppText>
-              <AppText tone="muted" variant="meta">
+              <AppText tone="sub" variant="meta">
                 이번 그릇 {scores[axis.key]}점
               </AppText>
             </View>
@@ -304,7 +307,7 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
                 </AppText>
               ) : (
                 <AppText style={styles.tabular} variant="bodyStrong">
-                  <AppText style={styles.tabular} tone="muted" variant="body">
+                  <AppText style={styles.tabular} tone="sub" variant="body">
                     {beforeValue.toFixed(2)} →{" "}
                   </AppText>
                   {afterValue.toFixed(2)}
@@ -313,7 +316,7 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
               <AppText
                 capScale
                 style={[styles.tabular, styles.bold]}
-                tone={isFirstBowl || change === 0 ? "muted" : "brand"}
+                tone={isFirstBowl || change === 0 ? "sub" : "ink"}
                 variant="meta"
               >
                 {changeLabel}
@@ -323,7 +326,7 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
         )
       })}
       {nothingMoved ? (
-        <AppText style={styles.deltaNote} tone="muted" variant="meta">
+        <AppText style={styles.deltaNote} tone="sub" variant="meta">
           평소 평균과 같은 점수를 줘서 {before.count}그릇 평균이 그대로예요.
         </AppText>
       ) : null}
@@ -332,7 +335,7 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
   bold: { fontWeight: "700" },
   tabular: { fontVariant: ["tabular-nums"], textAlign: "right" },
@@ -349,7 +352,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: radii.pill,
-    borderWidth: 2,
+    borderWidth: line.base,
     borderColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
@@ -367,9 +370,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing.x4,
     gap: spacing.x4,
   },
+  // 티켓: 흰 카드 + 2pt 먹선. 절취선은 점선 대신 1pt 실선 구분선
   ticket: {
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     borderRadius: radii.sm,
     overflow: "hidden",
     backgroundColor: colors.canvas,
@@ -382,7 +386,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.x2_5,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    borderStyle: "dashed",
   },
   ticketBody: {
     flexDirection: "row",
@@ -396,16 +399,13 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     overflow: "hidden",
     backgroundColor: colors.canvasSoft,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     alignItems: "center",
     justifyContent: "center",
   },
   photoImage: { width: "100%", height: "100%" },
-  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5 },
-  pill: { borderRadius: radii.pill, paddingHorizontal: spacing.x2, paddingVertical: spacing.x0_5 },
-  pillOutline: { backgroundColor: colors.canvas, borderWidth: 1, borderColor: colors.border },
-  pillSoft: { backgroundColor: colors.canvasSoft },
+  tagRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x1_5 },
   menu: { marginTop: spacing.x1 },
   deltaSection: { gap: 0 },
   deltaHead: { paddingBottom: spacing.x2, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.x1 },
@@ -416,12 +416,15 @@ const styles = StyleSheet.create({
     gap: spacing.x3,
     paddingVertical: spacing.x2_5,
   },
-  deltaRowDivider: { borderTopWidth: 1, borderTopColor: colors.canvasSoft },
+  deltaRowDivider: { borderTopWidth: 1, borderTopColor: colors.border },
   deltaValues: { alignItems: "flex-end", flexShrink: 0 },
   deltaNote: { paddingTop: spacing.x2 },
+  // 회색 면 대신 흰 카드 + 2pt 먹선
   comment: {
-    backgroundColor: colors.canvasSoft,
+    backgroundColor: colors.canvas,
     borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     paddingHorizontal: spacing.x4,
     paddingVertical: spacing.x3_5,
   },

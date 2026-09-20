@@ -1,28 +1,38 @@
 import { Platform, type TextStyle, type ViewStyle } from "react-native"
 
 /**
- * RAOTA의 네이티브 의미 토큰. 값은 apps/mobile/DESIGN.md와 루트 웹 프로토타입(src/index.css)을 따른다.
- * iPhone에서 1pt는 웹 1px과 같은 크기로 보이므로 숫자를 웹과 똑같이 둔다.
+ * RAOTA의 네이티브 의미 토큰. 값은 apps/mobile/DESIGN.md를 따른다.
+ * 겉모습은 "네오 브루탈리즘 라이트"(미색 바탕, 흰 카드, 2pt 먹선, 누를 수 있는 것에만 번지지 않는 그림자)이고 앱이 기준이다.
+ * 화면 순서와 문구는 루트 웹 프로토타입과 같다.
  * "이전 이름" 표시가 붙은 키는 옛 화면 호환용이다. 새 화면은 쓰지 않는다.
  */
 export const colors = {
   brand: "#E60000",
   brandPressed: "#CC0000",
   brandWeak: "#FFF0F0",
-  ink: "#25282B",
+  ink: "#16181A",
   inkSub: "#4A4D52",
   /** 흰 면 위 5.1:1. 보조 글씨와 입력 안내 글씨 */
   textMuted: "#6B6E73",
   /** 구분 점, 비활성 장식 전용. 읽어야 하는 글씨에는 쓰지 않는다 */
   textFaint: "#BEBEBE",
+  /** 화면 바탕(미색). 카드와 버튼의 면은 canvas(흰색)를 쓴다 */
+  paper: "#FFF8EA",
   canvas: "#FFFFFF",
   canvasSoft: "#F2F2F2",
   surfaceInput: "#F7F7F7",
   surfacePressed: "#EAEAEA",
+  /** 목록의 줄 사이, 표 안쪽 같은 정보 구분선(1pt). 부품의 테두리에는 outline을 쓴다 */
   border: "#E2E2E2",
+  /** 카드, 버튼, 사진, 입력칸, 칩, 태그의 테두리. ink와 같은 값 */
+  outline: "#16181A",
+  /** 표시용 노랑. 라멘 종류 태그와 표시 스티커("오늘의 픽", "AI가 요약했어요", 추천 1위 숫자)에만 쓴다 */
+  yolk: "#FFC93C",
   onDark: "#FFFFFF",
   /** 차콜 위 보조 글씨. 회색 hex 대신 쓴다 */
   onDarkMuted: "rgba(255, 255, 255, 0.7)",
+  /** 먹색 면 안의 줄 구분선(흰색 18%) */
+  onDarkLine: "rgba(255, 255, 255, 0.18)",
   positive: "#2E7D32",
   positiveWeak: "#EBF8F0",
   warning: "#A15C00",
@@ -47,7 +57,7 @@ export const colors = {
   /** 이전 이름: canvasSoft */
   brandSubtle: "#F2F2F2",
   /** 이전 이름: ink */
-  text: "#25282B",
+  text: "#16181A",
   /** 이전 이름: inkSub */
   textSubtle: "#4A4D52",
   /** 이전 이름: onDark */
@@ -85,20 +95,29 @@ export const spacing = {
   screenBottom: 56,
 } as const
 
-/** 2·6·12pt와 알약만 쓴다. 새 컴포넌트에 중간 반경을 만들지 않는다. */
+/** 6·8·12·16pt와 알약만 쓴다. 새 컴포넌트에 중간 반경을 만들지 않는다. */
 export const radii = {
   none: 0,
-  /** 태그, 유틸리티 버튼 */
-  xs: 2,
-  /** 카드, 사진, 입력칸 */
-  sm: 6,
+  /** 스티커, 라멘 종류 태그, 태그, 유틸리티 버튼 */
+  xs: 6,
+  /** 카드, 버튼, 사진, 입력칸, 아이콘 버튼, 아바타 */
+  sm: 12,
+  /** 48pt 이하 썸네일, 지도 핀 */
+  md: 8,
   /** 바텀시트 윗모서리, 가운데 확인창 */
   lg: 12,
+  /** 작성 버튼(FAB)과 AI 큐레이터 배너 두 곳뿐 */
+  xl: 16,
+  /** 필터 칩, 공감·댓글 버튼 */
   pill: 999,
-  /** 이전 이름: sm */
-  md: 6,
-  /** 이전 이름: lg */
-  xl: 12,
+} as const
+
+/** 선 굵기. 3pt 이상은 쓰지 않는다. 정보 구분선은 1pt(colors.border) */
+export const line = {
+  /** 칩, 태그, 스티커, 미터 칸 */
+  thin: 1.5,
+  /** 카드, 버튼, 사진, 입력칸, 탭 바 */
+  base: 2,
 } as const
 
 export const fonts = {
@@ -127,15 +146,15 @@ const text = (fontSize: number, lineHeight: number, fontWeight: TextStyle["fontW
 /** DESIGN.md의 글씨 크기 표. 12pt가 하한이다. */
 export const typography = {
   /** 기록 완료의 "N번째 그릇" 숫자 한 곳 */
-  counter: { ...text(56, 56, "800", fonts.display), letterSpacing: -2, fontVariant: ["tabular-nums"] },
+  counter: { ...text(56, 56, "900", fonts.display), letterSpacing: -2, fontVariant: ["tabular-nums"] },
   /** 플로우 도입 문장, 취향 정체성 제목, 가입 완료 */
-  headline: text(24, 31, "800", fonts.display),
+  headline: { ...text(28, 35, "900", fonts.display), letterSpacing: -0.6 },
   /** 스택 헤더와 탭 루트 제목 */
-  screenTitle: text(20, 28, "800"),
+  screenTitle: text(22, 29, "900"),
   /** 섹션 제목, 시트·확인창 제목 */
-  sectionTitle: text(17, 24, "800"),
+  sectionTitle: text(20, 27, "900"),
   /** 가게 이름, 기록 제목, 목록의 첫 줄 */
-  cardTitle: text(15, 21, "700"),
+  cardTitle: text(16, 22, "800"),
   /** 메모, 설명, 폼 입력 */
   body: text(14, 22, "400"),
   /** 버튼 문구, 강조 본문 */
@@ -146,9 +165,9 @@ export const typography = {
   meta: text(12, 17, "600"),
 
   /** 이전 이름: headline */
-  display: text(24, 31, "800", fonts.display),
+  display: text(28, 35, "900", fonts.display),
   /** 이전 이름: screenTitle */
-  title: text(20, 28, "800"),
+  title: text(22, 29, "900"),
   /** 이전 이름: bodyStrong */
   label: text(14, 22, "700"),
   /** 이전 이름: secondary */
@@ -159,19 +178,38 @@ export const typography = {
   small: text(12, 17, "400"),
 } satisfies Record<string, TextStyle>
 
-/** 콘텐츠 카드는 그림자가 없다. 떠 있는 요소(FAB, 시트, 확인창, 토스트)만 floating을 쓴다. */
+const hard = (offset: number): ViewStyle => ({
+  shadowColor: colors.ink,
+  shadowOffset: { width: offset, height: offset },
+  shadowOpacity: 1,
+  shadowRadius: 0,
+  // Android는 elevation으로 번지지 않는 그림자를 만들 수 없다. 그림자 없이 테두리만 보인다(후속 과제).
+  elevation: 0,
+})
+
+/**
+ * 번지지 않는 그림자는 "누를 수 있다"는 표시다. 카드, 사진, 타일, 검색창, 칩에는 쓰지 않는다.
+ * 누르는 동안에는 그림자만큼 오른쪽 아래로 옮기고 pressedInto를 입힌다(ui의 Button·IconButton이 처리한다).
+ */
 export const shadows = {
   none: {} as ViewStyle,
-  floating: {
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
-  } satisfies ViewStyle,
-  /** 이전 이름: 카드 그림자는 없앴다. none과 같다 */
+  /** 버튼, 아이콘 버튼, 활성 탭, 지도의 선택된 핀 */
+  hardS: hard(2),
+  /** 작성 버튼(FAB), AI 큐레이터 배너 */
+  hardM: hard(3),
+  /** 눌린 상태: 그림자가 사라진다 */
+  pressedInto: { shadowOpacity: 0 } satisfies ViewStyle,
+  /** 이전 이름: 떠 있는 요소. 지금은 hardM과 같다 */
+  floating: hard(3),
+  /** 이전 이름: 카드 그림자는 없다 */
   card: {} as ViewStyle,
 } as const
+
+/** 눌렀을 때 그림자 속으로 들어가는 이동 */
+export const pressInto = (offset: 2 | 3 = 2): ViewStyle => ({
+  transform: [{ translateX: offset }, { translateY: offset }],
+  shadowOpacity: 0,
+})
 
 export const touchTarget = 44
 
@@ -182,6 +220,7 @@ export const theme = {
   colors,
   spacing,
   radii,
+  line,
   fonts,
   typography,
   shadows,

@@ -6,12 +6,12 @@ import { Bookmark, ChevronRight, Crosshair, Search, SearchX, X } from "lucide-re
 import { FlatList, Pressable, StyleSheet, TextInput, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
-import type { Shop, ShopCatalogItem } from "@raota/shared"
+import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { useBookmarkedShops, useShops } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { AppText, Chip, EmptyState, IconButton, LoadingState } from "@/src/components/ui"
-import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { AppText, Chip, EmptyState, IconButton, LoadingState, RamenTypeTag } from "@/src/components/ui"
+import { colors, line, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
  * 기록할 가게 고르기. 웹 RecordSheet와 같은 구성이다.
@@ -27,6 +27,8 @@ interface ShopItem {
   name: string
   branch: string
   style: string
+  /** 대표 스타일이 라멘 종류 목록과 맞을 때만 채운다. 없으면 빈 문자열 */
+  ramenType: string
   spec: string
   distanceM: number
   distance: string
@@ -63,6 +65,8 @@ const toShopItem = (shop: Shop): ShopItem => ({
   name: shop.name,
   branch: shop.branch ?? "",
   style: catalogField(shop, "style"),
+  // 종류 태그에는 원장의 대표 스타일을 그대로 넘긴다("쇼유 라멘" → 태그가 "쇼유"로 보여 준다)
+  ramenType: catalogField(shop, "style"),
   spec: catalogField(shop, "spec"),
   distanceM: shop.distanceM,
   distance: formatDistance(shop.distanceM),
@@ -110,6 +114,7 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
           {shop.spec || shop.style}
         </AppText>
         <View style={styles.rowMeta}>
+          {shop.ramenType ? <RamenTypeTag type={shop.ramenType} /> : null}
           <AppText capScale style={styles.bold} variant="meta">
             {shop.distance}
           </AppText>
@@ -198,24 +203,9 @@ export default function SelectShopScreen() {
     mode === "nearby" ? (
       <View>
         <View style={styles.filters}>
-          <Chip
-            label={`전체 ${allShops.length}`}
-            onPress={() => setNearbyFilter("all")}
-            selected={nearbyFilter === "all"}
-            style={nearbyFilter === "all" && styles.inkChip}
-          />
-          <Chip
-            label="500m 이내"
-            onPress={() => setNearbyFilter("500m")}
-            selected={nearbyFilter === "500m"}
-            style={nearbyFilter === "500m" && styles.inkChip}
-          />
-          <Chip
-            label="영업 중만"
-            onPress={() => setNearbyFilter("open")}
-            selected={nearbyFilter === "open"}
-            style={nearbyFilter === "open" && styles.inkChip}
-          />
+          <Chip label={`전체 ${allShops.length}`} onPress={() => setNearbyFilter("all")} selected={nearbyFilter === "all"} />
+          <Chip label="500m 이내" onPress={() => setNearbyFilter("500m")} selected={nearbyFilter === "500m"} />
+          <Chip label="영업 중만" onPress={() => setNearbyFilter("open")} selected={nearbyFilter === "open"} />
         </View>
         <AppText capScale style={styles.listCaption} tone="muted" variant="meta">
           가까운 순
@@ -377,26 +367,31 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
   },
+  // 전환 칸: 12pt 사각 + 2pt 먹선, 고른 칸은 먹색 면 + 흰 글씨. 그림자는 없다
   tab: {
     flex: 1,
     minHeight: touchTarget,
     borderRadius: radii.sm,
-    backgroundColor: colors.canvasSoft,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.x1_5,
-    paddingHorizontal: spacing.x1,
+    // 2pt 테두리가 안쪽을 좁히므로 SE 폭에서 라벨이 더 잘리지 않게 여백을 줄인다
+    paddingHorizontal: spacing.x0_5,
   },
   tabActive: { backgroundColor: colors.ink },
-  tabPressed: { backgroundColor: colors.border },
+  tabPressed: { backgroundColor: colors.canvasSoft },
   searchWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4 },
+  // 검색창: 흰 면 + 2pt 먹선 + 12pt, 그림자 없음
   searchField: {
     minHeight: 48,
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceInput,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
     flexDirection: "row",
     alignItems: "center",
     paddingLeft: spacing.x3_5,
@@ -413,11 +408,10 @@ const styles = StyleSheet.create({
   },
   listContent: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x8, flexGrow: 1 },
   filters: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2, paddingBottom: spacing.x3 },
-  inkChip: { backgroundColor: colors.ink, borderColor: colors.ink },
   listCaption: { fontWeight: "500", paddingBottom: spacing.x1 },
   quickTitle: { fontWeight: "500", marginBottom: spacing.x2 },
   quickKeywords: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
-  separator: { height: 1, backgroundColor: colors.canvasSoft },
+  separator: { height: 1, backgroundColor: colors.border },
   row: {
     minHeight: 56 + spacing.x3 * 2,
     paddingVertical: spacing.x3,
@@ -435,11 +429,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     overflow: "hidden",
     backgroundColor: colors.canvasSoft,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.base,
+    borderColor: colors.outline,
   },
   rowCopy: { flex: 1, minWidth: 0 },
   rowTitle: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1_5 },
   rowSpec: { marginTop: spacing.x0_5 },
-  rowMeta: { flexDirection: "row", alignItems: "center", gap: spacing.x2, marginTop: spacing.x1 },
+  // 종류 태그가 붙어 좁은 폭에서 넘칠 수 있어 줄바꿈을 허용한다
+  rowMeta: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.x2, marginTop: spacing.x1 },
 })

@@ -7,7 +7,7 @@ import MapView, { Marker, type Region } from "react-native-maps"
 
 import { AppText } from "@/src/components/ui"
 import { calculateMapClusters } from "@/src/domain/map"
-import { colors, radii, shadows, spacing, touchTarget } from "@/src/theme"
+import { colors, line, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
 import {
   LocationNotice,
   MapHeader,
@@ -132,7 +132,8 @@ export default function MapScreen() {
                     <Marker
                       accessibilityLabel={`라멘집 ${cluster.shopIds.length}곳, 확대해서 보기`}
                       coordinate={{ latitude: cluster.latitude, longitude: cluster.longitude }}
-                      key={cluster.id}
+                      // 마커 그림을 한 번만 그리므로(tracksViewChanges=false) 선택 상태가 바뀌면 key로 다시 그린다
+                      key={`${cluster.id}-${hasSelected ? "on" : "off"}`}
                       onPress={() =>
                         animateTo({
                           latitude: cluster.latitude,
@@ -143,10 +144,12 @@ export default function MapScreen() {
                       }
                       tracksViewChanges={false}
                     >
-                      <View style={[styles.cluster, hasSelected && styles.clusterSelected]}>
-                        <AppText capScale style={styles.clusterText} tone="onDark" variant="meta">
-                          {cluster.shopIds.length}
-                        </AppText>
+                      <View style={styles.pin}>
+                        <View style={[styles.cluster, hasSelected && styles.clusterSelected]}>
+                          <AppText capScale style={styles.clusterText} tone="onDark" variant="meta">
+                            {cluster.shopIds.length}
+                          </AppText>
+                        </View>
                       </View>
                     </Marker>
                   )
@@ -165,13 +168,10 @@ export default function MapScreen() {
                   >
                     <View style={styles.pin}>
                       <View style={[styles.pinCircle, isSelected && styles.pinCircleSelected]}>
-                        <Image
-                          source={require("@/assets/images/logo.png")}
-                          style={[styles.pinLogo, isSelected && styles.pinLogoSelected]}
-                        />
+                        <Image source={require("@/assets/images/logo.png")} style={styles.pinLogo} />
                       </View>
                       <View style={[styles.pinLabel, isSelected && styles.pinLabelSelected]}>
-                        <AppText capScale numberOfLines={1} style={styles.pinLabelText} tone={isSelected ? "onDark" : "sub"} variant="meta">
+                        <AppText capScale numberOfLines={1} style={styles.pinLabelText} tone={isSelected ? "onDark" : "ink"} variant="meta">
                           {shop.name}
                         </AppText>
                       </View>
@@ -184,6 +184,7 @@ export default function MapScreen() {
 
             <View style={styles.controls}>
               <ControlButton
+                hasShadow
                 label={locationStatus === "granted" ? "내 위치로 이동" : "기본 지역으로 이동"}
                 onPress={goToUser}
                 style={mapStyles.floatingButton}
@@ -210,14 +211,17 @@ export default function MapScreen() {
   )
 }
 
+/** hasShadow: 자기 그림자를 가진 키(눌리면 그림자 속으로). 확대·축소처럼 묶음이 그림자를 가진 칸은 옅은 면으로 바뀐다 */
 function ControlButton({
   label,
   onPress,
+  hasShadow = false,
   style,
   children,
 }: {
   label: string
   onPress: () => void
+  hasShadow?: boolean
   style?: StyleProp<ViewStyle>
   children: React.ReactNode
 }) {
@@ -226,7 +230,7 @@ function ControlButton({
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.controlButton, style, pressed && styles.controlPressed]}
+      style={({ pressed }) => [styles.controlButton, style, pressed && (hasShadow ? mapStyles.floatingPressed : styles.controlPressed)]}
     >
       {children}
     </Pressable>
@@ -234,63 +238,65 @@ function ControlButton({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
-  noticeWrap: { paddingHorizontal: spacing.x4, paddingTop: spacing.x3, backgroundColor: colors.canvas },
+  noticeWrap: { paddingHorizontal: spacing.x4, paddingTop: spacing.x3, backgroundColor: colors.paper },
   mapArea: { flex: 1, overflow: "hidden", backgroundColor: colors.canvasSoft },
   controls: { position: "absolute", top: spacing.x4, right: spacing.x4, gap: spacing.x2 },
+  // 확대·축소는 한 묶음이 그림자를 가진다(칸마다 그림자를 겹치지 않는다)
   zoomGroup: {
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
     overflow: Platform.OS === "ios" ? "visible" : "hidden",
-    ...shadows.floating,
+    ...shadows.hardS,
   },
-  zoomDivider: { height: 1, backgroundColor: colors.border },
+  zoomDivider: { height: line.base, backgroundColor: colors.outline },
   controlButton: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center", borderRadius: radii.sm },
   controlPressed: { backgroundColor: colors.canvasSoft },
 
+  // 핀: 먹색 8pt 사각 + 흰 2pt 테두리. 고른 핀은 빨강 + 2pt 먹선 + 번지지 않는 그림자
   cluster: {
     minWidth: 32,
     height: 32,
     paddingHorizontal: spacing.x1_5,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.pill,
-    borderWidth: 2,
+    borderRadius: radii.md,
+    borderWidth: line.base,
     borderColor: colors.onDark,
-    backgroundColor: colors.brand,
+    backgroundColor: colors.ink,
   },
-  clusterSelected: { borderColor: colors.ink },
+  clusterSelected: { borderColor: colors.outline, backgroundColor: colors.brand, ...shadows.hardS },
   clusterText: { fontWeight: "800", fontVariant: ["tabular-nums"] },
 
-  pin: { alignItems: "center" },
+  // 고른 핀의 그림자가 마커 스냅샷에서 잘리지 않도록 오른쪽·아래에 2pt를 비워 둔다
+  pin: { alignItems: "center", paddingRight: line.base, paddingBottom: line.base },
   pinCircle: {
     width: 32,
     height: 32,
     padding: 5,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.pill,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.canvas,
+    borderRadius: radii.md,
+    borderWidth: line.base,
+    borderColor: colors.onDark,
+    backgroundColor: colors.ink,
   },
-  pinCircleSelected: { width: 40, height: 40, padding: 6, borderWidth: 2, borderColor: colors.onDark, backgroundColor: colors.brand },
-  pinLogo: { width: "100%", height: "100%", resizeMode: "contain", opacity: 0.85 },
-  pinLogoSelected: { opacity: 1, tintColor: colors.onDark },
+  pinCircleSelected: { width: 40, height: 40, padding: 6, borderColor: colors.outline, backgroundColor: colors.brand, ...shadows.hardS },
+  pinLogo: { width: "100%", height: "100%", resizeMode: "contain", tintColor: colors.onDark },
   pinLabel: {
     marginTop: 3,
     maxWidth: 140,
     paddingHorizontal: 9,
     paddingVertical: 2,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radii.xs,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
-  pinLabelSelected: { borderColor: colors.brand, backgroundColor: colors.brand },
+  pinLabelSelected: { backgroundColor: colors.brand },
   pinLabelText: { fontWeight: "800" },
   pinTail: {
     width: 0,
@@ -301,7 +307,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 5,
     borderLeftColor: colors.transparent,
     borderRightColor: colors.transparent,
-    borderTopColor: colors.border,
+    borderTopColor: colors.outline,
   },
   pinTailSelected: { borderTopColor: colors.brand },
 })

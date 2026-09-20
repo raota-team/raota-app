@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { LEGAL_CONTACT_EMAIL, RAMEN_TYPES } from "@raota/shared"
 import { AppText, BottomSheet, Button, ConfirmDialog, Header, Screen, Toast } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, radii, spacing, typography } from "@/src/theme"
 
 /*
  * 설정. 마이의 최근 기록이 스크롤로 계속 늘어나서 계정·약관·로그아웃을 여기로 옮겼다(마이 프로필 오른쪽 위 톱니).
@@ -223,7 +223,7 @@ export default function SettingsScreen() {
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View>
-      <AppText accessibilityRole="header" style={styles.groupTitle} tone="muted" variant="secondary">
+      <AppText accessibilityRole="header" style={styles.groupTitle} tone="sub" variant="secondary">
         {title}
       </AppText>
       <View style={styles.card}>{children}</View>
@@ -241,16 +241,7 @@ function AccountRow({ label, value, onChange, first = false }: { label: string; 
         <AppText numberOfLines={1} style={styles.shrink} variant="bodyStrong">
           {value}
         </AppText>
-        <Pressable
-          accessibilityLabel={`${label} 변경`}
-          accessibilityRole="button"
-          onPress={onChange}
-          style={({ pressed }) => [styles.changeButton, pressed && styles.pressedWash]}
-        >
-          <AppText capScale style={styles.bold} variant="secondary">
-            변경
-          </AppText>
-        </Pressable>
+        <Button accessibilityLabel={`${label} 변경`} onPress={onChange} size="small" title="변경" variant="utility" />
       </View>
     </View>
   )
@@ -281,14 +272,13 @@ function LinkRow({ label, onPress, value, first }: { label: string; onPress: () 
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, gap: spacing.x6 },
-  bold: { fontWeight: "700" },
   shrink: { flexShrink: 1 },
   groupTitle: { fontWeight: "700", marginBottom: spacing.x2, marginLeft: spacing.x1 },
   card: {
     backgroundColor: colors.canvas,
-    borderColor: colors.border,
+    borderColor: colors.outline,
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: line.base,
     paddingHorizontal: spacing.x4,
   },
   row: {
@@ -301,14 +291,6 @@ const styles = StyleSheet.create({
   },
   rowDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
   rowTrail: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, flexShrink: 1 },
-  changeButton: {
-    minHeight: touchTarget,
-    minWidth: touchTarget,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.x2,
-    borderRadius: radii.sm,
-  },
   pressedWash: { backgroundColor: colors.canvasSoft },
   withdrawRow: { alignItems: "center", marginTop: -spacing.x2 },
   withdrawText: { color: colors.inkSub, fontWeight: "500", textDecorationLine: "underline", ...typography.secondary },
@@ -322,8 +304,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: spacing.x3,
     borderRadius: radii.sm,
-    borderColor: colors.border,
-    borderWidth: 1,
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.base,
   },
   styleSelected: { borderColor: colors.brand, backgroundColor: colors.brandWeak },
   sheetActions: { flexDirection: "row", gap: spacing.x2 },
@@ -332,9 +315,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.x1_5,
     paddingHorizontal: spacing.x3,
     borderRadius: radii.sm,
-    backgroundColor: colors.surfaceInput,
-    borderColor: colors.border,
-    borderWidth: 1,
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.base,
     color: colors.ink,
     ...typography.body,
     fontSize: 16,

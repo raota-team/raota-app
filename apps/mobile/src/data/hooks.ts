@@ -44,6 +44,11 @@ import { useRaota } from "../state/RaotaStore"
  *
  * 모든 hook은 { data, isLoading, error } 모양을 돌려준다. 더미 단계에서도 화면이
  * 로딩·오류 상태를 갖추게 하려는 것이다.
+ *
+ * 서버로 옮길 때: src/data/remote.ts에 hook마다 대응하는 함수(remoteReads·remoteWrites)를 만들어 뒀다.
+ * .env로 EXPO_PUBLIC_API_MODE=remote와 EXPO_PUBLIC_API_REMOTE_DOMAINS(도메인별 스위치)를 켜고
+ * 이 파일 안쪽만 그 함수로 바꾼다. hook 이름과 돌려주는 모양은 그대로 둔다(화면은 건드리지 않는다).
+ * 기본값은 mock이라 지금은 아무 화면도 서버를 보지 않는다.
  */
 export interface Query<T> {
   data: T
@@ -255,7 +260,8 @@ export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: Loung
   const [paging, setPaging] = useState({ key, count: pageSize })
   const count = paging.key === key ? paging.count : pageSize
   const loadMore = useCallback(() => {
-    // TODO(API): GET /lounge/logs?type=&sort=&cursor=<마지막 항목의 nextCursor>&limit=10 응답을 이어 붙인다.
+    // TODO(API): remoteReads.loungeLogs({ type, sort, cursor: nextCursor, size: 10 })
+    // (GET /ramen-logs?sort=LATEST|LIKES&ramenType=&cursor=&size=10) 응답을 이어 붙인다.
     // 지금은 로컬 목록을 10개씩 더 보여준다
     setPaging((prev) => ({ key, count: (prev.key === key ? prev.count : pageSize) + pageSize }))
   }, [key, pageSize])
@@ -272,7 +278,8 @@ export interface LoungeLogDetail {
 
 /**
  * 라멘로그 상세와 댓글. 없는 기록, 남의 비공개 기록, 숨긴 사람의 기록, 내가 신고한 기록이면 data가 null이다.
- * TODO(API): GET /logs/{id} + GET /logs/{id}/comments?cursor= 로 바꾼다
+ * TODO(API): remoteReads.loungeLog(logId) (GET /ramen-logs/{id} + GET /ramen-logs/{id}/comments)로 바꾼다.
+ * 서버가 비공개·차단·신고한 글을 이미 빼고 주므로 그때는 이 파일의 거르기가 이중 안전장치가 된다
  */
 export function useLoungeLog(logId: number | null | undefined): Query<LoungeLogDetail | null> {
   const { getLog } = useRaota()

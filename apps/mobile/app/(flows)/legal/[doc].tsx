@@ -34,7 +34,7 @@ export default function LegalDocumentScreen() {
     <Screen>
       <Header onBack={goBack} title={document.title} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.x8 }]}>
-        <AppText style={styles.effective} tone="muted" variant="meta">
+        <AppText style={styles.effective} tone="sub" variant="meta">
           시행일 {document.effectiveDate}
         </AppText>
         {document.sections.map((section) => (

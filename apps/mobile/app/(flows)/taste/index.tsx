@@ -27,7 +27,7 @@ import {
   type TasteProfile,
 } from "@raota/shared"
 import { track } from "@/src/analytics"
-import { AppText, BottomSheet, Button, Header, LoadingState, Tag, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, Header, LoadingState, RamenTypeTag, Sticker, Tag, Toast } from "@/src/components/ui"
 import {
   useActivityLevel,
   useBowlCount,
@@ -39,7 +39,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, radii, spacing } from "@/src/theme"
+import { colors, line, radii, spacing } from "@/src/theme"
 import { MENU_CATEGORY_COLORS } from "./archive"
 
 /*
@@ -91,11 +91,7 @@ export function TasteReportCover({ recordCount, identity, profile, onOpen, onAna
     <View style={styles.card}>
       <View style={styles.coverHead}>
         <View style={styles.coverHeadLabels}>
-          <View style={styles.inkTag}>
-            <AppText capScale tone="onDark" variant="meta">
-              종합 리포트
-            </AppText>
-          </View>
+          <Sticker label="종합 리포트" tone="ink" />
           <AppText capScale style={styles.tabular} tone="muted" variant="meta">
             전체 {recordCount}그릇 기준
           </AppText>
@@ -109,7 +105,7 @@ export function TasteReportCover({ recordCount, identity, profile, onOpen, onAna
         />
       </View>
       <View style={styles.coverBody}>
-        <AppText accessibilityRole="header" variant="screenTitle">
+        <AppText accessibilityRole="header" variant="headline">
           {identity.title}
         </AppText>
         <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
@@ -226,7 +222,8 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
   const summary = metrics.map((metric) => `${metric.label} ${metric.score.toFixed(1)}점`).join(", ")
   return (
     <View accessibilityLabel={`항목별 맛 평가 그래프. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
-      <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width={RADAR_SIZE + 24}>
+      {/* 좁은 화면에서도 잘리지 않게 폭은 카드에 맞추고 모양은 viewBox가 지킨다 */}
+      <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width="100%">
         {[0.2, 0.4, 0.6, 0.8, 1].map((level) => (
           <Polygon
             fill="none"
@@ -522,17 +519,14 @@ export default function TasteReportScreen() {
         onBack={goBack}
         right={
           recordCount > 0 ? (
-            <Pressable
+            <Button
               accessibilityLabel="취향 리포트 공유"
-              accessibilityRole="button"
+              leftIcon={<Share2 color={colors.ink} size={16} />}
               onPress={handleShare}
-              style={({ pressed }) => [styles.shareButton, pressed && styles.pressedWash]}
-            >
-              <Share2 color={colors.ink} size={16} />
-              <AppText capScale variant="bodyStrong">
-                공유
-              </AppText>
-            </Pressable>
+              size="small"
+              title="공유"
+              variant="outline"
+            />
           ) : undefined
         }
         title="취향 종합 리포트"
@@ -551,13 +545,13 @@ export default function TasteReportScreen() {
               </View>
             ) : null}
             <TasteReportCover identity={identity} profile={profile} recordCount={recordCount} />
-            <AppText capScale style={styles.gapTop2} tone="muted" variant="meta">
+            <AppText capScale style={styles.gapTop2} tone="sub" variant="meta">
               {generatedAt ? `${seoulToday()} ${generatedAt}에 다시 정리함` : `${seoulToday()} 기준`}
             </AppText>
           </View>
 
           {recordCount === 0 ? (
-            <View style={[styles.section, styles.emptySection]}>
+            <View style={[styles.block, styles.emptySection]}>
               <AppText accessibilityRole="header" style={styles.center} variant="screenTitle">
                 아직 보여드릴 취향이 없어요
               </AppText>
@@ -623,9 +617,9 @@ export default function TasteReportScreen() {
                     const pct = typeTotal ? Math.round((count / typeTotal) * 100) : 0
                     return (
                       <View accessibilityLabel={`${name} ${count}그릇, ${pct}%`} accessible key={name} style={styles.typeRow}>
-                        <AppText style={styles.typeName} variant="bodyStrong">
-                          {name}
-                        </AppText>
+                        <View style={styles.typeName}>
+                          <RamenTypeTag type={name} />
+                        </View>
                         <View style={[styles.track, styles.trackThick]}>
                           <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: MENU_CATEGORY_COLORS[name].fill }]} />
                         </View>
@@ -731,7 +725,7 @@ export default function TasteReportScreen() {
                 </View>
               ) : null}
 
-              <View style={[styles.section, styles.bottom]}>
+              <View style={[styles.block, styles.bottom]}>
                 <Button
                   leftIcon={<RotateCw color={colors.onDark} size={16} />}
                   onPress={restart}
@@ -770,7 +764,7 @@ export default function TasteReportScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
   noFlex: { flex: 0 },
   center: { textAlign: "center" },
@@ -785,39 +779,38 @@ const styles = StyleSheet.create({
   gapTop5: { marginTop: spacing.x5 },
   pressedWash: { backgroundColor: colors.canvasSoft },
   scroll: { paddingBottom: spacing.x8 },
-  top: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x5 },
+  top: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x1 },
+  // 정보 묶음은 미색 바탕 위의 흰 카드다. 카드 안쪽 줄만 1pt border으로 나눈다
   section: {
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.x5,
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.x4,
+    padding: spacing.x4,
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
   },
+  /** 카드로 묶지 않는 영역(빈 상태, 하단 보조 행동) */
+  block: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.x5 },
   emptySection: { paddingVertical: spacing.x10, alignItems: "stretch" },
   bottom: { paddingBottom: spacing.x8 },
   notice: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.x2,
-    borderColor: colors.border,
-    borderWidth: 1,
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.base,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.x3,
     paddingVertical: spacing.x2_5,
     marginBottom: spacing.x4,
   },
-  shareButton: {
-    minHeight: 44,
-    paddingHorizontal: spacing.x3,
-    borderRadius: radii.pill,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.x1_5,
-  },
   card: {
     backgroundColor: colors.canvas,
-    borderColor: colors.border,
+    borderColor: colors.outline,
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: line.base,
     padding: spacing.x4,
   },
   coverHead: {
@@ -830,7 +823,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   coverHeadLabels: { flex: 1, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x2 },
-  inkTag: { backgroundColor: colors.ink, borderRadius: radii.xs, paddingHorizontal: spacing.x2, paddingVertical: spacing.x1 },
   coverLogo: { width: 32, height: 32 },
   coverBody: { paddingTop: spacing.x4 },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
@@ -843,22 +835,33 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   steps: { flexDirection: "row", gap: spacing.x1, marginTop: spacing.x2 },
-  step: { flex: 1, height: 4, borderRadius: radii.xs, backgroundColor: colors.canvasSoft, overflow: "hidden" },
+  // 다섯 칸짜리 미터: 칸마다 1.5pt 먹선 + 흰 면, 채움은 빨강
+  step: {
+    flex: 1,
+    height: 12,
+    borderRadius: radii.xs,
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.thin,
+    overflow: "hidden",
+  },
   stepFill: { height: "100%", backgroundColor: colors.brand },
   coverActions: { marginTop: spacing.x4, gap: spacing.x1 },
   radarWrap: { alignItems: "center", paddingVertical: spacing.x2 },
   axisList: { borderTopColor: colors.border, borderTopWidth: 1 },
-  axisRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x2_5 },
+  // 카드 안에서도 막대가 충분히 보이도록 고정 칸과 사이 간격을 조금 줄였다
+  axisRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2_5, paddingVertical: spacing.x2_5 },
   rowDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
-  axisLabel: { width: 84 },
+  axisLabel: { width: 80 },
   axisScore: { width: 30, textAlign: "right" },
   axisLean: { width: 64, textAlign: "right" },
   track: { flex: 1, height: 6, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden" },
-  trackThick: { height: 8 },
+  // 옅은 데이터 색("기타")도 읽히도록 흰 면 + 1.5pt 먹선으로 두른다(월별 취향 변화의 막대와 같은 모양)
+  trackThick: { height: 12, backgroundColor: colors.canvas, borderWidth: line.thin, borderColor: colors.outline },
   trackFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
   typeList: { marginTop: spacing.x4, gap: spacing.x3 },
   typeRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
-  typeName: { width: 52 },
+  typeName: { width: 60 },
   typeValue: { width: 92, textAlign: "right" },
   listRow: {
     minHeight: 44,
@@ -870,8 +873,10 @@ const styles = StyleSheet.create({
   thumb: {
     width: 48,
     height: 48,
-    borderRadius: radii.sm,
+    borderRadius: radii.md,
     backgroundColor: colors.canvasSoft,
+    borderColor: colors.outline,
+    borderWidth: line.base,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
@@ -889,9 +894,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
   },
   fallbackBox: {
-    backgroundColor: colors.canvasSoft,
-    borderColor: colors.border,
-    borderWidth: 1,
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.base,
     borderRadius: radii.sm,
   },
   fallbackContent: { padding: spacing.x3 },
