@@ -39,6 +39,8 @@ export default function MapScreen() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading")
   const [origin, setOrigin] = useState<Coordinate | null>(null)
+  // 마커 그림은 로고가 실린 뒤 한 번만 그린다. 계속 다시 그리면(tracksViewChanges 기본값) 지도가 무거워지고 탭을 놓친다
+  const [logoReady, setLogoReady] = useState(false)
   const filters = useMapFilters(origin)
 
   useEffect(() => {
@@ -164,11 +166,12 @@ export default function MapScreen() {
                     coordinate={{ latitude: shop.lat, longitude: shop.lng }}
                     key={`${cluster.id}-${isSelected ? "on" : "off"}`}
                     onPress={() => selectShop(shop.id, shop.lat, shop.lng)}
+                    tracksViewChanges={!logoReady}
                     zIndex={isSelected ? 10 : 1}
                   >
                     <View style={styles.pin}>
                       <View style={[styles.pinCircle, isSelected && styles.pinCircleSelected]}>
-                        <Image source={require("@/assets/images/logo.png")} style={styles.pinLogo} />
+                        <Image onLoad={() => setLogoReady(true)} source={require("@/assets/images/logo.png")} style={styles.pinLogo} />
                       </View>
                       <View style={[styles.pinLabel, isSelected && styles.pinLabelSelected]}>
                         <AppText capScale numberOfLines={1} style={styles.pinLabelText} tone={isSelected ? "onDark" : "ink"} variant="meta">
