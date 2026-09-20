@@ -14,6 +14,7 @@ import {
   type StyleProp,
   type TextProps,
   type TextStyle,
+  type ViewProps,
   type ViewStyle,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context"
@@ -190,7 +191,7 @@ export function Header({
           {title}
         </NativeText>
         {subtitle ? (
-          <AppText capScale numberOfLines={1} tone="muted" variant="meta">
+          <AppText capScale numberOfLines={1} tone="sub" variant="meta">
             {subtitle}
           </AppText>
         ) : null}
@@ -209,7 +210,7 @@ export interface SectionHeaderProps {
 }
 
 /** 섹션 제목(section-title) + 오른쪽 메타. 제목 위 eyebrow 라벨은 쓰지 않는다 */
-export function SectionHeader({ title, meta, metaTone = "muted", style }: SectionHeaderProps) {
+export function SectionHeader({ title, meta, metaTone = "sub", style }: SectionHeaderProps) {
   return (
     <View style={[styles.sectionHeader, style]}>
       <AppText accessibilityRole="header" style={styles.flex} variant="sectionTitle">
@@ -296,7 +297,9 @@ export function Button({
   ...props
 }: ButtonProps) {
   const unavailable = disabled || loading
-  const color = buttonTextColor[variant]
+  // 그림자는 "누를 수 있다"는 표시라서 못 누르는 동안에는 없앤다. 비활성은 옅은 면 + 흐린 선, 처리 중은 면 색을 유지한다
+  const flatDisabled = disabled && !loading && buttonHasShadow[variant]
+  const color = flatDisabled ? colors.textMuted : buttonTextColor[variant]
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
@@ -310,7 +313,8 @@ export function Button({
         buttonSizes[size],
         fullWidth && styles.fullWidth,
         pressed && !unavailable && (buttonHasShadow[variant] ? styles.pressedInto : styles.pressedWash),
-        unavailable && styles.disabled,
+        unavailable && (buttonHasShadow[variant] ? styles.buttonNoShadow : styles.disabled),
+        flatDisabled && styles.buttonDisabled,
         style,
       ]}
     >
@@ -414,7 +418,7 @@ export function Tag({ label, style }: { label: string; style?: StyleProp<ViewSty
   )
 }
 
-export interface StickerProps {
+export interface StickerProps extends Omit<ViewProps, "style" | "children"> {
   label: string
   /** yolk: 표시(기본). ink: 먹색 면 + 흰 글씨("종합 리포트" 같은 묶음 이름) */
   tone?: "yolk" | "ink"
@@ -426,9 +430,9 @@ export interface StickerProps {
  * 표시 스티커. 노랑 면 + 1.5pt 먹선 + 6pt 모서리. 기울이지 않는다.
  * "오늘의 픽", "AI가 요약했어요", 추천 1위처럼 읽기만 하는 표시에 쓰고 버튼에는 쓰지 않는다. 한 화면에 세 개까지.
  */
-export function Sticker({ label, tone = "yolk", icon, style }: StickerProps) {
+export function Sticker({ label, tone = "yolk", icon, style, ...props }: StickerProps) {
   return (
-    <View style={[styles.sticker, tone === "ink" && styles.stickerInk, style]}>
+    <View {...props} style={[styles.sticker, tone === "ink" && styles.stickerInk, style]}>
       {icon}
       <NativeText
         maxFontSizeMultiplier={maxFontScale}
@@ -441,9 +445,16 @@ export function Sticker({ label, tone = "yolk", icon, style }: StickerProps) {
   )
 }
 
-/** 라멘 종류 태그(쇼유, 돈코츠, 시오…). 매장·라멘로그·지도 어디서나 같은 노랑 스티커 모양으로 나온다 */
+/**
+ * 라멘 종류 태그(쇼유, 돈코츠, 시오…). 매장·라멘로그·지도 어디서나 같은 노랑 스티커 모양으로 나온다.
+ * 기록은 종류(RAMEN_TYPES), 매장은 원장의 대표 스타일(style)을 넘긴다. style은 "쇼유 라멘"처럼 적혀 있어서
+ * 뒤의 "라멘"을 떼고 같은 글자로 보여 준다(데이터는 바꾸지 않는다). "토리파이탄"처럼 원장에만 있는 스타일도 그대로 나온다.
+ */
 export function RamenTypeTag({ type, style }: { type: string; style?: StyleProp<ViewStyle> }) {
-  return <Sticker label={type} style={style} />
+  const label = type.replace(/\s*라멘$/, "").trim()
+  // 종류가 비었거나 그냥 "라멘"(원장에 없는 가게의 기본값)이면 알려 주는 것이 없으므로 그리지 않는다
+  if (!label) return null
+  return <Sticker accessibilityLabel={`라멘 종류 ${label}`} label={label} style={style} />
 }
 
 export interface ScoreSegmentProps {
@@ -493,11 +504,11 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
     <View style={style}>
       <View style={styles.scoreHead}>
         <AppText variant={hero ? "sectionTitle" : "bodyStrong"}>
-          {index ? <AppText tone="muted" variant={hero ? "sectionTitle" : "bodyStrong"}>{`${index}  `}</AppText> : null}
+          {index ? <AppText tone="sub" variant={hero ? "sectionTitle" : "bodyStrong"}>{`${index}  `}</AppText> : null}
           {label}
         </AppText>
         {hero ? null : (
-          <AppText capScale style={styles.scoreWord} tone={invalid && !value ? "critical" : value ? "ink" : "muted"} variant="secondary">
+          <AppText capScale style={styles.scoreWord} tone={invalid && !value ? "critical" : value ? "ink" : "sub"} variant="secondary">
             {status}
           </AppText>
         )}
@@ -567,17 +578,17 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
           accessibilityLiveRegion="polite"
           capScale
           style={styles.heroWord}
-          tone={invalid && !value ? "critical" : value ? "ink" : "muted"}
+          tone={invalid && !value ? "critical" : value ? "ink" : "sub"}
           variant={value ? "cardTitle" : "secondary"}
         >
           {value ? word : invalid ? "골라주세요" : `${low} ← → ${high}`}
         </AppText>
       ) : (
         <View style={styles.scoreEnds}>
-          <AppText capScale tone="muted" variant="meta">
+          <AppText capScale tone="sub" variant="meta">
             {low}
           </AppText>
-          <AppText capScale tone="muted" variant="meta">
+          <AppText capScale tone="sub" variant="meta">
             {high}
           </AppText>
         </View>
@@ -710,7 +721,7 @@ export function EmptyState({ title, description, icon, actionLabel, onAction, st
         {title}
       </AppText>
       {description ? (
-        <AppText style={[styles.textCenter, styles.stateDescription]} tone="muted" variant="secondary">
+        <AppText style={[styles.textCenter, styles.stateDescription]} tone="sub" variant="secondary">
           {description}
         </AppText>
       ) : null}
@@ -741,7 +752,7 @@ export function LoadingState({ label = "불러오는 중…", fullScreen = false
     >
       <ActivityIndicator color={color} size="small" />
       {label ? (
-        <AppText tone="muted" variant="secondary">
+        <AppText tone="sub" variant="secondary">
           {label}
         </AppText>
       ) : null}
@@ -957,6 +968,8 @@ const styles = StyleSheet.create({
   buttonText: { textAlign: "center" },
   fullWidth: { alignSelf: "stretch", flex: 1 },
   disabled: { opacity: 0.4 },
+  buttonNoShadow: { shadowOpacity: 0 },
+  buttonDisabled: { backgroundColor: colors.canvasSoft, borderColor: colors.textFaint },
   chip: {
     minHeight: touchTarget,
     paddingHorizontal: spacing.x4,

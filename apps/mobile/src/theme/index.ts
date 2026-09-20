@@ -31,6 +31,8 @@ export const colors = {
   onDark: "#FFFFFF",
   /** 차콜 위 보조 글씨. 회색 hex 대신 쓴다 */
   onDarkMuted: "rgba(255, 255, 255, 0.7)",
+  /** 먹색 면 안의 줄 구분선(흰색 18%) */
+  onDarkLine: "rgba(255, 255, 255, 0.18)",
   positive: "#2E7D32",
   positiveWeak: "#EBF8F0",
   warning: "#A15C00",
