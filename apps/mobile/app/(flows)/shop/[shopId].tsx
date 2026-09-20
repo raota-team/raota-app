@@ -22,7 +22,7 @@ import { AppText, Button, EmptyState, Header, IconButton, LoadingState, RamenTyp
 import { useBookmarkedShops, useMyLogs, useShop } from "@/src/data/hooks"
 import { naverMapLinks } from "@/src/domain/naverMap"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
+import { colors, line, pressFade, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
 
 const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
 const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
@@ -447,7 +447,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               accessibilityLabel={`주소, ${shop.address}`}
               accessibilityRole="link"
               onPress={openNaverMap}
-              style={({ pressed }) => [styles.darkRow, pressed && styles.darkPressed]}
+              style={({ pressed }) => [styles.darkRow, pressed && pressFade]}
             >
               <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
                 주소
@@ -476,7 +476,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                 accessibilityRole="button"
                 accessibilityState={{ expanded: hoursOpen }}
                 onPress={() => setHoursOpen((open) => !open)}
-                style={({ pressed }) => [styles.darkRow, styles.darkRowCenter, pressed && styles.darkPressed]}
+                style={({ pressed }) => [styles.darkRow, styles.darkRowCenter, pressed && pressFade]}
               >
                 <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
                   영업시간
@@ -568,7 +568,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                 accessibilityLabel={`전화번호, ${shop.phone}`}
                 accessibilityRole="link"
                 onPress={() => openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`)}
-                style={({ pressed }) => [styles.darkRow, styles.darkRowCenter, pressed && styles.darkPressed]}
+                style={({ pressed }) => [styles.darkRow, styles.darkRowCenter, pressed && pressFade]}
               >
                 <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
                   전화번호
@@ -747,14 +747,15 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: spacing.gutter, marginTop: spacing.x5 },
   sectionTitle: { marginBottom: spacing.x2_5 },
   perkGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
+  // 값 하나만 보여 주는 정보 타일이라 1pt border. 바로 위 바로가기 키(2pt + 그림자)와 달리 누를 수 없다
   perk: {
     flexBasis: "47%",
     flexGrow: 1,
     paddingVertical: spacing.x2_5,
     paddingHorizontal: spacing.x3,
     borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
+    borderWidth: 1,
+    borderColor: colors.border,
     backgroundColor: colors.canvas,
   },
   perkValue: { marginTop: spacing.x0_5 },
@@ -775,7 +776,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.x3,
   },
   darkRowCenter: { alignItems: "center", paddingVertical: spacing.x2 },
-  darkPressed: { opacity: 0.7 },
   darkKey: { flexShrink: 0 },
   darkValue: { flex: 1, textAlign: "right" },
   darkDivider: { height: 1, backgroundColor: colors.onDarkLine },
@@ -789,7 +789,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.x1_5,
     borderRadius: radii.xs,
   },
-  hourToday: { borderWidth: 1, borderColor: colors.onDarkMuted },
+  // 먹색 면 안의 선은 흰색 18%(onDarkLine)가 규격이다
+  hourToday: { borderWidth: 1, borderColor: colors.onDarkLine },
   hourDay: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   phone: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
   // 가게 소개 아래 바로가기: 흰 키(2pt 먹선 + 번지지 않는 그림자). 그림자만큼 칸 사이를 10pt로 둔다
