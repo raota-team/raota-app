@@ -12,7 +12,7 @@ import { AppText, Chip, EmptyState, Header, LoadingState } from "@/src/component
 import { useLoungeLogs } from "@/src/data/hooks"
 import { LOUNGE_ALL_TYPES, LOUNGE_SORTS, LOUNGE_TYPE_FILTERS, type LoungeSort } from "@/src/domain/lounge"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, radii, spacing } from "@/src/theme"
+import { colors, line, radii, spacing } from "@/src/theme"
 
 /*
  * 라운지 탭: 다른 라멘러들의 공개 라멘로그(웹 LoungeScreen의 라멘로그 부분). 커뮤니티 게시판은 MVP 범위 밖이다.
@@ -26,7 +26,7 @@ const FAB_CLEARANCE = 96
 function SortControl({ value, onChange }: { value: LoungeSort; onChange: (next: LoungeSort) => void }) {
   return (
     <View accessibilityLabel="정렬" style={styles.segment}>
-      {LOUNGE_SORTS.map((option) => {
+      {LOUNGE_SORTS.map((option, index) => {
         const selected = option.value === value
         return (
           <Pressable
@@ -36,9 +36,14 @@ function SortControl({ value, onChange }: { value: LoungeSort; onChange: (next: 
             hitSlop={{ top: 4, bottom: 4 }}
             key={option.value}
             onPress={() => onChange(option.value)}
-            style={({ pressed }) => [styles.segmentItem, selected && styles.segmentItemSelected, pressed && !selected && styles.pressedDim]}
+            style={({ pressed }) => [
+              styles.segmentItem,
+              index > 0 && styles.segmentItemDivided,
+              selected && styles.segmentItemSelected,
+              pressed && !selected && styles.pressedWash,
+            ]}
           >
-            <AppText capScale style={styles.bold} tone={selected ? "ink" : "muted"} variant="secondary">
+            <AppText capScale style={styles.bold} tone={selected ? "onDark" : "ink"} variant="secondary">
               {option.label}
             </AppText>
           </Pressable>
@@ -165,40 +170,39 @@ export default function LoungeScreen() {
   )
 }
 
-/** 카드 사이 8pt 회색 띠(웹 border-b-8과 같다) */
+/** 카드 사이는 회색 띠 없이 16pt 간격만 둔다 */
 function Separator() {
   return <View style={styles.separator} />
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, position: "relative", backgroundColor: colors.canvas },
+  root: { flex: 1, position: "relative", backgroundColor: colors.paper },
   bold: { fontWeight: "700" },
-  pressedDim: { opacity: 0.7 },
+  pressedWash: { backgroundColor: colors.canvasSoft },
 
+  // 2pt 먹선으로 두른 12pt 사각 두 칸. 칸 사이도 2pt 선, 선택된 칸은 먹색 면
   segment: {
     flexDirection: "row",
-    padding: spacing.x0_5,
-    borderRadius: radii.pill,
-    backgroundColor: colors.canvasSoft,
+    borderRadius: radii.sm,
+    borderColor: colors.outline,
+    borderWidth: line.base,
+    backgroundColor: colors.canvas,
+    overflow: "hidden",
   },
   segmentItem: {
     minHeight: 36,
     paddingHorizontal: spacing.x3,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.pill,
   },
-  segmentItemSelected: { backgroundColor: colors.canvas },
+  segmentItemDivided: { borderLeftColor: colors.outline, borderLeftWidth: line.base },
+  segmentItemSelected: { backgroundColor: colors.ink },
 
-  filterBar: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    backgroundColor: colors.canvas,
-  },
+  filterBar: { backgroundColor: colors.paper },
   filterRow: { gap: spacing.x2, paddingHorizontal: spacing.gutter, paddingVertical: spacing.x2 },
 
-  listContent: { flexGrow: 1, paddingBottom: FAB_CLEARANCE },
-  separator: { height: spacing.x2, backgroundColor: colors.canvasSoft },
+  listContent: { flexGrow: 1, paddingHorizontal: spacing.gutter, paddingBottom: FAB_CLEARANCE },
+  separator: { height: spacing.x4 },
   toast: { bottom: FAB_CLEARANCE },
-  endNote: { textAlign: "center", paddingHorizontal: spacing.gutter, paddingTop: spacing.x8, paddingBottom: spacing.x3 },
+  endNote: { textAlign: "center", paddingTop: spacing.x8, paddingBottom: spacing.x3 },
 })

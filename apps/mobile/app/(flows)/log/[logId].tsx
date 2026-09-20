@@ -18,7 +18,7 @@ import {
   useLoungeModeration,
   type ModerationTarget,
 } from "@/src/components/LoungeLog"
-import { AppText, Button, EmptyState, Header, IconButton, LoadingState, Screen } from "@/src/components/ui"
+import { AppText, Button, EmptyState, Header, IconButton, LoadingState, RamenTypeTag, Screen } from "@/src/components/ui"
 import { useLoungeLog } from "@/src/data/hooks"
 import {
   COMMENT_COUNTER_FROM,
@@ -30,7 +30,7 @@ import {
   tasteTagsOf,
 } from "@/src/domain/lounge"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
  * 라멘로그 상세: 기록 전체(사진 모두 · 메모 전문 · 맛 평가 · 태그) → 댓글(등록순) → 하단 댓글 입력.
@@ -74,11 +74,11 @@ function CommentRow({ comment, own, onMore }: { comment: RamenLogComment; own: b
             {comment.author.name}
           </AppText>
           {grade ? (
-            <AppText capScale numberOfLines={1} style={styles.shrinkMore} tone="muted" variant="meta">
+            <AppText capScale numberOfLines={1} style={styles.shrinkMore} tone="sub" variant="meta">
               {grade}
             </AppText>
           ) : null}
-          <AppText capScale tone="muted" variant="meta">
+          <AppText capScale tone="sub" variant="meta">
             {formatRelativeTime(comment.createdAt)}
           </AppText>
         </View>
@@ -92,7 +92,7 @@ function CommentRow({ comment, own, onMore }: { comment: RamenLogComment; own: b
       {own ? null : (
         <IconButton
           accessibilityLabel={`${comment.author.name}님의 댓글 메뉴`}
-          icon={<MoreHorizontal color={colors.textMuted} size={18} />}
+          icon={<MoreHorizontal color={colors.inkSub} size={18} />}
           onPress={() => onMore(comment)}
           style={styles.commentMore}
         />
@@ -287,7 +287,7 @@ export default function LogDetailScreen() {
       <Header backLabel="뒤로가기" onBack={goBack} title="라멘로그" />
       <FlatList
         ListEmptyComponent={
-          <AppText style={styles.noComments} tone="muted" variant="secondary">
+          <AppText style={styles.noComments} tone="sub" variant="secondary">
             첫 댓글을 남겨 대화를 시작해 보세요.
           </AppText>
         }
@@ -329,11 +329,14 @@ function LogDetailHeader({
       </View>
       <View style={styles.detailBody}>
         <View style={styles.titleBlock}>
-          <AppText accessibilityRole="header" variant="sectionTitle">
-            {log.menuName}
-          </AppText>
-          <AppText capScale tone="muted" variant="meta">
-            {`${log.ramenType} · ${formatVisitDate(log.visitedAt)} 방문`}
+          <View style={styles.titleRow}>
+            <AppText accessibilityRole="header" style={styles.flex} variant="sectionTitle">
+              {log.menuName}
+            </AppText>
+            <RamenTypeTag type={log.ramenType} />
+          </View>
+          <AppText capScale tone="sub" variant="meta">
+            {`${formatVisitDate(log.visitedAt)} 방문`}
           </AppText>
         </View>
         <TasteSummaryList log={log} />
@@ -341,7 +344,7 @@ function LogDetailHeader({
         <TasteTags tags={tasteTagsOf(log)} />
         <View style={styles.actions}>
           <LikeButton count={log.likes} liked={log.isLiked} onPress={onLike} />
-          <AppText capScale numberOfLines={1} style={styles.time} tone="muted" variant="meta">
+          <AppText capScale numberOfLines={1} style={styles.time} tone="sub" variant="meta">
             {`${formatRelativeTime(log.createdAt)} 작성`}
           </AppText>
         </View>
@@ -351,7 +354,7 @@ function LogDetailHeader({
         <AppText accessibilityRole="header" variant="bodyStrong">
           {`댓글 ${commentCount}`}
         </AppText>
-        <AppText capScale tone="muted" variant="meta">
+        <AppText capScale tone="sub" variant="meta">
           등록순
         </AppText>
       </View>
@@ -370,9 +373,11 @@ const styles = StyleSheet.create({
   photos: { marginTop: spacing.x2 },
   detailBody: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, gap: spacing.x4 },
   titleBlock: { gap: spacing.x1 },
+  titleRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.x2 },
   actions: { flexDirection: "row", alignItems: "center", gap: spacing.x2, paddingBottom: spacing.x4 },
   time: { flex: 1, textAlign: "right" },
-  band: { height: spacing.x2, backgroundColor: colors.canvasSoft },
+  // 기록과 댓글 사이 여백. 회색 띠 대신 아래 제목 줄의 1pt 구분선으로 나눈다
+  band: { height: spacing.x2 },
   commentsHead: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -380,7 +385,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingTop: spacing.x4,
     paddingBottom: spacing.x2,
-    borderBottomColor: colors.canvasSoft,
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
   },
   noComments: { textAlign: "center", paddingVertical: spacing.x8, paddingHorizontal: spacing.gutter },
@@ -392,20 +397,21 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.gutter,
     paddingRight: spacing.x2,
     paddingVertical: spacing.x3,
-    borderBottomColor: colors.canvasSoft,
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
   },
   commentBody: { flex: 1, minWidth: 0, gap: spacing.x0_5, paddingTop: spacing.x0_5 },
   commentMeta: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, minWidth: 0 },
   commentMore: { marginTop: -spacing.x2 },
 
+  // 하단 고정 바: 흰 면 + 위쪽 2pt 먹선
   composer: {
     paddingTop: spacing.x2_5,
     paddingHorizontal: spacing.gutter,
     gap: spacing.x1_5,
     backgroundColor: colors.canvas,
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.outline,
+    borderTopWidth: line.base,
   },
   composerHint: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   composerRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.x2 },
@@ -418,7 +424,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.x2_5,
     paddingBottom: spacing.x2_5,
     borderRadius: radii.sm,
-    backgroundColor: colors.surfaceInput,
+    borderColor: colors.outline,
+    borderWidth: line.base,
+    backgroundColor: colors.canvas,
     color: colors.ink,
   },
 })
