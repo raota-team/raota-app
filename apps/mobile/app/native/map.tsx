@@ -173,12 +173,17 @@ export default function MapScreen() {
                       <View style={[styles.pinCircle, isSelected && styles.pinCircleSelected]}>
                         <Image onLoad={() => setLogoReady(true)} source={require("@/assets/images/logo.png")} style={styles.pinLogo} />
                       </View>
-                      <View style={[styles.pinLabel, isSelected && styles.pinLabelSelected]}>
-                        <AppText capScale numberOfLines={1} style={styles.pinLabelText} tone={isSelected ? "onDark" : "ink"} variant="meta">
-                          {shop.name}
-                        </AppText>
-                      </View>
-                      <View style={[styles.pinTail, isSelected && styles.pinTailSelected]} />
+                      {/* 이름표는 고른 핀에만. 모든 핀에 달면 투명한 이름표끼리 겹쳐 옆 핀의 탭을 가로챈다 */}
+                      {isSelected ? (
+                        <>
+                          <View style={[styles.pinLabel, styles.pinLabelSelected]}>
+                            <AppText capScale numberOfLines={1} style={styles.pinLabelText} tone="onDark" variant="meta">
+                              {shop.name}
+                            </AppText>
+                          </View>
+                          <View style={[styles.pinTail, styles.pinTailSelected]} />
+                        </>
+                      ) : null}
                     </View>
                   </Marker>
                 )
