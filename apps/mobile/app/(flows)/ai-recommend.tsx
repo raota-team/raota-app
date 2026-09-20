@@ -4,7 +4,6 @@ import { ArrowRight, Check, ChevronLeft, ChevronRight, Minus, PenLine, RotateCcw
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
   AccessibilityInfo,
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -14,6 +13,7 @@ import {
   findNodeHandle,
   useWindowDimensions,
 } from "react-native"
+import { Image } from "expo-image"
 import { useReducedMotion } from "react-native-reanimated"
 
 import { type Shop, type ShopCatalogItem } from "@raota/shared"
@@ -642,7 +642,12 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
                 ]}
               />
             ))}
-            <Image resizeMode="contain" source={require("@/assets/images/logo.png")} style={{ width: size * 0.4, height: size * 0.4 }} />
+            <Image
+              accessibilityIgnoresInvertColors
+              contentFit="contain"
+              source={require("@/assets/images/logo.png")}
+              style={[styles.boardLogo, { width: size * 0.4, height: size * 0.4 }]}
+            />
           </View>
           {complete ? (
             <View style={styles.boardSticker}>
@@ -819,6 +824,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   slotFilled: { backgroundColor: colors.brand },
+  // 판 한가운데. 칸들이 absolute라 흐름에는 로고만 남지만, 겹침에 기대지 않게 자리를 못 박는다
+  boardLogo: { position: "absolute" },
   // 다 찾은 순간에만 붙는 노랑 스티커. 판 아래 선에 걸쳐 놓는다
   boardSticker: { position: "absolute", left: 0, right: 0, bottom: -13, alignItems: "center" },
   // Sticker는 기본이 flex-start라 가운데로 놓으려면 직접 덮어써야 한다
