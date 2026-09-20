@@ -26,7 +26,7 @@ import {
   type Shop,
 } from "@raota/shared"
 import RecordFab from "@/src/components/RecordFab"
-import { AppText, BottomSheet, Button, EmptyState, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, Chip, EmptyState, RamenTypeTag, Tag, Toast } from "@/src/components/ui"
 import {
   useActivityLevel,
   useBookmarkedShops,
@@ -41,7 +41,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 import { MonthlyTastePreview } from "../(flows)/taste/archive"
 import { TasteReportCover, shopSpecOf, shopStyleOf } from "../(flows)/taste/index"
 
@@ -317,28 +317,27 @@ function MemberView() {
               accessibilityRole="button"
               hitSlop={4}
               onPress={() => router.push("/settings")}
-              style={({ pressed }) => [styles.settingsButton, pressed && styles.pressedDim]}
+              style={({ pressed }) => [styles.settingsButton, pressed && styles.pressedWash]}
             >
-              <Settings color={colors.onDark} size={22} />
+              <Settings color={colors.ink} size={22} />
             </Pressable>
           </View>
 
+          {/* 먹색 면 위의 타일은 테두리 없는 흰 면이다 */}
           <View style={styles.stats}>
-            <View style={[styles.hairlineOnDark, styles.statsRule]} />
-            {stats.map((stat, index) => (
+            {stats.map((stat) => (
               <View
                 accessibilityLabel={`${stat.label} ${stat.value}${stat.unit}`}
                 accessible
                 key={stat.label}
                 style={styles.stat}
               >
-                {index > 0 ? <View style={[styles.hairlineOnDark, styles.statDivider]} /> : null}
-                <AppText capScale tone="onDarkMuted" variant="meta">
+                <AppText capScale tone="muted" variant="meta">
                   {stat.label}
                 </AppText>
-                <AppText style={styles.tabular} tone="onDark" variant="screenTitle">
+                <AppText style={styles.tabular} variant="screenTitle">
                   {stat.value}
-                  <AppText style={styles.bold} tone="onDarkMuted" variant="secondary">
+                  <AppText style={styles.bold} tone="muted" variant="secondary">
                     {stat.unit}
                   </AppText>
                 </AppText>
@@ -351,25 +350,27 @@ function MemberView() {
             accessibilityLabel={`Lv.${level.number} ${level.title}, ${level.nextLevel ? `다음 등급까지 ${level.nextLevel.min - recordCount}그릇` : "최고 등급"}`}
             accessibilityRole="button"
             onPress={() => setSheet("grade")}
-            style={({ pressed }) => [styles.gradeRow, pressed && styles.pressedDim]}
+            style={({ pressed }) => [styles.gradeTile, pressed && styles.pressedWash]}
           >
-            <View style={styles.rowGap}>
-              <Award color={colors.onDark} size={16} />
-              <AppText capScale tone="onDark" variant="bodyStrong">
-                Lv.{level.number} {level.title}
-              </AppText>
+            <View style={styles.gradeRow}>
+              <View style={styles.rowGap}>
+                <Award color={colors.ink} size={16} />
+                <AppText capScale variant="bodyStrong">
+                  Lv.{level.number} {level.title}
+                </AppText>
+              </View>
+              <View style={styles.rowGap}>
+                <AppText capScale tone="muted" variant="secondary">
+                  {level.nextLevel ? `다음 등급까지 ${level.nextLevel.min - recordCount}그릇` : "최고 등급"}
+                </AppText>
+                <ChevronRight color={colors.textMuted} size={16} />
+              </View>
             </View>
-            <View style={styles.rowGap}>
-              <AppText capScale tone="onDarkMuted" variant="secondary">
-                {level.nextLevel ? `다음 등급까지 ${level.nextLevel.min - recordCount}그릇` : "최고 등급"}
-              </AppText>
-              <ChevronRight color={colors.onDarkMuted} size={16} />
+            {/* 등급은 정보라서 채움은 빨강이 아니라 먹색이다 */}
+            <View style={styles.levelTrack}>
+              <View style={[styles.levelFill, { width: `${level.progress}%` }]} />
             </View>
           </Pressable>
-          <View style={styles.levelTrack}>
-            <View style={[styles.hairlineOnDark, StyleSheet.absoluteFill]} />
-            <View style={[styles.levelFill, { width: `${level.progress}%` }]} />
-          </View>
         </View>
 
         <View style={styles.main}>
@@ -385,7 +386,7 @@ function MemberView() {
 
           {/* 활동 탭: iOS 세그먼트 */}
           <View accessibilityLabel="내 활동" accessibilityRole="tablist" style={styles.segment}>
-            {tabs.map((item) => {
+            {tabs.map((item, index) => {
               const active = tab === item.id
               return (
                 <Pressable
@@ -394,11 +395,11 @@ function MemberView() {
                   accessibilityState={{ selected: active }}
                   key={item.id}
                   onPress={() => selectTab(item.id)}
-                  style={[styles.segmentItem, active && styles.segmentActive]}
+                  style={[styles.segmentItem, index > 0 && styles.segmentDivider, active && styles.segmentActive]}
                 >
-                  <AppText capScale numberOfLines={1} style={styles.bold} tone={active ? "ink" : "sub"} variant="secondary">
+                  <AppText capScale numberOfLines={1} style={styles.bold} tone={active ? "onDark" : "ink"} variant="secondary">
                     {item.label}{" "}
-                    <AppText capScale style={styles.tabular} tone="muted" variant="secondary">
+                    <AppText capScale style={styles.tabular} tone={active ? "onDarkMuted" : "muted"} variant="secondary">
                       {item.count}
                     </AppText>
                   </AppText>
@@ -414,23 +415,15 @@ function MemberView() {
                   라멘로그 캘린더
                 </AppText>
                 <ScrollView contentContainerStyle={styles.chipRow} horizontal showsHorizontalScrollIndicator={false}>
-                  {periodOptions.map((option) => {
-                    const active = option.value === period
-                    return (
-                      <Pressable
-                        accessibilityLabel={`캘린더 기간 ${option.label}`}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                        key={option.value}
-                        onPress={() => setPeriod(option.value)}
-                        style={[styles.periodChip, active && styles.periodChipActive]}
-                      >
-                        <AppText capScale style={styles.bold} tone={active ? "onDark" : "ink"} variant="secondary">
-                          {option.label}
-                        </AppText>
-                      </Pressable>
-                    )
-                  })}
+                  {periodOptions.map((option) => (
+                    <Chip
+                      accessibilityLabel={`캘린더 기간 ${option.label}`}
+                      key={option.value}
+                      label={option.label}
+                      onPress={() => setPeriod(option.value)}
+                      selected={option.value === period}
+                    />
+                  ))}
                 </ScrollView>
                 <View
                   accessibilityLabel={`${periodLabel} ${calendar.total}그릇 기록${streak > 1 ? `, 최장 ${streak}일 연속` : ""}`}
@@ -550,9 +543,12 @@ function MemberView() {
                           {log.name}
                           {log.shop?.branch ? <AppText tone="sub" variant="secondary">{` ${log.shop.branch}`}</AppText> : null}
                         </AppText>
-                        <AppText numberOfLines={1} tone="sub" variant="secondary">
-                          {log.menu} · {log.type}
-                        </AppText>
+                        <View style={styles.rowGap}>
+                          {log.type ? <RamenTypeTag type={log.type} /> : null}
+                          <AppText numberOfLines={1} style={styles.shrink} tone="sub" variant="secondary">
+                            {log.menu}
+                          </AppText>
+                        </View>
                       </View>
                       <AppText capScale style={styles.tabular} tone="sub" variant="meta">
                         {shortDate(log.date)}
@@ -603,7 +599,7 @@ function MemberView() {
                         { key: "recent", label: "최신순" },
                         { key: "name", label: "이름순" },
                       ] as const
-                    ).map((option) => {
+                    ).map((option, index) => {
                       const active = visitSort === option.key
                       return (
                         <Pressable
@@ -612,9 +608,9 @@ function MemberView() {
                           accessibilityState={{ checked: active }}
                           key={option.key}
                           onPress={() => setVisitSort(option.key)}
-                          style={[styles.segmentItem, active && styles.segmentActive]}
+                          style={[styles.segmentItem, index > 0 && styles.segmentDivider, active && styles.segmentActive]}
                         >
-                          <AppText capScale style={styles.bold} tone={active ? "ink" : "sub"} variant="secondary">
+                          <AppText capScale style={styles.bold} tone={active ? "onDark" : "ink"} variant="secondary">
                             {option.label}
                           </AppText>
                         </Pressable>
@@ -650,17 +646,14 @@ function MemberView() {
                               {visit.name}
                               {visit.branch ? <AppText tone="sub" variant="secondary">{` ${visit.branch}`}</AppText> : null}
                             </AppText>
-                            {visit.visitCount >= 3 ? (
-                              <View style={styles.softTag}>
-                                <AppText capScale variant="meta">
-                                  단골
-                                </AppText>
-                              </View>
-                            ) : null}
+                            {visit.visitCount >= 3 ? <Tag label="단골" /> : null}
                           </View>
-                          <AppText numberOfLines={1} tone="sub" variant="secondary">
-                            {visit.style} · {visit.topMenu}
-                          </AppText>
+                          <View style={styles.rowGap}>
+                            <RamenTypeTag type={visit.style} />
+                            <AppText numberOfLines={1} style={styles.shrink} tone="sub" variant="secondary">
+                              {visit.topMenu}
+                            </AppText>
+                          </View>
                         </View>
                         <View style={styles.alignEnd}>
                           <AppText style={[styles.tabular, styles.heavy]} variant="cardTitle">
@@ -799,8 +792,9 @@ function MemberView() {
 // ---------------------------------------------------------------------------
 
 function Thumb({ uri, letter, size = 48 }: { uri?: string | null; letter: string; size?: number }) {
+  // 48pt 이하 썸네일은 8pt, 그보다 크면 사진과 같은 12pt
   return (
-    <View style={[styles.thumb, { width: size, height: size }]}>
+    <View style={[styles.thumb, { width: size, height: size, borderRadius: size <= 48 ? radii.md : radii.sm }]}>
       {uri ? (
         <Image contentFit="cover" source={{ uri }} style={styles.fill} transition={150} />
       ) : (
@@ -843,7 +837,7 @@ function SearchField({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
   shrink: { flexShrink: 1 },
   fill: { width: "100%", height: "100%" },
@@ -859,7 +853,6 @@ const styles = StyleSheet.create({
   gapTop3: { marginTop: spacing.x3 },
   gapTop5: { marginTop: spacing.x5 },
   pressedWash: { backgroundColor: colors.canvasSoft },
-  pressedDim: { opacity: 0.7 },
   linkText: { color: colors.inkSub, ...typography.secondary },
   // 비회원
   guest: { flexGrow: 1, paddingHorizontal: spacing.gutter, paddingTop: spacing.x10, paddingBottom: spacing.x4 },
@@ -873,7 +866,15 @@ const styles = StyleSheet.create({
   overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.ink },
   profile: { backgroundColor: colors.ink, paddingHorizontal: spacing.gutter, paddingBottom: spacing.x4 },
   profileTop: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
-  settingsButton: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center", marginRight: -spacing.x2 },
+  // 먹색 면 위의 흰 키라서 테두리·그림자 없이 면만으로 보인다
+  settingsButton: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.sm,
+    backgroundColor: colors.canvas,
+  },
   avatar: {
     width: 56,
     height: 56,
@@ -884,44 +885,60 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   avatarLogo: { width: 40, height: 40 },
-  hairlineOnDark: { backgroundColor: colors.onDark, opacity: 0.15 },
-  stats: { flexDirection: "row", marginTop: spacing.x4, paddingTop: spacing.x4 },
-  statsRule: { position: "absolute", top: 0, left: 0, right: 0, height: 1 },
-  stat: { flex: 1, alignItems: "center" },
-  statDivider: { position: "absolute", left: 0, top: 0, bottom: 0, width: 1 },
+  stats: { flexDirection: "row", marginTop: spacing.x4, gap: spacing.x2_5 },
+  stat: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: colors.canvas,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.x1_5,
+    paddingVertical: spacing.x2_5,
+  },
+  gradeTile: {
+    marginTop: spacing.x2_5,
+    backgroundColor: colors.canvas,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.x3_5,
+    paddingVertical: spacing.x3,
+  },
   gradeRow: {
-    minHeight: 44,
-    marginTop: spacing.x3,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     flexWrap: "wrap",
     gap: spacing.x2,
   },
-  levelTrack: { height: 4, marginTop: spacing.x1, borderRadius: radii.pill, overflow: "hidden" },
-  levelFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.onDark },
+  levelTrack: {
+    height: 12,
+    marginTop: spacing.x2_5,
+    borderRadius: radii.xs,
+    borderColor: colors.outline,
+    borderWidth: line.thin,
+    backgroundColor: colors.canvas,
+    overflow: "hidden",
+  },
+  levelFill: { height: "100%", backgroundColor: colors.ink },
   // 본문
   main: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, gap: spacing.x4 },
   card: {
     backgroundColor: colors.canvas,
-    borderColor: colors.border,
+    borderColor: colors.outline,
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: line.base,
     padding: spacing.x4,
   },
-  segment: { flexDirection: "row", padding: 2, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
-  segmentItem: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: radii.sm, paddingHorizontal: spacing.x1 },
-  segmentActive: { backgroundColor: colors.canvas },
-  chipRow: { gap: spacing.x2, paddingTop: spacing.x3 },
-  periodChip: {
-    minHeight: 44,
-    paddingHorizontal: spacing.x4,
-    borderRadius: radii.pill,
-    borderColor: colors.border,
-    borderWidth: 1,
-    justifyContent: "center",
+  segment: {
+    flexDirection: "row",
+    borderRadius: radii.sm,
+    borderColor: colors.outline,
+    borderWidth: line.base,
+    backgroundColor: colors.canvas,
+    overflow: "hidden",
   },
-  periodChipActive: { backgroundColor: colors.ink, borderColor: colors.ink },
+  segmentItem: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.x1 },
+  segmentDivider: { borderLeftColor: colors.outline, borderLeftWidth: line.base },
+  segmentActive: { backgroundColor: colors.ink },
+  chipRow: { gap: spacing.x2, paddingTop: spacing.x3 },
   calendar: { flexDirection: "row", marginTop: spacing.x3, gap: spacing.x1 },
   weekdays: { paddingTop: 17 + spacing.x1, gap: CELL_GAP },
   weekdayLabel: { height: CELL, lineHeight: CELL, fontSize: 12 },
@@ -949,8 +966,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.x3,
   },
   rowDivider: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth },
-  thumb: { borderRadius: radii.sm, backgroundColor: colors.canvasSoft, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  softTag: { backgroundColor: colors.canvasSoft, borderRadius: radii.xs, paddingHorizontal: spacing.x1_5, paddingVertical: spacing.x0_5 },
+  thumb: {
+    backgroundColor: colors.canvasSoft,
+    borderColor: colors.outline,
+    borderWidth: line.base,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   search: {
     minHeight: 44,
     marginTop: spacing.x2,
@@ -958,13 +981,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.x2,
     paddingHorizontal: spacing.x3,
-    borderColor: colors.border,
-    borderWidth: 1,
+    backgroundColor: colors.canvas,
+    borderColor: colors.outline,
+    borderWidth: line.base,
     borderRadius: radii.sm,
   },
   searchInput: { flex: 1, minHeight: 44, color: colors.ink, ...typography.body },
   savedRow: { flexDirection: "row", alignItems: "center", gap: spacing.x1 },
-  iconButton: { width: 44, height: 44, borderRadius: radii.pill, alignItems: "center", justifyContent: "center" },
+  iconButton: { width: 44, height: 44, borderRadius: radii.sm, alignItems: "center", justifyContent: "center" },
   // 계정
   // 예전 카드 크기(5줄)만큼만 보이고 그 안에서 스크롤한다
   recentBox: { maxHeight: RECENT_ROW_HEIGHT * RECENT_VISIBLE_ROWS + spacing.x1 },
