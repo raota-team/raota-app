@@ -407,7 +407,9 @@ const styles = StyleSheet.create({
     paddingRight: spacing.x3,
   },
   listContent: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x8, flexGrow: 1 },
-  filters: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2, paddingBottom: spacing.x3 },
+  // 위 전환 칸(먹색 선택)과 필터 칩(빨강 선택)이 붙어 있으면 무엇이 켜졌는지 한 박자 늦게 읽힌다.
+  // 색 규칙은 그대로 두고 구분선 아래 여백을 키워 두 묶음을 떼어 놓는다
+  filters: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2, paddingTop: spacing.x4, paddingBottom: spacing.x3 },
   listCaption: { fontWeight: "500", paddingBottom: spacing.x1 },
   quickTitle: { fontWeight: "500", marginBottom: spacing.x2 },
   quickKeywords: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
