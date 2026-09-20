@@ -23,7 +23,7 @@ import { track } from "../analytics"
 import { useMonthlyReports } from "../data"
 import { scheduleTestReminder, type PlannedReminder } from "../notifications"
 import { useRaota } from "../state/RaotaStore"
-import { colors, radii, shadows, spacing, touchTarget } from "../theme"
+import { colors, line, pressInto, radii, shadows, spacing, touchTarget } from "../theme"
 import { AppText } from "./ui"
 
 /*
@@ -395,7 +395,7 @@ export default function RecordFab() {
               style={({ pressed }) => [
                 styles.menuItem,
                 onLeftEdge && styles.menuItemLeft,
-                pressed && styles.pressed,
+                pressed && styles.menuItemPressed,
               ]}
             >
               <View style={styles.menuLabel}>
@@ -459,34 +459,41 @@ const styles = StyleSheet.create({
   backdropWrap: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
   backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.overlay },
   fabWrap: { position: "absolute", width: FAB_SIZE, height: FAB_SIZE },
+  // 빨강 16pt 사각 + 2pt 먹선 + 번지지 않는 그림자(3pt). 누르거나 끄는 동안에는 그림자 속으로 들어간다
   fab: {
     width: FAB_SIZE,
     height: FAB_SIZE,
-    borderRadius: radii.pill,
+    borderRadius: radii.xl,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.brand,
-    ...shadows.floating,
+    ...shadows.hardM,
   },
-  fabOpen: { backgroundColor: colors.ink },
-  pressed: { opacity: 0.85 },
+  // 어두운 뒤판 위에서는 먹선이 묻히므로 흰 선으로 바꾼다
+  fabOpen: { backgroundColor: colors.ink, borderColor: colors.onDark, shadowOpacity: 0 },
+  pressed: pressInto(3),
+  menuItemPressed: { opacity: 0.85 },
   menu: { position: "absolute", gap: MENU_ITEM_GAP },
   menuItem: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: touchTarget },
   menuItemLeft: { flexDirection: "row-reverse" },
   menuLabel: {
     backgroundColor: colors.canvas,
     borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     paddingHorizontal: spacing.x3_5,
-    paddingVertical: spacing.x2_5,
-    ...shadows.floating,
+    paddingVertical: spacing.x2,
   },
   menuIcon: {
     width: touchTarget,
     height: touchTarget,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.canvas,
-    ...shadows.floating,
   },
 })
