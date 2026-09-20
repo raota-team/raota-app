@@ -31,7 +31,7 @@ export function ResilientUriImage({
   contentFit = "cover",
   transition = 180,
   fallback,
-  fallbackBackgroundColor = colors.backgroundBasement,
+  fallbackBackgroundColor = colors.canvasSoft,
   fallbackTintColor = colors.textMuted,
 }: ResilientUriImageProps) {
   const normalizedUri = uri?.trim() ?? ""
@@ -91,8 +91,9 @@ export function ResilientUriImage({
 }
 
 const styles = StyleSheet.create({
+  // 자리표시는 옅은 면만 둔다. 테두리·모서리는 사진을 놓는 화면이 정한다
   container: {
-    backgroundColor: colors.backgroundBasement,
+    backgroundColor: colors.canvasSoft,
     overflow: "hidden",
     position: "relative",
   },

@@ -19,7 +19,7 @@ export function LegalBlockView({ block }: { block: LegalBlock }) {
       <View style={styles.list}>
         {block.items.map((item) => (
           <View key={item} style={styles.listItem}>
-            <AppText style={styles.bullet} tone="muted" variant="body">
+            <AppText style={styles.bullet} tone="sub" variant="body">
               ·
             </AppText>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.listText} tone="sub" variant="body">
@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
   listItem: { flexDirection: "row", gap: spacing.x2 },
   bullet: { width: 8 },
   listText: { flex: 1 },
+  // 읽는 정보 표라서 2pt 먹선 대신 1pt 구분선으로 깔끔하게 둔다(DESIGN.md Elevation & Depth)
   table: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, overflow: "hidden" },
   tableRow: { paddingHorizontal: spacing.x4, paddingVertical: spacing.x3, gap: spacing.x1 },
   tableDivider: { borderTopWidth: 1, borderTopColor: colors.border },

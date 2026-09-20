@@ -11,7 +11,7 @@ import type { AuthProvider } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { AppText, Header, Toast } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, pressInto, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
  * 로그인. 로고·소개·간편 로그인을 화면 가운데에 모으고, 둘러보기와 약관 링크는 아래에 둔다.
@@ -100,7 +100,7 @@ function ProviderButton({ id, label, Mark, onPress }: (typeof PROVIDERS)[number]
         id === "apple" && styles.providerApple,
         id === "kakao" && styles.providerKakao,
         id === "google" && styles.providerGoogle,
-        pressed && styles.pressed,
+        pressed && styles.pressedKey,
       ]}
       testID={`login-${id}`}
     >
@@ -217,7 +217,7 @@ export default function LoginScreen() {
               잊지 않도록
             </AppText>
           </AppText>
-          <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="muted" variant="body">
+          <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="body">
             {signup
               ? "간편 로그인으로 가입하고, 닉네임과 약관 동의만 하면 첫 기록을 남길 수 있어요."
               : "가고 싶은 곳, 다녀온 곳, 다시 먹고 싶은 한 그릇을 라오타에 모아두세요."}
@@ -246,12 +246,12 @@ export default function LoginScreen() {
             </AppText>
           </Pressable>
           <View style={styles.legal}>
-            <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="muted" variant="meta">
+            <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="meta">
               처음이면 간편 로그인 뒤 닉네임과 약관 동의만 하면 가입이 끝나요.
             </AppText>
             <View style={styles.legalLinks}>
               <LegalLink doc="terms" label="이용약관" />
-              <AppText tone="muted" variant="meta">
+              <AppText tone="sub" variant="meta">
                 ·
               </AppText>
               <LegalLink doc="privacy" label="개인정보처리방침" />
@@ -265,7 +265,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1, backgroundColor: colors.paper },
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.gutter,
@@ -277,22 +277,35 @@ const styles = StyleSheet.create({
   center: { textAlign: "center" },
   bold: { fontWeight: "700" },
   pressed: { opacity: 0.85 },
+  // 그림자가 있는 키는 누르는 동안 그림자 속으로 들어간다
+  pressedKey: pressInto(2),
   headerLink: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },
   brand: { alignItems: "center", gap: spacing.x2, marginBottom: spacing.x4 },
-  logo: { width: 56, height: 56, marginBottom: spacing.x1 },
+  // 로고는 12pt 사각 + 2pt 먹선 타일. 그림은 빨강 한 가지라 흰 면 위에 올린다
+  logo: {
+    width: 56,
+    height: 56,
+    marginBottom: spacing.x1,
+    backgroundColor: colors.canvas,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+  },
   providers: { gap: spacing.x2_5 },
+  // 간편 로그인은 눌리는 키다: 12pt 사각 + 2pt 먹선 + 번지지 않는 그림자. 면 색만 제공자 브랜드를 따른다
   provider: {
     minHeight: 48,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.transparent,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.x12,
+    ...shadows.hardS,
   },
-  providerApple: { backgroundColor: colors.black, borderColor: colors.black },
-  providerKakao: { backgroundColor: PROVIDER_BRAND.kakaoContainer, borderColor: PROVIDER_BRAND.kakaoContainer },
-  providerGoogle: { backgroundColor: colors.canvas, borderColor: colors.border },
+  providerApple: { backgroundColor: colors.black },
+  providerKakao: { backgroundColor: PROVIDER_BRAND.kakaoContainer },
+  providerGoogle: { backgroundColor: colors.canvas },
   providerMark: { position: "absolute", left: spacing.x5, top: 0, bottom: 0, justifyContent: "center" },
   providerLabel: { ...typography.cardTitle },
   bottom: { paddingTop: spacing.x4, alignItems: "center", gap: spacing.x2 },

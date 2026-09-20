@@ -25,7 +25,7 @@ import { track } from "@/src/analytics"
 import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
 import { AppText, Button, Chip, Header } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
  * 회원가입(온보딩). 웹 RegisterScreen과 같은 구성이다.
@@ -209,7 +209,8 @@ export default function OnboardingScreen() {
   // ------------------------------------------------------------------
   if (registered) {
     return (
-      <SafeAreaView edges={["top", "bottom"]} style={styles.root}>
+      // 하단 inset은 흰 행동 바가 직접 먹는다(바 아래로 미색이 비치지 않게 루트에서는 빼둔다)
+      <SafeAreaView edges={["top"]} style={styles.root}>
         <StatusBar style="dark" />
         <ScrollView contentContainerStyle={styles.doneContent} showsVerticalScrollIndicator={false}>
           <View style={styles.doneHead}>
@@ -223,7 +224,7 @@ export default function OnboardingScreen() {
             <AppText accessibilityRole="header" style={styles.center} variant="headline">
               {registered.nickname}님, 반가워요
             </AppText>
-            <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="muted" variant="body">
+            <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="body">
               {registered.level} Lv.{registered.levelNumber} · 첫 그릇을 기록하면 취향 분석이 시작돼요
             </AppText>
           </View>
@@ -235,7 +236,7 @@ export default function OnboardingScreen() {
                 </View>
                 <View style={styles.flexShrink}>
                   <AppText variant="cardTitle">{title}</AppText>
-                  <AppText lineBreakStrategyIOS="hangul-word" tone="muted" variant="secondary">
+                  <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
                     {desc}
                   </AppText>
                 </View>
@@ -243,7 +244,7 @@ export default function OnboardingScreen() {
             ))}
           </View>
         </ScrollView>
-        <View style={styles.doneFooter}>
+        <SafeAreaView edges={["bottom"]} style={styles.doneFooter}>
           <Button
             fullWidth
             onPress={() => router.replace("/native")}
@@ -251,7 +252,7 @@ export default function OnboardingScreen() {
             size="large"
             title="라오타 시작하기"
           />
-        </View>
+        </SafeAreaView>
       </SafeAreaView>
     )
   }
@@ -297,7 +298,7 @@ export default function OnboardingScreen() {
               </AppText>
               를 알려주세요
             </AppText>
-            <AppText tone="muted" variant="body">
+            <AppText tone="sub" variant="body">
               라오타에서 쓸 닉네임과 취향을 정해요.
             </AppText>
           </View>
@@ -329,12 +330,12 @@ export default function OnboardingScreen() {
                   style={styles.avatarClear}
                 >
                   <View style={styles.avatarClearDot}>
-                    <X color={colors.textMuted} size={16} />
+                    <X color={colors.ink} size={16} />
                   </View>
                 </Pressable>
               ) : null}
             </View>
-            <AppText style={styles.bold} tone="muted" variant="secondary">
+            <AppText style={styles.bold} tone="sub" variant="secondary">
               프로필 사진 (선택)
             </AppText>
           </View>
@@ -345,7 +346,7 @@ export default function OnboardingScreen() {
               <AppText nativeID="nickname-label" variant="bodyStrong">
                 닉네임 <AppText tone="brand" variant="bodyStrong">*</AppText>
               </AppText>
-              <AppText capScale style={styles.tabular} tone="muted" variant="secondary">
+              <AppText capScale style={styles.tabular} tone="sub" variant="secondary">
                 {nickname.length}/{NICKNAME_MAX}
               </AppText>
             </View>
@@ -361,7 +362,7 @@ export default function OnboardingScreen() {
               placeholderTextColor={colors.textMuted}
               ref={nicknameRef}
               returnKeyType="done"
-              style={[styles.input, showNicknameError ? styles.inputError : !nicknameError && styles.inputValid]}
+              style={[styles.input, showNicknameError && styles.inputError]}
               textContentType="nickname"
               value={nickname}
             />
@@ -370,7 +371,7 @@ export default function OnboardingScreen() {
                 {nicknameError}
               </AppText>
             ) : (
-              <AppText style={styles.fieldNote} tone="muted" variant="secondary">
+              <AppText style={styles.fieldNote} tone="sub" variant="secondary">
                 한글, 영문, 숫자 {NICKNAME_MIN}~{NICKNAME_MAX}자
               </AppText>
             )}
@@ -395,7 +396,7 @@ export default function OnboardingScreen() {
           <View style={styles.field}>
             <View style={styles.fieldHead}>
               <AppText variant="bodyStrong">한줄 소개 (선택)</AppText>
-              <AppText capScale style={styles.tabular} tone="muted" variant="secondary">
+              <AppText capScale style={styles.tabular} tone="sub" variant="secondary">
                 {bio.length}/{BIO_MAX}
               </AppText>
             </View>
@@ -449,7 +450,7 @@ export default function OnboardingScreen() {
                 onPress={() => setPolicy("terms")}
                 style={({ pressed }) => [styles.viewLink, pressed && styles.pressed]}
               >
-                <AppText capScale style={styles.underline} tone="muted" variant="secondary">
+                <AppText capScale style={styles.underline} tone="sub" variant="secondary">
                   보기
                 </AppText>
               </Pressable>
@@ -467,13 +468,13 @@ export default function OnboardingScreen() {
                 onPress={() => setPolicy("privacy")}
                 style={({ pressed }) => [styles.viewLink, pressed && styles.pressed]}
               >
-                <AppText capScale style={styles.underline} tone="muted" variant="secondary">
+                <AppText capScale style={styles.underline} tone="sub" variant="secondary">
                   보기
                 </AppText>
               </Pressable>
             </View>
             <CheckRow checked={agreeMarketing} label="선택, 라멘 추천 및 소식 수신 동의" onChange={setAgreeMarketing}>
-              <AppText style={styles.bold} tone="muted" variant="body">
+              <AppText style={styles.bold} tone="sub" variant="body">
                 [선택]
               </AppText>{" "}
               라멘 추천 및 소식 수신 동의
@@ -503,7 +504,7 @@ export default function OnboardingScreen() {
 
           {currentUser ? null : (
             <View style={styles.loginRow}>
-              <AppText tone="muted" variant="body">
+              <AppText tone="sub" variant="body">
                 이미 계정이 있으신가요?
               </AppText>
               <Pressable
@@ -543,7 +544,7 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.canvas },
+  root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1, minWidth: 0 },
   fill: { width: "100%", height: "100%" },
@@ -561,12 +562,13 @@ const styles = StyleSheet.create({
   },
   intro: { gap: spacing.x1_5 },
   avatarBlock: { alignItems: "center", gap: spacing.x2 },
+  // 사진 자리는 12pt 사각 + 2pt 먹선(원형 아바타를 쓰지 않는다)
   avatar: {
     width: 96,
     height: 96,
-    borderRadius: radii.pill,
-    borderWidth: 2,
-    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     backgroundColor: colors.canvasSoft,
     alignItems: "center",
     justifyContent: "center",
@@ -576,8 +578,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
     bottom: 0,
-    borderRadius: radii.pill,
-    borderWidth: 2,
+    borderRadius: radii.xs,
+    borderWidth: line.base,
     borderColor: colors.canvas,
     backgroundColor: colors.ink,
     padding: spacing.x1_5,
@@ -594,21 +596,22 @@ const styles = StyleSheet.create({
   avatarClearDot: {
     width: 28,
     height: 28,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radii.xs,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
     alignItems: "center",
     justifyContent: "center",
   },
   field: { gap: spacing.x1_5 },
   fieldHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  // 입력칸은 흰 면 + 2pt 먹선 + 12pt. 오류일 때만 선 색이 바뀐다
   input: {
     ...typography.body,
     fontSize: 15,
     minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.x4,
     paddingVertical: spacing.x3,
@@ -616,33 +619,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   inputError: { borderColor: colors.critical },
-  inputValid: { borderColor: colors.ink },
   textarea: { minHeight: 72, fontSize: 14 },
   fieldNote: { marginTop: spacing.x0_5 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5 },
   quickTags: { gap: spacing.x1 },
   quickTag: { minHeight: touchTarget, justifyContent: "center" },
+  // 소개 문구를 채워 넣는 칩. 흰 면 + 1.5pt 먹선 알약(선이 글씨에 붙지 않게 위아래 2pt만 넓힌다)
   quickTagPill: {
     borderRadius: radii.pill,
-    backgroundColor: colors.canvasSoft,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
     paddingHorizontal: spacing.x3,
-    paddingVertical: spacing.x1,
+    paddingVertical: spacing.x1_5,
   },
   terms: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.x3 },
-  termsAll: { borderBottomWidth: 1, borderBottomColor: colors.canvasSoft, marginBottom: spacing.x1 },
+  termsAll: { borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.x1 },
   termRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2 },
   checkRow: { flex: 1, minHeight: touchTarget, flexDirection: "row", alignItems: "center", gap: spacing.x2_5 },
+  // 체크 칸은 6pt 사각 + 2pt 먹선, 고르면 빨강 면 + 흰 체크
   checkBox: {
     width: 20,
     height: 20,
     borderRadius: radii.xs,
-    borderWidth: 1,
-    borderColor: colors.textFaint,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
     alignItems: "center",
     justifyContent: "center",
   },
-  checkBoxOn: { borderColor: colors.brand, backgroundColor: colors.brand },
+  checkBoxOn: { backgroundColor: colors.brand },
   checkStrong: { fontWeight: "800" },
   viewLink: { minHeight: touchTarget, minWidth: touchTarget, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.x2 },
   submit: { marginTop: -spacing.x2 },
@@ -652,7 +658,9 @@ const styles = StyleSheet.create({
   doneAvatar: {
     width: 80,
     height: 80,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     backgroundColor: colors.canvasSoft,
     alignItems: "center",
     justifyContent: "center",
@@ -661,14 +669,22 @@ const styles = StyleSheet.create({
   },
   features: { marginTop: spacing.x8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   feature: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3, paddingVertical: spacing.x4 },
-  featureDivider: { borderTopWidth: 1, borderTopColor: colors.canvasSoft },
+  featureDivider: { borderTopWidth: 1, borderTopColor: colors.border },
   featureIcon: {
     width: 40,
     height: 40,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
     backgroundColor: colors.brandWeak,
     alignItems: "center",
     justifyContent: "center",
   },
-  doneFooter: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x2, paddingBottom: spacing.x4 },
+  // 하단 고정 행동 바: 흰 면 + 위쪽 2pt 먹선. 아래 여백에 홈 인디케이터 inset이 더해진다
+  doneFooter: {
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.x3,
+    paddingBottom: spacing.x3,
+    backgroundColor: colors.canvas,
+    borderTopWidth: line.base,
+    borderTopColor: colors.outline,
+  },
 })
