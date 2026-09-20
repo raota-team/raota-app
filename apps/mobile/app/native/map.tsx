@@ -39,8 +39,12 @@ export default function MapScreen() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading")
   const [origin, setOrigin] = useState<Coordinate | null>(null)
-  // 마커 그림은 로고가 실린 뒤 한 번만 그린다. 계속 다시 그리면(tracksViewChanges 기본값) 지도가 무거워지고 탭을 놓친다
-  const [logoReady, setLogoReady] = useState(false)
+  /*
+   * 마커 그림을 계속 다시 그리면(tracksViewChanges 기본값) 지도가 무거워지고 탭을 놓친다.
+   * 그렇다고 곧바로 고정하면 로고가 그려지기 전에 굳어서 핀이 빈 사각으로 남는다.
+   * 핀이 바뀔 때마다 잠깐 다시 그리게 뒀다가 고정한다.
+   */
+  const [trackingPins, setTrackingPins] = useState(true)
   const filters = useMapFilters(origin)
 
   useEffect(() => {
@@ -68,6 +72,13 @@ export default function MapScreen() {
   const filtered = filters.filtered
   const selected = filtered.find((shop) => shop.id === selectedId) ?? filtered[0] ?? null
   const clusters = useMemo(() => calculateMapClusters(filtered, region), [filtered, region])
+
+  // 핀이 바뀌면 잠깐 다시 그리게 두고(로고가 실릴 시간) 곧 고정한다
+  useEffect(() => {
+    setTrackingPins(true)
+    const settle = setTimeout(() => setTrackingPins(false), 700)
+    return () => clearTimeout(settle)
+  }, [clusters, selectedId])
 
   const animateTo = (target: Region) => mapRef.current?.animateToRegion(target, 350)
 
@@ -134,7 +145,6 @@ export default function MapScreen() {
                     <Marker
                       accessibilityLabel={`라멘집 ${cluster.shopIds.length}곳, 확대해서 보기`}
                       coordinate={{ latitude: cluster.latitude, longitude: cluster.longitude }}
-                      // 마커 그림을 한 번만 그리므로(tracksViewChanges=false) 선택 상태가 바뀌면 key로 다시 그린다
                       key={`${cluster.id}-${hasSelected ? "on" : "off"}`}
                       onPress={() =>
                         animateTo({
@@ -144,7 +154,7 @@ export default function MapScreen() {
                           longitudeDelta: region.longitudeDelta / 3,
                         })
                       }
-                      tracksViewChanges={false}
+                      tracksViewChanges={trackingPins}
                     >
                       <View style={styles.pin}>
                         <View style={[styles.cluster, hasSelected && styles.clusterSelected]}>
@@ -166,12 +176,12 @@ export default function MapScreen() {
                     coordinate={{ latitude: shop.lat, longitude: shop.lng }}
                     key={`${cluster.id}-${isSelected ? "on" : "off"}`}
                     onPress={() => selectShop(shop.id, shop.lat, shop.lng)}
-                    tracksViewChanges={!logoReady}
+                    tracksViewChanges={trackingPins}
                     zIndex={isSelected ? 10 : 1}
                   >
                     <View style={styles.pin}>
                       <View style={[styles.pinCircle, isSelected && styles.pinCircleSelected]}>
-                        <Image onLoad={() => setLogoReady(true)} source={require("@/assets/images/logo.png")} style={styles.pinLogo} />
+                        <Image source={require("@/assets/images/logo.png")} style={styles.pinLogo} />
                       </View>
                       {/* 이름표는 고른 핀에만. 모든 핀에 달면 투명한 이름표끼리 겹쳐 옆 핀의 탭을 가로챈다 */}
                       {isSelected ? (
