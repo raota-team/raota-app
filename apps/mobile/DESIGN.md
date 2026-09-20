@@ -13,8 +13,8 @@ colors:
   canvas: "#FFFFFF"
   canvas-soft: "#F2F2F2"
   surface-input: "#F7F7F7"
-  border: "#16181A"
-  hairline: "#E2E2E2"
+  border: "#E2E2E2"
+  outline: "#16181A"
   yolk: "#FFC93C"
   on-dark: "#FFFFFF"
   on-dark-muted: "rgba(255, 255, 255, 0.7)"
@@ -75,8 +75,8 @@ typography:
     lineHeight: "17px"
 rounded:
   none: "0px"
-  xs: "2px"
-  sm: "6px"
+  xs: "6px"
+  sm: "12px"
   md: "8px"
   lg: "12px"
   xl: "16px"
@@ -102,24 +102,24 @@ components:
     backgroundColor: "{colors.brand}"
     textColor: "{colors.on-dark}"
     typography: "{typography.body-strong}"
-    rounded: "{rounded.lg}"
-    border: "{line.base} solid {colors.ink}"
+    rounded: "{rounded.sm}"
+    border: "{line.base} solid {colors.outline}"
     shadow: "{hard-shadow.s}"
     height: "52px"
   button-secondary:
     backgroundColor: "{colors.ink}"
     textColor: "{colors.on-dark}"
     typography: "{typography.body-strong}"
-    rounded: "{rounded.lg}"
-    border: "{line.base} solid {colors.ink}"
+    rounded: "{rounded.sm}"
+    border: "{line.base} solid {colors.outline}"
     shadow: "{hard-shadow.s}"
     height: "52px"
   button-outline:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.body-strong}"
-    rounded: "{rounded.lg}"
-    border: "{line.base} solid {colors.ink}"
+    rounded: "{rounded.sm}"
+    border: "{line.base} solid {colors.outline}"
     shadow: "{hard-shadow.s}"
     height: "50px"
   button-utility:
@@ -127,34 +127,35 @@ components:
     textColor: "{colors.ink}"
     typography: "{typography.secondary}"
     rounded: "{rounded.xs}"
+    border: "{line.thin} solid {colors.outline}"
     height: "44px"
   chip:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.secondary}"
     rounded: "{rounded.pill}"
-    border: "{line.thin} solid {colors.ink}"
+    border: "{line.thin} solid {colors.outline}"
     height: "44px"
   chip-selected:
     backgroundColor: "{colors.brand}"
     textColor: "{colors.on-dark}"
     typography: "{typography.secondary}"
     rounded: "{rounded.pill}"
-    border: "{line.thin} solid {colors.ink}"
+    border: "{line.thin} solid {colors.outline}"
     height: "44px"
   tag:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.meta}"
-    rounded: "{rounded.sm}"
-    border: "{line.thin} solid {colors.ink}"
+    rounded: "{rounded.xs}"
+    border: "{line.thin} solid {colors.outline}"
     padding: "5px 9px"
   ramen-type-tag:
     backgroundColor: "{colors.yolk}"
     textColor: "{colors.ink}"
     typography: "{typography.meta}"
-    rounded: "{rounded.sm}"
-    border: "{line.thin} solid {colors.ink}"
+    rounded: "{rounded.xs}"
+    border: "{line.thin} solid {colors.outline}"
     height: "26px"
   score-segment:
     backgroundColor: "{colors.canvas}"
@@ -167,17 +168,18 @@ components:
   card:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.lg}"
-    border: "{line.base} solid {colors.ink}"
+    rounded: "{rounded.sm}"
+    border: "{line.base} solid {colors.outline}"
     padding: "16px"
   input:
-    backgroundColor: "{colors.surface-input}"
+    backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.body}"
     rounded: "{rounded.sm}"
+    border: "{line.base} solid {colors.outline}"
     height: "48px"
   header:
-    backgroundColor: "{colors.canvas}"
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
     typography: "{typography.screen-title}"
     height: "56px"
@@ -185,8 +187,8 @@ components:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
     typography: "{typography.meta}"
-    borderTop: "{line.base} solid {colors.ink}"
-    height: "62px"
+    borderTop: "{line.base} solid {colors.outline}"
+    height: "52px"
   bottom-sheet:
     backgroundColor: "{colors.canvas}"
     rounded: "{rounded.lg}"
@@ -220,13 +222,13 @@ RAOTA Mobile은 라멘 전문지의 선명한 편집 감각과 개인 취향 여
 - **네오 브루탈리즘 라이트:** 미색 바탕, 흰 카드, 2pt 먹선, 큰 제목, 빨강 포인트 하나. 브랜딩 · 버튼 · 태그 · 카드 테두리까지만 브루탈하게, 검색 · 지도 · 리뷰 본문 · 정보 표는 깔끔하게
 - Apple 시스템 서체(SF Pro, Apple SD Gothic Neo) 하나로 만드는 위계
 - 12pt 카드, 식권 발매기 버튼처럼 눌리는 12pt 사각 버튼, 블러와 그라디언트 없음
-- 라멘 종류는 스티커처럼 생긴 노랑 태그(쇼유 · 돈코츠 · 시오 · 미소 · 츠케멘 · 이에케)
+- 라멘 종류는 스티커처럼 생긴 노랑 태그. 값은 `packages/shared`의 `RAMEN_TYPES` 아홉 가지(쇼유 · 돈코츠 · 시오 · 미소 · 츠케멘 · 탄탄멘 · 마제소바 · 아부라소바 · 기타)만 쓴다. 이에케 · 지로계처럼 목록에 없는 종류를 넣으려면 서버 명세의 `RamenType`부터 바꿔야 한다
 - iPhone SE부터 Pro Max까지 한 손 조작 가능한 44pt 터치
 - 4개 탭(홈 · 지도 · 라운지 · 마이)으로 탐색하고, 집중 작업은 스택과 시트로 분리
 
 ## Colors
 
-브랜드 대비는 `brand`, `ink`, `paper` 세 축이 만든다. 화면 바탕은 미색 `paper`, 카드와 버튼의 면은 흰색 `canvas`, 부품의 테두리는 `ink`(`border`와 같은 값)다. 목록의 줄 사이, 표 안쪽 같은 정보 구분선은 옅은 `hairline`을 쓴다.
+브랜드 대비는 `brand`, `ink`, `paper` 세 축이 만든다. 화면 바탕은 미색 `paper`, 카드와 버튼의 면은 흰색 `canvas`, 부품의 테두리는 `outline`(`ink`와 같은 값)이다. 목록의 줄 사이, 표 안쪽 같은 정보 구분선은 옅은 `border`(1pt, `#E2E2E2`)를 쓴다.
 
 - **RAOTA Red (`brand`):** 주 CTA, 활성 탭, 선택된 칩과 5축 점수, 알림 점, 취향 일치도에만 쓴다. 누름은 `brand-pressed`, 약한 배경은 `brand-weak`. 회원번호나 통계처럼 행동이 아닌 정보를 빨강으로 강조하지 않는다.
 - **Ink (`ink`, `#16181A`):** 글씨, 부품의 테두리, 번지지 않는 그림자, 먹색 면(마이 프로필, 추천 라멘집, 가게 상세 정보)에 쓴다. 순수 검정은 쓰지 않는다.
@@ -285,7 +287,7 @@ line:       { thin: 1.5, base: 2 }                  // 칩 · 태그 · 스티�
 hardShadow: { s: { x: 2, y: 2 }, m: { x: 3, y: 3 } } // blur 0, 색은 ink. 누를 수 있는 것에만
 ```
 
-- **브루탈하게 만드는 범위는 정해져 있다.** 브랜딩(로고 · 제목), 버튼, 태그와 스티커, 카드의 테두리까지다. 검색, 지도, 리뷰 본문, 목록의 줄, 정보 표는 보통 굵기 글씨와 1pt `hairline`으로 깔끔하게 둔다.
+- **브루탈하게 만드는 범위는 정해져 있다.** 브랜딩(로고 · 제목), 버튼, 태그와 스티커, 카드의 테두리까지다. 검색, 지도, 리뷰 본문, 목록의 줄, 정보 표는 보통 굵기 글씨와 1pt `border`으로 깔끔하게 둔다.
 - **선.** 카드, 버튼, 사진, 입력칸, 아이콘 버튼은 2pt `ink` 선을 두른다. 칩 · 태그 · 스티커는 1.5pt. 3pt 이상은 쓰지 않는다.
 - **그림자는 "누를 수 있다"는 표시다.** `s`(2pt): 버튼, 아이콘 버튼, 활성 탭, 지도의 선택된 핀. `m`(3pt): 작성 버튼(FAB)과 AI 큐레이터 배너. **카드, 사진, 통계 타일, 검색창, 세그먼트, 칩에는 그림자를 넣지 않는다.**
 - **The Press-Into-Shadow Rule.** 그림자가 있는 것은 누르는 동안 그림자만큼 오른쪽 아래로 움직이고 그림자가 사라진다(식권 발매기 버튼처럼). 이것이 유일한 누름 표현이다. Reduce Motion에서는 이동 애니메이션 없이 즉시 바뀐다.
@@ -293,7 +295,7 @@ hardShadow: { s: { x: 2, y: 2 }, m: { x: 3, y: 3 } } // blur 0, 색은 ink. 누�
 - **면.** 화면 바탕 `paper`, 카드 · 버튼 `canvas`(흰색), 행동 `brand`, 무거운 섹션 `ink`. 먹색 섹션 안의 카드는 테두리 없는 흰 면, 줄 구분은 흰색 18% 선.
 - **사진 위에 글씨를 올리지 않는다.** 글씨는 사진 아래 카드 면에 쓴다. 사진 위에는 스티커 하나와 썸네일만 올릴 수 있다. 사진은 보정 없이 그대로 크게 보여 주고 2pt 선만 두른다.
 - **스티커와 라멘 종류 태그.** `yolk` 면 + 1.5pt 선 + 6pt 모서리 + 12pt 800 글씨. 라멘 종류 태그는 매장 · 라멘로그 · 지도 퀵뷰 어디서나 같은 모양으로 나온다. 표시 스티커는 한 화면(한 번에 보이는 범위)에 세 개까지.
-- **구현.** 새 의존성이 없다. iOS는 `shadowRadius: 0, shadowOpacity: 1, shadowOffset`으로 되고, Android는 elevation으로 번지지 않는 그림자를 못 만들므로 같은 모양의 `ink` 면을 뒤에 한 장 더 깐다. 두 경로를 `src/components/ui`의 `Button` · `IconButton` 안에 감춘다.
+- **구현.** 새 의존성이 없다. `src/theme`의 `shadows.hardS`(2pt) · `shadows.hardM`(3pt)와 `pressInto(2 | 3)`를 쓴다. iOS는 `shadowRadius: 0, shadowOpacity: 1, shadowOffset`으로 된다. 그림자를 받는 View에는 면 색(`backgroundColor`)이 있어야 하고, 같은 View에 `overflow: "hidden"`을 주면 그림자가 잘리므로 사진을 자르는 View와 그림자를 받는 View를 나눈다. Android는 elevation으로 번지지 않는 그림자를 못 만들어 지금은 테두리만 보인다(후속 과제: 같은 모양의 `ink` 면을 뒤에 한 장 더 깐다).
 
 **The No-Blur Rule.** 떠 있는 것도 흐려지지 않는다. 시트 · 확인창 뒤판은 `overlay` 한 가지, 토스트는 먹색 블록, 탭 바와 하단 액션 바는 흰 면에 위쪽 2pt 선이다.
 
@@ -301,12 +303,12 @@ hardShadow: { s: { x: 2, y: 2 }, m: { x: 3, y: 3 } } // blur 0, 색은 ink. 누�
 
 ## Shapes
 
-- **6pt (`sm`):** 스티커, 라멘 종류 태그, 태그.
+- **6pt (`xs`):** 스티커, 라멘 종류 태그, 태그, 유틸리티 버튼.
 - **8pt (`md`):** 48pt 이하 썸네일, 지도 핀.
-- **12pt (`lg`):** 카드, 버튼, 사진, 입력칸, 아이콘 버튼(44pt 사각), 아바타, 세그먼트 컨트롤, 바텀시트 윗모서리, 확인창.
+- **12pt (`sm`, 시트와 확인창은 `lg`):** 카드, 버튼, 사진, 입력칸, 아이콘 버튼(44pt 사각), 아바타, 세그먼트 컨트롤, 바텀시트 윗모서리, 확인창.
 - **16pt (`xl`):** 작성 버튼(FAB)과 AI 큐레이터 배너 두 곳뿐.
 - **알약 (`pill`):** 필터 칩, 공감 · 댓글 버튼.
-- 카드 안에 카드를 넣지 않는다. 묶음이 필요하면 `hairline`과 여백으로 푼다.
+- 카드 안에 카드를 넣지 않는다. 묶음이 필요하면 `border`과 여백으로 푼다.
 - 굵은 색 세로줄을 쓰지 않는다. 메모 인용은 꾸미지 않은 본문으로 둔다.
 - 모든 Pressable의 터치 영역은 44×44pt 이상. 보이는 크기가 작으면 `hitSlop`이나 컨테이너로 넓힌다.
 
@@ -316,7 +318,7 @@ hardShadow: { s: { x: 2, y: 2 }, m: { x: 3, y: 3 } } // blur 0, 색은 ink. 누�
 
 ### 버튼
 
-- **primary:** 빨강 12pt 사각, 흰 글씨, 2pt 선, `s` 그림자, 높이 52pt. 한 화면에 하나.
+- **primary:** 빨강 12pt 사각, 흰 글씨, 2pt 선, `s` 그림자, 높이 52pt(`size="large"`, 기본은 50pt). 한 화면에 하나.
 - **secondary:** 먹색 면, 흰 글씨. 확인창의 비파괴 확인, 약관 시트의 "닫기"와 "확인하고 동의".
 - **outline(키):** 흰 면, 2pt 선, `s` 그림자, 높이 50pt. 매장 바로가기(전화 · 네이버 지도 · 캐치테이블 · 인스타그램), "가고 싶어요", 확인창의 "취소". 저장된 상태는 같은 흰 키에 빨강으로 채운 책갈피 + "저장됨".
 - **utility:** 그림자 없는 흰 면 + 1.5pt 선, 44pt. 계정 섹션의 "변경", 로그아웃 같은 보조 행동.
@@ -339,11 +341,11 @@ hardShadow: { s: { x: 2, y: 2 }, m: { x: 3, y: 3 } } // blur 0, 색은 ink. 누�
 
 - 필터·선택 칩은 흰 면 + 1.5pt 선 알약, 선택은 빨강 면 + 흰 글씨. 그림자는 없다. 선택 상태를 `accessibilityState.selected`로 알린다.
 - 라운지의 정렬(최신순 / 공감순)은 2pt 선으로 두른 12pt 사각 두 칸. 선택된 칸은 먹색 면 + 흰 글씨. 그림자는 없다.
-- 하단 탭: 흰 면 + 위쪽 2pt 먹선. 아이콘 22pt, 라벨 12pt 800, 비활성은 `ink`. 활성 탭은 빨강 12pt 블록(2pt 선 + `s` 그림자) 안에 흰 아이콘 · 라벨. 위쪽 빨강 막대는 없앤다. 키보드가 열리면 숨긴다.
+- 하단 탭: 흰 면 + 위쪽 2pt 먹선, 높이 52pt + 하단 inset(홈 인디케이터 쪽 8pt는 겹쳐 쓴다. 블록을 넣는다고 막대를 키우지 않는다). 아이콘 20pt, 라벨 12pt 800, 비활성은 `ink`. 활성 탭은 빨강 12pt 블록(2pt 선 + `s` 그림자) 안에 흰 아이콘 · 라벨. 위쪽 빨강 막대는 없앤다. 키보드가 열리면 숨긴다.
 
 ### 카드, 사진, 목록
 
-- 카드는 흰 면, 12pt, 2pt 먹선, 16pt 안쪽 여백, 그림자 없음. 카드 안에서 사진과 글씨 영역은 2pt 선으로 나누고, 글씨 영역 안의 줄은 `hairline`으로 나눈다.
+- 카드는 흰 면, 12pt, 2pt 먹선, 16pt 안쪽 여백, 그림자 없음. 카드 안에서 사진과 글씨 영역은 2pt 선으로 나누고, 글씨 영역 안의 줄은 `border`으로 나눈다.
 - 원격 사진은 `expo-image`, 고정 크기 컨테이너, cover 크롭. 로딩 중에는 `canvas-soft` 자리표시, 실패하거나 사진이 없으면 같은 크기에 아이콘과 짧은 문구. 자리를 접어 레이아웃이 튀지 않게 한다.
 - 목록 행 전체를 하나의 Pressable로 만든다. 행 안에 또 버튼을 넣지 않는다. VoiceOver 라벨에 이름·거리·영업 상태를 합친다.
 
@@ -378,7 +380,7 @@ hardShadow: { s: { x: 2, y: 2 }, m: { x: 3, y: 3 } } // blur 0, 색은 ink. 누�
 
 ### 화면별 패턴
 
-- **홈:** 미색 바탕. 헤더(12pt 사각 로고 · RAOTA) → 인사와 도입 문장(headline) → "이번 달 N그릇" 링크 → 빨강 AI 큐레이터 배너(16pt · 2pt 선 · `m` 그림자) → 스타일로 찾기(2pt 선 사진 + 라멘 종류 태그) → 오늘의 큐레이션(카드: 사진 + "오늘의 픽" 스티커 → 이름 · 종류 태그 · 소개 인용 · "AI가 요약했어요" · 영업 상태 한 줄) → 추천 라멘집(화면 끝까지 먹색 면, 1위는 흰 카드 + 노랑 순위, 2~5위는 흰 선으로 나눈 줄) → 라운지 새 라멘로그 → 가까운 라멘집(`hairline`으로 나눈 깔끔한 줄 + 종류 태그) → "지도에서 더 보기" 키. 같은 매장을 두 섹션에 반복하지 않는다. 비회원은 인사 대신 로그인·가입, 추천은 라멘로그·거리 기준.
+- **홈:** 미색 바탕. 헤더(12pt 사각 로고 · RAOTA) → 인사와 도입 문장(headline) → "이번 달 N그릇" 링크 → 빨강 AI 큐레이터 배너(16pt · 2pt 선 · `m` 그림자) → 스타일로 찾기(2pt 선 사진 + 라멘 종류 태그) → 오늘의 큐레이션(카드: 사진 + "오늘의 픽" 스티커 → 이름 · 종류 태그 · 소개 인용 · "AI가 요약했어요" · 영업 상태 한 줄) → 추천 라멘집(화면 끝까지 먹색 면, 1위는 흰 카드 + 노랑 순위, 2~5위는 흰 선으로 나눈 줄) → 라운지 새 라멘로그 → 가까운 라멘집(`border`으로 나눈 깔끔한 줄 + 종류 태그) → "지도에서 더 보기" 키. 같은 매장을 두 섹션에 반복하지 않는다. 비회원은 인사 대신 로그인·가입, 추천은 라멘로그·거리 기준.
 - **지도:** 검색창과 하단 퀵뷰는 흰 면 + 2pt 선(그림자 없음), 필터 칩은 1.5pt 선 알약, "목록으로 보기"와 현재 위치만 키(그림자 있음). 핀은 먹색 8pt 사각 + 흰 테두리, 선택된 핀은 빨강 + `s` 그림자. 지도 자체는 Apple 지도 그대로. 지역 · 메뉴 · 영업 중 필터는 위에 고정. Apple 지도(`react-native-maps`), 마커는 원장 매장, 선택하면 하단 퀵뷰와 동기화. 정렬은 거리(m 숫자)와 취향 일치도. 필터 결과가 없으면 지도와 목록 모두 빈 상태.
 - **매장 상세:** 사진(아래 2pt 먹선, 썸네일, 뒤로가기 · 저장은 흰 사각 버튼) → 영업 상태 · 거리 · 라멘로그 수 · 평점 한 줄 → 라멘 종류 태그 → 이름 · 지점(headline) → 특징 · 주소 → 태그 → 가게 소개 카드("AI가 요약했어요" 스티커) → 바로가기 키 네 개 → 혜택(흰 카드 두 칸) → 상세 정보(먹색 카드, 줄 사이는 흰색 18% 선) → 내 라멘로그. 하단 고정 바는 흰 면 + 위쪽 2pt 선 안에 [저장됨(흰 키) · 먹은 라멘 기록하기(빨강 키)]. 비어 있는 정보는 숨기거나 빈 상태.
 - **기록:** 가게 · 메뉴 · 라멘 종류 · 방문일 → **5축 평가** → 사진(선택, `expo-image-picker`) · 메모(선택) → 맛 태그(선택, 접힘) → 공개 여부. 하단 고정 저장 바. 작성 중 나가기는 확인창.
