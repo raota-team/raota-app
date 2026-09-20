@@ -4,14 +4,14 @@ import { useEffect, useState, type ComponentProps } from "react"
 import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native"
 
 import { AppText } from "@/src/components/ui"
-import { colors, line, radii, shadows, spacing } from "@/src/theme"
+import { colors, line, radii, spacing } from "@/src/theme"
 
 /*
  * MVP 탭: 홈 · 지도 · 라운지 · 마이 네 개. 라운지는 다른 사람들의 공개 라멘로그(공감 · 댓글 · 신고 · 숨기기)만 두고,
  * 커뮤니티 게시판과 라멘속보는 앱 MVP 범위 밖이다.
  * 탭 바는 TAB_ICONS에 있는 라우트만 그리고, 순서는 아래 Tabs.Screen 순서를 따른다. 이 폴더에 다른 화면 파일이 남아 있어도 탭으로 보이지 않는다.
  * 모양(네오 브루탈리즘 라이트): 흰 면, 위 2pt 먹선, 높이 52 + 하단 inset(홈 인디케이터 쪽 8pt는 겹쳐 쓴다),
- * 아이콘 20pt, 라벨 12pt. 활성 탭은 빨강 12pt 블록 + 2pt 먹선 + 번지지 않는 그림자(2pt). 키보드가 열리면 숨긴다.
+ * 아이콘 20pt, 라벨 12pt. 활성 탭은 빨강 12pt 블록 + 2pt 먹선. 키보드가 열리면 숨긴다.
  * 높이는 시스템 탭 바(49 + 34)와 비슷하게 유지한다. 블록을 넣는다고 막대를 키우지 않는다.
  */
 
@@ -133,7 +133,8 @@ const styles = StyleSheet.create({
     borderWidth: line.base,
     borderColor: colors.transparent,
   },
-  blockActive: { backgroundColor: colors.brand, borderColor: colors.outline, ...shadows.hardS },
+  // 그림자는 "키"라는 표시다. 선택은 빨강 면으로만 나타낸다(그림자를 쓰면 갈 곳이 평평해진다)
+  blockActive: { backgroundColor: colors.brand, borderColor: colors.outline },
   blockPressed: { backgroundColor: colors.canvasSoft },
   label: { fontWeight: "800", letterSpacing: -0.15, lineHeight: 14 },
 })

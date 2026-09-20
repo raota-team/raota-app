@@ -33,12 +33,16 @@ import { colors, line, radii, spacing } from "@/src/theme"
  * /taste/archive는 가장 최근 달, /taste/[reportId]는 그 달을 골라 연다.
  */
 
-/** 웹 MENU_CATEGORIES와 같은 색. 색만으로 구분하지 않도록 늘 이름·수치와 함께 쓴다 */
+/**
+ * 분포는 수량이라 빨강을 쓰지 않고 먹색 농도 한 벌로 칠한다(빨강은 누르는 곳과 고른 것 전용).
+ * 농도는 순위가 아니라 종류마다 고정이고, 막대에서 이웃끼리 3:1 넘게 갈리도록 섞어 놓았다.
+ * 색만으로 구분하지 않도록 늘 이름·수치와 함께 쓴다.
+ */
 export const MENU_CATEGORY_COLORS: Record<MenuCategoryName, { fill: string; text: string }> = {
-  돈코츠: { fill: colors.brand, text: colors.onDark },
+  돈코츠: { fill: colors.textMuted, text: colors.onDark },
   쇼유: { fill: colors.ink, text: colors.onDark },
   시오: { fill: colors.textFaint, text: colors.ink },
-  미소: { fill: colors.textMuted, text: colors.onDark },
+  미소: { fill: colors.inkSub, text: colors.onDark },
   기타: { fill: colors.border, text: colors.ink },
 }
 
@@ -481,8 +485,9 @@ function MonthDetail({
                 {canCompare ? (
                   <AppText
                     capScale
+                    // 늘고 줌은 수량이라 빨강 대신 굵기로 말한다(+/− 기호와 라벨이 방향을 읽어 준다)
                     style={[styles.colNum, styles.tabular, item.difference > 0 && styles.bold]}
-                    tone={item.difference > 0 ? "brand" : "sub"}
+                    tone={item.difference > 0 ? "ink" : "sub"}
                     variant="secondary"
                   >
                     {changeText}
@@ -579,7 +584,8 @@ const styles = StyleSheet.create({
   },
   divider: { height: 1, backgroundColor: colors.border, marginTop: spacing.x3, marginBottom: spacing.x3 },
   progressTrack: { height: 4, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden" },
-  progressFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
+  // 모인 그릇 수는 정보라서 채움은 빨강이 아니라 먹색이다(마이의 등급 막대와 같다)
+  progressFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.ink },
   linkRow: {
     minHeight: 44,
     marginTop: spacing.x4,

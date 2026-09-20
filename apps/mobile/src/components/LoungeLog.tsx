@@ -301,7 +301,6 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onM
         ) : null}
 
         <View style={styles.cardText}>
-          {/* 한 카드에 날짜는 하나만 둔다. 방문일은 접근성 라벨과 상세에 그대로 있다 */}
           <View style={styles.titleBlock}>
             <View style={styles.titleRow}>
               <AppText numberOfLines={2} style={styles.flex} variant="cardTitle">
@@ -309,6 +308,9 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onM
               </AppText>
               <RamenTypeTag type={log.ramenType} />
             </View>
+            <AppText capScale numberOfLines={1} tone="muted" variant="meta">
+              {`${visit} 방문`}
+            </AppText>
           </View>
 
           {summary ? (

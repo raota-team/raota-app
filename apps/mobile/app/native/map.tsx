@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   controlButton: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center", borderRadius: radii.sm },
   controlPressed: { backgroundColor: colors.canvasSoft },
 
-  // 핀: 먹색 8pt 사각 + 흰 2pt 테두리. 고른 핀은 빨강 + 2pt 먹선 + 번지지 않는 그림자
+  // 핀: 먹색 8pt 사각 + 흰 2pt 테두리. 고른 핀은 빨강 + 2pt 먹선(그림자는 "키"에만 쓴다)
   cluster: {
     minWidth: 32,
     height: 32,
@@ -286,11 +286,10 @@ const styles = StyleSheet.create({
     borderColor: colors.onDark,
     backgroundColor: colors.ink,
   },
-  clusterSelected: { borderColor: colors.outline, backgroundColor: colors.brand, ...shadows.hardS },
+  clusterSelected: { borderColor: colors.outline, backgroundColor: colors.brand },
   clusterText: { fontWeight: "800", fontVariant: ["tabular-nums"] },
 
-  // 고른 핀의 그림자가 마커 스냅샷에서 잘리지 않도록 오른쪽·아래에 2pt를 비워 둔다
-  pin: { alignItems: "center", paddingRight: line.base, paddingBottom: line.base },
+  pin: { alignItems: "center" },
   pinCircle: {
     width: 32,
     height: 32,
@@ -302,7 +301,7 @@ const styles = StyleSheet.create({
     borderColor: colors.onDark,
     backgroundColor: colors.ink,
   },
-  pinCircleSelected: { width: 40, height: 40, padding: 6, borderColor: colors.outline, backgroundColor: colors.brand, ...shadows.hardS },
+  pinCircleSelected: { width: 40, height: 40, padding: 6, borderColor: colors.outline, backgroundColor: colors.brand },
   pinLogo: { width: "100%", height: "100%", resizeMode: "contain", tintColor: colors.onDark },
   pinLabel: {
     marginTop: 3,
