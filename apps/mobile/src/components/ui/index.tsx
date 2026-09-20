@@ -460,12 +460,36 @@ export function Sticker({ label, tone = "yolk", icon, style, ...props }: Sticker
  * 흰 태그로 그려서, 사용자가 "이 종류로 기록할 수 있겠다"고 오해하지 않게 한다.
  * RAMEN_TYPES에 토리파이탄을 넣으려면 서버 명세의 RamenType부터 함께 바꿔야 한다(DESIGN.md 참고).
  */
-export function RamenTypeTag({ type, style }: { type: string; style?: StyleProp<ViewStyle> }) {
+export function RamenTypeTag({ type, inList = false, style }: RamenTypeTagProps) {
   const label = type.replace(/\s*라멘$/, "").trim()
   // 종류가 비었거나 그냥 "라멘"(원장에 없는 가게의 기본값)이면 알려 주는 것이 없으므로 그리지 않는다
   if (!label) return null
-  if (!RAMEN_TYPES.includes(label)) return <Tag label={label} style={style} />
+  const recordable = RAMEN_TYPES.includes(label)
+  // 줄이 이어지는 목록에서는 굵은 먹색 글씨로 쓴다. 줄마다 노랑이 반복되면 노랑이 신호를 잃는다.
+  // 기록할 수 없는 종류는 목록에서도 보통 굵기 보조 글씨로 두어 구분을 남긴다
+  if (inList) {
+    return (
+      <AppText
+        accessibilityLabel={`라멘 종류 ${label}`}
+        capScale
+        numberOfLines={1}
+        style={[recordable ? styles.typeInList : styles.typeInListOther, style as StyleProp<TextStyle>]}
+        tone={recordable ? "ink" : "sub"}
+        variant="meta"
+      >
+        {label}
+      </AppText>
+    )
+  }
+  if (!recordable) return <Tag label={label} style={style} />
   return <Sticker accessibilityLabel={`라멘 종류 ${label}`} label={label} style={style} />
+}
+
+export interface RamenTypeTagProps {
+  type: string
+  /** 여러 줄이 이어지는 목록 안이면 true. 노랑 스티커 대신 굵은 먹색 글씨로 나온다 */
+  inList?: boolean
+  style?: StyleProp<ViewStyle>
 }
 
 export interface ScoreSegmentProps {
@@ -1015,6 +1039,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
   },
   stickerInk: { backgroundColor: colors.ink },
+  // 목록 줄의 라멘 종류. 스티커와 같은 12pt 800이되 면 없이 먹색 글씨만
+  typeInList: { fontWeight: "800", flexShrink: 0 },
+  typeInListOther: { fontWeight: "600", flexShrink: 0 },
   stickerText: { fontWeight: "800" },
   scoreHead: {
     flexDirection: "row",

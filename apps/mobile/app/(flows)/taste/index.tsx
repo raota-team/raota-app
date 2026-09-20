@@ -34,7 +34,6 @@ import {
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, radii, spacing } from "@/src/theme"
-import { MENU_CATEGORY_COLORS } from "./archive"
 
 /*
  * 취향 종합 리포트. 웹 TasteDetailScreen과 같은 구성이다.
@@ -645,10 +644,11 @@ export default function TasteReportScreen() {
                     return (
                       <View accessibilityLabel={`${name} ${count}그릇, ${pct}%`} accessible key={name} style={styles.typeRow}>
                         <View style={styles.typeName}>
-                          <RamenTypeTag type={name} />
+                          {/* 다섯 줄이 이어지는 목록이라 종류는 굵은 먹색 글씨로 쓴다(노랑 스티커는 줄무늬가 된다) */}
+                          <RamenTypeTag inList type={name} />
                         </View>
                         <View style={[styles.track, styles.trackThick]}>
-                          <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: MENU_CATEGORY_COLORS[name].fill }]} />
+                          <View style={[styles.trackFill, styles.typeFill, { width: `${pct}%` }]} />
                         </View>
                         <AppText capScale style={[styles.typeValue, styles.tabular]} tone="sub" variant="secondary">
                           <AppText capScale variant="secondary" style={styles.heavy}>
@@ -682,8 +682,14 @@ export default function TasteReportScreen() {
                           onPress={() => openShop(shop)}
                           style={({ pressed }) => [styles.listRow, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
                         >
-                          {/* 순위는 사진 위에 얹지 않고 줄 맨 앞에 둔다. 홈의 추천 순위와 같은 노랑 스티커다 */}
-                          <Sticker label={String(index + 1)} style={styles.rankBadge} />
+                          {/* 순위는 사진 위에 얹지 않고 줄 맨 앞에 둔다. 노랑은 1위 하나뿐이고 2·3위는 굵은 먹색 숫자다(홈 추천 순위와 같은 규칙) */}
+                          {index === 0 ? (
+                            <Sticker label="1" style={styles.rankBadge} />
+                          ) : (
+                            <AppText capScale style={styles.rankNumber} variant="cardTitle">
+                              {index + 1}
+                            </AppText>
+                          )}
                           <View style={styles.thumb}>
                             {visit.photo ? (
                               <Image contentFit="cover" source={{ uri: visit.photo }} style={styles.thumbImage} transition={150} />
@@ -880,9 +886,12 @@ const styles = StyleSheet.create({
   axisScore: { width: 30, textAlign: "right" },
   axisLean: { width: 64, textAlign: "right" },
   track: { flex: 1, height: 6, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden" },
-  // 옅은 데이터 색("기타")도 읽히도록 흰 면 + 1.5pt 먹선으로 두른다(월별 취향 변화의 막대와 같은 모양)
+  // 흰 면 + 1.5pt 먹선으로 두른 칸. 월별 취향 변화(아카이브)의 막대와 같은 모양이다
   trackThick: { height: 12, backgroundColor: colors.canvas, borderWidth: line.thin, borderColor: colors.outline },
+  // 빨강은 5축 점수에만 쓴다. 그릇 수는 행동이 아니므로 아래 typeFill이 먹색으로 덮는다
   trackFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
+  // 종류별 분포는 "많다/적다"라서 색으로 순위를 말하지 않는다. 다섯 줄 모두 같은 먹색이고 값은 옆의 "14그릇 · 33%"가 읽어 준다
+  typeFill: { backgroundColor: colors.ink },
   typeList: { marginTop: spacing.x4, gap: spacing.x3 },
   typeRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
   typeName: { width: 60 },
@@ -908,6 +917,8 @@ const styles = StyleSheet.create({
   thumbImage: { width: "100%", height: "100%" },
   // 1·2·3의 글자 폭이 달라도 썸네일 줄이 맞도록 최소 폭을 준다
   rankBadge: { alignSelf: "center", minWidth: 28, justifyContent: "center" },
+  // 2·3위 숫자. 1위 스티커와 같은 28pt 칸이라 썸네일이 한 줄로 선다
+  rankNumber: { width: 28, textAlign: "center", fontVariant: ["tabular-nums"] },
   fallbackBox: {
     backgroundColor: colors.canvas,
     borderColor: colors.outline,

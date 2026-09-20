@@ -114,7 +114,8 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
           {shop.spec || shop.style}
         </AppText>
         <View style={styles.rowMeta}>
-          {shop.ramenType ? <RamenTypeTag type={shop.ramenType} /> : null}
+          {/* 결과가 줄로 이어지는 목록이라 종류는 굵은 먹색 글씨로 쓴다(줄마다 노랑이면 줄무늬가 된다) */}
+          {shop.ramenType ? <RamenTypeTag inList type={shop.ramenType} /> : null}
           <AppText capScale style={styles.bold} variant="meta">
             {shop.distance}
           </AppText>
@@ -437,6 +438,6 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1, minWidth: 0 },
   rowTitle: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1_5 },
   rowSpec: { marginTop: spacing.x0_5 },
-  // 종류 태그가 붙어 좁은 폭에서 넘칠 수 있어 줄바꿈을 허용한다
+  // 종류·거리·영업 상태가 한 줄에 붙어 좁은 폭에서 넘칠 수 있어 줄바꿈을 허용한다
   rowMeta: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.x2, marginTop: spacing.x1 },
 })

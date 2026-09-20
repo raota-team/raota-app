@@ -63,8 +63,13 @@ const RECENT_VISIBLE_ROWS = 5
 /** 줄 높이: 썸네일 48 + 위아래 12 */
 const RECENT_ROW_HEIGHT = 72
 
-/** 1·2·3·4그릇 이상. 가장 옅은 칸도 미색 바탕에서 읽혀야 한다(옛 0.25는 대비 1.3:1로 보이지 않았다) */
-const LEVEL_OPACITY = [0.45, 0.62, 0.8, 1]
+/**
+ * 1·2·3·4그릇 이상. 수량은 빨강이 아니라 먹색 농도로 말한다(빨강은 누르는 곳과 고른 것 전용).
+ * 가장 옅은 0.4도 빈 칸(canvasSoft)과 2.3:1로 갈린다(옛 0.25는 1.3:1로 보이지 않았다).
+ */
+const LEVEL_OPACITY = [0.4, 0.6, 0.8, 1]
+/** 칸 색 단계의 이름. 범례와 요약 라벨이 같은 말을 쓰도록 한곳에 둔다 */
+const LEVEL_LABELS = ["1그릇", "2그릇", "3그릇", "4그릇 이상"]
 const CELL = 12
 const CELL_GAP = 3
 
@@ -99,18 +104,21 @@ function buildCalendar(bowls: DemoBowl[], start: string, end: string) {
   const weeks: CalendarDay[][] = []
   const monthLabels: { week: number; label: string }[] = []
   let total = 0
+  // 칸 색과 같은 단계로 "며칠이 몇 그릇이었는지"를 센다. 수량이 색으로만 읽히지 않게 요약 라벨에 붙인다
+  const levelDays = LEVEL_OPACITY.map(() => 0)
   for (let day = addDays(start, -weekdayOf(start)); day <= end; day = addDays(day, 1)) {
     if (weekdayOf(day) === 0) weeks.push([])
     const inRange = day >= start
     const count = inRange ? (counts.get(day) ?? 0) : 0
     total += count
+    if (count > 0) levelDays[Math.min(4, count) - 1]++
     weeks[weeks.length - 1].push({ date: day, count, inRange })
     if (inRange && (day === start || day.endsWith("-01"))) {
       const week = weeks.length - 1
       if (!monthLabels.some((item) => item.week >= week - 2)) monthLabels.push({ week, label: `${Number(day.slice(5, 7))}월` })
     }
   }
-  return { weeks, monthLabels, total }
+  return { weeks, monthLabels, total, levelDays }
 }
 
 /** 약관 전문은 시트가 아니라 별도 화면(스와이프 뒤로가기)으로 연다 */
@@ -216,6 +224,11 @@ function MemberView() {
     const end = `${period}-12-31` < today ? `${period}-12-31` : today
     return buildCalendar(bowls, `${period}-01-01`, end)
   }, [bowls, period, today])
+  // 기록이 있는 단계만 읽어 준다("1그릇 8일, 2그릇 3일")
+  const levelSummary = calendar.levelDays
+    .map((days, index) => (days > 0 ? `${LEVEL_LABELS[index]} ${days}일` : null))
+    .filter(Boolean)
+    .join(", ")
 
   const hasMoreRecent = recentLimit < bowls.length
   // TODO(API): 서버 목록 조회(커서 페이지)로 바꾸면 여기서 다음 페이지를 요청한다
@@ -428,7 +441,7 @@ function MemberView() {
                   ))}
                 </ScrollView>
                 <View
-                  accessibilityLabel={`${periodLabel} ${calendar.total}그릇 기록${streak > 1 ? `, 최장 ${streak}일 연속` : ""}`}
+                  accessibilityLabel={`${periodLabel} ${calendar.total}그릇 기록${streak > 1 ? `, 최장 ${streak}일 연속` : ""}${levelSummary ? `, ${levelSummary}` : ""}`}
                   accessibilityRole="image"
                   accessible
                   style={styles.calendar}
@@ -472,7 +485,7 @@ function MemberView() {
                                   !day.inRange
                                     ? styles.cellOut
                                     : day.count > 0
-                                      ? { backgroundColor: colors.brand, opacity: LEVEL_OPACITY[Math.min(4, day.count) - 1] }
+                                      ? { backgroundColor: colors.ink, opacity: LEVEL_OPACITY[Math.min(4, day.count) - 1] }
                                       : null,
                                 ]}
                               />
@@ -491,7 +504,7 @@ function MemberView() {
                     {streak > 1 ? ` · 최장 ${streak}일 연속` : ""}
                   </AppText>
                   <View
-                    accessibilityLabel="범례. 왼쪽부터 기록 없음, 1그릇, 2그릇, 3그릇, 4그릇 이상"
+                    accessibilityLabel={`범례. 왼쪽부터 기록 없음, ${LEVEL_LABELS.join(", ")}`}
                     accessible
                     style={[styles.rowGap, styles.legend]}
                   >
@@ -500,7 +513,7 @@ function MemberView() {
                     </AppText>
                     <View style={[styles.swatch, styles.cellEmpty]} />
                     {LEVEL_OPACITY.map((opacity) => (
-                      <View key={opacity} style={[styles.swatch, { backgroundColor: colors.brand, opacity }]} />
+                      <View key={opacity} style={[styles.swatch, { backgroundColor: colors.ink, opacity }]} />
                     ))}
                     <AppText capScale tone="sub" variant="meta">
                       많음
@@ -550,7 +563,7 @@ function MemberView() {
                           {log.shop?.branch ? <AppText tone="sub" variant="secondary">{` ${log.shop.branch}`}</AppText> : null}
                         </AppText>
                         <View style={styles.rowGap}>
-                          {log.type ? <RamenTypeTag type={log.type} /> : null}
+                          {log.type ? <RamenTypeTag inList type={log.type} /> : null}
                           <AppText numberOfLines={1} style={styles.shrink} tone="sub" variant="secondary">
                             {log.menu}
                           </AppText>
@@ -655,7 +668,7 @@ function MemberView() {
                             {visit.visitCount >= 3 ? <Tag label="단골" /> : null}
                           </View>
                           <View style={styles.rowGap}>
-                            <RamenTypeTag type={visit.style} />
+                            <RamenTypeTag inList type={visit.style} />
                             <AppText numberOfLines={1} style={styles.shrink} tone="sub" variant="secondary">
                               {visit.topMenu}
                             </AppText>

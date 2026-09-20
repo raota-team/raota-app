@@ -727,7 +727,8 @@ export default function HomeScreen() {
                       </View>
                       {catalog.style || catalog.spec ? (
                         <View style={styles.typeLine}>
-                          {catalog.style ? <RamenTypeTag type={catalog.style} /> : null}
+                          {/* 줄이 다섯 개 이어지는 목록이라 종류는 굵은 먹색 글씨로 쓴다. 노랑은 오늘의 픽·스타일 타일 쪽에 남겨 둔다 */}
+                          {catalog.style ? <RamenTypeTag inList style={styles.typeName} type={catalog.style} /> : null}
                           {catalog.spec ? (
                             <AppText capScale numberOfLines={1} style={styles.flexShrink} tone="muted" variant="secondary">
                               {catalog.spec}
@@ -960,6 +961,8 @@ const styles = StyleSheet.create({
   rowDivider: { borderTopWidth: 1, borderTopColor: colors.border },
   thumb: { borderWidth: line.base, borderColor: colors.outline },
   typeLine: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
+  // 좁은 폭에서 줄어들 것은 한 줄 특징 쪽이다. 종류가 "시…"로 잘리면 읽을 수 없다
+  typeName: { flexShrink: 0 },
   rowBody: { flex: 1, minWidth: 0 },
   nameLine: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1_5, minWidth: 0 },
   branch: { fontWeight: "700", flexShrink: 0 },
