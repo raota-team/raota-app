@@ -58,7 +58,7 @@
         {
           "image": "./assets/images/logo.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#FFF8EA"
         }
       ],
       "expo-secure-store"

@@ -479,7 +479,7 @@ hardShadow: { s: { x: 2, y: 2 }, m: { x: 3, y: 3 } } // blur 0, 색은 ink. 누�
 
 | 위치 | 지금 | 맞출 값 |
 |---|---|---|
-| `app/**` 화면 21개 파일 | ~~hex 직접 사용~~ 2026-09-20 정리 완료(남은 hex는 로그인의 제공자 브랜드 색뿐) | `src/theme` 토큰 |
+| `app/**` 화면 21개 파일 | ~~hex 직접 사용~~ 2026-09-20 정리 완료. 남은 hex는 로그인의 제공자 브랜드 색과 웹 셸(`app/+html.tsx`)뿐 | `src/theme` 토큰 |
 | 기록 작성(`record/new`) | 맛 태그 필수, 5축 없음 | 5축 필수 + 태그 선택(웹 `RecordScreen` 기준) |
 | 취향 리포트(`taste/*`), `TasteReport` 모델 | 옛 5축(국물 농도·염도·타레·오일) | `TASTE_AXES`, `mergeProfile`, `PAST_REPORTS` |
 | 마이(`native/my.tsx`, 약 3,000줄) | 자체 계산 수치 | 원장 파생(`shopVisitsOf`, `tasteIdentity`, `longestStreak`) |
