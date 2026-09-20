@@ -907,10 +907,12 @@ export default function NewRecordScreen() {
             // 공용 Button은 disabled를 늘 Pressable에 넘겨 accessibilityState.disabled를 덮으므로,
             // "누를 수 있지만 미완성"을 알리려고 같은 모양의 버튼을 여기서 그린다.
             <Pressable
-              accessibilityHint={isComplete ? undefined : "빠진 첫 항목으로 이동해요"}
+              accessibilityHint={isComplete ? undefined : "누르면 빠진 첫 항목으로 이동해요"}
               accessibilityLabel={isComplete ? "기록 저장하기" : `기록 저장하기, 남은 필수 ${missing.length}개`}
               accessibilityRole="button"
-              accessibilityState={{ disabled: !isComplete, busy: saving }}
+              // 미완성이어도 실제로 눌리는 버튼이다(빠진 항목으로 데려다준다).
+              // disabled를 주면 VoiceOver가 "흐림"으로 읽어 이 길이 화면을 못 보는 사용자에게만 닫힌다
+              accessibilityState={{ busy: saving }}
               onPress={() => void save()}
               style={({ pressed }) => [
                 styles.saveButton,
@@ -922,7 +924,7 @@ export default function NewRecordScreen() {
               <AppText
                 capScale
                 numberOfLines={1}
-                tone={!isComplete && !saving ? "muted" : "onDark"}
+                tone="onDark"
                 variant="bodyStrong"
               >
                 {saving ? "저장하는 중…" : isComplete ? "기록 저장하기" : `남은 필수 ${missing.length}개 보러 가기`}
@@ -1109,7 +1111,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x6,
     ...shadows.hardS,
   },
-  saveButtonIncomplete: { backgroundColor: colors.canvasSoft },
+  // 아직 못 저장하지만 누르면 빠진 항목으로 데려다준다. 빨강 면으로 목적지를 보이게 두고 그림자만 뺀다
+  saveButtonIncomplete: { shadowOpacity: 0 },
   // 누르면 그림자 속으로 들어간다
   saveButtonPressed: pressInto(2),
 })
