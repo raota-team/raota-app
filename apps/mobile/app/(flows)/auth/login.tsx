@@ -118,7 +118,8 @@ function LegalLink({ doc, label }: { doc: "terms" | "privacy"; label: string }) 
   return (
     <Pressable
       accessibilityRole="link"
-      hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }}
+      // 글씨 높이가 17pt라 위아래로 14pt씩 넓혀야 44pt가 된다
+      hitSlop={{ top: 14, bottom: 14, left: 8, right: 8 }}
       onPress={() => router.push({ pathname: "/legal/[doc]", params: { doc } })}
       style={({ pressed }) => pressed && styles.pressed}
     >

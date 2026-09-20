@@ -63,7 +63,8 @@ const RECENT_VISIBLE_ROWS = 5
 /** 줄 높이: 썸네일 48 + 위아래 12 */
 const RECENT_ROW_HEIGHT = 72
 
-const LEVEL_OPACITY = [0.25, 0.45, 0.7, 1]
+/** 1·2·3·4그릇 이상. 가장 옅은 칸도 미색 바탕에서 읽혀야 한다(옛 0.25는 대비 1.3:1로 보이지 않았다) */
+const LEVEL_OPACITY = [0.45, 0.62, 0.8, 1]
 const CELL = 12
 const CELL_GAP = 3
 
@@ -488,7 +489,11 @@ function MemberView() {
                     </AppText>
                     {streak > 1 ? ` · 최장 ${streak}일 연속` : ""}
                   </AppText>
-                  <View accessibilityLabel="색이 진할수록 그날 기록이 많아요" accessible style={[styles.rowGap, styles.legend]}>
+                  <View
+                    accessibilityLabel="범례. 왼쪽부터 기록 없음, 1그릇, 2그릇, 3그릇, 4그릇 이상"
+                    accessible
+                    style={[styles.rowGap, styles.legend]}
+                  >
                     <AppText capScale tone="sub" variant="meta">
                       적음
                     </AppText>
