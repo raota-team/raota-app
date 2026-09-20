@@ -4,6 +4,7 @@ import { ArrowRight, Check, ChevronLeft, ChevronRight, Minus, PenLine, RotateCcw
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
   AccessibilityInfo,
+  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -13,13 +14,12 @@ import {
   findNodeHandle,
   useWindowDimensions,
 } from "react-native"
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
-import Svg, { Circle } from "react-native-svg"
+import { useReducedMotion } from "react-native-reanimated"
 
 import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, Button, Header, IconButton, RamenTypeTag, Screen, StickyActionBar, Tag } from "@/src/components/ui"
+import { AppText, Button, Header, IconButton, RamenTypeTag, Screen, Sticker, StickyActionBar, Tag } from "@/src/components/ui"
 import { useShops } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -540,19 +540,49 @@ function RestartButton({ onPress }: { onPress: () => void }) {
   )
 }
 
+/** 사각 트랙의 칸 수. LOADING_DURATION을 이 수로 나눠 한 칸씩 툭툭 채운다 */
+const TRACK_SLOTS = 12
+
+/**
+ * 식권 발매기 판 위의 사각 트랙. 4×4 격자의 바깥 12칸을 왼쪽 위에서 시계 방향으로 돌려준다.
+ * 가운데 2×2는 로고 자리로 비워 둔다.
+ */
+function trackSlots(size: number) {
+  const pad = 10
+  const gap = 8
+  const slot = (size - line.base * 2 - pad * 2 - gap * 3) / 4
+  const at = (index: number) => pad + index * (slot + gap)
+  const cells: Array<[number, number]> = [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [3, 0],
+    [3, 1],
+    [3, 2],
+    [3, 3],
+    [2, 3],
+    [1, 3],
+    [0, 3],
+    [0, 2],
+    [0, 1],
+  ]
+  return { slot, positions: cells.map(([col, row]) => ({ left: at(col), top: at(row) })) }
+}
+
 /** 웹 AICurationLoading과 같은 차분한 로딩. 실제로 반영된 조건만 보여준다 */
 function CurationLoading({ conditions, onBack, onComplete }: { conditions: string[]; onBack: () => void; onComplete: () => void }) {
   const { height } = useWindowDimensions()
+  const reducedMotion = useReducedMotion()
   const [stage, setStage] = useState(0)
+  const [filled, setFilled] = useState(0)
   const titleRef = useRef<View>(null)
-  const rotation = useSharedValue(0)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
   const complete = stage === 3
   const size = height < 700 ? 200 : 260
+  const track = useMemo(() => trackSlots(size), [size])
 
   useEffect(() => {
-    rotation.value = withTiming(360, { duration: LOADING_DURATION, easing: Easing.bezier(0.45, 0, 0.2, 1) })
     const timers = [
       setTimeout(() => setStage(1), LOADING_DURATION / 3),
       setTimeout(() => setStage(2), (LOADING_DURATION * 2) / 3),
@@ -564,9 +594,21 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
       timers.forEach(clearTimeout)
       clearTimeout(focus)
     }
-  }, [rotation])
+  }, [])
 
-  const orbitStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }))
+  // 트랙은 한 칸씩 툭툭 찍힌다. Reduce Motion이면 움직임 없이 처음부터 다 채운 상태로 둔다
+  useEffect(() => {
+    if (reducedMotion) {
+      setFilled(TRACK_SLOTS)
+      return
+    }
+    const ticks = Array.from({ length: TRACK_SLOTS }, (_, index) =>
+      setTimeout(() => setFilled(index + 1), ((index + 1) * LOADING_DURATION) / TRACK_SLOTS),
+    )
+    return () => ticks.forEach(clearTimeout)
+  }, [reducedMotion])
+
+  const filledCount = complete ? TRACK_SLOTS : filled
   const message = useMemo(() => LOADING_MESSAGES[stage], [stage])
 
   return (
@@ -587,43 +629,26 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
           {conditions.length ? conditions.join(" · ") : "전체 라멘집에서 골라요"}
         </AppText>
 
+        {/* 식권 발매기 판: 2pt 먹선 사각 트랙을 빨강 블록이 한 칸씩 채워 나가고 가운데에 로고가 선다 */}
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.visual, { width: size, height: size }]}>
-          <Svg height={size} style={StyleSheet.absoluteFill} viewBox="0 0 280 280" width={size}>
-            <Circle cx="140" cy="140" fill="none" r="87" stroke={colors.border} strokeWidth="1" />
-            {complete ? (
-              <Circle cx="140" cy="140" fill="none" r="87" stroke={colors.brand} strokeWidth="2" />
-            ) : null}
-          </Svg>
-          {complete ? null : (
-            <Animated.View style={[StyleSheet.absoluteFill, orbitStyle]}>
-              <Svg height={size} viewBox="0 0 280 280" width={size}>
-                {/* 원의 경로는 3시 방향에서 시작한다. 4분의 3 둘레만큼 밀어 12시(점 위치)에서 시작하게 한다 */}
-                <Circle
-                  cx="140"
-                  cy="140"
-                  fill="none"
-                  r="87"
-                  stroke={colors.brand}
-                  strokeDasharray="90 547"
-                  strokeDashoffset={-410}
-                  strokeLinecap="round"
-                  strokeWidth="2"
-                />
-                <Circle cx="140" cy="53" fill={colors.brand} r="3" />
-              </Svg>
-            </Animated.View>
-          )}
-          <View style={[styles.core, { width: size * 0.46, height: size * 0.46 }]}>
-            <Animated.Image
-              source={require("@/assets/images/logo.png")}
-              style={{ width: size * 0.4, height: size * 0.4, resizeMode: "contain" }}
-            />
-            {complete ? (
-              <View style={styles.coreCheck}>
-                <Check color={colors.onDark} size={18} />
-              </View>
-            ) : null}
+          <View style={[styles.board, { width: size, height: size }]}>
+            {track.positions.map((position, index) => (
+              <View
+                key={`${position.left}-${position.top}`}
+                style={[
+                  styles.slot,
+                  { width: track.slot, height: track.slot, left: position.left, top: position.top },
+                  index < filledCount && styles.slotFilled,
+                ]}
+              />
+            ))}
+            <Image resizeMode="contain" source={require("@/assets/images/logo.png")} style={{ width: size * 0.4, height: size * 0.4 }} />
           </View>
+          {complete ? (
+            <View style={styles.boardSticker}>
+              <Sticker icon={<Check color={colors.ink} size={12} />} label="찾았어요" style={styles.centerSelf} />
+            </View>
+          ) : null}
         </View>
 
         <View accessibilityLiveRegion="polite" style={styles.statusLine}>
@@ -765,18 +790,28 @@ const styles = StyleSheet.create({
   loadingBody: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
   loadingConditions: { marginTop: spacing.x3, maxWidth: 280 },
   visual: { alignItems: "center", justifyContent: "center", marginVertical: spacing.x6 },
-  core: { alignItems: "center", justifyContent: "center", borderRadius: radii.pill, backgroundColor: colors.brandWeak },
-  coreCheck: {
-    position: "absolute",
-    right: 0,
-    bottom: spacing.x1,
-    width: 32,
-    height: 32,
-    borderRadius: radii.pill,
+  // 발매기 판: 흰 면 + 2pt 먹선 + 12pt. 누를 수 없으니 그림자는 없다
+  board: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.brand,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
   },
+  // 트랙 칸: 맛 평가 미터 칸과 같은 1.5pt 먹선 + 6pt. 채워지면 단색 빨강
+  slot: {
+    position: "absolute",
+    borderRadius: radii.xs,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
+  },
+  slotFilled: { backgroundColor: colors.brand },
+  // 다 찾은 순간에만 붙는 노랑 스티커. 판 아래 선에 걸쳐 놓는다
+  boardSticker: { position: "absolute", left: 0, right: 0, bottom: -13, alignItems: "center" },
+  // Sticker는 기본이 flex-start라 가운데로 놓으려면 직접 덮어써야 한다
+  centerSelf: { alignSelf: "center" },
   statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: 24 },
   statusDot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
   loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingTop: spacing.x2, paddingBottom: spacing.x6 },

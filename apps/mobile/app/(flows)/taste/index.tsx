@@ -4,15 +4,9 @@ import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import { ArrowRight, Check, PenLine, RotateCw, Share2 } from "lucide-react-native"
 import { Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native"
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated"
+import { useReducedMotion } from "react-native-reanimated"
 import { SafeAreaView } from "react-native-safe-area-context"
-import Svg, { Circle, Line, Polygon, Text as SvgText } from "react-native-svg"
+import Svg, { Circle, Line, Polygon, Rect, Text as SvgText } from "react-native-svg"
 
 import {
   MENU_CATEGORY_NAMES,
@@ -294,6 +288,10 @@ const STATUS_MESSAGES = [
 const LOADING_SIZE = 260
 const LOADING_CENTER = 130
 const LOADING_RADIUS = 76
+/** 단계마다 한 칸씩 또렷하게 커진다. 천천히 자라지 않고 네 번에 끊어 놓는다 */
+const LOADING_SCALES = [0.32, 0.56, 0.8, 1]
+/** 지금 보고 있는 축을 짚는 노랑 블록의 한 변 */
+const AXIS_MARK = 18
 
 function TasteReportLoading({
   recordCount,
@@ -308,12 +306,10 @@ function TasteReportLoading({
 }) {
   const [stage, setStage] = useState(0)
   const complete = stage === 3
-  const grow = useSharedValue(0.28)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
 
   useEffect(() => {
-    grow.value = withTiming(1, { duration: LOADING_DURATION, easing: Easing.out(Easing.cubic) })
     const timers = [
       setTimeout(() => setStage(1), LOADING_DURATION / 3),
       setTimeout(() => setStage(2), (LOADING_DURATION * 2) / 3),
@@ -321,10 +317,12 @@ function TasteReportLoading({
       setTimeout(() => onCompleteRef.current(), LOADING_DURATION + 500),
     ]
     return () => timers.forEach(clearTimeout)
-  }, [grow])
+  }, [])
 
-  const shapeStyle = useAnimatedStyle(() => ({ transform: [{ scale: grow.value }] }))
+  // 화면을 키우는 대신 꼭짓점 자체를 단계마다 늘린다. 판을 확대하면 2pt 먹선까지 같이 얇아진다
+  const scale = LOADING_SCALES[stage]
   const activeAxis = complete ? -1 : [0, 1, 3][stage]
+  const activeTip = activeAxis >= 0 ? radarPoint(activeAxis, 1, LOADING_CENTER, LOADING_RADIUS) : null
   const labelPos = [
     { x: 130, y: 40 },
     { x: 222, y: 90 },
@@ -345,27 +343,56 @@ function TasteReportLoading({
           기록한 {recordCount}그릇을 바탕으로 분석해요
         </AppText>
         <View accessible={false} importantForAccessibility="no-hide-descendants" style={styles.loadingRadar}>
-          <Svg height={LOADING_SIZE} style={StyleSheet.absoluteFill} width={LOADING_SIZE}>
-            {[0.33, 0.66, 1].map((level) => (
+          <Svg height={LOADING_SIZE} width={LOADING_SIZE}>
+            {/* 바깥 오각형은 2pt 먹선으로 두른 흰 면, 안쪽 눈금과 축은 1.5pt 보조선 */}
+            <Polygon
+              fill={colors.canvas}
+              points={pointsOf([1, 1, 1, 1, 1], LOADING_CENTER, LOADING_RADIUS)}
+              stroke={colors.outline}
+              strokeLinejoin="round"
+              strokeWidth={line.base}
+            />
+            {[0.33, 0.66].map((level) => (
               <Polygon
-                fill={level === 0.33 ? colors.brandWeak : "none"}
+                fill="none"
                 key={level}
                 points={pointsOf([level, level, level, level, level], LOADING_CENTER, LOADING_RADIUS)}
-                stroke={colors.border}
-                strokeWidth={1}
+                stroke={colors.outline}
+                strokeLinejoin="round"
+                strokeWidth={line.thin}
               />
             ))}
             {[0, 1, 2, 3, 4].map((index) => {
               const p = radarPoint(index, 1, LOADING_CENTER, LOADING_RADIUS)
               return (
-                <Line key={index} stroke={colors.border} strokeWidth={1} x1={LOADING_CENTER} x2={p.x} y1={LOADING_CENTER} y2={p.y} />
+                <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={LOADING_CENTER} x2={p.x} y1={LOADING_CENTER} y2={p.y} />
               )
             })}
+            <Polygon
+              fill={colors.brand}
+              points={pointsOf(metrics.map((metric) => metric.myVal * scale), LOADING_CENTER, LOADING_RADIUS)}
+              stroke={colors.outline}
+              strokeLinejoin="round"
+              strokeWidth={line.base}
+            />
+            {/* 지금 보고 있는 축은 노랑 블록으로 짚는다 */}
+            {activeTip ? (
+              <Rect
+                fill={colors.yolk}
+                height={AXIS_MARK}
+                rx={radii.xs}
+                stroke={colors.outline}
+                strokeWidth={line.thin}
+                width={AXIS_MARK}
+                x={activeTip.x - AXIS_MARK / 2}
+                y={activeTip.y - AXIS_MARK / 2}
+              />
+            ) : null}
             {metrics.map((metric, index) => (
               <SvgText
-                fill={index === activeAxis ? colors.brand : colors.inkSub}
+                fill={index === activeAxis ? colors.ink : colors.inkSub}
                 fontSize={12}
-                fontWeight={index === activeAxis ? "600" : "500"}
+                fontWeight="800"
                 key={metric.key}
                 textAnchor="middle"
                 x={labelPos[index].x}
@@ -375,18 +402,11 @@ function TasteReportLoading({
               </SvgText>
             ))}
           </Svg>
-          <Animated.View style={[StyleSheet.absoluteFill, shapeStyle]}>
-            <Svg height={LOADING_SIZE} width={LOADING_SIZE}>
-              <Polygon
-                fill={colors.brand}
-                fillOpacity={0.1}
-                points={pointsOf(metrics.map((metric) => metric.myVal), LOADING_CENTER, LOADING_RADIUS)}
-                stroke={colors.brand}
-                strokeLinejoin="round"
-                strokeWidth={2}
-              />
-            </Svg>
-          </Animated.View>
+          {complete ? (
+            <View style={styles.loadingSticker}>
+              <Sticker icon={<Check color={colors.ink} size={12} />} label="정리 끝" style={styles.centerSelf} />
+            </View>
+          ) : null}
         </View>
         <View accessibilityLiveRegion="polite" accessibilityRole="text" style={styles.loadingStatus}>
           {complete ? <Check color={colors.brand} size={16} /> : <View style={styles.dot} />}
@@ -902,6 +922,10 @@ const styles = StyleSheet.create({
   fallbackContent: { padding: spacing.x3 },
   loadingBody: { flexGrow: 1, justifyContent: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
   loadingRadar: { width: LOADING_SIZE, height: LOADING_SIZE, alignSelf: "center", marginVertical: spacing.x6 },
+  // 다 정리한 순간에만 붙는 노랑 스티커. 오각형 아래 빈자리에 놓는다
+  loadingSticker: { position: "absolute", left: 0, right: 0, bottom: spacing.x1, alignItems: "center" },
+  // Sticker는 기본이 flex-start라 가운데로 놓으려면 직접 덮어써야 한다
+  centerSelf: { alignSelf: "center" },
   loadingStatus: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.x2, minHeight: 24 },
   dot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
   loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingBottom: spacing.x4, paddingTop: spacing.x2 },
