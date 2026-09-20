@@ -16,14 +16,14 @@ import {
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
 import Svg, { Circle } from "react-native-svg"
 
-import type { Shop, ShopCatalogItem } from "@raota/shared"
+import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, Button, Header, IconButton, Screen, StickyActionBar } from "@/src/components/ui"
+import { AppText, Button, Header, IconButton, RamenTypeTag, Screen, StickyActionBar, Tag } from "@/src/components/ui"
 import { useShops } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 type CuratorShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec">>
 type Step = 1 | 2 | 3 | 4 | "loading" | "result"
@@ -260,6 +260,7 @@ export default function AIRecommendScreen() {
   }
 
   const result = step === "result" ? curation : null
+  const resultType = result?.shop.style ?? ""
   const numericStep = typeof step === "number" ? step : null
 
   return (
@@ -269,7 +270,7 @@ export default function AIRecommendScreen() {
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/native"))}
         right={
           numericStep ? (
-            <AppText accessibilityLabel={`4단계 중 ${numericStep}단계`} capScale style={styles.stepCount} tone="muted" variant="meta">
+            <AppText accessibilityLabel={`4단계 중 ${numericStep}단계`} capScale style={styles.stepCount} tone="sub" variant="meta">
               {`${numericStep} / 4`}
             </AppText>
           ) : null
@@ -293,7 +294,7 @@ export default function AIRecommendScreen() {
             <View accessible accessibilityRole="header" ref={headingRef}>
               <AppText variant="screenTitle">{STEP_TITLES[numericStep].title}</AppText>
             </View>
-            <AppText style={styles.help} tone="muted" variant="secondary">
+            <AppText style={styles.help} tone="sub" variant="secondary">
               {STEP_TITLES[numericStep].help}
             </AppText>
 
@@ -314,7 +315,7 @@ export default function AIRecommendScreen() {
                         <AppText tone={active ? "onDark" : "ink"} variant="cardTitle">
                           {soup.label}
                         </AppText>
-                        <AppText capScale style={styles.optionSub} tone={active ? "onDarkMuted" : "muted"} variant="meta">
+                        <AppText capScale style={styles.optionSub} tone={active ? "onDark" : "muted"} variant="meta">
                           {soup.sub}
                         </AppText>
                       </View>
@@ -363,7 +364,7 @@ export default function AIRecommendScreen() {
                   textAlignVertical="top"
                   value={inputs.prompt}
                 />
-                <AppText style={styles.quickTitle} tone="muted" variant="secondary">
+                <AppText style={styles.quickTitle} tone="sub" variant="secondary">
                   자주 찾는 조건
                 </AppText>
                 <View style={styles.quickRow}>
@@ -396,7 +397,7 @@ export default function AIRecommendScreen() {
             <View accessible accessibilityRole="header" ref={headingRef}>
               <AppText variant="screenTitle">추천할 라멘집을 찾지 못했어요</AppText>
             </View>
-            <AppText style={styles.help} tone="muted" variant="secondary">
+            <AppText style={styles.help} tone="sub" variant="secondary">
               매장 정보를 불러오지 못했어요. 잠시 뒤 다시 추천받아 주세요.
             </AppText>
             <RestartButton onPress={restart} />
@@ -412,7 +413,9 @@ export default function AIRecommendScreen() {
             <View style={styles.resultCard}>
               <ResilientUriImage accessibilityLabel={`${result.shop.name} 대표 사진`} style={styles.resultPhoto} uri={result.shop.photos[0]} />
               <View style={styles.resultBody}>
-                {result.shop.style ? (
+                {resultType ? (
+                  <RamenTypeTag type={resultType} />
+                ) : result.shop.style ? (
                   <AppText style={styles.bold} tone="muted" variant="secondary">
                     {result.shop.style}
                   </AppText>
@@ -438,11 +441,7 @@ export default function AIRecommendScreen() {
                 {result.shop.tags.length ? (
                   <View accessibilityLabel={`특징: ${result.shop.tags.join(", ")}`} style={styles.tags}>
                     {result.shop.tags.map((tag) => (
-                      <View key={tag} style={styles.tag}>
-                        <AppText capScale style={styles.bold} variant="meta">
-                          {tag}
-                        </AppText>
-                      </View>
+                      <Tag key={tag} label={tag} />
                     ))}
                   </View>
                 ) : null}
@@ -455,7 +454,7 @@ export default function AIRecommendScreen() {
                   추천에 쓴 조건
                 </AppText>
                 {result.fallback ? (
-                  <AppText style={styles.fallbackNote} tone="muted" variant="secondary">
+                  <AppText style={styles.fallbackNote} tone="sub" variant="secondary">
                     조건에 맞는 곳을 찾지 못해 라멘로그가 많고 가까운 곳으로 골랐어요.
                   </AppText>
                 ) : null}
@@ -470,13 +469,13 @@ export default function AIRecommendScreen() {
                       {condition.applied ? <Check color={colors.onDark} size={12} /> : <Minus color={colors.textMuted} size={12} />}
                     </View>
                     <View style={styles.flexShrink}>
-                      <AppText variant="bodyStrong">
-                        {condition.label}
-                        <AppText capScale style={styles.bold} tone={condition.applied ? "ink" : "muted"} variant="meta">
-                          {`  ${condition.applied ? "반영" : "참고만"}`}
+                      <View style={styles.conditionHead}>
+                        <AppText style={styles.flexShrink} variant="bodyStrong">
+                          {condition.label}
                         </AppText>
-                      </AppText>
-                      <AppText style={styles.conditionNote} tone="muted" variant="secondary">
+                        <Tag label={condition.applied ? "반영" : "참고만"} />
+                      </View>
+                      <AppText style={styles.conditionNote} tone="sub" variant="secondary">
                         {condition.note}
                       </AppText>
                     </View>
@@ -662,25 +661,35 @@ const styles = StyleSheet.create({
   stepCount: { fontVariant: ["tabular-nums"], paddingRight: spacing.x3 },
 
   body: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, paddingBottom: spacing.x6 },
-  progressTrack: { height: 4, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden", marginBottom: spacing.x5 },
+  // 진행 막대: 1.5pt 먹선으로 두른 흰 알약 안을 빨강으로 채운다. 선이 보이도록 4pt보다 두껍게 잡았다
+  progressTrack: {
+    height: 10,
+    borderRadius: radii.pill,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
+    overflow: "hidden",
+    marginBottom: spacing.x5,
+  },
   progressFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
   help: { marginTop: spacing.x1_5 },
 
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2, marginTop: spacing.x5 },
   stack: { gap: spacing.x2, marginTop: spacing.x5 },
+  // 선택 칸: 흰 면 + 2pt 먹선 + 12pt, 고른 칸은 빨강 면 + 흰 글씨. 그림자는 없다
   option: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.x2,
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
   gridOption: { flexBasis: "47%", flexGrow: 1, minHeight: 64, paddingHorizontal: spacing.x3_5, paddingVertical: spacing.x3 },
   rowOption: { minHeight: 56, paddingHorizontal: spacing.x4, paddingVertical: spacing.x3 },
-  optionActive: { borderColor: colors.ink, backgroundColor: colors.ink },
+  optionActive: { borderColor: colors.outline, backgroundColor: colors.brand },
   optionSub: { marginTop: spacing.x0_5 },
 
   promptWrap: { marginTop: spacing.x5 },
@@ -690,9 +699,9 @@ const styles = StyleSheet.create({
     padding: spacing.x3_5,
     paddingTop: spacing.x3_5,
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.canvasSoft,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
     color: colors.ink,
   },
   quickTitle: { fontWeight: "700", marginTop: spacing.x4, marginBottom: spacing.x2 },
@@ -702,33 +711,52 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: spacing.x3_5,
     borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
-  quickChipAdded: { borderColor: colors.ink, backgroundColor: colors.ink },
+  quickChipAdded: { borderColor: colors.outline, backgroundColor: colors.brand },
 
   primaryCta: { flex: 2 },
   stickyBar: { paddingHorizontal: spacing.x4 },
   stickyButton: { paddingHorizontal: spacing.x3 },
 
-  resultCard: { marginTop: spacing.x4, borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, overflow: "hidden" },
+  // 결과 카드: 흰 면 + 2pt 먹선. 사진과 글씨 영역은 2pt 먹선으로 나눈다
+  resultCard: {
+    marginTop: spacing.x4,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    borderRadius: radii.sm,
+    backgroundColor: colors.canvas,
+    overflow: "hidden",
+  },
   resultPhoto: { width: "100%", aspectRatio: 16 / 10 },
-  resultBody: { padding: spacing.x4 },
-  resultName: { marginTop: spacing.x0_5 },
+  resultBody: { padding: spacing.x4, borderTopWidth: line.base, borderTopColor: colors.outline },
+  resultName: { marginTop: spacing.x2 },
   resultSpec: { marginTop: spacing.x1_5 },
   quote: { marginTop: spacing.x3, paddingLeft: spacing.x3, borderLeftWidth: 1, borderLeftColor: colors.ink },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
-  tag: { backgroundColor: colors.canvasSoft, borderRadius: radii.xs, paddingHorizontal: spacing.x2_5, paddingVertical: spacing.x1 },
 
   conditions: { marginTop: spacing.x5 },
   conditionsTitle: { paddingBottom: spacing.x2, borderBottomWidth: 1, borderBottomColor: colors.border },
   fallbackNote: { marginTop: spacing.x3 },
   condition: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3, paddingVertical: spacing.x3 },
   conditionDivider: { borderTopWidth: 1, borderTopColor: colors.border },
-  conditionIcon: { width: 20, height: 20, marginTop: spacing.x0_5, borderRadius: radii.pill, alignItems: "center", justifyContent: "center" },
+  // 조건 이름과 "반영 / 참고만" 태그. 좁은 폭에서는 줄바꿈한다
+  conditionHead: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.x2 },
+  // 작은 표시 칸은 1.5pt 먹선. 옅은 면만으로는 미색 바탕에서 보이지 않는다
+  conditionIcon: {
+    width: 20,
+    height: 20,
+    marginTop: spacing.x0_5,
+    borderRadius: radii.pill,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   conditionIconApplied: { backgroundColor: colors.ink },
-  conditionIconRef: { backgroundColor: colors.canvasSoft },
+  conditionIconRef: { backgroundColor: colors.canvas },
   conditionNote: { marginTop: spacing.x0_5 },
   restart: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, minHeight: touchTarget, alignSelf: "flex-start", marginTop: spacing.x3 },
 
@@ -752,5 +780,5 @@ const styles = StyleSheet.create({
   statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: 24 },
   statusDot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
   loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingTop: spacing.x2, paddingBottom: spacing.x6 },
-  skip: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: touchTarget, paddingHorizontal: spacing.x5, borderRadius: radii.pill },
+  skip: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: touchTarget, paddingHorizontal: spacing.x5, borderRadius: radii.sm },
 })

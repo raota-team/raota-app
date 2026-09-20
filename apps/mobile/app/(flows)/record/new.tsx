@@ -62,7 +62,7 @@ import {
   SectionHeader,
   StickyActionBar,
 } from "@/src/components/ui"
-import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, maxFontScale, pressInto, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
  * 라멘 기록하기. 웹 RecordScreen과 같은 순서다.
@@ -499,7 +499,7 @@ export default function NewRecordScreen() {
         backLabel="뒤로가기"
         onBack={goBack}
         right={
-          <AppText capScale style={styles.bold} tone="muted" variant="meta">
+          <AppText capScale style={styles.bold} tone="sub" variant="meta">
             {isPublic ? "공개 기록" : "나만 보기"}
           </AppText>
         }
@@ -517,7 +517,7 @@ export default function NewRecordScreen() {
           <View collapsable={false} ref={contentRef}>
             {/* 1. 한 그릇 정보 */}
             <View style={styles.section}>
-              <SectionHeader meta="필수" style={styles.sectionHead} title="한 그릇 정보" />
+              <SectionHeader meta="필수" metaTone="sub" style={styles.sectionHead} title="한 그릇 정보" />
 
               <View style={styles.field}>
                 <AppText style={styles.label} variant="bodyStrong">
@@ -663,8 +663,8 @@ export default function NewRecordScreen() {
 
             {/* 2. 5축 평가 */}
             <View style={styles.section}>
-              <SectionHeader meta="필수" title="맛 평가" />
-              <AppText style={styles.sectionLead} tone="muted" variant="secondary">
+              <SectionHeader meta="필수" metaTone="sub" title="맛 평가" />
+              <AppText style={styles.sectionLead} tone="sub" variant="secondary">
                 다섯 항목을 매기면 내 취향 리포트에 반영돼요.
               </AppText>
               <View style={styles.axes}>
@@ -698,14 +698,14 @@ export default function NewRecordScreen() {
                     style={styles.scoreHead}
                   >
                     <AppText variant="bodyStrong">
-                      <AppText tone="muted" variant="bodyStrong">
+                      <AppText tone="sub" variant="bodyStrong">
                         {`${SCORE_AXES.length + 1}  `}
                       </AppText>
                       {REVISIT_AXIS.label}
                     </AppText>
                     <AppText
                       capScale
-                      tone={revisit ? "ink" : attempted && missingAxes.has("revisit") ? "critical" : "muted"}
+                      tone={revisit ? "ink" : attempted && missingAxes.has("revisit") ? "critical" : "sub"}
                       variant="meta"
                     >
                       {revisit
@@ -763,6 +763,7 @@ export default function NewRecordScreen() {
             <View style={styles.section}>
               <SectionHeader
                 meta={selectedTagCount > 0 ? `선택 · ${selectedTagCount}개` : "선택"}
+                metaTone="sub"
                 style={styles.sectionHeadTight}
                 title="맛 태그"
               />
@@ -792,7 +793,12 @@ export default function NewRecordScreen() {
 
             {/* 4. 사진 (선택) */}
             <View style={styles.section}>
-              <SectionHeader meta={`선택 · 최대 ${RECORD_PHOTO_MAX}장`} style={styles.sectionHeadTight} title="사진" />
+              <SectionHeader
+                meta={`선택 · 최대 ${RECORD_PHOTO_MAX}장`}
+                metaTone="sub"
+                style={styles.sectionHeadTight}
+                title="사진"
+              />
               <ScrollView
                 contentContainerStyle={styles.photoRow}
                 horizontal
@@ -842,6 +848,7 @@ export default function NewRecordScreen() {
             <View style={styles.section}>
               <SectionHeader
                 meta={`선택 · ${note.length}/${RECORD_NOTE_MAX_LENGTH}`}
+                metaTone="sub"
                 style={styles.sectionHeadTight}
                 title="기억해둘 점"
               />
@@ -866,7 +873,7 @@ export default function NewRecordScreen() {
             <View style={styles.publicRow}>
               <View style={styles.flexShrink}>
                 <AppText variant="cardTitle">내 기록 공개하기</AppText>
-                <AppText style={styles.tagsSub} tone="muted" variant="secondary">
+                <AppText style={styles.tagsSub} tone="sub" variant="secondary">
                   끄면 피드에 올라가지 않고 나만 볼 수 있어요.
                 </AppText>
               </View>
@@ -943,7 +950,7 @@ export default function NewRecordScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.canvas },
+  screen: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
   flexShrink: { flex: 1, minWidth: 0 },
   bold: { fontWeight: "700" },
@@ -954,7 +961,8 @@ const styles = StyleSheet.create({
   sectionHead: { marginBottom: spacing.x4 },
   sectionHeadTight: { marginBottom: spacing.x3 },
   sectionLead: { marginTop: spacing.x1, marginBottom: spacing.x5 },
-  divider: { height: spacing.x2, backgroundColor: colors.canvasSoft },
+  // 섹션 사이는 1pt 정보 구분선. 미색 바탕 위에 회색 띠를 깔지 않는다
+  divider: { height: 1, backgroundColor: colors.border },
   field: { marginBottom: spacing.x4 },
   fieldLast: {},
   label: { marginBottom: spacing.x1_5 },
@@ -964,6 +972,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.x1_5,
   },
+  // 입력칸: 흰 면 + 2pt 먹선 + 12pt
   input: {
     ...typography.body,
     fontWeight: "500",
@@ -971,9 +980,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x3_5,
     paddingVertical: spacing.x3,
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceInput,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
     color: colors.ink,
   },
   inputInvalid: { borderColor: colors.brand },
@@ -984,9 +993,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x3_5,
     paddingVertical: spacing.x2,
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceInput,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.x3,
@@ -995,16 +1004,15 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: spacing.x3_5,
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceInput,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.x3,
   },
   pressed: { backgroundColor: colors.canvasSoft },
-  pressedSoft: { backgroundColor: colors.surfaceInput },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
   axes: { gap: spacing.x6 },
   scoreHead: {
@@ -1015,7 +1023,7 @@ const styles = StyleSheet.create({
   },
   // 전체 만족도는 크게 따로 세우고 아래 항목들과 선으로 나눈다
   heroAxis: { paddingBottom: spacing.x6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  // 재방문 의사: 선택지는 세 개의 알약(선택은 빨강)
+  // 재방문 의사: 선택지는 세 개의 알약 칩(1.5pt 먹선, 선택은 빨강 면)
   segment: { flexDirection: "row", gap: spacing.x2 },
   segmentInvalid: {},
   segmentCell: {
@@ -1025,23 +1033,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: spacing.x1,
     borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
   segmentDivider: {},
   revisitInvalid: { borderColor: colors.brand },
-  segmentSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
+  segmentSelected: { backgroundColor: colors.brand, borderColor: colors.outline },
   photoScroller: { marginHorizontal: -spacing.gutter },
   photoRow: { paddingHorizontal: spacing.gutter, gap: spacing.x2 },
+  // 점선 상자를 쓰지 않는다. 흰 면 + 2pt 먹선 실선 상자
   photoAdd: {
     width: 96,
     height: 96,
     borderRadius: radii.sm,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: colors.textFaint,
-    backgroundColor: colors.surfaceInput,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.canvas,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.x1,
@@ -1051,8 +1059,8 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: radii.sm,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     backgroundColor: colors.canvasSoft,
   },
   photoRemove: {
@@ -1065,10 +1073,11 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     padding: spacing.x1_5,
   },
+  // 사진 위 삭제 표시는 작은 먹색 사각
   photoRemoveDot: {
     width: 24,
     height: 24,
-    borderRadius: radii.pill,
+    borderRadius: radii.xs,
     backgroundColor: colors.ink,
     alignItems: "center",
     justifyContent: "center",
@@ -1085,17 +1094,22 @@ const styles = StyleSheet.create({
   },
   bottomSpace: { height: spacing.x4 },
   errorRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.x3 },
+  // 공용 Button과 같은 모양의 빨강 키: 12pt 사각 + 2pt 먹선 + 번지지 않는 그림자
   saveButton: {
     flex: 1,
     minHeight: 52,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
     backgroundColor: colors.brand,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.x2,
     paddingHorizontal: spacing.x6,
+    ...shadows.hardS,
   },
   saveButtonIncomplete: { backgroundColor: colors.canvasSoft },
-  saveButtonPressed: { opacity: 0.85 },
+  // 누르면 그림자 속으로 들어간다
+  saveButtonPressed: pressInto(2),
 })
