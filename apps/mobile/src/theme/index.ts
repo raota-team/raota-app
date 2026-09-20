@@ -206,6 +206,12 @@ export const shadows = {
 } as const
 
 /** 눌렀을 때 그림자 속으로 들어가는 이동 */
+/**
+ * 사진이나 먹색 면이 깔려 있어 배경을 바꿔도 티가 나지 않는 것의 누름.
+ * 화면마다 다른 불투명도를 만들지 않는다. 그림자가 있는 키는 pressInto를 쓴다.
+ */
+export const pressFade: ViewStyle = { opacity: 0.8 }
+
 export const pressInto = (offset: 2 | 3 = 2): ViewStyle => ({
   transform: [{ translateX: offset }, { translateY: offset }],
   shadowOpacity: 0,
