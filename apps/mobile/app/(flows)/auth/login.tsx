@@ -121,7 +121,7 @@ function LegalLink({ doc, label }: { doc: "terms" | "privacy"; label: string }) 
       // 글씨 높이가 17pt라 위아래로 14pt씩 넓혀야 44pt가 된다
       hitSlop={{ top: 14, bottom: 14, left: 8, right: 8 }}
       onPress={() => router.push({ pathname: "/legal/[doc]", params: { doc } })}
-      style={({ pressed }) => pressed && styles.pressed}
+      style={({ pressed }) => pressed && styles.pressedWash}
     >
       <AppText style={styles.legalLinkText} tone="sub" variant="meta">
         {label}
@@ -186,7 +186,7 @@ export default function LoginScreen() {
             accessibilityRole="button"
             hitSlop={4}
             onPress={() => router.setParams({ mode: signup ? "login" : "signup" })}
-            style={({ pressed }) => [styles.headerLink, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.headerLink, pressed && styles.pressedWash]}
           >
             <AppText capScale tone="brand" variant="bodyStrong">
               {signup ? "로그인" : "회원가입"}
@@ -239,7 +239,7 @@ export default function LoginScreen() {
             accessibilityLabel="로그인 없이 둘러보기"
             accessibilityRole="button"
             onPress={browseAsGuest}
-            style={({ pressed }) => [styles.guest, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.guest, pressed && styles.pressedWash]}
           >
             <Compass color={colors.inkSub} size={16} />
             <AppText style={styles.bold} tone="sub" variant="body">
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   main: { flexGrow: 1, justifyContent: "center", gap: spacing.x3, paddingBottom: spacing.x8 },
   center: { textAlign: "center" },
   bold: { fontWeight: "700" },
-  pressed: { opacity: 0.85 },
+  pressedWash: { backgroundColor: colors.canvasSoft, borderRadius: radii.sm },
   // 그림자가 있는 키는 누르는 동안 그림자 속으로 들어간다
   pressedKey: pressInto(2),
   headerLink: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },

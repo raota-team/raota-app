@@ -26,6 +26,7 @@ import {
   colors,
   line,
   maxFontScale,
+  pressFade,
   pressInto,
   radii,
   shadows,
@@ -966,7 +967,6 @@ const styles = StyleSheet.create({
   },
   pressedWash: { backgroundColor: colors.canvasSoft },
   pressedWashBg: { backgroundColor: colors.canvasSoft },
-  pressedDim: { opacity: 0.85 },
   pressedInto: pressInto(2),
   button: {
     borderWidth: line.base,
@@ -1023,7 +1023,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.x2,
   },
   scoreWord: { fontWeight: "700" },
-  pressedDimScore: { opacity: 0.6 },
+  // 점수 칸은 원·칸이 이미 꽉 차 있어 배경을 바꿔도 보이지 않는다
+  pressedDimScore: pressFade,
   quality: { flexDirection: "row", justifyContent: "space-between" },
   spectrum: { flexDirection: "row", justifyContent: "space-between" },
   scoreCell: { flex: 1, minHeight: touchTarget, alignItems: "center", justifyContent: "center" },
