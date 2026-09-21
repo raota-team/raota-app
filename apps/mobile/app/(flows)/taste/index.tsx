@@ -14,7 +14,7 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated"
 import { SafeAreaView } from "react-native-safe-area-context"
-import Svg, { Circle, Line, Path, Polygon, Text as SvgText } from "react-native-svg"
+import Svg, { Circle, Path, Polygon, Text as SvgText } from "react-native-svg"
 
 import {
   MENU_CATEGORY_NAMES,
@@ -242,7 +242,8 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
     <View accessibilityLabel={`항목별 맛 평가 그래프. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
       {/* 좁은 화면에서도 잘리지 않게 폭은 카드에 맞추고 모양은 viewBox가 지킨다 */}
       <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width="100%">
-        {/* 바로 앞 로딩 레이더와 같은 재료를 쓴다: 바깥 오각형은 2pt 먹선으로 두른 흰 면, 안쪽 눈금과 축은 1.5pt 보조선 */}
+        {/* 바로 앞 로딩 레이더와 같은 재료를 쓴다: 선은 바깥 오각형 하나뿐이다(2pt 먹선으로 두른 흰 면).
+            눈금과 축을 겹칠수록 선이 많아져 정작 데이터 도형이 묻힌다. 값은 축 이름 옆 숫자가 말한다 */}
         <Polygon
           fill={colors.canvas}
           points={pointsOf([1, 1, 1, 1, 1])}
@@ -250,20 +251,6 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
           strokeLinejoin="round"
           strokeWidth={line.base}
         />
-        {[0.2, 0.4, 0.6, 0.8].map((level) => (
-          <Polygon
-            fill="none"
-            key={level}
-            points={pointsOf([level, level, level, level, level])}
-            stroke={colors.outline}
-            strokeLinejoin="round"
-            strokeWidth={line.thin}
-          />
-        ))}
-        {[0, 1, 2, 3, 4].map((index) => {
-          const p = radarPoint(index, 1)
-          return <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={RADAR_CENTER} x2={p.x} y1={RADAR_CENTER} y2={p.y} />
-        })}
         {/* 데이터 도형은 수량을 말하므로 빨강이 아니라 국물 색이다. 면이 반투명이라 안쪽 눈금과 축이 도형 너머로 비친다 */}
         <Polygon
           fill={broth[0]}
@@ -474,7 +461,7 @@ function TasteReportLoading({
         </AppText>
         <View accessible={false} importantForAccessibility="no-hide-descendants" style={styles.loadingRadar}>
           <Svg height={LOADING_SIZE} width={LOADING_SIZE}>
-            {/* 바깥 오각형은 2pt 먹선으로 두른 흰 면, 안쪽 눈금과 축은 1.5pt 보조선 */}
+            {/* 결과 레이더와 같은 재료: 선은 바깥 오각형 하나뿐 */}
             <Polygon
               fill={colors.canvas}
               points={pointsOf([1, 1, 1, 1, 1], LOADING_CENTER, LOADING_RADIUS)}
@@ -482,22 +469,6 @@ function TasteReportLoading({
               strokeLinejoin="round"
               strokeWidth={line.base}
             />
-            {[0.33, 0.66].map((level) => (
-              <Polygon
-                fill="none"
-                key={level}
-                points={pointsOf([level, level, level, level, level], LOADING_CENTER, LOADING_RADIUS)}
-                stroke={colors.outline}
-                strokeLinejoin="round"
-                strokeWidth={line.thin}
-              />
-            ))}
-            {[0, 1, 2, 3, 4].map((index) => {
-              const p = radarPoint(index, 1, LOADING_CENTER, LOADING_RADIUS)
-              return (
-                <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={LOADING_CENTER} x2={p.x} y1={LOADING_CENTER} y2={p.y} />
-              )
-            })}
             {/* 결과 레이더와 같은 재료(반투명 국물 색 면 + 2pt 먹선). 꼭짓점 값만 자라고 먹선 굵기는 그대로다 */}
             <AnimatedPath
               animatedProps={shapeProps}
