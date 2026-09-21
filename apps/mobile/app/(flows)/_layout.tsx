@@ -1,4 +1,5 @@
-import { Redirect, Stack, useSegments } from "expo-router"
+import { Stack, router, useSegments } from "expo-router"
+import { useEffect } from "react"
 
 import { useRaota } from "@/src/state/RaotaStore"
 
@@ -11,15 +12,21 @@ export default function FlowLayout() {
   const segments = useSegments()
   const section = segments[1]
   const needsAccount = section === "record" || section === "taste"
+  const blocked = needsAccount && !currentUser
 
-  if (needsAccount && !currentUser) {
-    return <Redirect href="/auth/login" />
-  }
+  /*
+   * 회원만 쓰는 화면에 비회원이 닿으면 로그인으로 보낸다.
+   *
+   * 여기서 Stack 대신 <Redirect>를 반환하면 안 된다. 그러면 내비게이터가 통째로
+   * 사라졌다가 다시 붙고, 그 과정에서 segments가 다시 바뀌어 렌더가 끝없이 돈다
+   * ("Maximum update depth exceeded"). 스택은 늘 붙여 두고 이동만 시킨다.
+   */
+  useEffect(() => {
+    if (blocked) router.replace("/auth/login")
+  }, [blocked])
 
   return (
-    <Stack
-      screenOptions={{ headerShown: false, animation: "slide_from_right" }}
-    >
+    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
       <Stack.Screen
         name="record/select-shop"
         options={{
