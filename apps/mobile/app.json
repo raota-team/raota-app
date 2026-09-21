@@ -13,7 +13,18 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "내 주변 라멘집과 거리를 보여드리기 위해 위치를 사용합니다.",
         "NSCameraUsageDescription": "라멘 기록에 사진을 남기기 위해 카메라를 사용합니다.",
-        "NSPhotoLibraryUsageDescription": "라멘 기록과 프로필에 사진을 추가하기 위해 사진 보관함을 사용합니다."
+        "NSPhotoLibraryUsageDescription": "라멘 기록과 프로필에 사진을 추가하기 위해 사진 보관함을 사용합니다.",
+        "UIApplicationSceneManifest": {
+          "UIApplicationSupportsMultipleScenes": false,
+          "UISceneConfigurations": {
+            "UIWindowSceneSessionRoleApplication": [
+              {
+                "UISceneConfigurationName": "Default Configuration",
+                "UISceneDelegateClassName": "$(PRODUCT_MODULE_NAME).SceneDelegate"
+              }
+            ]
+          }
+        }
       }
     },
     "android": {
@@ -61,7 +72,11 @@
           "backgroundColor": "#FFF8EA"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font",
+      "expo-image",
+      "expo-web-browser",
+      "./plugins/withIosSceneLifecycle"
     ],
     "experiments": {
       "typedRoutes": true

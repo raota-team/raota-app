@@ -16,9 +16,6 @@ import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, maxFontScale, pressFade, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
 import { MENU_OPTIONS } from "./map.web"
 
-/** 떠 있는 기록 버튼(56pt)과 여백만큼 목록 끝을 비워 마지막 줄을 가리지 않는다 */
-/** 목록 끝이 오른쪽 아래 기록 버튼에 가리지 않을 여백. "더 보기" 줄이 있으면 그 줄이 대신 자리를 채운다 */
-const FAB_CLEARANCE = 96
 
 /** 원장의 표시용 필드(스타일, 한 줄 특징). API 응답에 없으면 빈 문자열 */
 function catalogOf(shop: Shop): Partial<Pick<ShopCatalogItem, "style" | "spec">> {
@@ -259,6 +256,8 @@ export default function HomeScreen() {
   }, [recommendations, shops, todayPick?.id])
   /** 가까운 목록에 다 못 보여준 매장 수. 지도 탭에는 전부 있다 */
   const moreNearbyCount = Math.max(0, shops.length - (todayPick ? 1 : 0) - recommendations.length - nearby.length)
+  /* 남는 곳이 없어도 지도로 가는 길은 늘 열어 둔다. 지도에는 필터와 거리까지 있다 */
+  const mapLinkLabel = moreNearbyCount > 0 ? `라멘집 ${moreNearbyCount}곳 더 지도에서 보기` : "지도에서 라멘집 모두 보기"
   const [topRecommendation, ...otherRecommendations] = recommendations
   const recommendTitle = personal && currentUser ? `${currentUser.nickname}님이 좋아할 라멘집` : "처음이라면 여기부터"
   const recommendMeta = personal ? `${tasteIdentity.data.total}그릇 취향 기준` : "라멘로그 · 거리 기준"
@@ -301,7 +300,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.root}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: moreNearbyCount > 0 ? spacing.x8 : FAB_CLEARANCE }}
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: spacing.x8 }}
         showsVerticalScrollIndicator={false}
       >
         {/* 1. 헤더: 로고 · 인사 (MVP에는 알림 벨이 없다) */}
@@ -325,7 +324,23 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {loggedIn && currentUser ? null : (
+          {loggedIn && currentUser ? (
+            <Pressable
+              accessibilityHint="마이 탭으로 가요"
+              accessibilityLabel={`${currentUser.nickname}님, 내 정보`}
+              accessibilityRole="button"
+              onPress={() => router.navigate("/native/my")}
+              style={({ pressed }) => [styles.account, pressed && styles.pressedWash]}
+            >
+              <AppText capScale numberOfLines={1} style={[styles.bold, styles.flexShrink]} variant="secondary">
+                {currentUser.nickname}
+                <AppText style={styles.accountSuffix} tone="sub" variant="secondary">
+                  님
+                </AppText>
+              </AppText>
+              <ChevronRight color={colors.inkSub} size={16} />
+            </Pressable>
+          ) : (
             <View style={styles.authRow}>
               <Pressable
                 accessibilityLabel="로그인"
@@ -353,13 +368,8 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* 1-1. 인사: 지금 끼니에 맞춘 한 줄과 내 기록 현황(회원) */}
+        {/* 1-1. 지금 끼니에 맞춘 한 줄과 내 기록 현황(회원). 인사는 헤더 오른쪽 계정 바로가기로 옮겼다 */}
         <View style={styles.hero}>
-          {loggedIn && currentUser ? (
-            <AppText numberOfLines={1} style={styles.bold} tone="sub" variant="secondary">
-              {`${currentUser.nickname}님, 반갑습니다`}
-            </AppText>
-          ) : null}
           <AppText accessibilityRole="header" style={styles.heroTitle} variant="headline">
             {`오늘 ${mealOfNow()}은\n어떤 라멘으로 할까요?`}
           </AppText>
@@ -759,19 +769,17 @@ export default function HomeScreen() {
                 )
               })}
             </View>
-            {moreNearbyCount > 0 ? (
-              <Pressable
-                accessibilityLabel={`라멘집 ${moreNearbyCount}곳 더 지도에서 보기`}
-                accessibilityRole="button"
-                onPress={() => router.navigate("/native/map")}
-                style={({ pressed }) => [styles.moreNearby, pressed && styles.pressedInto]}
-              >
-                <AppText capScale style={styles.bold} variant="secondary">
-                  {`라멘집 ${moreNearbyCount}곳 더 지도에서 보기`}
-                </AppText>
-                <ChevronRight color={colors.ink} size={16} />
-              </Pressable>
-            ) : null}
+            <Pressable
+              accessibilityLabel={mapLinkLabel}
+              accessibilityRole="button"
+              onPress={() => router.navigate("/native/map")}
+              style={({ pressed }) => [styles.moreNearby, pressed && styles.pressedInto]}
+            >
+              <AppText capScale style={styles.bold} variant="secondary">
+                {mapLinkLabel}
+              </AppText>
+              <ChevronRight color={colors.ink} size={16} />
+            </Pressable>
           </View>
         ) : null}
       </ScrollView>
@@ -815,7 +823,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   wordmark: { lineHeight: 22, letterSpacing: -0.4 },
-  greeting: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2, flexShrink: 1 },
+  // 헤더 오른쪽: 닉네임 + 머리글자 동그라미. 알림 벨 자리를 계정 바로가기로 쓴다
+  account: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x1,
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.x2,
+    borderRadius: radii.sm,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  accountSuffix: { fontWeight: "600" },
+
   // 키 두 개가 2pt 그림자 때문에 붙어 보이지 않게 간격을 8pt로 둔다
   authRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   loginButton: {
@@ -981,7 +1001,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingTop: spacing.x6,
     paddingBottom: spacing.x5,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.deep,
   },
   recommendHead: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2, marginBottom: spacing.x4 },
   // 먹색 면 안의 카드는 테두리 없는 흰 면

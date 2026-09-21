@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.x5,
     padding: spacing.x5,
     borderRadius: radii.sm,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.deep,
   },
   darkTitle: { marginBottom: spacing.x3 },
   darkRow: {

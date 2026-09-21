@@ -4,3 +4,7 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# expo prebuild가 만드는 네이티브 프로젝트. app.json과 설정에서 다시 생성되므로 저장소에 넣지 않는다
+/ios/
+/android/

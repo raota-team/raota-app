@@ -88,7 +88,8 @@ describe("home sections", () => {
   it("greets a member with a meal-time question and their record status", async () => {
     const view = await renderHome()
 
-    expect(await view.findByText(/님, 반갑습니다$/)).toBeTruthy()
+    // 인사는 헤더 오른쪽 계정 바로가기로 옮겼다(누르면 마이 탭)
+    expect(await view.findByRole("button", { name: /님, 내 정보$/ })).toBeTruthy()
     expect(view.getByText(/^오늘 (아침|점심|저녁|야식)은\s어떤 라멘으로 할까요\?$/)).toBeTruthy()
     await fireEvent.press(view.getByRole("button", { name: /^이번 달 \d+그릇 · 마지막 기록/ }))
     expect(router.navigate).toHaveBeenCalledWith("/native/my")
@@ -98,7 +99,7 @@ describe("home sections", () => {
     const view = await renderHome(true)
 
     expect(await view.findByText(/어떤 라멘으로 할까요\?$/)).toBeTruthy()
-    expect(view.queryByText(/님, 반갑습니다/)).toBeNull()
+    expect(view.queryByRole("button", { name: /님, 내 정보$/ })).toBeNull()
     expect(view.queryByRole("button", { name: /^이번 달/ })).toBeNull()
   })
 

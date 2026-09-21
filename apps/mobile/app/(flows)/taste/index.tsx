@@ -4,9 +4,17 @@ import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import { ArrowRight, Check, PenLine, RotateCw, Share2 } from "lucide-react-native"
 import { Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native"
-import { useReducedMotion } from "react-native-reanimated"
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+  type SharedValue,
+} from "react-native-reanimated"
 import { SafeAreaView } from "react-native-safe-area-context"
-import Svg, { Circle, Line, Polygon, Rect, Text as SvgText } from "react-native-svg"
+import Svg, { Circle, Line, Path, Polygon, Text as SvgText } from "react-native-svg"
 
 import {
   MENU_CATEGORY_NAMES,
@@ -17,6 +25,7 @@ import {
   type MenuCategoryName,
   type MetricItem,
   type Shop,
+  type TasteAxisKey,
   type TasteIdentity,
   type TasteProfile,
 } from "@raota/shared"
@@ -33,7 +42,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, radii, spacing } from "@/src/theme"
+import { broth, colors, line, radii, spacing } from "@/src/theme"
 
 /*
  * 취향 종합 리포트. 웹 TasteDetailScreen과 같은 구성이다.
@@ -61,6 +70,27 @@ function openShop(shop: Shop | undefined) {
   if (shop) router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shop.id) } })
 }
 
+/**
+ * 취향의 위치를 말하는 한 마디. 육수 농도와 면 삶기는 좋고 나쁨이 아니라서 차오르지 않고,
+ * 기록 화면·라멘로그 상세와 같은 어휘("진한 편", "단단한 편")로 위치만 말한다.
+ * 같은 표가 record/new의 AXIS_PRESENTATION과 src/domain/lounge의 wordOf에도 있지만
+ * 둘 다 내보내지 않아 여기서 다시 적는다(후속 과제: 공용 함수로 합치기).
+ */
+const SPECTRUM_WORDS = {
+  brothDensity: ["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"],
+  noodleFirmness: ["아주 부드럽게", "부드러운 편", "중간", "단단한 편", "아주 단단하게"],
+} as const
+
+type SpectrumAxisKey = keyof typeof SPECTRUM_WORDS
+
+const isSpectrumMetric = (metric: MetricItem): metric is MetricItem & { key: SpectrumAxisKey } =>
+  metric.key === "brothDensity" || metric.key === "noodleFirmness"
+
+/** 평균 점수를 반올림해 다섯 단어 중 하나로 읽는다. 기록 화면의 계산과 같다 */
+function spectrumWordOf(key: SpectrumAxisKey, score: number) {
+  return SPECTRUM_WORDS[key][Math.min(5, Math.max(1, Math.round(score))) - 1]
+}
+
 // ---------------------------------------------------------------------------
 // 종합 리포트 표지 (웹 TasteReportCover). 마이에서도 같은 카드를 쓴다
 // ---------------------------------------------------------------------------
@@ -77,9 +107,7 @@ export interface TasteReportCoverProps {
 
 export function TasteReportCover({ recordCount, identity, profile, onOpen, onAnalyze, onStart }: TasteReportCoverProps) {
   const empty = recordCount === 0
-  const metrics = metricsFromProfile(profile).filter(
-    (metric) => metric.key === "brothDensity" || metric.key === "noodleFirmness",
-  )
+  const metrics = metricsFromProfile(profile).filter(isSpectrumMetric)
   return (
     <View style={styles.card}>
       <View style={styles.coverHead}>
@@ -114,35 +142,30 @@ export function TasteReportCover({ recordCount, identity, profile, onOpen, onAna
       ) : null}
       {!empty ? (
         <View style={styles.coverAxes}>
-          {metrics.map((metric) => (
-            <View
-              accessibilityLabel={`${metric.label} 평균 ${metric.score.toFixed(1)}점, 5점 만점`}
-              accessible
-              key={metric.key}
-              style={styles.flex}
-            >
-              <View style={styles.rowBetween}>
+          {/* 두 항목 모두 취향의 위치라 차오르는 미터를 쓰지 않는다. 위치를 말하는 한 마디가 앞이고 평균 점수는 옆에 작게 둔다 */}
+          {metrics.map((metric) => {
+            const word = spectrumWordOf(metric.key, metric.score)
+            return (
+              <View
+                accessibilityLabel={`${metric.label} ${word}, 평균 ${metric.score.toFixed(1)}점, 5점 만점`}
+                accessible
+                key={metric.key}
+                style={styles.flex}
+              >
                 <AppText capScale tone="muted" variant="meta">
                   {metric.label}
                 </AppText>
-                <AppText capScale style={styles.tabular} variant="meta">
-                  {metric.score.toFixed(1)}
-                  <AppText capScale tone="muted" variant="meta">
-                    {" / 5"}
+                <View style={styles.coverAxisValue}>
+                  <AppText style={styles.flex} variant="bodyStrong">
+                    {word}
                   </AppText>
-                </AppText>
+                  <AppText capScale style={styles.tabular} tone="muted" variant="meta">
+                    {metric.score.toFixed(1)}
+                  </AppText>
+                </View>
               </View>
-              <View style={styles.steps}>
-                {[1, 2, 3, 4, 5].map((step) => (
-                  <View key={step} style={styles.step}>
-                    <View
-                      style={[styles.stepFill, { width: `${Math.min(1, Math.max(0, metric.score - step + 1)) * 100}%` }]}
-                    />
-                  </View>
-                ))}
-              </View>
-            </View>
-          ))}
+            )
+          })}
         </View>
       ) : null}
       {!empty && (onOpen || onAnalyze) ? (
@@ -239,16 +262,17 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
           const p = radarPoint(index, 1)
           return <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={RADAR_CENTER} x2={p.x} y1={RADAR_CENTER} y2={p.y} />
         })}
+        {/* 데이터 도형은 수량을 말하므로 빨강이 아니라 먹색이다. 반투명 대신 옅은 면(canvasSoft) + 2pt 먹선 윤곽으로 안쪽 눈금과 구분한다 */}
         <Polygon
-          fill={colors.brand}
+          fill={colors.canvasSoft}
           points={pointsOf(metrics.map((metric) => metric.myVal))}
-          stroke={colors.outline}
+          stroke={colors.ink}
           strokeLinejoin="round"
           strokeWidth={line.base}
         />
         {metrics.map((metric, index) => {
           const p = radarPoint(index, metric.myVal)
-          return <Circle cx={p.x} cy={p.y} fill={colors.brand} key={metric.key} r={3.5} stroke={colors.canvas} strokeWidth={1.5} />
+          return <Circle cx={p.x} cy={p.y} fill={colors.ink} key={metric.key} r={3.5} stroke={colors.canvas} strokeWidth={1.5} />
         })}
         {metrics.map((metric, index) => (
           <SvgText
@@ -285,6 +309,12 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
 // 정리 연출 (웹 TasteReportLoading)
 // ---------------------------------------------------------------------------
 
+/**
+ * 좋고 나쁨이 아니라 "취향의 위치"를 말하는 축. 차오르지 않고 선 위의 한 점으로 보여 준다.
+ * DESIGN.md "맛 평가" 절의 구분을 기록 화면·리포트가 같이 따른다.
+ */
+const POSITION_AXES = new Set<TasteAxisKey>(["brothDensity", "noodleFirmness"])
+
 const STATUS_MESSAGES = [
   "라멘 기록을 모으고 있어요",
   "국물과 면 취향을 살펴보고 있어요",
@@ -294,10 +324,92 @@ const STATUS_MESSAGES = [
 const LOADING_SIZE = 260
 const LOADING_CENTER = 130
 const LOADING_RADIUS = 76
-/** 단계마다 한 칸씩 또렷하게 커진다. 천천히 자라지 않고 네 번에 끊어 놓는다 */
-const LOADING_SCALES = [0.32, 0.56, 0.8, 1]
+/** 오각형이 자라기 시작하는 크기. 0에서 시작하면 첫 순간이 빈 판으로 보인다 */
+const LOADING_START_SCALE = 0.3
 /** 지금 보고 있는 축을 짚는 노랑 블록의 한 변 */
 const AXIS_MARK = 18
+/** 단계가 바뀔 때 축 표시가 한 번 커졌다 제자리로 돌아오는 시간 */
+const AXIS_PULSE_DURATION = 520
+/** 꼭짓점 점의 반지름. 결과 레이더와 같은 값 */
+const LOADING_DOT_RADIUS = 3.5
+/**
+ * 축 이름과 점수를 놓는 자리. 점수는 늘 판 바깥쪽에 붙인다 —
+ * 위·옆 세 축은 이름 위, 아래 두 축은 이름 아래. 그래야 꼭짓점의 노랑 표시와 겹치지 않는다.
+ */
+const LOADING_LABELS = [
+  { x: 130, y: 40, scoreY: 26 },
+  { x: 222, y: 90, scoreY: 76 },
+  { x: 184, y: 216, scoreY: 230 },
+  { x: 76, y: 216, scoreY: 230 },
+  { x: 38, y: 90, scoreY: 76 },
+]
+/** 단계마다 짚는 축의 순서. 마지막에는 다섯 축을 한 번에 보여 준다 */
+const AXIS_ORDER = [0, 1, 3, 2, 4]
+
+/**
+ * react-native-svg의 Polygon은 points를 스스로 d로 바꿔 네이티브에 넘긴다.
+ * 그래서 움직이는 도형은 Polygon이 아니라 Path의 d를 직접 갱신한다.
+ */
+const AnimatedPath = Animated.createAnimatedComponent(Path)
+const AnimatedCircle = Animated.createAnimatedComponent(Circle)
+
+/**
+ * 다섯 꼭짓점을 잇는 오각형 path. UI 스레드에서도 불리므로 worklet이다.
+ * View에 scale을 걸면 2pt 먹선까지 같이 얇아지므로 크기는 꼭짓점 값 자체에 곱한다.
+ */
+function radarPathOf(values: number[], grow: number, center: number, radius: number) {
+  "worklet"
+  let path = ""
+  for (let index = 0; index < values.length; index += 1) {
+    const angle = ((Math.PI * 2) / 5) * index - Math.PI / 2
+    const r = radius * values[index] * grow
+    path += `${index === 0 ? "M" : "L"}${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`
+  }
+  return `${path}Z`
+}
+
+/** 꼭짓점 점. 오각형과 같은 박자로 바깥으로 나간다 */
+function RadarDot({ grow, index, value }: { grow: SharedValue<number>; index: number; value: number }) {
+  const start = radarPoint(index, value * LOADING_START_SCALE, LOADING_CENTER, LOADING_RADIUS)
+  const dotProps = useAnimatedProps(() => {
+    const angle = ((Math.PI * 2) / 5) * index - Math.PI / 2
+    const r = LOADING_RADIUS * value * grow.value
+    return { cx: LOADING_CENTER + r * Math.cos(angle), cy: LOADING_CENTER + r * Math.sin(angle) }
+  })
+  return (
+    <AnimatedCircle
+      animatedProps={dotProps}
+      cx={start.x}
+      cy={start.y}
+      fill={colors.ink}
+      r={LOADING_DOT_RADIUS}
+      stroke={colors.canvas}
+      strokeWidth={line.thin}
+    />
+  )
+}
+
+/**
+ * 지금 보고 있는 축을 짚는 노랑 블록. 단계가 바뀔 때마다 한 번 커졌다 제자리로 돌아온다.
+ * 레이더 판은 260pt이고 SVG 좌표와 1:1이라 같은 자리에 겹쳐 놓을 수 있다.
+ */
+function AxisMark({ axis, reducedMotion }: { axis: number; reducedMotion: boolean }) {
+  const tip = radarPoint(axis, 1, LOADING_CENTER, LOADING_RADIUS)
+  const pulse = useSharedValue(reducedMotion ? 1 : 0)
+
+  useEffect(() => {
+    // Reduce Motion이면 움직임 없이 제자리에 그대로 선다
+    if (reducedMotion) return
+    pulse.value = withTiming(1, { duration: AXIS_PULSE_DURATION, easing: Easing.linear })
+  }, [pulse, reducedMotion])
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, pulse.value * 4),
+    transform: [{ scale: 1 + 0.26 * Math.sin(Math.PI * pulse.value) }],
+  }))
+
+  return <Animated.View style={[styles.axisMark, { left: tip.x - AXIS_MARK / 2, top: tip.y - AXIS_MARK / 2 }, pulseStyle]} />
+}
 
 function TasteReportLoading({
   recordCount,
@@ -310,6 +422,7 @@ function TasteReportLoading({
   onBack: () => void
   onComplete: () => void
 }) {
+  const reducedMotion = useReducedMotion()
   const [stage, setStage] = useState(0)
   const complete = stage === 3
   const onCompleteRef = useRef(onComplete)
@@ -325,17 +438,25 @@ function TasteReportLoading({
     return () => timers.forEach(clearTimeout)
   }, [])
 
-  // 화면을 키우는 대신 꼭짓점 자체를 단계마다 늘린다. 판을 확대하면 2pt 먹선까지 같이 얇아진다
-  const scale = LOADING_SCALES[stage]
-  const activeAxis = complete ? -1 : [0, 1, 3][stage]
-  const activeTip = activeAxis >= 0 ? radarPoint(activeAxis, 1, LOADING_CENTER, LOADING_RADIUS) : null
-  const labelPos = [
-    { x: 130, y: 40 },
-    { x: 222, y: 90 },
-    { x: 184, y: 216 },
-    { x: 76, y: 216 },
-    { x: 38, y: 90 },
-  ]
+  // 판을 확대하면 2pt 먹선까지 같이 얇아진다. 그래서 크기는 꼭짓점 값에 곱하고, 그 값을 끊지 않고 이어서 키운다
+  const values = useMemo(() => metrics.map((metric) => metric.myVal), [metrics])
+  const grow = useSharedValue(reducedMotion ? 1 : LOADING_START_SCALE)
+
+  useEffect(() => {
+    // Reduce Motion이면 움직임 없이 즉시 최종 크기
+    if (reducedMotion) {
+      grow.value = 1
+      return
+    }
+    grow.value = withTiming(1, { duration: LOADING_DURATION, easing: Easing.out(Easing.quad) })
+  }, [grow, reducedMotion])
+
+  const shapeProps = useAnimatedProps(() => ({ d: radarPathOf(values, grow.value, LOADING_CENTER, LOADING_RADIUS) }))
+  const startPath = radarPathOf(values, reducedMotion ? 1 : LOADING_START_SCALE, LOADING_CENTER, LOADING_RADIUS)
+
+  // 단계가 바뀔 때마다 한 축을 짚고, 짚은 축의 점수를 하나씩 드러낸다. 다 차면 다섯 축이 한 번에 보인다
+  const activeAxis = complete ? -1 : AXIS_ORDER[stage]
+  const shownAxes = AXIS_ORDER.slice(0, complete ? AXIS_ORDER.length : stage + 1)
 
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.root}>
@@ -374,26 +495,18 @@ function TasteReportLoading({
                 <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={LOADING_CENTER} x2={p.x} y1={LOADING_CENTER} y2={p.y} />
               )
             })}
-            <Polygon
-              fill={colors.brand}
-              points={pointsOf(metrics.map((metric) => metric.myVal * scale), LOADING_CENTER, LOADING_RADIUS)}
+            {/* 결과 레이더와 같은 재료(canvasSoft 면 + 2pt 먹선). 꼭짓점 값만 자라고 먹선 굵기는 그대로다 */}
+            <AnimatedPath
+              animatedProps={shapeProps}
+              d={startPath}
+              fill={colors.canvasSoft}
               stroke={colors.outline}
               strokeLinejoin="round"
               strokeWidth={line.base}
             />
-            {/* 지금 보고 있는 축은 노랑 블록으로 짚는다 */}
-            {activeTip ? (
-              <Rect
-                fill={colors.yolk}
-                height={AXIS_MARK}
-                rx={radii.xs}
-                stroke={colors.outline}
-                strokeWidth={line.thin}
-                width={AXIS_MARK}
-                x={activeTip.x - AXIS_MARK / 2}
-                y={activeTip.y - AXIS_MARK / 2}
-              />
-            ) : null}
+            {metrics.map((metric, index) => (
+              <RadarDot grow={grow} index={index} key={`${metric.key}-dot`} value={metric.myVal} />
+            ))}
             {metrics.map((metric, index) => (
               <SvgText
                 fill={index === activeAxis ? colors.ink : colors.inkSub}
@@ -401,13 +514,29 @@ function TasteReportLoading({
                 fontWeight="800"
                 key={metric.key}
                 textAnchor="middle"
-                x={labelPos[index].x}
-                y={labelPos[index].y}
+                x={LOADING_LABELS[index].x}
+                y={LOADING_LABELS[index].y}
               >
                 {metric.label}
               </SvgText>
             ))}
+            {/* 지금까지 살펴본 축의 점수. 결과 레이더와 같은 13pt 800 먹색 숫자다 */}
+            {shownAxes.map((index) => (
+              <SvgText
+                fill={colors.ink}
+                fontSize={13}
+                fontWeight="800"
+                key={`${metrics[index]?.key ?? index}-score`}
+                textAnchor="middle"
+                x={LOADING_LABELS[index].x}
+                y={LOADING_LABELS[index].scoreY}
+              >
+                {(metrics[index]?.score ?? 0).toFixed(1)}
+              </SvgText>
+            ))}
           </Svg>
+          {/* 지금 보고 있는 축은 노랑 블록으로 짚는다. 단계가 바뀔 때마다 새로 붙으면서 한 번 커졌다 돌아온다 */}
+          {activeAxis >= 0 ? <AxisMark axis={activeAxis} key={activeAxis} reducedMotion={reducedMotion} /> : null}
           {complete ? (
             <View style={styles.loadingSticker}>
               <Sticker icon={<Check color={colors.ink} size={12} />} label="정리 끝" style={styles.centerSelf} />
@@ -466,6 +595,11 @@ export default function TasteReportScreen() {
   const metrics = useMemo(() => metricsFromProfile(profile), [profile])
   const typeCounts = useMemo(() => typeCountsOf(bowls), [bowls])
   const typeTotal = MENU_CATEGORY_NAMES.reduce((sum, name) => sum + typeCounts[name], 0)
+  /** 서로 다른 그릇 수를 많은 쪽부터. 종류 다섯에 국물은 네 단계라 같은 수는 같은 단계로 묶인다 */
+  const typeRanks = useMemo(
+    () => [...new Set(MENU_CATEGORY_NAMES.map((name) => typeCounts[name]))].sort((a, b) => b - a),
+    [typeCounts],
+  )
   const topShops = visits.slice(0, 3)
   // 앱 설치 전 원장이 있는 계정만 "앱에서 남긴 기록이 더해졌다"고 알린다
   const appCount = myLogs.length
@@ -614,7 +748,12 @@ export default function TasteReportScreen() {
                           {metric.label}
                         </AppText>
                         <View style={styles.track}>
-                          <View style={[styles.trackFill, { width: `${metric.myVal * 100}%` }]} />
+                          {POSITION_AXES.has(metric.key) ? (
+                            // 취향의 위치는 좋고 나쁨이 아니라서 차오르지 않는다. 선 위의 한 점으로 어디쯤인지만 말한다
+                            <View style={[styles.trackMark, { left: `${metric.myVal * 100}%` }]} />
+                          ) : (
+                            <View style={[styles.trackFill, { width: `${metric.myVal * 100}%` }]} />
+                          )}
                         </View>
                         <AppText style={[styles.axisScore, styles.tabular]} variant="bodyStrong">
                           {metric.score.toFixed(1)}
@@ -641,6 +780,11 @@ export default function TasteReportScreen() {
                   {MENU_CATEGORY_NAMES.map((name) => {
                     const count = typeCounts[name]
                     const pct = typeTotal ? Math.round((count / typeTotal) * 100) : 0
+                    // 많이 먹은 종류일수록 국물이 진하다. 같은 그릇 수는 같은 색이어야 해서 순위는 촘촘히 센다
+                    // (그냥 정렬하면 4그릇 둘이 다른 진하기가 되어 색이 수량을 거짓으로 말한다).
+                    // 트랙이 흰 면이라 5위도 broth[0]까지만 옅어진다(border는 흰 면 위 1.3:1이라 빈 칸으로 읽힌다).
+                    const rank = typeRanks.indexOf(count)
+                    const fill = broth[broth.length - 1 - Math.min(rank < 0 ? broth.length - 1 : rank, broth.length - 1)]
                     return (
                       <View accessibilityLabel={`${name} ${count}그릇, ${pct}%`} accessible key={name} style={styles.typeRow}>
                         <View style={styles.typeName}>
@@ -648,7 +792,7 @@ export default function TasteReportScreen() {
                           <RamenTypeTag inList type={name} />
                         </View>
                         <View style={[styles.track, styles.trackThick]}>
-                          <View style={[styles.trackFill, styles.typeFill, { width: `${pct}%` }]} />
+                          <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: fill }]} />
                         </View>
                         <AppText capScale style={[styles.typeValue, styles.tabular]} tone="sub" variant="secondary">
                           <AppText capScale variant="secondary" style={styles.heavy}>
@@ -864,18 +1008,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     borderTopWidth: 1,
   },
-  steps: { flexDirection: "row", gap: spacing.x1, marginTop: spacing.x2 },
-  // 다섯 칸짜리 미터: 칸마다 1.5pt 먹선 + 흰 면, 채움은 빨강
-  step: {
-    flex: 1,
-    height: 12,
-    borderRadius: radii.xs,
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.thin,
-    overflow: "hidden",
-  },
-  stepFill: { height: "100%", backgroundColor: colors.brand },
+  // 위치를 말하는 한 마디와 평균 점수가 한 줄에 선다
+  coverAxisValue: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1, marginTop: spacing.x1 },
   coverActions: { marginTop: spacing.x4, gap: spacing.x1 },
   radarWrap: { alignItems: "center", paddingVertical: spacing.x2 },
   axisList: { borderTopColor: colors.border, borderTopWidth: 1 },
@@ -886,12 +1020,12 @@ const styles = StyleSheet.create({
   axisScore: { width: 30, textAlign: "right" },
   axisLean: { width: 64, textAlign: "right" },
   track: { flex: 1, height: 6, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden" },
+  // 차오르지 않는 축의 표시. 선 위에서 위치만 짚는다
+  trackMark: { position: "absolute", top: 0, bottom: 0, width: 14, marginLeft: -7, borderRadius: radii.pill, backgroundColor: colors.ink },
   // 흰 면 + 1.5pt 먹선으로 두른 칸. 월별 취향 변화(아카이브)의 막대와 같은 모양이다
   trackThick: { height: 12, backgroundColor: colors.canvas, borderWidth: line.thin, borderColor: colors.outline },
-  // 빨강은 5축 점수에만 쓴다. 그릇 수는 행동이 아니므로 아래 typeFill이 먹색으로 덮는다
-  trackFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
-  // 종류별 분포는 "많다/적다"라서 색으로 순위를 말하지 않는다. 다섯 줄 모두 같은 먹색이고 값은 옆의 "14그릇 · 33%"가 읽어 준다
-  typeFill: { backgroundColor: colors.ink },
+  // 막대는 수량을 말하므로 빨강이 아니라 먹색이다. 빨강은 누르는 곳과 선택된 것에만 남긴다
+  trackFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.ink },
   typeList: { marginTop: spacing.x4, gap: spacing.x3 },
   typeRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
   typeName: { width: 60 },
@@ -929,7 +1063,18 @@ const styles = StyleSheet.create({
   loadingBody: { flexGrow: 1, justifyContent: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
   loadingRadar: { width: LOADING_SIZE, height: LOADING_SIZE, alignSelf: "center", marginVertical: spacing.x6 },
   // 다 정리한 순간에만 붙는 노랑 스티커. 오각형 아래 빈자리에 놓는다
-  loadingSticker: { position: "absolute", left: 0, right: 0, bottom: spacing.x1, alignItems: "center" },
+  // 아래 두 축의 점수 아래에 걸쳐 놓는다. 점수 줄이 생기면서 판 안쪽으로는 자리가 없다
+  loadingSticker: { position: "absolute", left: 0, right: 0, bottom: -spacing.x2, alignItems: "center" },
+  // 지금 보고 있는 축을 짚는 노랑 블록. 스티커와 같은 1.5pt 먹선 + 6pt 모서리
+  axisMark: {
+    position: "absolute",
+    width: AXIS_MARK,
+    height: AXIS_MARK,
+    borderRadius: radii.xs,
+    borderWidth: line.thin,
+    borderColor: colors.outline,
+    backgroundColor: colors.yolk,
+  },
   // Sticker는 기본이 flex-start라 가운데로 놓으려면 직접 덮어써야 한다
   centerSelf: { alignSelf: "center" },
   loadingStatus: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.x2, minHeight: 24 },

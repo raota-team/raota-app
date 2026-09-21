@@ -1,6 +1,9 @@
 import { ChevronLeft, X } from "lucide-react-native"
 import {
+  AccessibilityInfo,
   ActivityIndicator,
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,6 +16,7 @@ import {
   type ScrollViewProps,
   type StyleProp,
   type TextProps,
+  type LayoutChangeEvent,
   type TextStyle,
   type ViewProps,
   type ViewStyle,
@@ -20,7 +24,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context"
 import { RAMEN_TYPES } from "@raota/shared"
 import * as Haptics from "expo-haptics"
-import { forwardRef, useEffect, type PropsWithChildren, type ReactNode } from "react"
+import { forwardRef, useEffect, useRef, useState, type PropsWithChildren, type ReactNode } from "react"
 
 import {
   colors,
@@ -579,7 +583,11 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
                     </NativeText>
                   </View>
                 ) : (
-                  <View style={[styles.spectrumDot, invalid && !value && styles.dotInvalid]} />
+                  <View style={[styles.spectrumDot, invalid && !value && styles.dotInvalid]}>
+                    <NativeText maxFontSizeMultiplier={maxFontScale} style={[typography.meta, styles.spectrumDotText]}>
+                      {score}
+                    </NativeText>
+                  </View>
                 )
               ) : (
                 <View
@@ -854,23 +862,35 @@ export function BottomSheet({
   footer,
   children,
 }: BottomSheetProps) {
+  const { mounted, progress, sheetHeight, onSheetLayout } = useSheetTransition(visible)
+  if (!mounted) return null
   return (
     <Modal
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
       presentationStyle="overFullScreen"
       statusBarTranslucent
       transparent
-      visible={visible}
+      visible
     >
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalRoot}>
-        <Pressable
-          accessibilityLabel={`${title ?? "시트"} 닫기`}
-          accessibilityRole="button"
-          onPress={dismissOnBackdropPress ? onClose : undefined}
-          style={styles.backdrop}
-        />
-        <SafeAreaView accessibilityViewIsModal edges={["bottom"]} style={[styles.sheet, { maxHeight }]}>
+        {/* 뒤판은 제자리에서 흐려진다. 시트와 함께 밀려 올라오면 화면 전체가 딸려 오는 것처럼 보인다 */}
+        <Animated.View style={[styles.backdrop, { opacity: progress }]}>
+          <Pressable
+            accessibilityLabel={`${title ?? "시트"} 닫기`}
+            accessibilityRole="button"
+            onPress={dismissOnBackdropPress ? onClose : undefined}
+            style={styles.fill}
+          />
+        </Animated.View>
+        <Animated.View
+          onLayout={onSheetLayout}
+          style={[
+            { maxHeight },
+            { transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [sheetHeight, 0] }) }] },
+          ]}
+        >
+        <SafeAreaView accessibilityViewIsModal edges={["bottom"]} style={styles.sheet}>
           <View style={styles.sheetHandle} />
           {title || description ? (
             <View style={styles.sheetHeader}>
@@ -892,9 +912,52 @@ export function BottomSheet({
           <View style={styles.sheetContent}>{children}</View>
           {footer ? <View style={styles.sheetFooter}>{footer}</View> : null}
         </SafeAreaView>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   )
+}
+
+/**
+ * 시트가 뜨고 지는 동안의 값 하나. 뒤판은 이 값으로 흐려지고 시트는 이 값으로 올라온다.
+ * Reduce Motion이면 움직임 없이 즉시 바뀐다.
+ */
+function useSheetTransition(visible: boolean) {
+  const [mounted, setMounted] = useState(visible)
+  const [sheetHeight, setSheetHeight] = useState(360)
+  const [reduceMotion, setReduceMotion] = useState(false)
+  const progress = useRef(new Animated.Value(visible ? 1 : 0)).current
+
+  useEffect(() => {
+    let alive = true
+    void AccessibilityInfo.isReduceMotionEnabled().then((on) => alive && setReduceMotion(on))
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion)
+    return () => {
+      alive = false
+      sub.remove()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (visible) setMounted(true)
+    const animation = Animated.timing(progress, {
+      toValue: visible ? 1 : 0,
+      duration: reduceMotion ? 0 : visible ? 260 : 200,
+      easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    })
+    animation.start(({ finished }) => {
+      if (finished && !visible) setMounted(false)
+    })
+    return () => animation.stop()
+  }, [progress, reduceMotion, visible])
+
+  const onSheetLayout = (event: LayoutChangeEvent) => {
+    const height = event.nativeEvent.layout.height
+    if (height > 0) setSheetHeight(height)
+  }
+
+  return { mounted, progress, sheetHeight, onSheetLayout }
 }
 
 export interface ConfirmDialogProps {
@@ -1070,16 +1133,20 @@ const styles = StyleSheet.create({
   qualityDotFilled: { backgroundColor: colors.brandWeak },
   qualityDotSelected: { backgroundColor: colors.brand },
   // 취향 위치: 다섯 칸의 가운데를 잇는 선(첫 칸 중앙 10% ~ 마지막 칸 중앙 90%)
-  spectrumTrack: { position: "absolute", left: "10%", right: "10%", top: "50%", height: 2, marginTop: -1, backgroundColor: colors.border },
+  // 다섯 점을 하나의 컨트롤로 묶는 선. 옅으면 점들이 무관해 보이므로 본문 글씨와 같은 무게로 둔다
+  spectrumTrack: { position: "absolute", left: "10%", right: "10%", top: "50%", height: 2, marginTop: -1, backgroundColor: colors.inkSub },
   trackInvalid: { backgroundColor: colors.brand },
   spectrumDot: {
-    width: 14,
-    height: 14,
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radii.pill,
     borderWidth: line.thin,
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
+  spectrumDotText: { fontWeight: "700", color: colors.inkSub },
   spectrumPick: {
     width: 36,
     height: 36,
@@ -1137,6 +1204,7 @@ const styles = StyleSheet.create({
   },
   stickyActions: { flexDirection: "row", gap: spacing.x2 },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
+  fill: { flex: 1 },
   backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.overlay },
   sheet: {
     backgroundColor: colors.canvas,

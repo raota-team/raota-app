@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 import { Image } from "expo-image"
-import { useReducedMotion } from "react-native-reanimated"
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
 
 import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
@@ -540,8 +540,15 @@ function RestartButton({ onPress }: { onPress: () => void }) {
   )
 }
 
-/** 사각 트랙의 칸 수. LOADING_DURATION을 이 수로 나눠 한 칸씩 툭툭 채운다 */
+/** 사각 트랙의 칸 수. LOADING_DURATION을 이 수로 나눠 한 칸씩 채운다 */
 const TRACK_SLOTS = 12
+/**
+ * 칸 하나가 채워지는 시간. 칸 사이 간격(LOADING_DURATION / TRACK_SLOTS = 275ms)보다 조금 길게 잡아
+ * 앞 칸이 끝나기 전에 다음 칸이 들어오고, 리듬이 끊기지 않고 이어진다
+ */
+const SLOT_FILL_DURATION = 300
+/** 다 찬 뒤 붙는 스티커가 톡 튀어나오는 시간 */
+const STICKER_POP_DURATION = 260
 
 /**
  * 식권 발매기 판 위의 사각 트랙. 4×4 격자의 바깥 12칸을 왼쪽 위에서 시계 방향으로 돌려준다.
@@ -567,6 +574,67 @@ function trackSlots(size: number) {
     [0, 1],
   ]
   return { slot, positions: cells.map(([col, row]) => ({ left: at(col), top: at(row) })) }
+}
+
+/**
+ * 트랙 칸 하나. 1.5pt 먹선과 6pt 모서리는 그대로 두고 안쪽 빨강 면만 불투명도·크기로 부드럽게 들어온다.
+ * 테두리를 가진 바깥 View는 움직이지 않으므로 먹선 굵기가 변하지 않는다.
+ */
+function TrackSlot({
+  filled,
+  left,
+  reducedMotion,
+  size,
+  top,
+}: {
+  filled: boolean
+  left: number
+  reducedMotion: boolean
+  size: number
+  top: number
+}) {
+  const fill = useSharedValue(filled ? 1 : 0)
+
+  useEffect(() => {
+    // Reduce Motion이면 움직임 없이 즉시 최종 상태
+    if (reducedMotion) {
+      fill.value = filled ? 1 : 0
+      return
+    }
+    fill.value = withTiming(filled ? 1 : 0, { duration: SLOT_FILL_DURATION, easing: Easing.out(Easing.cubic) })
+  }, [fill, filled, reducedMotion])
+
+  const fillStyle = useAnimatedStyle(() => ({
+    opacity: fill.value,
+    transform: [{ scale: 0.84 + fill.value * 0.16 }],
+  }))
+
+  return (
+    <View style={[styles.slot, { width: size, height: size, left, top }]}>
+      <Animated.View style={[styles.slotFill, fillStyle]} />
+    </View>
+  )
+}
+
+/** 다 찬 순간 붙는 "찾았어요" 스티커. 회전 없이 scale 0.9 → 1 + 불투명도로 톡 튀어나온다 */
+function BoardSticker({ reducedMotion }: { reducedMotion: boolean }) {
+  const pop = useSharedValue(reducedMotion ? 1 : 0)
+
+  useEffect(() => {
+    if (reducedMotion) return
+    pop.value = withTiming(1, { duration: STICKER_POP_DURATION, easing: Easing.out(Easing.back(2)) })
+  }, [pop, reducedMotion])
+
+  const popStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, pop.value * 2),
+    transform: [{ scale: 0.9 + pop.value * 0.1 }],
+  }))
+
+  return (
+    <Animated.View style={[styles.boardSticker, popStyle]}>
+      <Sticker icon={<Check color={colors.ink} size={12} />} label="찾았어요" style={styles.centerSelf} />
+    </Animated.View>
+  )
 }
 
 /** 웹 AICurationLoading과 같은 차분한 로딩. 실제로 반영된 조건만 보여준다 */
@@ -596,7 +664,8 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
     }
   }, [])
 
-  // 트랙은 한 칸씩 툭툭 찍힌다. Reduce Motion이면 움직임 없이 처음부터 다 채운 상태로 둔다
+  // 칸은 275ms마다 하나씩 차례를 받고, 칸 안에서 300ms 동안 부드럽게 채워진다.
+  // Reduce Motion이면 움직임 없이 처음부터 다 채운 상태로 둔다
   useEffect(() => {
     if (reducedMotion) {
       setFilled(TRACK_SLOTS)
@@ -633,13 +702,13 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.visual, { width: size, height: size }]}>
           <View style={[styles.board, { width: size, height: size }]}>
             {track.positions.map((position, index) => (
-              <View
+              <TrackSlot
+                filled={index < filledCount}
                 key={`${position.left}-${position.top}`}
-                style={[
-                  styles.slot,
-                  { width: track.slot, height: track.slot, left: position.left, top: position.top },
-                  index < filledCount && styles.slotFilled,
-                ]}
+                left={position.left}
+                reducedMotion={reducedMotion}
+                size={track.slot}
+                top={position.top}
               />
             ))}
             <Image
@@ -649,11 +718,7 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
               style={[styles.boardLogo, { width: size * 0.4, height: size * 0.4 }]}
             />
           </View>
-          {complete ? (
-            <View style={styles.boardSticker}>
-              <Sticker icon={<Check color={colors.ink} size={12} />} label="찾았어요" style={styles.centerSelf} />
-            </View>
-          ) : null}
+          {complete ? <BoardSticker reducedMotion={reducedMotion} /> : null}
         </View>
 
         <View accessibilityLiveRegion="polite" style={styles.statusLine}>
@@ -815,15 +880,16 @@ const styles = StyleSheet.create({
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
-  // 트랙 칸: 맛 평가 미터 칸과 같은 1.5pt 먹선 + 6pt. 채워지면 단색 빨강
+  // 트랙 칸: 맛 평가 미터 칸과 같은 1.5pt 먹선 + 6pt. 안쪽 빨강 면만 움직이므로 먹선은 늘 1.5pt다
   slot: {
     position: "absolute",
     borderRadius: radii.xs,
     borderWidth: line.thin,
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
+    overflow: "hidden",
   },
-  slotFilled: { backgroundColor: colors.brand },
+  slotFill: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.brand },
   // 판 한가운데. 칸들이 absolute라 흐름에는 로고만 남지만, 겹침에 기대지 않게 자리를 못 박는다
   boardLogo: { position: "absolute" },
   // 다 찾은 순간에만 붙는 노랑 스티커. 판 아래 선에 걸쳐 놓는다
