@@ -333,7 +333,10 @@ export default function HomeScreen() {
               style={({ pressed }) => [styles.account, pressed && styles.pressedWash]}
             >
               <AppText capScale numberOfLines={1} style={[styles.bold, styles.flexShrink]} variant="secondary">
-                {`${currentUser.nickname}님`}
+                {currentUser.nickname}
+                <AppText style={styles.accountSuffix} tone="sub" variant="secondary">
+                  님
+                </AppText>
               </AppText>
               <ChevronRight color={colors.inkSub} size={16} />
             </Pressable>
@@ -831,6 +834,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
+  accountSuffix: { fontWeight: "600" },
 
   // 키 두 개가 2pt 그림자 때문에 붙어 보이지 않게 간격을 8pt로 둔다
   authRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
