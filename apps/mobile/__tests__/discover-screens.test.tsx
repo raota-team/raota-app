@@ -268,7 +268,7 @@ describe("shop detail", () => {
 })
 
 describe("AI curator", () => {
-  it("walks four steps, shows only applied conditions while loading and a result without match %", async () => {
+  it("walks four steps, checks off every chosen condition while loading, and a result without match %", async () => {
     jest.useFakeTimers()
     const view = await renderScreen(<AIRecommendScreen />)
     expect(await view.findByText("1 / 4")).toBeTruthy()
@@ -288,9 +288,10 @@ describe("AI curator", () => {
       priority: "clean",
       hasPrompt: false,
     })
-    // 로딩에는 반영된 조건만 보인다(혼밥 분위기는 매장 정보가 없어 참고만 → 표시 안 함)
+    // 로딩 식권은 고른 조건을 전부 체크한다. 반영 / 참고만은 결과 화면이 말한다
     expect(view.getByText(/돈코츠 계보/)).toBeTruthy()
-    expect(view.queryByText(/혼밥하기 좋은 곳/)).toBeNull()
+    expect(view.getByText(/혼밥하기 좋은 곳/)).toBeTruthy()
+    expect(view.getAllByRole("checkbox")).toHaveLength(3)
 
     await act(async () => {
       jest.advanceTimersByTime(4000)
@@ -308,15 +309,20 @@ describe("AI curator", () => {
     jest.useRealTimers()
   })
 
-  it("titles guest results as today's pick and skips the loading screen", async () => {
+  it("titles guest results as today's pick once the loading screen finishes", async () => {
+    jest.useFakeTimers()
     const view = await renderScreen(<AIRecommendScreen />, true)
     await view.findByText("1 / 4")
     await fireEvent.press(view.getByRole("button", { name: "다음" }))
     await fireEvent.press(view.getByRole("button", { name: "다음" }))
     await fireEvent.press(view.getByRole("button", { name: "다음" }))
     await fireEvent.press(view.getByRole("button", { name: "AI 맞춤 추천받기" }))
-    await fireEvent.press(view.getByRole("button", { name: "추천 바로 보기" }))
-    expect(await view.findByText("오늘의 추천")).toBeTruthy()
+    // 로딩은 스스로 끝난다(건너뛰기 버튼 없음)
+    await act(async () => {
+      jest.advanceTimersByTime(4000)
+    })
+    await waitFor(() => expect(view.getByText("오늘의 추천")).toBeTruthy())
+    jest.useRealTimers()
     await fireEvent.press(view.getByRole("button", { name: "이 가게 기록하기" }))
     expect(router.push).toHaveBeenCalledWith("/auth/login")
   })

@@ -253,7 +253,7 @@ export default function AIRecommendScreen() {
   if (step === "loading" && curation) {
     return (
       <CurationLoading
-        conditions={curation.conditions.filter((condition) => condition.applied).map((condition) => condition.label.replace(/^직접 입력: /, ""))}
+        conditions={curation.conditions.map((condition) => condition.label.replace(/^직접 입력: /, ""))}
         onBack={() => setStep(4)}
         onComplete={() => setStep("result")}
       />
@@ -564,7 +564,7 @@ function TicketRow({ done, reducedMotion, text }: { done: boolean; reducedMotion
   }, [done, mark, reducedMotion])
 
   const boxStyle = useAnimatedStyle(() => ({ backgroundColor: mark.value > 0.5 ? colors.ink : colors.canvas }))
-  const checkStyle = useAnimatedStyle(() => ({
+  const markStyle = useAnimatedStyle(() => ({
     opacity: mark.value,
     transform: [{ scale: 0.7 + mark.value * 0.3 }],
   }))
@@ -572,7 +572,7 @@ function TicketRow({ done, reducedMotion, text }: { done: boolean; reducedMotion
   return (
     <View accessible accessibilityRole="checkbox" accessibilityState={{ checked: done }} style={styles.ticketRow}>
       <Animated.View style={[styles.checkBox, boxStyle]}>
-        <Animated.View style={checkStyle}>
+        <Animated.View style={markStyle}>
           <Check color={colors.onDark} size={12} strokeWidth={3} />
         </Animated.View>
       </Animated.View>
@@ -605,8 +605,9 @@ function TicketSticker({ reducedMotion }: { reducedMotion: boolean }) {
 }
 
 /**
- * 라멘집 식권 한 장. 고른 조건이 한 줄씩 적혀 있고 반영되는 대로 체크된다.
+ * 라멘집 식권 한 장. 고른 조건이 한 줄씩 적혀 있고 하나씩 체크된다.
  * 무엇이 끝났는지 화면에 남기 때문에 "지금 무엇을 해주고 있나"가 사라지지 않는다.
+ * 조건이 실제로 반영됐는지 참고만 했는지는 결과 화면이 말한다 — 로딩은 체크만 한다.
  */
 function CurationLoading({ conditions, onBack, onComplete }: { conditions: string[]; onBack: () => void; onComplete: () => void }) {
   const { width: screenWidth } = useWindowDimensions()
@@ -691,20 +692,6 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
             {message}
           </AppText>
         </View>
-      </View>
-
-      <View style={styles.loadingFooter}>
-        <Pressable
-          accessibilityLabel="추천 바로 보기"
-          accessibilityRole="button"
-          onPress={onComplete}
-          style={({ pressed }) => [styles.skip, pressed && styles.pressedWash]}
-        >
-          <AppText tone="sub" variant="secondary">
-            추천 바로 보기
-          </AppText>
-          <ArrowRight color={colors.inkSub} size={16} />
-        </Pressable>
       </View>
     </Screen>
   )
@@ -865,6 +852,4 @@ const styles = StyleSheet.create({
   stickerRight: { alignSelf: "flex-end" },
   statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: 24 },
   statusDot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
-  loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingTop: spacing.x2, paddingBottom: spacing.x6 },
-  skip: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: touchTarget, paddingHorizontal: spacing.x5, borderRadius: radii.sm },
 })
