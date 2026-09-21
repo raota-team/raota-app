@@ -40,8 +40,6 @@ export const colors = {
    * 글씨와 2pt 테두리는 계속 ink를 쓴다 — 이 색은 면 전용이다.
    */
   deep: "#00422E",
-  /** 따뜻한 빈 면(기록량 히트맵의 빈 칸). 국물 색과 같은 계열이라 표가 한 덩어리로 읽힌다 */
-  warmEmpty: "#F5DF97",
   positive: "#2E7D32",
   positiveWeak: "#EBF8F0",
   warning: "#A15C00",

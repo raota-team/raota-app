@@ -41,7 +41,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { broth, colors, line, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 import { MonthlyTastePreview } from "../(flows)/taste/archive"
 import { TasteReportCover, shopSpecOf, shopStyleOf } from "../(flows)/taste/index"
 
@@ -64,10 +64,11 @@ const RECENT_VISIBLE_ROWS = 5
 const RECENT_ROW_HEIGHT = 72
 
 /**
- * 1·2·3·4그릇 이상. 수량은 빨강이 아니라 먹색 농도로 말한다(빨강은 누르는 곳과 고른 것 전용).
- * 가장 옅은 0.4도 빈 칸(canvasSoft)과 2.3:1로 갈린다(옛 0.25는 1.3:1로 보이지 않았다).
+ * 1·2·3·4그릇 이상. 수량은 빨강이 아니라 국물 색(broth) 농도로 말한다(빨강은 누르는 곳과 고른 것 전용).
+ * 가장 옅은 broth[0](#D6A24A)도 빈 칸(canvasSoft)과 2.06:1로 갈린다.
+ * 색만으로 값을 말하지 않도록 칸마다 접근성 라벨을, 범례에는 LEVEL_LABELS의 값을 함께 둔다.
  */
-const LEVEL_OPACITY = [0.4, 0.6, 0.8, 1]
+const LEVEL_FILLS = broth
 /** 칸 색 단계의 이름. 범례와 요약 라벨이 같은 말을 쓰도록 한곳에 둔다 */
 const LEVEL_LABELS = ["1그릇", "2그릇", "3그릇", "4그릇 이상"]
 const CELL = 12
@@ -105,7 +106,7 @@ function buildCalendar(bowls: DemoBowl[], start: string, end: string) {
   const monthLabels: { week: number; label: string }[] = []
   let total = 0
   // 칸 색과 같은 단계로 "며칠이 몇 그릇이었는지"를 센다. 수량이 색으로만 읽히지 않게 요약 라벨에 붙인다
-  const levelDays = LEVEL_OPACITY.map(() => 0)
+  const levelDays = LEVEL_FILLS.map(() => 0)
   for (let day = addDays(start, -weekdayOf(start)); day <= end; day = addDays(day, 1)) {
     if (weekdayOf(day) === 0) weeks.push([])
     const inRange = day >= start
@@ -485,7 +486,7 @@ function MemberView() {
                                   !day.inRange
                                     ? styles.cellOut
                                     : day.count > 0
-                                      ? { backgroundColor: colors.ink, opacity: LEVEL_OPACITY[Math.min(4, day.count) - 1] }
+                                      ? { backgroundColor: LEVEL_FILLS[Math.min(4, day.count) - 1] }
                                       : null,
                                 ]}
                               />
@@ -512,8 +513,8 @@ function MemberView() {
                       적음
                     </AppText>
                     <View style={[styles.swatch, styles.cellEmpty]} />
-                    {LEVEL_OPACITY.map((opacity) => (
-                      <View key={opacity} style={[styles.swatch, { backgroundColor: colors.ink, opacity }]} />
+                    {LEVEL_FILLS.map((fill) => (
+                      <View key={fill} style={[styles.swatch, { backgroundColor: fill }]} />
                     ))}
                     <AppText capScale tone="sub" variant="meta">
                       많음
@@ -882,8 +883,8 @@ const styles = StyleSheet.create({
   // 차콜 프로필
   // 목록 끝이 오른쪽 아래 기록 버튼에 가리지 않을 만큼 비운다(계정·약관은 설정 화면으로 옮겼다)
   scroll: { paddingBottom: 96 },
-  overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.ink },
-  profile: { backgroundColor: colors.ink, paddingHorizontal: spacing.gutter, paddingBottom: spacing.x4 },
+  overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.deep },
+  profile: { backgroundColor: colors.deep, paddingHorizontal: spacing.gutter, paddingBottom: spacing.x4 },
   profileTop: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
   // 먹색 면 위의 흰 키라서 테두리·그림자 없이 면만으로 보인다
   settingsButton: {
@@ -936,7 +937,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     overflow: "hidden",
   },
-  levelFill: { height: "100%", backgroundColor: colors.ink },
+  // 다음 등급까지 얼마나 왔는지 = 수량. 진녹 면 위라 국물 색 중 옅은 쪽을 쓴다
+  levelFill: { height: "100%", backgroundColor: broth[0] },
   // 본문
   main: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, gap: spacing.x4 },
   card: {
