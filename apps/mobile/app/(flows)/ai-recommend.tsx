@@ -541,87 +541,50 @@ function RestartButton({ onPress }: { onPress: () => void }) {
   )
 }
 
-/** 식권이 발매구에서 내려오는 시간 */
-const TICKET_SLIDE_DURATION = 560
-/** 버튼 하나가 눌리는 시간 */
-const KEY_PRESS_DURATION = 160
-/** 버튼 사이 간격. 사람이 메뉴를 하나씩 누르는 속도 */
-const KEY_PRESS_GAP = 340
-/** 식권에 한 줄이 인쇄되는 간격 */
-const PRINT_GAP = 320
-/** 다 나온 뒤 붙는 스티커가 톡 튀어나오는 시간 */
+/** 한 줄이 체크되는 시간 */
+const CHECK_DURATION = 240
+/** 다 체크된 뒤 붙는 스티커가 톡 튀어나오는 시간 */
 const STICKER_POP_DURATION = 260
-
-const KEY_COLS = 4
-const KEY_ROWS = 3
-/** 눌리는 칸. 고른 조건 수만큼 흩어 누른다 */
-const PRESSED_KEYS = [0, 5, 10]
-/** 식권 한 줄의 높이. 창을 미리 잘라 둬야 해서 재지 않고 못 박는다 */
-const TICKET_LINE_HEIGHT = 18
-
-/** 판의 치수. 폭 하나에서 나머지를 전부 끌어낸다 */
-function machineSize(width: number) {
-  const pad = 10
-  const gap = 6
-  const key = Math.floor((width - line.base * 2 - pad * 2 - gap * (KEY_COLS - 1)) / KEY_COLS)
-  const ticket = Math.round(width * 0.62)
-  return { pad, gap, key, ticket }
-}
+/** 첫 줄이 체크되기까지 */
+const CHECK_START = 400
 
 /**
- * 발매기 버튼 한 칸. 칸의 테두리와 면은 움직이지 않고 아래 붙은 누름 버튼만
- * 먹색 → 빨강으로 바뀌며 1.5pt 들어간다. 바깥 View가 가만히 있어야 먹선 굵기가 떨리지 않는다.
+ * 식권의 한 줄. 네모 칸이 먹색으로 차고 흰 체크가 톡 들어온다.
+ * 아직 안 된 줄은 빈 칸에 흐린 글씨라, 무엇이 끝났고 무엇이 남았는지 한눈에 보인다.
  */
-function MachineKey({ pressed, reducedMotion, size }: { pressed: boolean; reducedMotion: boolean; size: number }) {
-  const press = useSharedValue(pressed ? 1 : 0)
+function TicketRow({ done, reducedMotion, text }: { done: boolean; reducedMotion: boolean; text: string }) {
+  const mark = useSharedValue(done ? 1 : 0)
 
   useEffect(() => {
     if (reducedMotion) {
-      press.value = pressed ? 1 : 0
+      mark.value = done ? 1 : 0
       return
     }
-    press.value = withTiming(pressed ? 1 : 0, { duration: KEY_PRESS_DURATION, easing: Easing.out(Easing.cubic) })
-  }, [press, pressed, reducedMotion])
+    mark.value = withTiming(done ? 1 : 0, { duration: CHECK_DURATION, easing: Easing.out(Easing.cubic) })
+  }, [done, mark, reducedMotion])
 
-  const buttonStyle = useAnimatedStyle(() => ({
-    backgroundColor: press.value > 0.5 ? colors.brand : colors.ink,
-    transform: [{ translateY: press.value * 1.5 }],
+  const boxStyle = useAnimatedStyle(() => ({ backgroundColor: mark.value > 0.5 ? colors.ink : colors.canvas }))
+  const checkStyle = useAnimatedStyle(() => ({
+    opacity: mark.value,
+    transform: [{ scale: 0.7 + mark.value * 0.3 }],
   }))
-  const litStyle = useAnimatedStyle(() => ({ opacity: press.value }))
 
   return (
-    <View style={[styles.key, { width: size, height: Math.round(size * 0.78) }]}>
-      <Animated.View style={[styles.keyLit, litStyle]} />
-      <Animated.View style={[styles.keyButton, buttonStyle]} />
+    <View style={styles.ticketRow}>
+      <Animated.View style={[styles.checkBox, boxStyle]}>
+        <Animated.View style={checkStyle}>
+          <Check color={colors.onDark} size={12} strokeWidth={3} />
+        </Animated.View>
+      </Animated.View>
+      <AppText numberOfLines={1} style={styles.flexShrink} tone={done ? "ink" : "muted"} variant="secondary">
+        {text}
+      </AppText>
     </View>
   )
 }
 
-/** 식권에 인쇄되는 한 줄 */
-function TicketLine({ printed, reducedMotion, text }: { printed: boolean; reducedMotion: boolean; text: string }) {
-  const ink = useSharedValue(printed ? 1 : 0)
-
-  useEffect(() => {
-    if (reducedMotion) {
-      ink.value = printed ? 1 : 0
-      return
-    }
-    ink.value = withTiming(printed ? 1 : 0, { duration: 220, easing: Easing.out(Easing.cubic) })
-  }, [ink, printed, reducedMotion])
-
-  const inkStyle = useAnimatedStyle(() => ({ opacity: ink.value }))
-
-  return (
-    <Animated.View style={inkStyle}>
-      <AppText numberOfLines={1} style={styles.ticketLine} variant="meta">
-        {text}
-      </AppText>
-    </Animated.View>
-  )
-}
-
-/** 다 나온 순간 식권에 붙는 "찾았어요" 스티커 */
-function TicketSticker({ reducedMotion, style }: { reducedMotion: boolean; style: ViewStyle }) {
+/** 다 체크된 순간 식권에 붙는 "찾았어요" 스티커 */
+function TicketSticker({ reducedMotion }: { reducedMotion: boolean }) {
   const pop = useSharedValue(reducedMotion ? 1 : 0)
 
   useEffect(() => {
@@ -635,35 +598,28 @@ function TicketSticker({ reducedMotion, style }: { reducedMotion: boolean; style
   }))
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.ticketSticker, style, popStyle]}>
+    <Animated.View pointerEvents="none" style={[styles.ticketSticker, popStyle]}>
       <Sticker icon={<Check color={colors.ink} size={12} />} label="찾았어요" style={styles.stickerRight} />
     </Animated.View>
   )
 }
 
 /**
- * 라멘집 식권 발매기. 판은 가만히 있고 기계가 제 일을 한다:
- * 고른 조건 수만큼 버튼이 눌리고 → 발매구에서 식권이 내려오고 → 조건이 한 줄씩 인쇄된다.
- * 테두리를 도는 불빛은 발매기가 하는 동작이 아니고, 발매기의 빨간 불은 보통 매진 표시라 쓰지 않는다.
+ * 라멘집 식권 한 장. 고른 조건이 한 줄씩 적혀 있고 반영되는 대로 체크된다.
+ * 무엇이 끝났는지 화면에 남기 때문에 "지금 무엇을 해주고 있나"가 사라지지 않는다.
  */
 function CurationLoading({ conditions, onBack, onComplete }: { conditions: string[]; onBack: () => void; onComplete: () => void }) {
-  const { height } = useWindowDimensions()
+  const { width: screenWidth } = useWindowDimensions()
   const reducedMotion = useReducedMotion()
   const [stage, setStage] = useState(0)
-  const [pressedCount, setPressedCount] = useState(0)
-  const [printedCount, setPrintedCount] = useState(0)
+  const [checked, setChecked] = useState(0)
   const titleRef = useRef<View>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
   const complete = stage === 3
-  const width = height < 700 ? 210 : 262
-  const box = useMemo(() => machineSize(width), [width])
+  const ticketWidth = Math.min(280, screenWidth - spacing.gutter * 2 - spacing.x6)
 
-  const ticketLines = useMemo(() => (conditions.length ? conditions : ["전체 라멘집에서"]), [conditions])
-  const keyCount = Math.min(ticketLines.length, PRESSED_KEYS.length)
-  const ticketHeight = 12 + 15 + 7 + ticketLines.length * TICKET_LINE_HEIGHT + 12
-  const slideAt = 250 + keyCount * KEY_PRESS_GAP
-  const slide = useSharedValue(reducedMotion ? 1 : 0)
+  const rows = useMemo(() => (conditions.length ? conditions : ["전체 라멘집에서 고르기"]), [conditions])
 
   useEffect(() => {
     const timers = [
@@ -679,31 +635,17 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
     }
   }, [])
 
-  // 버튼 → 식권 → 인쇄 순서. Reduce Motion이면 움직임 없이 처음부터 최종 상태로 둔다
+  // 줄은 로딩이 끝나기 전에 전부 체크된다. Reduce Motion이면 처음부터 다 체크된 상태
   useEffect(() => {
     if (reducedMotion) {
-      setPressedCount(keyCount)
-      setPrintedCount(ticketLines.length)
-      slide.value = 1
+      setChecked(rows.length)
       return
     }
-    const timers: ReturnType<typeof setTimeout>[] = []
-    for (let index = 0; index < keyCount; index += 1) {
-      timers.push(setTimeout(() => setPressedCount(index + 1), 250 + index * KEY_PRESS_GAP))
-    }
-    timers.push(
-      setTimeout(() => {
-        slide.value = withTiming(1, { duration: TICKET_SLIDE_DURATION, easing: Easing.out(Easing.cubic) })
-      }, slideAt),
-    )
-    const printAt = slideAt + TICKET_SLIDE_DURATION
-    for (let index = 0; index < ticketLines.length; index += 1) {
-      timers.push(setTimeout(() => setPrintedCount(index + 1), printAt + index * PRINT_GAP))
-    }
+    const step = (LOADING_DURATION - CHECK_START - 500) / rows.length
+    const timers = rows.map((_, index) => setTimeout(() => setChecked(index + 1), CHECK_START + index * step))
     return () => timers.forEach(clearTimeout)
-  }, [keyCount, reducedMotion, slide, slideAt, ticketLines.length])
+  }, [reducedMotion, rows])
 
-  const slideStyle = useAnimatedStyle(() => ({ transform: [{ translateY: (slide.value - 1) * (ticketHeight + 6) }] }))
   const message = useMemo(() => LOADING_MESSAGES[stage], [stage])
 
   return (
@@ -720,54 +662,27 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
             {"오늘의 한 그릇을\n찾고 있어요"}
           </AppText>
         </View>
-        <AppText style={[styles.center, styles.loadingConditions]} tone="sub" variant="body">
-          {conditions.length ? conditions.join(" · ") : "전체 라멘집에서 골라요"}
-        </AppText>
 
-        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.visual, { width }]}>
-          <View style={[styles.board, { width, padding: box.pad, gap: box.gap }]}>
-            {/* 판 머리의 메뉴 사진 자리. 발매기마다 간판 한 그릇이 걸려 있다 */}
-            <View style={[styles.banner, { height: Math.round(width * 0.26) }]}>
+        {/* 고른 조건이 적힌 식권 한 장. 반영되는 대로 한 줄씩 체크된다 */}
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.visual}>
+          <View style={[styles.ticket, { width: ticketWidth }]}>
+            <View style={styles.ticketHead}>
               <Image
                 accessibilityIgnoresInvertColors
                 contentFit="contain"
                 source={require("@/assets/images/logo.png")}
-                style={styles.bannerLogo}
+                style={styles.ticketLogo}
               />
-            </View>
-            <View style={[styles.keyGrid, { gap: box.gap }]}>
-              {Array.from({ length: KEY_COLS * KEY_ROWS }, (_, index) => (
-                <MachineKey
-                  key={index}
-                  pressed={PRESSED_KEYS.slice(0, pressedCount).includes(index)}
-                  reducedMotion={reducedMotion}
-                  size={box.key}
-                />
-              ))}
-            </View>
-            {/* 아래판: 왼쪽이 식권 발매구, 오른쪽이 동전·지폐 투입구 */}
-            <View style={styles.machineBase}>
-              <View style={[styles.mouth, { width: box.ticket + 8 }]} />
-              <View style={styles.slots}>
-                <View style={styles.coinSlot} />
-                <View style={styles.billSlot} />
-              </View>
-            </View>
-          </View>
-
-          {/* 발매구 아래로 이어지는 창. 식권은 이 창 위쪽(판 뒤)에서 내려온다 */}
-          <View style={[styles.ticketWindow, { width: box.ticket, height: ticketHeight, marginLeft: box.pad + 4 }]}>
-            <Animated.View style={[styles.ticket, slideStyle]}>
-              <AppText style={styles.ticketHead} tone="sub" variant="meta">
+              <AppText style={styles.ticketLabel} tone="sub" variant="meta">
                 식권
               </AppText>
-              <View style={styles.ticketRule} />
-              {ticketLines.map((text, index) => (
-                <TicketLine key={text} printed={index < printedCount} reducedMotion={reducedMotion} text={text} />
-              ))}
-            </Animated.View>
+            </View>
+            <View style={styles.ticketRule} />
+            {rows.map((text, index) => (
+              <TicketRow done={index < checked} key={text} reducedMotion={reducedMotion} text={text} />
+            ))}
           </View>
-          {complete ? <TicketSticker reducedMotion={reducedMotion} style={{ left: box.pad + 4, width: box.ticket }} /> : null}
+          {complete ? <TicketSticker reducedMotion={reducedMotion} /> : null}
         </View>
 
         <View accessibilityLiveRegion="polite" style={styles.statusLine}>
@@ -920,61 +835,32 @@ const styles = StyleSheet.create({
   loadingBody: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
   loadingConditions: { marginTop: spacing.x3, maxWidth: 280 },
   visual: { alignSelf: "center", marginVertical: spacing.x6 },
-  // 발매기 판: 흰 면 + 2pt 먹선 + 12pt. 누를 수 없으니 그림자는 없다
-  board: {
-    borderRadius: radii.sm,
+  // 식권 한 장: 흰 면 + 2pt 먹선. 누를 수 없으니 그림자는 없다
+  ticket: {
+    paddingHorizontal: spacing.x4,
+    paddingVertical: spacing.x4,
+    borderRadius: radii.xs,
     borderWidth: line.base,
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
-  // 판 머리에 걸린 간판 한 그릇 자리
-  banner: {
+  ticketHead: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
+  ticketLogo: { width: 20, height: 20 },
+  ticketLabel: { letterSpacing: 2 },
+  ticketRule: { height: 1, backgroundColor: colors.border, marginTop: spacing.x3, marginBottom: spacing.x1 },
+  ticketRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x2 },
+  // 체크 칸: 1.5pt 먹선 + 6pt. 테두리는 가만히 있고 면과 체크만 들어온다
+  checkBox: {
+    width: 20,
+    height: 20,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radii.xs,
     borderWidth: line.thin,
     borderColor: colors.outline,
-    backgroundColor: colors.paper,
   },
-  bannerLogo: { width: "52%", height: "76%" },
-  keyGrid: { flexDirection: "row", flexWrap: "wrap" },
-  // 메뉴 버튼 한 칸: 1.5pt 먹선 + 6pt. 칸은 가만히 있고 아래 누름 버튼만 움직인다
-  key: {
-    justifyContent: "flex-end",
-    alignItems: "center",
-    paddingBottom: 4,
-    borderRadius: radii.xs,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    overflow: "hidden",
-  },
-  // 눌린 칸에만 켜지는 옅은 빨강 면
-  keyLit: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.brandWeak },
-  // 칸마다 아래에 붙은 작은 누름 버튼. 실제 발매기가 이렇게 생겼다
-  keyButton: { width: "56%", height: 6, borderRadius: radii.xs },
-  machineBase: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 22 },
-  // 식권이 나오는 발매구
-  mouth: { height: 14, borderRadius: radii.xs, backgroundColor: colors.ink },
-  slots: { flexDirection: "row", alignItems: "center", gap: 5 },
-  coinSlot: { width: 4, height: 14, borderRadius: radii.xs, backgroundColor: colors.ink },
-  billSlot: { width: 18, height: 10, borderRadius: radii.xs, backgroundColor: colors.ink },
-  // 발매구 아래 창. 식권은 이 창 위쪽(판 뒤)에서 내려오므로 넘치는 부분을 잘라 낸다
-  ticketWindow: { alignSelf: "flex-start", overflow: "hidden" },
-  ticket: {
-    paddingHorizontal: spacing.x3,
-    paddingVertical: spacing.x3,
-    borderRadius: radii.xs,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-  },
-  ticketHead: { letterSpacing: 1 },
-  ticketRule: { height: 1, backgroundColor: colors.border, marginTop: 3, marginBottom: 4 },
-  ticketLine: { lineHeight: TICKET_LINE_HEIGHT },
-  // 다 나온 순간에만 붙는 노랑 스티커. 식권 오른쪽 아래에 걸쳐 놓는다
-  // 식권 오른쪽 아래 모서리에 걸친다. 인쇄된 줄을 덮지 않도록 식권 안쪽 여백까지만 올라온다
-  ticketSticker: { position: "absolute", bottom: -16, alignItems: "flex-end" },
+  // 다 체크된 순간에만 붙는 노랑 스티커. 식권 오른쪽 아래 모서리에 걸친다
+  ticketSticker: { position: "absolute", right: 0, bottom: -13 },
   // Sticker는 기본이 alignSelf: flex-start라 오른쪽으로 보내려면 직접 덮어써야 한다
   stickerRight: { alignSelf: "flex-end" },
   statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: 24 },
