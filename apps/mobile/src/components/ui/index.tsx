@@ -579,7 +579,11 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
                     </NativeText>
                   </View>
                 ) : (
-                  <View style={[styles.spectrumDot, invalid && !value && styles.dotInvalid]} />
+                  <View style={[styles.spectrumDot, invalid && !value && styles.dotInvalid]}>
+                    <NativeText maxFontSizeMultiplier={maxFontScale} style={[typography.meta, styles.spectrumDotText]}>
+                      {score}
+                    </NativeText>
+                  </View>
                 )
               ) : (
                 <View
@@ -1070,16 +1074,20 @@ const styles = StyleSheet.create({
   qualityDotFilled: { backgroundColor: colors.brandWeak },
   qualityDotSelected: { backgroundColor: colors.brand },
   // 취향 위치: 다섯 칸의 가운데를 잇는 선(첫 칸 중앙 10% ~ 마지막 칸 중앙 90%)
-  spectrumTrack: { position: "absolute", left: "10%", right: "10%", top: "50%", height: 2, marginTop: -1, backgroundColor: colors.border },
+  // 다섯 점을 하나의 컨트롤로 묶는 선. 옅으면 점들이 무관해 보이므로 본문 글씨와 같은 무게로 둔다
+  spectrumTrack: { position: "absolute", left: "10%", right: "10%", top: "50%", height: 2, marginTop: -1, backgroundColor: colors.inkSub },
   trackInvalid: { backgroundColor: colors.brand },
   spectrumDot: {
-    width: 14,
-    height: 14,
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radii.pill,
     borderWidth: line.thin,
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
+  spectrumDotText: { fontWeight: "700", color: colors.inkSub },
   spectrumPick: {
     width: 36,
     height: 36,
