@@ -570,7 +570,7 @@ function TicketRow({ done, reducedMotion, text }: { done: boolean; reducedMotion
   }))
 
   return (
-    <View style={styles.ticketRow}>
+    <View accessible accessibilityRole="checkbox" accessibilityState={{ checked: done }} style={styles.ticketRow}>
       <Animated.View style={[styles.checkBox, boxStyle]}>
         <Animated.View style={checkStyle}>
           <Check color={colors.onDark} size={12} strokeWidth={3} />
@@ -664,7 +664,7 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
         </View>
 
         {/* 고른 조건이 적힌 식권 한 장. 반영되는 대로 한 줄씩 체크된다 */}
-        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.visual}>
+        <View style={styles.visual}>
           <View style={[styles.ticket, { width: ticketWidth }]}>
             <View style={styles.ticketHead}>
               <Image
