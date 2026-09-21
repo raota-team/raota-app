@@ -238,20 +238,27 @@ export default function HomeScreen() {
     () => shops.find((shop) => (shop.aiSummary || shop.description) && shop.photos[0]) ?? shops[0] ?? null,
     [shops],
   )
-  /** 가까운 순 상위 5곳. 바로 위 오늘의 픽과 겹치지 않게 뺀다 */
-  const nearby = useMemo(
-    () => shops.filter((shop) => shop.id !== todayPick?.id).sort((a, b) => a.distanceM - b.distanceM).slice(0, 5),
-    [shops, todayPick?.id],
-  )
   /** 추천: 기록이 있는 로그인 사용자는 취향 기반 랭킹, 그 외에는 라멘로그·거리 기준 */
   const personal = loggedIn && tasteProfile.data.profile.count > 0 && Boolean(tasteIdentity.data.leader)
-  /** 가까운 목록에 다 못 보여준 매장 수. 지도 탭에는 전부 있다 */
-  const moreNearbyCount = Math.max(0, shops.length - (todayPick ? 1 : 0) - nearby.length)
   /** 오늘의 픽으로 이미 소개한 매장은 아래 목록에서 다시 보여주지 않는다 */
   const recommendations = useMemo(() => {
     const pool = shops.filter((shop) => shop.id !== todayPick?.id)
     return personal ? personalRecommendations(pool, tasteIdentity.data, tasteProfile.data.profile) : fallbackRecommendations(pool)
   }, [personal, shops, tasteIdentity.data, tasteProfile.data.profile, todayPick?.id])
+  /*
+   * 가까운 순. 오늘의 픽과 추천에 이미 나온 매장은 뺀다.
+   * 비회원은 라멘로그·평점이 모두 0이라 추천 정렬이 거리순으로 무너지는데,
+   * 그때 걸러 내지 않으면 같은 다섯 곳이 두 섹션에 같은 순서로 나온다.
+   */
+  const nearby = useMemo(() => {
+    const shown = new Set(recommendations.map((item) => item.shop.id))
+    return shops
+      .filter((shop) => shop.id !== todayPick?.id && !shown.has(shop.id))
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, 5)
+  }, [recommendations, shops, todayPick?.id])
+  /** 가까운 목록에 다 못 보여준 매장 수. 지도 탭에는 전부 있다 */
+  const moreNearbyCount = Math.max(0, shops.length - (todayPick ? 1 : 0) - recommendations.length - nearby.length)
   const [topRecommendation, ...otherRecommendations] = recommendations
   const recommendTitle = personal && currentUser ? `${currentUser.nickname}님이 좋아할 라멘집` : "처음이라면 여기부터"
   const recommendMeta = personal ? `${tasteIdentity.data.total}그릇 취향 기준` : "라멘로그 · 거리 기준"
