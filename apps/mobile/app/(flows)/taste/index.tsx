@@ -213,6 +213,8 @@ export function TasteReportCover({ recordCount, identity, profile, onOpen, onAna
 const RADAR_SIZE = 250
 const RADAR_CENTER = 125
 const RADAR_RADIUS = 80
+/** 데이터 도형의 면 투명도. 안쪽 눈금이 도형 너머로 비칠 만큼만 덮는다 */
+const RADAR_FILL_OPACITY = 0.35
 const RADAR_LABELS = [
   { x: 125, y: 14 },
   { x: 220, y: 92 },
@@ -262,9 +264,10 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
           const p = radarPoint(index, 1)
           return <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={RADAR_CENTER} x2={p.x} y1={RADAR_CENTER} y2={p.y} />
         })}
-        {/* 데이터 도형은 수량을 말하므로 빨강이 아니라 먹색이다. 반투명 대신 옅은 면(canvasSoft) + 2pt 먹선 윤곽으로 안쪽 눈금과 구분한다 */}
+        {/* 데이터 도형은 수량을 말하므로 빨강이 아니라 국물 색이다. 면이 반투명이라 안쪽 눈금과 축이 도형 너머로 비친다 */}
         <Polygon
-          fill={colors.canvasSoft}
+          fill={broth[0]}
+          fillOpacity={RADAR_FILL_OPACITY}
           points={pointsOf(metrics.map((metric) => metric.myVal))}
           stroke={colors.ink}
           strokeLinejoin="round"
@@ -495,11 +498,12 @@ function TasteReportLoading({
                 <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={LOADING_CENTER} x2={p.x} y1={LOADING_CENTER} y2={p.y} />
               )
             })}
-            {/* 결과 레이더와 같은 재료(canvasSoft 면 + 2pt 먹선). 꼭짓점 값만 자라고 먹선 굵기는 그대로다 */}
+            {/* 결과 레이더와 같은 재료(반투명 국물 색 면 + 2pt 먹선). 꼭짓점 값만 자라고 먹선 굵기는 그대로다 */}
             <AnimatedPath
               animatedProps={shapeProps}
               d={startPath}
-              fill={colors.canvasSoft}
+              fill={broth[0]}
+              fillOpacity={RADAR_FILL_OPACITY}
               stroke={colors.outline}
               strokeLinejoin="round"
               strokeWidth={line.base}
