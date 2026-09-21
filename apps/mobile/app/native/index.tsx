@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingTop: spacing.x6,
     paddingBottom: spacing.x5,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.deep,
   },
   recommendHead: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2, marginBottom: spacing.x4 },
   // 먹색 면 안의 카드는 테두리 없는 흰 면

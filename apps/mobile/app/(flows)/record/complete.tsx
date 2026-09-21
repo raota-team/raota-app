@@ -341,9 +341,9 @@ const styles = StyleSheet.create({
   tabular: { fontVariant: ["tabular-nums"], textAlign: "right" },
   stateArea: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.gutter },
   scrollContent: { paddingBottom: spacing.x6 },
-  overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.ink },
+  overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.deep },
   banner: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.deep,
     alignItems: "center",
     paddingHorizontal: spacing.gutter,
     paddingBottom: spacing.x7,
