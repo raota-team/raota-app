@@ -96,7 +96,7 @@ beforeEach(() => {
 describe("home", () => {
   it("shows curator, today's pick, personal picks and nearby shops without match % or fake banners", async () => {
     const view = await renderScreen(<HomeScreen />)
-    expect(await view.findByText(/님, 반갑습니다/)).toBeTruthy()
+    expect(await view.findByRole("button", { name: /님, 내 정보$/ })).toBeTruthy()
     expect(view.getByRole("button", { name: "오늘 뭐 먹지? AI 라멘 큐레이터" })).toBeTruthy()
     expect(view.getByText("오늘의 픽")).toBeTruthy()
     // 오늘의 픽은 원장에 있는 값으로만 고른 이유를 보여주고, 아래 목록에 같은 매장을 다시 넣지 않는다
@@ -128,7 +128,7 @@ describe("home", () => {
     await fireEvent.press(await view.findByRole("button", { name: "로그인" }))
     expect(router.push).toHaveBeenCalledWith("/auth/login")
     expect(view.getByRole("button", { name: "회원가입" })).toBeTruthy()
-    expect(view.queryByText(/님, 반갑습니다/)).toBeNull()
+    expect(view.queryByRole("button", { name: /님, 내 정보$/ })).toBeNull()
     expect(view.getByText("처음이라면 여기부터")).toBeTruthy()
     expect(view.queryByText(/가장 자주 드셔서/)).toBeNull()
     expect(view.getByText("가까운 라멘집")).toBeTruthy()
