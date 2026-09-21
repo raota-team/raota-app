@@ -17,6 +17,7 @@ import {
   type MenuCategoryName,
   type MetricItem,
   type Shop,
+  type TasteAxisKey,
   type TasteIdentity,
   type TasteProfile,
 } from "@raota/shared"
@@ -61,6 +62,27 @@ function openShop(shop: Shop | undefined) {
   if (shop) router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shop.id) } })
 }
 
+/**
+ * 취향의 위치를 말하는 한 마디. 육수 농도와 면 삶기는 좋고 나쁨이 아니라서 차오르지 않고,
+ * 기록 화면·라멘로그 상세와 같은 어휘("진한 편", "단단한 편")로 위치만 말한다.
+ * 같은 표가 record/new의 AXIS_PRESENTATION과 src/domain/lounge의 wordOf에도 있지만
+ * 둘 다 내보내지 않아 여기서 다시 적는다(후속 과제: 공용 함수로 합치기).
+ */
+const SPECTRUM_WORDS = {
+  brothDensity: ["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"],
+  noodleFirmness: ["아주 부드럽게", "부드러운 편", "중간", "단단한 편", "아주 단단하게"],
+} as const
+
+type SpectrumAxisKey = keyof typeof SPECTRUM_WORDS
+
+const isSpectrumMetric = (metric: MetricItem): metric is MetricItem & { key: SpectrumAxisKey } =>
+  metric.key === "brothDensity" || metric.key === "noodleFirmness"
+
+/** 평균 점수를 반올림해 다섯 단어 중 하나로 읽는다. 기록 화면의 계산과 같다 */
+function spectrumWordOf(key: SpectrumAxisKey, score: number) {
+  return SPECTRUM_WORDS[key][Math.min(5, Math.max(1, Math.round(score))) - 1]
+}
+
 // ---------------------------------------------------------------------------
 // 종합 리포트 표지 (웹 TasteReportCover). 마이에서도 같은 카드를 쓴다
 // ---------------------------------------------------------------------------
@@ -77,9 +99,7 @@ export interface TasteReportCoverProps {
 
 export function TasteReportCover({ recordCount, identity, profile, onOpen, onAnalyze, onStart }: TasteReportCoverProps) {
   const empty = recordCount === 0
-  const metrics = metricsFromProfile(profile).filter(
-    (metric) => metric.key === "brothDensity" || metric.key === "noodleFirmness",
-  )
+  const metrics = metricsFromProfile(profile).filter(isSpectrumMetric)
   return (
     <View style={styles.card}>
       <View style={styles.coverHead}>
@@ -114,35 +134,30 @@ export function TasteReportCover({ recordCount, identity, profile, onOpen, onAna
       ) : null}
       {!empty ? (
         <View style={styles.coverAxes}>
-          {metrics.map((metric) => (
-            <View
-              accessibilityLabel={`${metric.label} 평균 ${metric.score.toFixed(1)}점, 5점 만점`}
-              accessible
-              key={metric.key}
-              style={styles.flex}
-            >
-              <View style={styles.rowBetween}>
+          {/* 두 항목 모두 취향의 위치라 차오르는 미터를 쓰지 않는다. 위치를 말하는 한 마디가 앞이고 평균 점수는 옆에 작게 둔다 */}
+          {metrics.map((metric) => {
+            const word = spectrumWordOf(metric.key, metric.score)
+            return (
+              <View
+                accessibilityLabel={`${metric.label} ${word}, 평균 ${metric.score.toFixed(1)}점, 5점 만점`}
+                accessible
+                key={metric.key}
+                style={styles.flex}
+              >
                 <AppText capScale tone="muted" variant="meta">
                   {metric.label}
                 </AppText>
-                <AppText capScale style={styles.tabular} variant="meta">
-                  {metric.score.toFixed(1)}
-                  <AppText capScale tone="muted" variant="meta">
-                    {" / 5"}
+                <View style={styles.coverAxisValue}>
+                  <AppText style={styles.flex} variant="bodyStrong">
+                    {word}
                   </AppText>
-                </AppText>
+                  <AppText capScale style={styles.tabular} tone="muted" variant="meta">
+                    {metric.score.toFixed(1)}
+                  </AppText>
+                </View>
               </View>
-              <View style={styles.steps}>
-                {[1, 2, 3, 4, 5].map((step) => (
-                  <View key={step} style={styles.step}>
-                    <View
-                      style={[styles.stepFill, { width: `${Math.min(1, Math.max(0, metric.score - step + 1)) * 100}%` }]}
-                    />
-                  </View>
-                ))}
-              </View>
-            </View>
-          ))}
+            )
+          })}
         </View>
       ) : null}
       {!empty && (onOpen || onAnalyze) ? (
@@ -217,7 +232,8 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
     <View accessibilityLabel={`항목별 맛 평가 그래프. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
       {/* 좁은 화면에서도 잘리지 않게 폭은 카드에 맞추고 모양은 viewBox가 지킨다 */}
       <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width="100%">
-        {/* 바로 앞 로딩 레이더와 같은 재료를 쓴다: 바깥 오각형은 2pt 먹선으로 두른 흰 면, 안쪽 눈금과 축은 1.5pt 보조선 */}
+        {/* 바로 앞 로딩 레이더와 같은 재료를 쓴다: 바깥 오각형은 2pt 먹선으로 두른 흰 면, 안쪽 눈금과 축은 1.5pt 보조선.
+            (데이터 도형만 다르다: 결과는 먹색, 정리 연출은 아직 빨강 — DESIGN.md의 "데이터는 단색 빨강"과 함께 정리해야 한다) */}
         <Polygon
           fill={colors.canvas}
           points={pointsOf([1, 1, 1, 1, 1])}
@@ -239,16 +255,17 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
           const p = radarPoint(index, 1)
           return <Line key={index} stroke={colors.outline} strokeWidth={line.thin} x1={RADAR_CENTER} x2={p.x} y1={RADAR_CENTER} y2={p.y} />
         })}
+        {/* 데이터 도형은 수량을 말하므로 빨강이 아니라 먹색이다. 반투명 대신 옅은 면(canvasSoft) + 2pt 먹선 윤곽으로 안쪽 눈금과 구분한다 */}
         <Polygon
-          fill={colors.brand}
+          fill={colors.canvasSoft}
           points={pointsOf(metrics.map((metric) => metric.myVal))}
-          stroke={colors.outline}
+          stroke={colors.ink}
           strokeLinejoin="round"
           strokeWidth={line.base}
         />
         {metrics.map((metric, index) => {
           const p = radarPoint(index, metric.myVal)
-          return <Circle cx={p.x} cy={p.y} fill={colors.brand} key={metric.key} r={3.5} stroke={colors.canvas} strokeWidth={1.5} />
+          return <Circle cx={p.x} cy={p.y} fill={colors.ink} key={metric.key} r={3.5} stroke={colors.canvas} strokeWidth={1.5} />
         })}
         {metrics.map((metric, index) => (
           <SvgText
@@ -284,6 +301,12 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
 // ---------------------------------------------------------------------------
 // 정리 연출 (웹 TasteReportLoading)
 // ---------------------------------------------------------------------------
+
+/**
+ * 좋고 나쁨이 아니라 "취향의 위치"를 말하는 축. 차오르지 않고 선 위의 한 점으로 보여 준다.
+ * DESIGN.md "맛 평가" 절의 구분을 기록 화면·리포트가 같이 따른다.
+ */
+const POSITION_AXES = new Set<TasteAxisKey>(["brothDensity", "noodleFirmness"])
 
 const STATUS_MESSAGES = [
   "라멘 기록을 모으고 있어요",
@@ -375,7 +398,8 @@ function TasteReportLoading({
               )
             })}
             <Polygon
-              fill={colors.brand}
+              // 결과 레이더와 같은 재료. 수량을 빨강으로 말하지 않는다
+              fill={colors.canvasSoft}
               points={pointsOf(metrics.map((metric) => metric.myVal * scale), LOADING_CENTER, LOADING_RADIUS)}
               stroke={colors.outline}
               strokeLinejoin="round"
@@ -614,7 +638,12 @@ export default function TasteReportScreen() {
                           {metric.label}
                         </AppText>
                         <View style={styles.track}>
-                          <View style={[styles.trackFill, { width: `${metric.myVal * 100}%` }]} />
+                          {POSITION_AXES.has(metric.key) ? (
+                            // 취향의 위치는 좋고 나쁨이 아니라서 차오르지 않는다. 선 위의 한 점으로 어디쯤인지만 말한다
+                            <View style={[styles.trackMark, { left: `${metric.myVal * 100}%` }]} />
+                          ) : (
+                            <View style={[styles.trackFill, { width: `${metric.myVal * 100}%` }]} />
+                          )}
                         </View>
                         <AppText style={[styles.axisScore, styles.tabular]} variant="bodyStrong">
                           {metric.score.toFixed(1)}
@@ -864,18 +893,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     borderTopWidth: 1,
   },
-  steps: { flexDirection: "row", gap: spacing.x1, marginTop: spacing.x2 },
-  // 다섯 칸짜리 미터: 칸마다 1.5pt 먹선 + 흰 면, 채움은 빨강
-  step: {
-    flex: 1,
-    height: 12,
-    borderRadius: radii.xs,
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.thin,
-    overflow: "hidden",
-  },
-  stepFill: { height: "100%", backgroundColor: colors.brand },
+  // 위치를 말하는 한 마디와 평균 점수가 한 줄에 선다
+  coverAxisValue: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1, marginTop: spacing.x1 },
   coverActions: { marginTop: spacing.x4, gap: spacing.x1 },
   radarWrap: { alignItems: "center", paddingVertical: spacing.x2 },
   axisList: { borderTopColor: colors.border, borderTopWidth: 1 },
@@ -886,11 +905,13 @@ const styles = StyleSheet.create({
   axisScore: { width: 30, textAlign: "right" },
   axisLean: { width: 64, textAlign: "right" },
   track: { flex: 1, height: 6, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden" },
+  // 차오르지 않는 축의 표시. 선 위에서 위치만 짚는다
+  trackMark: { position: "absolute", top: 0, bottom: 0, width: 14, marginLeft: -7, borderRadius: radii.pill, backgroundColor: colors.ink },
   // 흰 면 + 1.5pt 먹선으로 두른 칸. 월별 취향 변화(아카이브)의 막대와 같은 모양이다
   trackThick: { height: 12, backgroundColor: colors.canvas, borderWidth: line.thin, borderColor: colors.outline },
-  // 빨강은 5축 점수에만 쓴다. 그릇 수는 행동이 아니므로 아래 typeFill이 먹색으로 덮는다
-  trackFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
-  // 종류별 분포는 "많다/적다"라서 색으로 순위를 말하지 않는다. 다섯 줄 모두 같은 먹색이고 값은 옆의 "14그릇 · 33%"가 읽어 준다
+  // 막대는 수량을 말하므로 빨강이 아니라 먹색이다. 빨강은 누르는 곳과 선택된 것에만 남긴다
+  trackFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.ink },
+  // 종류별 분포도 "많다/적다"라서 색으로 순위를 말하지 않는다. 다섯 줄 모두 같은 먹색이고 값은 옆의 "14그릇 · 33%"가 읽어 준다
   typeFill: { backgroundColor: colors.ink },
   typeList: { marginTop: spacing.x4, gap: spacing.x3 },
   typeRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
