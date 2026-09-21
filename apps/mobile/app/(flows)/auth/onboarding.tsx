@@ -20,7 +20,7 @@ import {
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
-import type { UserProfile } from "@raota/shared"
+import { RAMEN_TYPES, type UserProfile } from "@raota/shared"
 import { track } from "@/src/analytics"
 import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
 import { AppText, Button, Chip, Header } from "@/src/components/ui"
@@ -37,15 +37,21 @@ const NICKNAME_MIN = 2
 const NICKNAME_MAX = 12
 const BIO_MAX = 60
 
-const RAMEN_STYLE_OPTIONS = [
-  { name: "쇼유 (간장)", key: "쇼유" },
-  { name: "돈코츠 (돼지뼈)", key: "돈코츠" },
-  { name: "토리파이탄 (닭백탕)", key: "토리파이탄" },
-  { name: "시오 (소금)", key: "시오" },
-  { name: "미소 (된장)", key: "미소" },
-  { name: "츠케멘", key: "츠케멘" },
-  { name: "마제소바", key: "마제소바" },
-]
+/**
+ * 선호 스타일은 favoriteRamenType 한 필드에 담기고 설정 화면에서도 같은 필드를 고친다.
+ * 그쪽이 RAMEN_TYPES를 쓰므로 여기도 같은 목록을 쓴다. 목록이 갈리면 가입 때 고른 값이
+ * 설정의 선택지에 없어 아무것도 안 골라진 것처럼 보인다.
+ */
+const STYLE_HINTS: Record<string, string> = {
+  쇼유: "간장",
+  돈코츠: "돼지뼈",
+  시오: "소금",
+  미소: "된장",
+}
+const RAMEN_STYLE_OPTIONS = RAMEN_TYPES.map((key) => ({
+  key,
+  name: STYLE_HINTS[key] ? `${key} (${STYLE_HINTS[key]})` : key,
+}))
 
 const QUICK_BIO_TAGS = ["진한 국물파", "자가제면 탐험가", "라멘 성지순례 중", "꼬들면 애호가"]
 
