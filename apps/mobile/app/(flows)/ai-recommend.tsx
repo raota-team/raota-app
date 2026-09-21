@@ -88,7 +88,11 @@ interface Curation {
   fallback: boolean
 }
 
-const DEFAULT_INPUTS: Inputs = { soupId: "shoyu", moodId: "solo", priorityId: "clean", prompt: "" }
+/**
+ * 아무것도 고르지 않은 상태로 시작한다. 미리 골라 두면 "다음"만 눌러도
+ * 결과가 고르지 않은 조건을 "반영"이라고 말하게 된다.
+ */
+const DEFAULT_INPUTS: Inputs = { soupId: "", moodId: "", priorityId: "", prompt: "" }
 
 const shopText = (shop: CuratorShop) => [shop.style, shop.spec, shop.description, ...shop.tags].filter(Boolean).join(" ")
 const hasAnyKey = (shop: CuratorShop, keys: string[]) => keys.some((key) => shopText(shop).includes(key))
@@ -263,6 +267,15 @@ export default function AIRecommendScreen() {
   const result = step === "result" ? curation : null
   const resultType = result?.shop.style ?? ""
   const numericStep = typeof step === "number" ? step : null
+  // 4단계(직접 입력)는 선택 사항이라 비워 두고 넘어갈 수 있다
+  const stepAnswered =
+    numericStep === 1
+      ? Boolean(inputs.soupId)
+      : numericStep === 2
+        ? Boolean(inputs.moodId)
+        : numericStep === 3
+          ? Boolean(inputs.priorityId)
+          : true
 
   return (
     <Screen contentContainerStyle={styles.flex} keyboardAvoiding>
@@ -496,6 +509,8 @@ export default function AIRecommendScreen() {
             <Button fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="outline" />
           ) : null}
           <Button
+            accessibilityHint={stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
+            disabled={!stepAnswered}
             leftIcon={numericStep === 4 ? <Sparkles color={colors.onDark} size={16} /> : undefined}
             onPress={() => (numericStep === 4 ? startAnalysis() : setStep((numericStep + 1) as Step))}
             rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
@@ -675,7 +690,7 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
                 style={styles.ticketLogo}
               />
               <AppText style={styles.ticketLabel} tone="sub" variant="meta">
-                식권
+                {complete ? "큐레이팅 완료" : "큐레이팅 중…"}
               </AppText>
             </View>
             <View style={styles.ticketRule} />
@@ -833,7 +848,7 @@ const styles = StyleSheet.create({
   },
   ticketHead: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   ticketLogo: { width: 20, height: 20 },
-  ticketLabel: { letterSpacing: 2 },
+  ticketLabel: { letterSpacing: 1 },
   ticketRule: { height: 1, backgroundColor: colors.border, marginTop: spacing.x3, marginBottom: spacing.x1 },
   ticketRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x2 },
   // 체크 칸: 1.5pt 먹선 + 6pt. 테두리는 가만히 있고 면과 체크만 들어온다
