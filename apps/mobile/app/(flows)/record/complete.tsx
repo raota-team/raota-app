@@ -165,7 +165,7 @@ export default function RecordCompleteScreen() {
         {/* 상단 인장 배너 */}
         <View style={[styles.banner, { paddingTop: insets.top + spacing.x6 }]}>
           <Animated.View accessible={false} style={[styles.stamp, stampStyle]}>
-            <Check color={colors.brand} size={28} strokeWidth={3} />
+            <Check color={colors.onDark} size={28} strokeWidth={3} />
           </Animated.View>
           <AppText style={styles.bold} tone="onDarkMuted" variant="secondary">
             기록이 저장됐어요
@@ -348,12 +348,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingBottom: spacing.x7,
   },
+  // 진녹 면 위라 흰 도장이다. 빨강은 이 면에서 2.40:1이고 DESIGN.md가 금지한다(흰색 11.55:1)
   stamp: {
     width: 56,
     height: 56,
     borderRadius: radii.pill,
     borderWidth: line.base,
-    borderColor: colors.brand,
+    borderColor: colors.onDark,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.x3,

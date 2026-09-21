@@ -10,6 +10,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type ViewStyle,
   findNodeHandle,
   useWindowDimensions,
 } from "react-native"
@@ -87,7 +88,11 @@ interface Curation {
   fallback: boolean
 }
 
-const DEFAULT_INPUTS: Inputs = { soupId: "shoyu", moodId: "solo", priorityId: "clean", prompt: "" }
+/**
+ * 아무것도 고르지 않은 상태로 시작한다. 미리 골라 두면 "다음"만 눌러도
+ * 결과가 고르지 않은 조건을 "반영"이라고 말하게 된다.
+ */
+const DEFAULT_INPUTS: Inputs = { soupId: "", moodId: "", priorityId: "", prompt: "" }
 
 const shopText = (shop: CuratorShop) => [shop.style, shop.spec, shop.description, ...shop.tags].filter(Boolean).join(" ")
 const hasAnyKey = (shop: CuratorShop, keys: string[]) => keys.some((key) => shopText(shop).includes(key))
@@ -252,7 +257,7 @@ export default function AIRecommendScreen() {
   if (step === "loading" && curation) {
     return (
       <CurationLoading
-        conditions={curation.conditions.filter((condition) => condition.applied).map((condition) => condition.label.replace(/^직접 입력: /, ""))}
+        conditions={curation.conditions.map((condition) => condition.label.replace(/^직접 입력: /, ""))}
         onBack={() => setStep(4)}
         onComplete={() => setStep("result")}
       />
@@ -262,6 +267,15 @@ export default function AIRecommendScreen() {
   const result = step === "result" ? curation : null
   const resultType = result?.shop.style ?? ""
   const numericStep = typeof step === "number" ? step : null
+  // 4단계(직접 입력)는 선택 사항이라 비워 두고 넘어갈 수 있다
+  const stepAnswered =
+    numericStep === 1
+      ? Boolean(inputs.soupId)
+      : numericStep === 2
+        ? Boolean(inputs.moodId)
+        : numericStep === 3
+          ? Boolean(inputs.priorityId)
+          : true
 
   return (
     <Screen contentContainerStyle={styles.flex} keyboardAvoiding>
@@ -495,6 +509,8 @@ export default function AIRecommendScreen() {
             <Button fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="outline" />
           ) : null}
           <Button
+            accessibilityHint={stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
+            disabled={!stepAnswered}
             leftIcon={numericStep === 4 ? <Sparkles color={colors.onDark} size={16} /> : undefined}
             onPress={() => (numericStep === 4 ? startAnalysis() : setStep((numericStep + 1) as Step))}
             rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
@@ -540,84 +556,50 @@ function RestartButton({ onPress }: { onPress: () => void }) {
   )
 }
 
-/** 사각 트랙의 칸 수. LOADING_DURATION을 이 수로 나눠 한 칸씩 채운다 */
-const TRACK_SLOTS = 12
-/**
- * 칸 하나가 채워지는 시간. 칸 사이 간격(LOADING_DURATION / TRACK_SLOTS = 275ms)보다 조금 길게 잡아
- * 앞 칸이 끝나기 전에 다음 칸이 들어오고, 리듬이 끊기지 않고 이어진다
- */
-const SLOT_FILL_DURATION = 300
-/** 다 찬 뒤 붙는 스티커가 톡 튀어나오는 시간 */
+/** 한 줄이 체크되는 시간 */
+const CHECK_DURATION = 240
+/** 다 체크된 뒤 붙는 스티커가 톡 튀어나오는 시간 */
 const STICKER_POP_DURATION = 260
+/** 첫 줄이 체크되기까지 */
+const CHECK_START = 400
 
 /**
- * 식권 발매기 판 위의 사각 트랙. 4×4 격자의 바깥 12칸을 왼쪽 위에서 시계 방향으로 돌려준다.
- * 가운데 2×2는 로고 자리로 비워 둔다.
+ * 식권의 한 줄. 네모 칸이 먹색으로 차고 흰 체크가 톡 들어온다.
+ * 아직 안 된 줄은 빈 칸에 흐린 글씨라, 무엇이 끝났고 무엇이 남았는지 한눈에 보인다.
  */
-function trackSlots(size: number) {
-  const pad = 10
-  const gap = 8
-  const slot = (size - line.base * 2 - pad * 2 - gap * 3) / 4
-  const at = (index: number) => pad + index * (slot + gap)
-  const cells: Array<[number, number]> = [
-    [0, 0],
-    [1, 0],
-    [2, 0],
-    [3, 0],
-    [3, 1],
-    [3, 2],
-    [3, 3],
-    [2, 3],
-    [1, 3],
-    [0, 3],
-    [0, 2],
-    [0, 1],
-  ]
-  return { slot, positions: cells.map(([col, row]) => ({ left: at(col), top: at(row) })) }
-}
-
-/**
- * 트랙 칸 하나. 1.5pt 먹선과 6pt 모서리는 그대로 두고 안쪽 빨강 면만 불투명도·크기로 부드럽게 들어온다.
- * 테두리를 가진 바깥 View는 움직이지 않으므로 먹선 굵기가 변하지 않는다.
- */
-function TrackSlot({
-  filled,
-  left,
-  reducedMotion,
-  size,
-  top,
-}: {
-  filled: boolean
-  left: number
-  reducedMotion: boolean
-  size: number
-  top: number
-}) {
-  const fill = useSharedValue(filled ? 1 : 0)
+function TicketRow({ done, reducedMotion, text }: { done: boolean; reducedMotion: boolean; text: string }) {
+  const mark = useSharedValue(done ? 1 : 0)
 
   useEffect(() => {
-    // Reduce Motion이면 움직임 없이 즉시 최종 상태
     if (reducedMotion) {
-      fill.value = filled ? 1 : 0
+      mark.value = done ? 1 : 0
       return
     }
-    fill.value = withTiming(filled ? 1 : 0, { duration: SLOT_FILL_DURATION, easing: Easing.out(Easing.cubic) })
-  }, [fill, filled, reducedMotion])
+    mark.value = withTiming(done ? 1 : 0, { duration: CHECK_DURATION, easing: Easing.out(Easing.cubic) })
+  }, [done, mark, reducedMotion])
 
-  const fillStyle = useAnimatedStyle(() => ({
-    opacity: fill.value,
-    transform: [{ scale: 0.84 + fill.value * 0.16 }],
+  const boxStyle = useAnimatedStyle(() => ({ backgroundColor: mark.value > 0.5 ? colors.ink : colors.canvas }))
+  const markStyle = useAnimatedStyle(() => ({
+    opacity: mark.value,
+    transform: [{ scale: 0.7 + mark.value * 0.3 }],
   }))
 
   return (
-    <View style={[styles.slot, { width: size, height: size, left, top }]}>
-      <Animated.View style={[styles.slotFill, fillStyle]} />
+    <View accessible accessibilityRole="checkbox" accessibilityState={{ checked: done }} style={styles.ticketRow}>
+      <Animated.View style={[styles.checkBox, boxStyle]}>
+        <Animated.View style={markStyle}>
+          <Check color={colors.onDark} size={12} strokeWidth={3} />
+        </Animated.View>
+      </Animated.View>
+      <AppText numberOfLines={1} style={styles.flexShrink} tone={done ? "ink" : "muted"} variant="secondary">
+        {text}
+      </AppText>
     </View>
   )
 }
 
-/** 다 찬 순간 붙는 "찾았어요" 스티커. 회전 없이 scale 0.9 → 1 + 불투명도로 톡 튀어나온다 */
-function BoardSticker({ reducedMotion }: { reducedMotion: boolean }) {
+/** 다 체크된 순간 식권에 붙는 "찾았어요" 스티커 */
+function TicketSticker({ reducedMotion }: { reducedMotion: boolean }) {
   const pop = useSharedValue(reducedMotion ? 1 : 0)
 
   useEffect(() => {
@@ -631,24 +613,29 @@ function BoardSticker({ reducedMotion }: { reducedMotion: boolean }) {
   }))
 
   return (
-    <Animated.View style={[styles.boardSticker, popStyle]}>
-      <Sticker icon={<Check color={colors.ink} size={12} />} label="찾았어요" style={styles.centerSelf} />
+    <Animated.View pointerEvents="none" style={[styles.ticketSticker, popStyle]}>
+      <Sticker icon={<Check color={colors.ink} size={12} />} label="찾았어요" style={styles.stickerRight} />
     </Animated.View>
   )
 }
 
-/** 웹 AICurationLoading과 같은 차분한 로딩. 실제로 반영된 조건만 보여준다 */
+/**
+ * 라멘집 식권 한 장. 고른 조건이 한 줄씩 적혀 있고 하나씩 체크된다.
+ * 무엇이 끝났는지 화면에 남기 때문에 "지금 무엇을 해주고 있나"가 사라지지 않는다.
+ * 조건이 실제로 반영됐는지 참고만 했는지는 결과 화면이 말한다 — 로딩은 체크만 한다.
+ */
 function CurationLoading({ conditions, onBack, onComplete }: { conditions: string[]; onBack: () => void; onComplete: () => void }) {
-  const { height } = useWindowDimensions()
+  const { width: screenWidth } = useWindowDimensions()
   const reducedMotion = useReducedMotion()
   const [stage, setStage] = useState(0)
-  const [filled, setFilled] = useState(0)
+  const [checked, setChecked] = useState(0)
   const titleRef = useRef<View>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
   const complete = stage === 3
-  const size = height < 700 ? 200 : 260
-  const track = useMemo(() => trackSlots(size), [size])
+  const ticketWidth = Math.min(280, screenWidth - spacing.gutter * 2 - spacing.x6)
+
+  const rows = useMemo(() => (conditions.length ? conditions : ["전체 라멘집에서 고르기"]), [conditions])
 
   useEffect(() => {
     const timers = [
@@ -664,20 +651,17 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
     }
   }, [])
 
-  // 칸은 275ms마다 하나씩 차례를 받고, 칸 안에서 300ms 동안 부드럽게 채워진다.
-  // Reduce Motion이면 움직임 없이 처음부터 다 채운 상태로 둔다
+  // 줄은 로딩이 끝나기 전에 전부 체크된다. Reduce Motion이면 처음부터 다 체크된 상태
   useEffect(() => {
     if (reducedMotion) {
-      setFilled(TRACK_SLOTS)
+      setChecked(rows.length)
       return
     }
-    const ticks = Array.from({ length: TRACK_SLOTS }, (_, index) =>
-      setTimeout(() => setFilled(index + 1), ((index + 1) * LOADING_DURATION) / TRACK_SLOTS),
-    )
-    return () => ticks.forEach(clearTimeout)
-  }, [reducedMotion])
+    const step = (LOADING_DURATION - CHECK_START - 500) / rows.length
+    const timers = rows.map((_, index) => setTimeout(() => setChecked(index + 1), CHECK_START + index * step))
+    return () => timers.forEach(clearTimeout)
+  }, [reducedMotion, rows])
 
-  const filledCount = complete ? TRACK_SLOTS : filled
   const message = useMemo(() => LOADING_MESSAGES[stage], [stage])
 
   return (
@@ -694,31 +678,27 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
             {"오늘의 한 그릇을\n찾고 있어요"}
           </AppText>
         </View>
-        <AppText style={[styles.center, styles.loadingConditions]} tone="sub" variant="body">
-          {conditions.length ? conditions.join(" · ") : "전체 라멘집에서 골라요"}
-        </AppText>
 
-        {/* 식권 발매기 판: 2pt 먹선 사각 트랙을 빨강 블록이 한 칸씩 채워 나가고 가운데에 로고가 선다 */}
-        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.visual, { width: size, height: size }]}>
-          <View style={[styles.board, { width: size, height: size }]}>
-            {track.positions.map((position, index) => (
-              <TrackSlot
-                filled={index < filledCount}
-                key={`${position.left}-${position.top}`}
-                left={position.left}
-                reducedMotion={reducedMotion}
-                size={track.slot}
-                top={position.top}
+        {/* 고른 조건이 적힌 식권 한 장. 반영되는 대로 한 줄씩 체크된다 */}
+        <View style={styles.visual}>
+          <View style={[styles.ticket, { width: ticketWidth }]}>
+            <View style={styles.ticketHead}>
+              <Image
+                accessibilityIgnoresInvertColors
+                contentFit="contain"
+                source={require("@/assets/images/logo.png")}
+                style={styles.ticketLogo}
               />
+              <AppText style={styles.ticketLabel} tone="sub" variant="meta">
+                {complete ? "큐레이팅 완료" : "큐레이팅 중…"}
+              </AppText>
+            </View>
+            <View style={styles.ticketRule} />
+            {rows.map((text, index) => (
+              <TicketRow done={index < checked} key={text} reducedMotion={reducedMotion} text={text} />
             ))}
-            <Image
-              accessibilityIgnoresInvertColors
-              contentFit="contain"
-              source={require("@/assets/images/logo.png")}
-              style={[styles.boardLogo, { width: size * 0.4, height: size * 0.4 }]}
-            />
           </View>
-          {complete ? <BoardSticker reducedMotion={reducedMotion} /> : null}
+          {complete ? <TicketSticker reducedMotion={reducedMotion} /> : null}
         </View>
 
         <View accessibilityLiveRegion="polite" style={styles.statusLine}>
@@ -727,20 +707,6 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
             {message}
           </AppText>
         </View>
-      </View>
-
-      <View style={styles.loadingFooter}>
-        <Pressable
-          accessibilityLabel="추천 바로 보기"
-          accessibilityRole="button"
-          onPress={onComplete}
-          style={({ pressed }) => [styles.skip, pressed && styles.pressedWash]}
-        >
-          <AppText tone="sub" variant="secondary">
-            추천 바로 보기
-          </AppText>
-          <ArrowRight color={colors.inkSub} size={16} />
-        </Pressable>
       </View>
     </Screen>
   )
@@ -870,34 +836,35 @@ const styles = StyleSheet.create({
   headerSpacer: { width: touchTarget },
   loadingBody: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
   loadingConditions: { marginTop: spacing.x3, maxWidth: 280 },
-  visual: { alignItems: "center", justifyContent: "center", marginVertical: spacing.x6 },
-  // 발매기 판: 흰 면 + 2pt 먹선 + 12pt. 누를 수 없으니 그림자는 없다
-  board: {
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radii.sm,
+  visual: { alignSelf: "center", marginVertical: spacing.x6 },
+  // 식권 한 장: 흰 면 + 2pt 먹선. 누를 수 없으니 그림자는 없다
+  ticket: {
+    paddingHorizontal: spacing.x4,
+    paddingVertical: spacing.x4,
+    borderRadius: radii.xs,
     borderWidth: line.base,
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
   },
-  // 트랙 칸: 맛 평가 미터 칸과 같은 1.5pt 먹선 + 6pt. 안쪽 빨강 면만 움직이므로 먹선은 늘 1.5pt다
-  slot: {
-    position: "absolute",
+  ticketHead: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
+  ticketLogo: { width: 20, height: 20 },
+  ticketLabel: { letterSpacing: 1 },
+  ticketRule: { height: 1, backgroundColor: colors.border, marginTop: spacing.x3, marginBottom: spacing.x1 },
+  ticketRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x2 },
+  // 체크 칸: 1.5pt 먹선 + 6pt. 테두리는 가만히 있고 면과 체크만 들어온다
+  checkBox: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radii.xs,
     borderWidth: line.thin,
     borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    overflow: "hidden",
   },
-  slotFill: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.brand },
-  // 판 한가운데. 칸들이 absolute라 흐름에는 로고만 남지만, 겹침에 기대지 않게 자리를 못 박는다
-  boardLogo: { position: "absolute" },
-  // 다 찾은 순간에만 붙는 노랑 스티커. 판 아래 선에 걸쳐 놓는다
-  boardSticker: { position: "absolute", left: 0, right: 0, bottom: -13, alignItems: "center" },
-  // Sticker는 기본이 flex-start라 가운데로 놓으려면 직접 덮어써야 한다
-  centerSelf: { alignSelf: "center" },
+  // 다 체크된 순간에만 붙는 노랑 스티커. 식권 오른쪽 아래 모서리에 걸친다
+  ticketSticker: { position: "absolute", right: 0, bottom: -13 },
+  // Sticker는 기본이 alignSelf: flex-start라 오른쪽으로 보내려면 직접 덮어써야 한다
+  stickerRight: { alignSelf: "flex-end" },
   statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: 24 },
   statusDot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
-  loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingTop: spacing.x2, paddingBottom: spacing.x6 },
-  skip: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: touchTarget, paddingHorizontal: spacing.x5, borderRadius: radii.sm },
 })
