@@ -303,7 +303,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onM
         <View style={styles.cardText}>
           <View style={styles.titleBlock}>
             <View style={styles.titleRow}>
-              <AppText numberOfLines={2} style={styles.flex} variant="cardTitle">
+              <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.flex} variant="cardTitle">
                 {log.menuName}
               </AppText>
               <RamenTypeTag type={log.ramenType} />
@@ -314,7 +314,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onM
           </View>
 
           {summary ? (
-            <AppText capScale numberOfLines={2} style={styles.summaryLine} tone="sub" variant="secondary">
+            <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.summaryLine} tone="sub" variant="secondary">
               {summary.text}
             </AppText>
           ) : null}

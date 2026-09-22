@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text as NativeText,
   View,
+  useWindowDimensions,
   type PressableProps,
   type ScrollViewProps,
   type StyleProp,
@@ -191,6 +192,10 @@ export function Header({
       <View style={[styles.headerTitles, align === "center" && styles.headerTitlesCenter]}>
         <NativeText
           accessibilityRole="header"
+          // 헤더는 56pt 한 줄이라 두 줄로 늘릴 수 없다. 큰 글씨에서는 자르는 대신
+          // 글자를 줄여 제목을 끝까지 읽게 한다("취향 종…"이 되던 자리)
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
           numberOfLines={1}
           style={[typography.screenTitle, { color: colors.ink }, align === "center" && styles.textCenter, titleStyle]}
         >
@@ -327,7 +332,10 @@ export function Button({
       {loading ? <ActivityIndicator color={color} size="small" /> : leftIcon}
       <NativeText
         maxFontSizeMultiplier={maxFontScale}
-        numberOfLines={1}
+        // 큰 글씨에서 "괜찮아요"가 "괜찮…"이 되던 자리다. 높이는 minHeight라 두 줄이면 버튼이 늘어난다.
+        // DESIGN.md: CTA 문구와 오류 문구는 자르지 않는다
+        lineBreakStrategyIOS="hangul-word"
+        numberOfLines={2}
         style={[variant === "utility" ? typography.secondary : typography.bodyStrong, styles.buttonText, { color }, variant === "utility" && styles.bold, textStyle]}
       >
         {title}
@@ -826,7 +834,7 @@ export function StickyActionBar({ hint, hintTone = "muted", style, children }: S
   return (
     <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, spacing.x3) }, style]}>
       {hint ? (
-        <AppText accessibilityLiveRegion="polite" capScale numberOfLines={2} tone={hintTone} variant="meta">
+        <AppText accessibilityLiveRegion="polite" capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} tone={hintTone} variant="meta">
           {hint}
         </AppText>
       ) : null}
@@ -985,6 +993,12 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { fontScale } = useWindowDimensions()
+  /*
+   * 320pt 폭에 두 버튼을 나란히 두면 큰 글씨에서 문구가 단어 가운데서 쪼개진다.
+   * 그 지점부터는 세로로 쌓는다. 순서는 그대로 [취소 · 확인]이라 첫 포커스도 바뀌지 않는다.
+   */
+  const stacked = fontScale > 1.2
   return (
     <Modal animationType="fade" onRequestClose={onCancel} presentationStyle="overFullScreen" transparent visible={visible}>
       <View style={styles.dialogRoot}>
@@ -998,7 +1012,7 @@ export function ConfirmDialog({
               {message}
             </AppText>
           ) : null}
-          <View style={styles.dialogActions}>
+          <View style={[styles.dialogActions, stacked && styles.dialogActionsStacked]}>
             <Button disabled={loading} fullWidth onPress={onCancel} title={cancelLabel} variant="outline" />
             <Button
               fullWidth
@@ -1061,6 +1075,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.x2,
+    paddingVertical: spacing.x2,
   },
   buttonText: { textAlign: "center" },
   fullWidth: { alignSelf: "stretch", flex: 1 },
@@ -1255,4 +1270,5 @@ const styles = StyleSheet.create({
   },
   dialogMessage: { marginTop: spacing.x2 },
   dialogActions: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x5 },
+  dialogActionsStacked: { flexDirection: "column" },
 })

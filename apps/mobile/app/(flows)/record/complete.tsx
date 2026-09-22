@@ -211,7 +211,7 @@ export default function RecordCompleteScreen() {
                   <RamenTypeTag type={log.ramenType} />
                   <Tag label={log.revisit} />
                 </View>
-                <AppText numberOfLines={1} style={styles.menu} variant="cardTitle">
+                <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.menu} variant="cardTitle">
                   {log.menuName}
                 </AppText>
                 {/* 좁은 폭(320)에서도 방문일이 잘리지 않게 두 줄까지 허용한다 */}

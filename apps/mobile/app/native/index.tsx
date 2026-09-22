@@ -475,7 +475,7 @@ export default function HomeScreen() {
 
               <View style={styles.pickBody}>
                 <View style={styles.pickTitle}>
-                  <AppText numberOfLines={2} variant="headline">
+                  <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} variant="headline">
                     {todayPick.name}
                     {todayPick.branch ? (
                       <AppText tone="muted" variant="cardTitle">
@@ -498,7 +498,7 @@ export default function HomeScreen() {
                       {"\u201C"}
                     </AppText>
                     <View style={styles.quoteBody}>
-                      <AppText numberOfLines={3} style={styles.quoteText} variant="body">
+                      <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={3} style={styles.quoteText} variant="body">
                         {todayPick.aiSummary?.text ?? todayPick.description}
                       </AppText>
                       {todayPick.aiSummary ? (
@@ -519,7 +519,7 @@ export default function HomeScreen() {
                         <AppText capScale tone="muted" variant="meta">
                           {fact.label}
                         </AppText>
-                        <AppText numberOfLines={2} variant="bodyStrong">
+                        <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} variant="bodyStrong">
                           {fact.value}
                         </AppText>
                       </View>
@@ -579,7 +579,7 @@ export default function HomeScreen() {
                       </AppText>
                     ) : null}
                   </AppText>
-                  <AppText numberOfLines={2} style={styles.rowSub} tone="muted" variant="secondary">
+                  <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.rowSub} tone="muted" variant="secondary">
                     {topRecommendation.reason}
                   </AppText>
                 </View>

@@ -2,7 +2,7 @@ import { Redirect, router } from "expo-router"
 import * as Haptics from "expo-haptics"
 import { ChevronRight } from "lucide-react-native"
 import { useState } from "react"
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native"
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { LEGAL_CONTACT_EMAIL, RAMEN_TYPES } from "@raota/shared"
@@ -275,13 +275,16 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 }
 
 function AccountRow({ label, value, onChange, first = false }: { label: string; value: string; onChange: () => void; first?: boolean }) {
+  const { fontScale } = useWindowDimensions()
+  // 큰 글씨에서는 라벨과 값을 한 줄에 못 담는다. 값을 자르는 대신 아래로 내린다
+  const stacked = fontScale > 1.2
   return (
-    <View style={[styles.row, !first && styles.rowDivider]}>
+    <View style={[styles.row, stacked && styles.rowStacked, !first && styles.rowDivider]}>
       <AppText tone="sub" variant="body">
         {label}
       </AppText>
-      <View style={styles.rowTrail}>
-        <AppText numberOfLines={1} style={styles.shrink} variant="bodyStrong">
+      <View style={[styles.rowTrail, stacked && styles.rowTrailStacked]}>
+        <AppText numberOfLines={stacked ? 2 : 1} style={styles.shrink} variant="bodyStrong">
           {value}
         </AppText>
         <Button accessibilityLabel={`${label} 변경`} onPress={onChange} size="small" title="변경" variant="utility" />
@@ -334,6 +337,8 @@ const styles = StyleSheet.create({
   },
   rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
   rowTrail: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, flexShrink: 1 },
+  rowStacked: { flexDirection: "column", alignItems: "flex-start", gap: spacing.x2, paddingVertical: spacing.x3 },
+  rowTrailStacked: { alignSelf: "stretch", justifyContent: "space-between" },
   pressedWash: { backgroundColor: colors.canvasSoft },
   switchRow: { alignItems: "center", gap: spacing.x3 },
   withdrawRow: { alignItems: "center", marginTop: -spacing.x2 },

@@ -622,7 +622,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                       {meta.join(" · ")}
                     </AppText>
                     {log.note ? (
-                      <AppText numberOfLines={3} style={styles.reviewText} variant="body">
+                      <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={3} style={styles.reviewText} variant="body">
                         {log.note}
                       </AppText>
                     ) : null}
