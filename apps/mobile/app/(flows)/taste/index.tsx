@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import { ArrowRight, Check, PenLine, RotateCw, Share2 } from "lucide-react-native"
-import { Pressable, ScrollView, Share, StyleSheet, View, useWindowDimensions } from "react-native"
+import { AccessibilityInfo, Platform, Pressable, ScrollView, Share, StyleSheet, View, findNodeHandle, useWindowDimensions } from "react-native"
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -215,6 +215,18 @@ const RADAR_CENTER = 125
 const RADAR_RADIUS = 80
 /** 데이터 도형의 면 투명도. 안쪽 눈금이 도형 너머로 비칠 만큼만 덮는다 */
 const RADAR_FILL_OPACITY = 0.35
+/**
+ * 중간 눈금 하나의 위치. 도형의 크기가 "얼마나"를 말하려면 비교 기준이 한 줄은 있어야 한다.
+ * 나머지 눈금과 축선은 복원하지 않는다 — 선이 늘수록 데이터 도형이 다시 묻힌다.
+ */
+const RADAR_GRID = 0.6
+/**
+ * SVG 글씨는 Dynamic Type을 따르지 않는다 — react-native-svg에는 allowFontScaling이 없고
+ * 글씨 크기가 사용자 좌표 단위다. 그래서 배율을 직접 곱한다. 판 밖으로 넘치지 않게 1.3배까지만
+ * (앱이 한 줄 라벨에 쓰는 maxFontSizeMultiplier와 같은 상한). 값은 아래 축 목록이 스케일되는 글씨로 한 번 더 말한다.
+ */
+const CHART_TEXT_MAX_SCALE = 1.3
+const chartTextScale = (fontScale: number) => Math.min(Math.max(fontScale, 1), CHART_TEXT_MAX_SCALE)
 const RADAR_LABELS = [
   { x: 125, y: 14 },
   { x: 220, y: 92 },
@@ -237,13 +249,15 @@ const pointsOf = (values: number[], center?: number, radius?: number) =>
     .join(" ")
 
 function RadarChart({ metrics }: { metrics: MetricItem[] }) {
+  const { fontScale } = useWindowDimensions()
+  const textScale = chartTextScale(fontScale)
   const summary = metrics.map((metric) => `${metric.label} ${metric.score.toFixed(1)}점`).join(", ")
   return (
     <View accessibilityLabel={`항목별 맛 평가 그래프. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
       {/* 좁은 화면에서도 잘리지 않게 폭은 카드에 맞추고 모양은 viewBox가 지킨다 */}
       <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width="100%">
-        {/* 바로 앞 로딩 레이더와 같은 재료를 쓴다: 선은 바깥 오각형 하나뿐이다(2pt 먹선으로 두른 흰 면).
-            눈금과 축을 겹칠수록 선이 많아져 정작 데이터 도형이 묻힌다. 값은 축 이름 옆 숫자가 말한다 */}
+        {/* 바로 앞 로딩 레이더와 같은 재료를 쓴다: 바깥 2pt 먹선 오각형 하나와 그 안의 1pt 중간 눈금 하나.
+            축선과 나머지 눈금은 두지 않는다 — 선이 늘수록 정작 데이터 도형이 묻힌다 */}
         <Polygon
           fill={colors.canvas}
           points={pointsOf([1, 1, 1, 1, 1])}
@@ -251,7 +265,15 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
           strokeLinejoin="round"
           strokeWidth={line.base}
         />
-        {/* 데이터 도형은 수량을 말하므로 빨강이 아니라 국물 색이다. 면이 반투명이라 안쪽 눈금과 축이 도형 너머로 비친다 */}
+        {/* 중간 눈금. 값은 축 이름 옆 숫자가 말하고, 이 선은 도형의 크기를 견줄 기준을 준다 */}
+        <Polygon
+          fill="none"
+          points={pointsOf(Array(5).fill(RADAR_GRID))}
+          stroke={colors.border}
+          strokeLinejoin="round"
+          strokeWidth={line.hair}
+        />
+        {/* 데이터 도형은 수량을 말하므로 빨강이 아니라 국물 색이다. 면이 반투명이라 안쪽 눈금이 도형 너머로 비친다 */}
         <Polygon
           fill={broth[0]}
           fillOpacity={RADAR_FILL_OPACITY}
@@ -267,7 +289,7 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
         {metrics.map((metric, index) => (
           <SvgText
             fill={colors.inkSub}
-            fontSize={12}
+            fontSize={12 * textScale}
             fontWeight="800"
             key={`${metric.key}-label`}
             textAnchor="middle"
@@ -280,7 +302,7 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
         {metrics.map((metric, index) => (
           <SvgText
             fill={colors.ink}
-            fontSize={13}
+            fontSize={13 * textScale}
             fontWeight="800"
             key={`${metric.key}-score`}
             textAnchor="middle"
@@ -304,6 +326,17 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
  * DESIGN.md "맛 평가" 절의 구분을 기록 화면·리포트가 같이 따른다.
  */
 const POSITION_AXES = new Set<TasteAxisKey>(["brothDensity", "noodleFirmness"])
+
+/** VoiceOver 포커스를 특정 View로 옮긴다. 실패해도 흐름을 막지 않는다 */
+function focusOn(ref: React.RefObject<View | null>) {
+  if (Platform.OS === "web" || !ref.current) return
+  try {
+    const node = findNodeHandle(ref.current)
+    if (node) AccessibilityInfo.setAccessibilityFocus(node)
+  } catch {
+    // 포커스 이동 실패가 흐름을 막지 않는다
+  }
+}
 
 const STATUS_MESSAGES = [
   "라멘 기록을 모으고 있어요",
@@ -413,8 +446,11 @@ function TasteReportLoading({
   onComplete: () => void
 }) {
   const reducedMotion = useReducedMotion()
+  const { fontScale } = useWindowDimensions()
+  const textScale = chartTextScale(fontScale)
   const [stage, setStage] = useState(0)
   const complete = stage === 3
+  const titleRef = useRef<View>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
 
@@ -425,8 +461,22 @@ function TasteReportLoading({
       setTimeout(() => setStage(3), LOADING_DURATION),
       setTimeout(() => onCompleteRef.current(), LOADING_DURATION + 500),
     ]
-    return () => timers.forEach(clearTimeout)
+    // 포커스를 제목으로 옮기지 않으면 VoiceOver가 이전 화면에 머문 채 리포트로 교체된다
+    const focus = setTimeout(() => focusOn(titleRef), 250)
+    return () => {
+      timers.forEach(clearTimeout)
+      clearTimeout(focus)
+    }
   }, [])
+
+  /**
+   * iOS에는 accessibilityLiveRegion이 없다(안드로이드 전용 prop이라 무시된다).
+   * 단계가 바뀔 때마다 직접 읽어 준다. 첫 문구는 제목 포커스와 겹치므로 건너뛴다.
+   */
+  useEffect(() => {
+    if (stage === 0) return
+    AccessibilityInfo.announceForAccessibility(STATUS_MESSAGES[stage])
+  }, [stage])
 
   // 판을 확대하면 2pt 먹선까지 같이 얇아진다. 그래서 크기는 꼭짓점 값에 곱하고, 그 값을 끊지 않고 이어서 키운다
   const values = useMemo(() => metrics.map((metric) => metric.myVal), [metrics])
@@ -453,15 +503,22 @@ function TasteReportLoading({
       <StatusBar style="dark" />
       <Header onBack={onBack} title="종합 취향 리포트" />
       <ScrollView contentContainerStyle={styles.loadingBody}>
-        <AppText accessibilityRole="header" style={styles.center} variant="headline">
-          {"나의 라멘 취향을\n정리하고 있어요"}
-        </AppText>
+        <View accessible accessibilityRole="header" ref={titleRef}>
+          <AppText style={styles.center} variant="headline">
+            {"나의 라멘 취향을\n정리하고 있어요"}
+          </AppText>
+        </View>
         <AppText style={[styles.center, styles.gapTop3]} tone="sub" variant="body">
           기록한 {recordCount}그릇을 바탕으로 분석해요
         </AppText>
-        <View accessible={false} importantForAccessibility="no-hide-descendants" style={styles.loadingRadar}>
+        <View
+          accessibilityElementsHidden
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+          style={styles.loadingRadar}
+        >
           <Svg height={LOADING_SIZE} width={LOADING_SIZE}>
-            {/* 결과 레이더와 같은 재료: 선은 바깥 오각형 하나뿐 */}
+            {/* 결과 레이더와 같은 재료: 바깥 2pt 먹선 오각형과 그 안의 1pt 중간 눈금 하나 */}
             <Polygon
               fill={colors.canvas}
               points={pointsOf([1, 1, 1, 1, 1], LOADING_CENTER, LOADING_RADIUS)}
@@ -469,13 +526,21 @@ function TasteReportLoading({
               strokeLinejoin="round"
               strokeWidth={line.base}
             />
-            {/* 결과 레이더와 같은 재료(반투명 국물 색 면 + 2pt 먹선). 꼭짓점 값만 자라고 먹선 굵기는 그대로다 */}
+            <Polygon
+              fill="none"
+              points={pointsOf(Array(5).fill(RADAR_GRID), LOADING_CENTER, LOADING_RADIUS)}
+              stroke={colors.border}
+              strokeLinejoin="round"
+              strokeWidth={line.hair}
+            />
+            {/* 결과 레이더와 같은 재료(반투명 국물 색 면 + 2pt 먹선). 꼭짓점 값만 자라고 먹선 굵기는 그대로다.
+                도형의 선은 부품 테두리가 아니라 값이 그린 선이라 결과 레이더와 같은 ink를 쓴다 */}
             <AnimatedPath
               animatedProps={shapeProps}
               d={startPath}
               fill={broth[0]}
               fillOpacity={RADAR_FILL_OPACITY}
-              stroke={colors.outline}
+              stroke={colors.ink}
               strokeLinejoin="round"
               strokeWidth={line.base}
             />
@@ -485,7 +550,7 @@ function TasteReportLoading({
             {metrics.map((metric, index) => (
               <SvgText
                 fill={index === activeAxis ? colors.ink : colors.inkSub}
-                fontSize={12}
+                fontSize={12 * textScale}
                 fontWeight="800"
                 key={metric.key}
                 textAnchor="middle"
@@ -499,7 +564,7 @@ function TasteReportLoading({
             {shownAxes.map((index) => (
               <SvgText
                 fill={colors.ink}
-                fontSize={13}
+                fontSize={13 * textScale}
                 fontWeight="800"
                 key={`${metrics[index]?.key ?? index}-score`}
                 textAnchor="middle"

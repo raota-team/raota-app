@@ -10,7 +10,6 @@ import {
   StyleSheet,
   TextInput,
   View,
-  type ViewStyle,
   findNodeHandle,
   useWindowDimensions,
 } from "react-native"
@@ -65,7 +64,7 @@ const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
 }
 
 const LOADING_MESSAGES = ["선택한 취향을 확인하고 있어요", "어울리는 라멘집을 찾고 있어요", "오늘의 추천을 정리하고 있어요", "오늘의 한 그릇을 골랐어요"]
-const LOADING_DURATION = 3300
+const LOADING_DURATION = 1800
 const PROMPT_MAX_LENGTH = 200
 
 interface Inputs {
@@ -257,7 +256,10 @@ export default function AIRecommendScreen() {
   if (step === "loading" && curation) {
     return (
       <CurationLoading
-        conditions={curation.conditions.map((condition) => condition.label.replace(/^직접 입력: /, ""))}
+        conditions={curation.conditions.map((condition) => ({
+          label: condition.label.replace(/^직접 입력: /, ""),
+          applied: condition.applied,
+        }))}
         onBack={() => setStep(4)}
         onComplete={() => setStep("result")}
       />
@@ -280,8 +282,16 @@ export default function AIRecommendScreen() {
   return (
     <Screen contentContainerStyle={styles.flex} keyboardAvoiding>
       <Header
-        backLabel="뒤로가기"
-        onBack={() => (router.canGoBack() ? router.back() : router.replace("/native"))}
+        backLabel={numericStep && numericStep > 1 ? "이전 단계로" : "뒤로가기"}
+        // 단계 안에서는 헤더 셰브론도 "이전"과 같이 한 단계만 올라간다.
+        // 플로우를 통째로 빠져나가면 고른 답이 전부 사라진다
+        onBack={() =>
+          numericStep && numericStep > 1
+            ? setStep((numericStep - 1) as Step)
+            : router.canGoBack()
+              ? router.back()
+              : router.replace("/native")
+        }
         right={
           numericStep ? (
             <AppText accessibilityLabel={`4단계 중 ${numericStep}단계`} capScale style={styles.stepCount} tone="sub" variant="meta">
@@ -453,7 +463,7 @@ export default function AIRecommendScreen() {
                   </View>
                 ) : null}
                 {result.shop.tags.length ? (
-                  <View accessibilityLabel={`특징: ${result.shop.tags.join(", ")}`} style={styles.tags}>
+                  <View accessible accessibilityLabel={`특징: ${result.shop.tags.join(", ")}`} style={styles.tags}>
                     {result.shop.tags.map((tag) => (
                       <Tag key={tag} label={tag} />
                     ))}
@@ -563,11 +573,18 @@ const STICKER_POP_DURATION = 260
 /** 첫 줄이 체크되기까지 */
 const CHECK_START = 400
 
+/** 식권에 적히는 한 줄. 결과 화면의 "반영 / 참고만"과 같은 값을 쓴다 */
+interface TicketCondition {
+  label: string
+  applied: boolean
+}
+
 /**
- * 식권의 한 줄. 네모 칸이 먹색으로 차고 흰 체크가 톡 들어온다.
- * 아직 안 된 줄은 빈 칸에 흐린 글씨라, 무엇이 끝났고 무엇이 남았는지 한눈에 보인다.
+ * 식권의 한 줄. 원장과 실제로 대조된 조건만 네모 칸이 먹색으로 차고 흰 체크가 들어온다.
+ * 대조할 정보가 없던 조건("참고만")은 빈 칸에 흐린 빼기표로 남는다 — 결과 화면에서 강등될 줄을
+ * 로딩에서 체크해 두면, 반영되지 않은 조건을 반영됐다고 말하는 셈이 된다.
  */
-function TicketRow({ done, reducedMotion, text }: { done: boolean; reducedMotion: boolean; text: string }) {
+function TicketRow({ applied, done, reducedMotion, text }: { applied: boolean; done: boolean; reducedMotion: boolean; text: string }) {
   const mark = useSharedValue(done ? 1 : 0)
 
   useEffect(() => {
@@ -578,17 +595,26 @@ function TicketRow({ done, reducedMotion, text }: { done: boolean; reducedMotion
     mark.value = withTiming(done ? 1 : 0, { duration: CHECK_DURATION, easing: Easing.out(Easing.cubic) })
   }, [done, mark, reducedMotion])
 
-  const boxStyle = useAnimatedStyle(() => ({ backgroundColor: mark.value > 0.5 ? colors.ink : colors.canvas }))
+  const boxStyle = useAnimatedStyle(() => ({ backgroundColor: mark.value > 0.5 && applied ? colors.ink : colors.canvas }))
   const markStyle = useAnimatedStyle(() => ({
     opacity: mark.value,
     transform: [{ scale: 0.7 + mark.value * 0.3 }],
   }))
 
   return (
-    <View accessible accessibilityRole="checkbox" accessibilityState={{ checked: done }} style={styles.ticketRow}>
+    <View
+      accessible
+      accessibilityLabel={`${text}, ${done ? (applied ? "반영" : "참고만") : "확인 중"}`}
+      accessibilityRole="text"
+      style={styles.ticketRow}
+    >
       <Animated.View style={[styles.checkBox, boxStyle]}>
         <Animated.View style={markStyle}>
-          <Check color={colors.onDark} size={12} strokeWidth={3} />
+          {applied ? (
+            <Check color={colors.onDark} size={12} strokeWidth={3} />
+          ) : (
+            <Minus color={colors.textMuted} size={12} strokeWidth={3} />
+          )}
         </Animated.View>
       </Animated.View>
       <AppText numberOfLines={1} style={styles.flexShrink} tone={done ? "ink" : "muted"} variant="secondary">
@@ -624,7 +650,7 @@ function TicketSticker({ reducedMotion }: { reducedMotion: boolean }) {
  * 무엇이 끝났는지 화면에 남기 때문에 "지금 무엇을 해주고 있나"가 사라지지 않는다.
  * 조건이 실제로 반영됐는지 참고만 했는지는 결과 화면이 말한다 — 로딩은 체크만 한다.
  */
-function CurationLoading({ conditions, onBack, onComplete }: { conditions: string[]; onBack: () => void; onComplete: () => void }) {
+function CurationLoading({ conditions, onBack, onComplete }: { conditions: TicketCondition[]; onBack: () => void; onComplete: () => void }) {
   const { width: screenWidth } = useWindowDimensions()
   const reducedMotion = useReducedMotion()
   const [stage, setStage] = useState(0)
@@ -635,7 +661,10 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
   const complete = stage === 3
   const ticketWidth = Math.min(280, screenWidth - spacing.gutter * 2 - spacing.x6)
 
-  const rows = useMemo(() => (conditions.length ? conditions : ["전체 라멘집에서 고르기"]), [conditions])
+  const rows = useMemo<TicketCondition[]>(
+    () => (conditions.length ? conditions : [{ label: "전체 라멘집에서 고르기", applied: true }]),
+    [conditions],
+  )
 
   useEffect(() => {
     const timers = [
@@ -663,6 +692,15 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
   }, [reducedMotion, rows])
 
   const message = useMemo(() => LOADING_MESSAGES[stage], [stage])
+
+  /**
+   * iOS에는 accessibilityLiveRegion이 없다(안드로이드 전용 prop이라 무시된다).
+   * 단계가 바뀔 때마다 직접 읽어 준다. 첫 문구는 250ms 뒤 제목 포커스와 겹치므로 건너뛴다.
+   */
+  useEffect(() => {
+    if (stage === 0) return
+    AccessibilityInfo.announceForAccessibility(message)
+  }, [message, stage])
 
   return (
     <Screen contentContainerStyle={styles.flex}>
@@ -694,8 +732,14 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
               </AppText>
             </View>
             <View style={styles.ticketRule} />
-            {rows.map((text, index) => (
-              <TicketRow done={index < checked} key={text} reducedMotion={reducedMotion} text={text} />
+            {rows.map((row, index) => (
+              <TicketRow
+                applied={row.applied}
+                done={index < checked}
+                key={`${row.label}-${index}`}
+                reducedMotion={reducedMotion}
+                text={row.label}
+              />
             ))}
           </View>
           {complete ? <TicketSticker reducedMotion={reducedMotion} /> : null}
@@ -707,6 +751,18 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: strin
             {message}
           </AppText>
         </View>
+      </View>
+
+      {/* 결과는 이미 손에 있다. 연출을 기다릴 이유가 없는 사람에게 문을 열어 둔다(취향 리포트 로딩과 같은 계약) */}
+      <View style={styles.loadingFooter}>
+        <Button
+          onPress={onComplete}
+          rightIcon={<ArrowRight color={colors.inkSub} size={16} />}
+          size="small"
+          textStyle={styles.subText}
+          title="추천 바로 보기"
+          variant="ghost"
+        />
       </View>
     </Screen>
   )
@@ -835,7 +891,8 @@ const styles = StyleSheet.create({
   loadingHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.x4, paddingVertical: spacing.x2 },
   headerSpacer: { width: touchTarget },
   loadingBody: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
-  loadingConditions: { marginTop: spacing.x3, maxWidth: 280 },
+  loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingBottom: spacing.x4, paddingTop: spacing.x2 },
+  subText: { color: colors.inkSub, fontWeight: "500" },
   visual: { alignSelf: "center", marginVertical: spacing.x6 },
   // 식권 한 장: 흰 면 + 2pt 먹선. 누를 수 없으니 그림자는 없다
   ticket: {

@@ -1,4 +1,4 @@
-import { Stack, router, useSegments } from "expo-router"
+import { Stack, router, usePathname, useSegments } from "expo-router"
 import { useEffect } from "react"
 
 import { useRaota } from "@/src/state/RaotaStore"
@@ -10,6 +10,7 @@ import { useRaota } from "@/src/state/RaotaStore"
 export default function FlowLayout() {
   const { currentUser } = useRaota()
   const segments = useSegments()
+  const pathname = usePathname()
   const section = segments[1]
   const needsAccount = section === "record" || section === "taste"
   const blocked = needsAccount && !currentUser
@@ -22,8 +23,9 @@ export default function FlowLayout() {
    * ("Maximum update depth exceeded"). 스택은 늘 붙여 두고 이동만 시킨다.
    */
   useEffect(() => {
-    if (blocked) router.replace("/auth/login")
-  }, [blocked])
+    // replace라 열려던 화면이 히스토리에서 지워진다. 로그인 뒤 돌아갈 곳을 next로 들려 보낸다
+    if (blocked) router.replace({ pathname: "/auth/login", params: { next: pathname } })
+  }, [blocked, pathname])
 
   return (
     <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>

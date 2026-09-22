@@ -233,8 +233,12 @@ export function configureReminderPresentation() {
   })
 }
 
-/** 앱 안내를 띄우기 전 완료 화면의 인장·카운터 연출을 먼저 보여준다 */
-export const REMINDER_PROMPT_DELAY = 900
+/**
+ * 앱 안내를 띄우기 전 완료 화면을 먼저 읽게 둔다.
+ * 도장 250ms + 본문 등장 450ms으로 연출이 끝나므로, 그 뒤 티켓·그릇 수·취향 변화를 읽을 시간까지 준다.
+ * 이 화면은 앱에서 유일한 축하 장면이고, 권한은 보상을 인식한 뒤에 물어야 수락률도 높다.
+ */
+export const REMINDER_PROMPT_DELAY = 3500
 
 /**
  * 완료 화면용. 권한이 있으면 조용히 다시 예약하고, 처음이면 앱 안내를 띄운다.

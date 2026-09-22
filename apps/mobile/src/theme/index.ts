@@ -121,6 +121,8 @@ export const radii = {
 
 /** 선 굵기. 3pt 이상은 쓰지 않는다. 정보 구분선은 1pt(colors.border) */
 export const line = {
+  /** 목록의 줄 사이, 표 안쪽, 차트 눈금 같은 정보 구분선 (색은 border) */
+  hair: 1,
   /** 칩, 태그, 스티커, 미터 칸 */
   thin: 1.5,
   /** 카드, 버튼, 사진, 입력칸, 탭 바 */

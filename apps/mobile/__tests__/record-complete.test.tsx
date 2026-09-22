@@ -9,7 +9,7 @@ import { createInitialPersistedState } from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
 import RecordCompleteScreen from "@/app/(flows)/record/complete"
-import { REMINDER_DECISION_KEY } from "@/src/notifications"
+import { REMINDER_DECISION_KEY, REMINDER_PROMPT_DELAY } from "@/src/notifications"
 
 const mockParams: { logId?: string } = {}
 
@@ -99,7 +99,7 @@ function renderScreen(element: ReactElement) {
 async function renderCreatedLog() {
   const view = await renderScreen(<CreateThenComplete />)
   await fireEvent.press(view.getByRole("button", { name: "기록 생성" }))
-  await view.findByLabelText("내 취향 변화")
+  await view.findByTestId("taste-delta")
   return view
 }
 
@@ -123,7 +123,7 @@ describe("record complete screen", () => {
 
   it("shows the five-axis change with an arrow and a two-decimal delta", async () => {
     const view = await renderCreatedLog()
-    const section = view.getByLabelText("내 취향 변화")
+    const section = view.getByTestId("taste-delta")
 
     expect(within(section).getByText("42그릇 → 43그릇 평균")).toBeTruthy()
     // 육수 농도: 42그릇 평균 3.9에 5점 → 반올림 전 3.9256 → "3.90 → 3.93", +0.03
@@ -142,7 +142,7 @@ describe("record complete screen", () => {
     const view = await renderScreen(<RecordCompleteScreen />)
 
     expect(await view.findByText("특제 쇼유 라멘")).toBeTruthy()
-    expect(view.queryByLabelText("내 취향 변화")).toBeNull()
+    expect(view.queryByTestId("taste-delta")).toBeNull()
     expect(view.queryByText("내 취향 변화")).toBeNull()
   })
 
@@ -179,8 +179,9 @@ describe("record reminder opt-in on the complete screen", () => {
   const undetermined = { status: "undetermined", granted: false, canAskAgain: true, expires: "never" }
   const granted = { status: "granted", granted: true, canAskAgain: true, expires: "never" }
   const prompt = "다음 달 리포트가 나올 즈음 알려드릴까요?"
-  /** 안내는 인장 연출 뒤(0.9초)에 뜬다. 그보다 오래 기다려도 안 뜨는지 본다 */
-  const waitLongerThanPromptDelay = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 1200)))
+  /** 안내는 완료 화면을 읽을 시간을 준 뒤에 뜬다. 그보다 오래 기다려도 안 뜨는지 본다 */
+  const promptTimeout = REMINDER_PROMPT_DELAY + 1500
+  const waitLongerThanPromptDelay = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, REMINDER_PROMPT_DELAY + 300)))
 
   beforeEach(async () => {
     jest.clearAllMocks()
@@ -191,7 +192,7 @@ describe("record reminder opt-in on the complete screen", () => {
   it("explains first, then asks the system permission and schedules reminders", async () => {
     const view = await renderCreatedLog()
 
-    expect(await view.findByText(prompt, undefined, { timeout: 2000 })).toBeTruthy()
+    expect(await view.findByText(prompt, undefined, { timeout: promptTimeout })).toBeTruthy()
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled()
 
     notifications.getPermissionsAsync.mockResolvedValue(granted)
@@ -205,7 +206,7 @@ describe("record reminder opt-in on the complete screen", () => {
 
   it("remembers a no without asking the system", async () => {
     const view = await renderCreatedLog()
-    await fireEvent.press(await view.findByRole("button", { name: "괜찮아요" }, { timeout: 2000 }))
+    await fireEvent.press(await view.findByRole("button", { name: "괜찮아요" }, { timeout: promptTimeout }))
 
     await waitFor(() => expect(view.queryByText(prompt)).toBeNull())
     expect(await AsyncStorage.getItem(REMINDER_DECISION_KEY)).toBe("declined")

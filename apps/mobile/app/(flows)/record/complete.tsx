@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Stack, router, useLocalSearchParams } from "expo-router"
+import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import { Check, ImageOff, SearchX } from "lucide-react-native"
@@ -33,7 +33,8 @@ import { colors, line, radii, spacing } from "@/src/theme"
 /*
  * 기록 완료. 웹 RecordCompleteScreen과 같은 구성이다.
  * 인장 → "N번째 그릇" → 이번 그릇 티켓 → 내 취향 변화(5축) → 이번 그릇 한 줄 → 하단 고정 CTA.
- * 저장이 끝난 화면이므로 스와이프 뒤로가기로 작성 화면에 돌아가지 않는다.
+ * 작성 화면으로 되돌아가지 않는 것은 record/new가 replace로 이 화면에 오기 때문이고(스택에 남지 않는다),
+ * 그래서 스와이프 뒤로가기를 따로 막지 않는다. 제스처의 목적지는 "홈으로"와 같다.
  */
 
 const STAMP_DURATION = 250
@@ -129,7 +130,6 @@ export default function RecordCompleteScreen() {
   if (!log) {
     return (
       <View style={styles.root}>
-        <Stack.Screen options={{ gestureEnabled: false }} />
         <StatusBar style="dark" />
         <View style={[styles.stateArea, { paddingTop: insets.top }]}>
           {isLoading ? (
@@ -153,7 +153,6 @@ export default function RecordCompleteScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ gestureEnabled: false }} />
       <StatusBar style="light" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -182,7 +181,8 @@ export default function RecordCompleteScreen() {
 
         <Animated.View style={[styles.body, revealStyle]}>
           {/* 이번 그릇 티켓 */}
-          <View accessibilityLabel="기록 티켓" accessibilityRole="summary" style={styles.ticket}>
+          {/* 안쪽 글씨(티켓 번호·메뉴·가게·날짜)가 스스로 읽힌다. 묶음 라벨을 주면 그 내용이 가려진다 */}
+          <View style={styles.ticket}>
             <View style={styles.ticketHead}>
               <AppText capScale tone="muted" variant="meta">
                 티켓 {ticketNumber(log.visitedAt, bowlCount)}
@@ -229,7 +229,7 @@ export default function RecordCompleteScreen() {
 
           {/* 이번 그릇 한 줄 */}
           {comment ? (
-            <View accessibilityLabel="이번 그릇 정리" accessibilityRole="summary" style={styles.comment}>
+            <View accessibilityLabel={`이번 그릇 정리. ${comment}`} accessibilityRole="summary" accessible style={styles.comment}>
               <AppText lineBreakStrategyIOS="hangul-word" variant="body">
                 {comment}
               </AppText>
@@ -237,6 +237,9 @@ export default function RecordCompleteScreen() {
           ) : null}
         </Animated.View>
       </ScrollView>
+
+      {/* 상태바 글씨는 흰색 고정이다. 배너는 스크롤과 함께 밀려 올라가므로 뒤를 진녹으로 덮어 둔다 */}
+      <View pointerEvents="none" style={[styles.statusCap, { height: insets.top }]} />
 
       <ConfirmDialog
         cancelLabel="괜찮아요"
@@ -273,8 +276,9 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
   const afterExact = after.exact ?? after.scores
   const nothingMoved = !isFirstBowl && TASTE_AXES.every((axis) => delta[axis.key] === 0)
 
+  // 축마다 라벨을 합성해 둔 행이 읽힌다(아래 deltaRow). 묶음 라벨을 주면 그 행들이 가려진다
   return (
-    <View accessibilityLabel="내 취향 변화" style={styles.deltaSection}>
+    <View style={styles.deltaSection} testID="taste-delta">
       <SectionHeader
         meta={isFirstBowl ? "첫 그릇" : `${before.count}그릇 → ${after.count}그릇 평균`}
         metaTone="sub"
@@ -342,6 +346,7 @@ const styles = StyleSheet.create({
   stateArea: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.gutter },
   scrollContent: { paddingBottom: spacing.x6 },
   overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.deep },
+  statusCap: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: colors.deep },
   banner: {
     backgroundColor: colors.deep,
     alignItems: "center",

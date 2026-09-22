@@ -131,7 +131,7 @@ function LegalLink({ doc, label }: { doc: "terms" | "privacy"; label: string }) 
 }
 
 export default function LoginScreen() {
-  const params = useLocalSearchParams<{ mode?: string }>()
+  const params = useLocalSearchParams<{ mode?: string; next?: string }>()
   const signup = params.mode === "signup"
   const { state, currentUser, actions } = useRaota()
   const [notice, setNotice] = useState<string | null>(null)
@@ -149,7 +149,13 @@ export default function LoginScreen() {
       router.replace("/auth/onboarding")
       return
     }
-    // 로그인이 필요해 들어온 화면(기록, 마이 등)으로 돌아간다
+    // 가드에 막혀 들어왔다면 열려던 화면으로 보낸다. back으로는 갈 수 없다 — 가드가 replace로 지웠다
+    const next = params.next
+    if (typeof next === "string" && next.startsWith("/") && !next.startsWith("/auth")) {
+      router.replace(next as Parameters<typeof router.replace>[0])
+      return
+    }
+    // 그 밖에는 로그인이 필요해 들어온 화면(기록, 마이 등)으로 돌아간다
     leave()
   }
 

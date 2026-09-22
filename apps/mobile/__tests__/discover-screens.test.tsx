@@ -292,10 +292,10 @@ describe("AI curator", () => {
       priority: "clean",
       hasPrompt: false,
     })
-    // 로딩 식권은 고른 조건을 전부 체크한다. 반영 / 참고만은 결과 화면이 말한다
+    // 로딩 식권은 고른 조건을 전부 적되, 원장과 대조된 것만 체크한다. 참고만은 빼기표로 남는다
     expect(view.getByText(/돈코츠 계보/)).toBeTruthy()
     expect(view.getByText(/혼밥하기 좋은 곳/)).toBeTruthy()
-    expect(view.getAllByRole("checkbox")).toHaveLength(3)
+    expect(view.getAllByLabelText(/, (반영|참고만|확인 중)$/)).toHaveLength(3)
 
     await act(async () => {
       jest.advanceTimersByTime(4000)

@@ -103,6 +103,26 @@ export function useBowlCount(): Query<number> {
   return { data: currentUser?.visitedCount ?? 0, ...status }
 }
 
+/**
+ * 파생 계산을 "스토어 값 하나당 한 번"으로 묶는다.
+ *
+ * 훅마다 useMemo를 따로 두면 캐시도 훅 인스턴스마다 따로라, 한 화면이 useMyBowls와
+ * useVisitedShops를 함께 부르면 같은 그릇 목록을 두 번 만든다(리포트 화면은 mergeProfile도 두 번 돌았다).
+ * userLogs는 RaotaStore가 state가 바뀔 때마다 새 배열로 만들므로, 그 배열을 키로 쓰면
+ * "같은 상태면 같은 결과"가 되고 상태가 바뀌면 자동으로 다시 계산된다.
+ */
+const derivedCache = new WeakMap<object, Map<string, unknown>>()
+
+function derived<T>(logs: object, key: string, compute: () => T): T {
+  let byKey = derivedCache.get(logs)
+  if (!byKey) {
+    byKey = new Map<string, unknown>()
+    derivedCache.set(logs, byKey)
+  }
+  if (!byKey.has(key)) byKey.set(key, compute())
+  return byKey.get(key) as T
+}
+
 /** 앱 설치 전(웹·과거)까지의 5축 평균. 데모 계정만 42그릇 평균이 있다 */
 function baseProfileFor(userId: string | undefined): TasteProfile {
   return userId === DEMO_USER.id ? DEMO_BASE_PROFILE : EMPTY_PROFILE
@@ -123,17 +143,21 @@ export interface TasteProfileData {
 export function useTasteProfile(excludeLogId?: number | null): Query<TasteProfileData> {
   const { currentUser, userLogs } = useRaota()
   const status = useQueryState()
-  const data = useMemo(() => {
-    const base = baseProfileFor(currentUser?.id)
-    const profile = mergeProfile(base, userLogs)
-    const target = excludeLogId ? userLogs.find((log) => log.id === excludeLogId) : undefined
-    if (!target?.scores) return { profile, before: null, delta: null }
-    const before = mergeProfile(
-      base,
-      userLogs.filter((log) => log.id !== excludeLogId),
-    )
-    return { profile, before, delta: profileDelta(before, profile) }
-  }, [currentUser?.id, excludeLogId, userLogs])
+  const data = useMemo(
+    () =>
+      derived(userLogs, `profile:${currentUser?.id ?? ""}:${excludeLogId ?? ""}`, () => {
+        const base = baseProfileFor(currentUser?.id)
+        const profile = mergeProfile(base, userLogs)
+        const target = excludeLogId ? userLogs.find((log) => log.id === excludeLogId) : undefined
+        if (!target?.scores) return { profile, before: null, delta: null }
+        const before = mergeProfile(
+          base,
+          userLogs.filter((log) => log.id !== excludeLogId),
+        )
+        return { profile, before, delta: profileDelta(before, profile) }
+      }),
+    [currentUser?.id, excludeLogId, userLogs],
+  )
   return { data, ...status }
 }
 
@@ -144,11 +168,15 @@ export function useTasteProfile(excludeLogId?: number | null): Query<TasteProfil
 export function useMyBowls(): Query<DemoBowl[]> {
   const { currentUser, userLogs } = useRaota()
   const status = useQueryState()
-  const data = useMemo(() => {
-    if (!currentUser) return []
-    const base = currentUser.id === DEMO_USER.id ? DEMO_BOWLS : []
-    return [...base, ...bowlsFromLogs(userLogs)].sort((a, b) => b.date.localeCompare(a.date))
-  }, [currentUser, userLogs])
+  const data = useMemo(
+    () =>
+      derived(userLogs, `bowls:${currentUser?.id ?? ""}`, () => {
+        if (!currentUser) return []
+        const base = currentUser.id === DEMO_USER.id ? DEMO_BOWLS : []
+        return [...base, ...bowlsFromLogs(userLogs)].sort((a, b) => b.date.localeCompare(a.date))
+      }),
+    [currentUser, userLogs],
+  )
   return { data, ...status }
 }
 
