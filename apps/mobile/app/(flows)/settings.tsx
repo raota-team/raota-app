@@ -2,11 +2,13 @@ import { Redirect, router } from "expo-router"
 import * as Haptics from "expo-haptics"
 import { ChevronRight } from "lucide-react-native"
 import { useState } from "react"
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native"
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { LEGAL_CONTACT_EMAIL, RAMEN_TYPES } from "@raota/shared"
 import { AppText, BottomSheet, Button, ConfirmDialog, Header, Screen, Toast } from "@/src/components/ui"
+import { useMonthlyReports } from "@/src/data"
+import { useReminderSwitch } from "@/src/notifications"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, radii, spacing, typography } from "@/src/theme"
 
@@ -33,10 +35,26 @@ export default function SettingsScreen() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const monthly = useMonthlyReports()
+  const reminders = useReminderSwitch(monthly.data.current?.recordCount ?? 0)
 
   if (!user) return <Redirect href="/native/my" />
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/native/my"))
+
+  /*
+   * iOS 권한창은 앱 생애에 한 번뿐이라, 시스템에서 이미 막혔으면(blocked) 앱이 다시 띄울 수 없다.
+   * 그때는 설정 앱으로 보내고, 그 밖에는 스위치가 직접 켜고 끈다.
+   */
+  const toggleReminders = async (next: boolean) => {
+    haptic()
+    if (next && reminders.blocked) {
+      await Linking.openSettings().catch(() => setToast("설정 앱을 열지 못했어요"))
+      return
+    }
+    await reminders.toggle(next)
+    setToast(next ? "기록할 때가 되면 알려드릴게요" : "알림을 껐어요. 언제든 다시 켤 수 있어요")
+  }
 
   const saveStyle = async (style: string) => {
     haptic()
@@ -90,6 +108,31 @@ export default function SettingsScreen() {
           />
           <AccountRow label="선호 스타일" onChange={() => setSheet("style")} value={user.favoriteRamenType || "아직 안 정했어요"} />
         </Group>
+
+        {reminders.supported ? (
+          <Group title="알림">
+            <View style={[styles.row, styles.switchRow]}>
+              <View style={styles.shrink}>
+                <AppText variant="body">기록 리마인더</AppText>
+                <AppText lineBreakStrategyIOS="hangul-word" tone="muted" variant="secondary">
+                  {reminders.blocked
+                    ? "iOS 설정에서 알림이 꺼져 있어요. 눌러서 설정을 열 수 있어요."
+                    : "월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요."}
+                </AppText>
+              </View>
+              <Switch
+                accessibilityHint={reminders.blocked ? "iOS 설정 앱을 엽니다" : undefined}
+                accessibilityLabel="기록 리마인더"
+                disabled={reminders.busy}
+                ios_backgroundColor={colors.border}
+                onValueChange={(next) => void toggleReminders(next)}
+                thumbColor={colors.canvas}
+                trackColor={{ false: colors.border, true: colors.brand }}
+                value={reminders.enabled}
+              />
+            </View>
+          </Group>
+        ) : null}
 
         <Group title="약관 및 문의">
           <LinkRow first label="이용약관" onPress={() => openLegal("terms")} />
@@ -292,6 +335,7 @@ const styles = StyleSheet.create({
   rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
   rowTrail: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, flexShrink: 1 },
   pressedWash: { backgroundColor: colors.canvasSoft },
+  switchRow: { alignItems: "center", gap: spacing.x3 },
   withdrawRow: { alignItems: "center", marginTop: -spacing.x2 },
   withdrawText: { color: colors.inkSub, fontWeight: "500", textDecorationLine: "underline", ...typography.secondary },
   styleGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },

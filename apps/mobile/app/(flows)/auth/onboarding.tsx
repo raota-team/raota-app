@@ -20,10 +20,11 @@ import {
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
-import { RAMEN_TYPES, type UserProfile } from "@raota/shared"
+import { MONTHLY_REPORT_TARGET, RAMEN_TYPES, type UserProfile } from "@raota/shared"
 import { track } from "@/src/analytics"
 import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
-import { AppText, Button, Chip, Header } from "@/src/components/ui"
+import { AppText, Button, Chip, ConfirmDialog, Header } from "@/src/components/ui"
+import { ONBOARDING_PROMPT_DELAY, useRecordReminderPrompt } from "@/src/notifications"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, pressFade, radii, spacing, touchTarget, typography } from "@/src/theme"
 
@@ -119,6 +120,12 @@ export default function OnboardingScreen() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [registered, setRegistered] = useState<UserProfile | null>(null)
+
+  /*
+   * 알림은 가입을 마친 뒤 한 번 묻는다. 거절하거나 나중에 끄고 싶으면 설정(마이 > 톱니)에서 관리한다.
+   * iOS 시스템 권한창은 앱 생애에 한 번뿐이라, 앱이 먼저 무엇을 알려줄지 말하고 "알림 받기"를 누른 사람에게만 띄운다.
+   */
+  const reminder = useRecordReminderPrompt(Boolean(registered), 0, ONBOARDING_PROMPT_DELAY)
 
   const scrollRef = useRef<ScrollView>(null)
   const nicknameRef = useRef<TextInput>(null)
@@ -250,6 +257,17 @@ export default function OnboardingScreen() {
             ))}
           </View>
         </ScrollView>
+        <ConfirmDialog
+          cancelLabel="나중에"
+          confirmLabel="알림 받기"
+          loading={reminder.busy}
+          message={`이번 달 기록이 ${MONTHLY_REPORT_TARGET}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요.`}
+          onCancel={reminder.decline}
+          onConfirm={() => void reminder.accept()}
+          title="기록할 때가 되면 알려드릴까요?"
+          visible={reminder.visible}
+        />
+
         <SafeAreaView edges={["bottom"]} style={styles.doneFooter}>
           <Button
             fullWidth

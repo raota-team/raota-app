@@ -116,19 +116,64 @@ const isGranted = (permission: Notifications.NotificationPermissionsStatus) =>
 
 export type ReminderStatus = "unsupported" | "granted" | "ask" | "decided"
 
-/** 안내를 띄울지 판단한다. 이미 답했거나 시스템에서 거절했으면 다시 묻지 않는다 */
+/**
+ * 안내를 띄울지 판단한다. 이미 답했거나 시스템에서 거절했으면 다시 묻지 않는다.
+ * 앱 설정에서 꺼 둔("declined") 상태는 시스템 권한이 살아 있어도 우선한다 —
+ * 그러지 않으면 설정에서 끈 사람에게 다음 기록 때 다시 예약해 버린다.
+ */
 export async function getReminderStatus(): Promise<ReminderStatus> {
   if (!isSupported()) return "unsupported"
   try {
+    const decision = await AsyncStorage.getItem(REMINDER_DECISION_KEY)
+    if (decision === "declined") return "decided"
     const permission = await Notifications.getPermissionsAsync()
     if (isGranted(permission)) return "granted"
-    const decision = await AsyncStorage.getItem(REMINDER_DECISION_KEY)
     if (decision) return "decided"
     if (permission.status === "denied" || !permission.canAskAgain) return "decided"
     return "ask"
   } catch {
     return "unsupported"
   }
+}
+
+/** 설정 화면의 스위치가 읽는 상태 */
+export interface ReminderState {
+  /** 지금 실제로 알림이 오는가 */
+  enabled: boolean
+  /**
+   * iOS 시스템에서 막혀 앱 안에서는 다시 물을 수 없다.
+   * 권한창은 앱 생애에 한 번뿐이라, 이 상태에서는 설정 앱으로 보내는 수밖에 없다.
+   */
+  blocked: boolean
+  /** 알림을 쓸 수 있는 플랫폼인가(웹 제외) */
+  supported: boolean
+}
+
+export async function getReminderState(): Promise<ReminderState> {
+  if (!isSupported()) return { enabled: false, blocked: false, supported: false }
+  try {
+    const decision = await AsyncStorage.getItem(REMINDER_DECISION_KEY)
+    const permission = await Notifications.getPermissionsAsync()
+    const granted = isGranted(permission)
+    return {
+      enabled: granted && decision !== "declined",
+      blocked: !granted && (permission.status === "denied" || !permission.canAskAgain),
+      supported: true,
+    }
+  } catch {
+    return { enabled: false, blocked: false, supported: false }
+  }
+}
+
+/** 설정 스위치를 켜고 끈다. 끄면 예약된 알림도 함께 지운다 */
+export async function setRemindersEnabled(on: boolean, context: ReminderContext): Promise<ReminderState> {
+  if (on) {
+    await acceptReminders(context)
+  } else {
+    await declineReminders()
+    await cancelRecordReminders()
+  }
+  return getReminderState()
 }
 
 /** 권한이 있을 때만 두 알림을 같은 식별자로 교체 예약한다. 예약한 개수를 돌려준다 */
@@ -241,10 +286,16 @@ export function configureReminderPresentation() {
 export const REMINDER_PROMPT_DELAY = 3500
 
 /**
+ * 가입 완료 화면용. 여기는 연출이 없는 안내 화면이라 "반가워요"만 읽히면 충분하다.
+ * 완료 화면(3.5초)처럼 오래 기다릴 이유가 없다.
+ */
+export const ONBOARDING_PROMPT_DELAY = 1200
+
+/**
  * 완료 화면용. 권한이 있으면 조용히 다시 예약하고, 처음이면 앱 안내를 띄운다.
  * enabled가 true가 될 때 판단한다(완료 화면에서는 기록을 찾은 뒤 한 번).
  */
-export function useRecordReminderPrompt(enabled: boolean, monthCount: number) {
+export function useRecordReminderPrompt(enabled: boolean, monthCount: number, delayMs = REMINDER_PROMPT_DELAY) {
   const [visible, setVisible] = useState(false)
   const [busy, setBusy] = useState(false)
   const countRef = useRef(monthCount)
@@ -257,13 +308,13 @@ export function useRecordReminderPrompt(enabled: boolean, monthCount: number) {
     void getReminderStatus().then((status) => {
       if (!active) return
       if (status === "granted") void syncRecordReminders({ monthCount: countRef.current })
-      else if (status === "ask") timer = setTimeout(() => active && setVisible(true), REMINDER_PROMPT_DELAY)
+      else if (status === "ask") timer = setTimeout(() => active && setVisible(true), delayMs)
     })
     return () => {
       active = false
       if (timer) clearTimeout(timer)
     }
-  }, [enabled])
+  }, [delayMs, enabled])
 
   const accept = useCallback(async () => {
     setBusy(true)
@@ -281,4 +332,34 @@ export function useRecordReminderPrompt(enabled: boolean, monthCount: number) {
   }, [])
 
   return { visible, busy, accept, decline }
+}
+
+/**
+ * 설정 화면의 알림 스위치. 켜면 (필요하면) 시스템 권한을 묻고 예약하고, 끄면 예약을 지운다.
+ * 시스템에서 이미 막혀 있으면(blocked) 앱이 다시 물을 수 없으므로 화면이 설정 앱으로 안내한다.
+ */
+export function useReminderSwitch(monthCount: number) {
+  const [state, setState] = useState<ReminderState>({ enabled: false, blocked: false, supported: false })
+  const [busy, setBusy] = useState(false)
+  const countRef = useRef(monthCount)
+  countRef.current = monthCount
+
+  useEffect(() => {
+    let active = true
+    void getReminderState().then((next) => active && setState(next))
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const toggle = useCallback(async (on: boolean) => {
+    setBusy(true)
+    try {
+      setState(await setRemindersEnabled(on, { monthCount: countRef.current }))
+    } finally {
+      setBusy(false)
+    }
+  }, [])
+
+  return { ...state, busy, toggle }
 }

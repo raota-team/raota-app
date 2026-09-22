@@ -7,9 +7,11 @@ import {
   acceptReminders,
   declineReminders,
   deepLinkToPath,
+  getReminderState,
   getReminderStatus,
   planRecordReminders,
   scheduleTestReminder,
+  setRemindersEnabled,
   syncRecordReminders,
 } from "@/src/notifications"
 
@@ -89,6 +91,46 @@ describe("permission and scheduling", () => {
   it("does not ask again after the system permission was denied", async () => {
     notifications.getPermissionsAsync.mockResolvedValueOnce(denied)
     expect(await getReminderStatus()).toBe("decided")
+  })
+
+  it("keeps quiet when the app switch is off, even with the system permission granted", async () => {
+    // 설정에서 끈 사람에게 다음 기록 때 다시 예약해 버리면 안 된다
+    notifications.getPermissionsAsync.mockResolvedValue(granted)
+    await declineReminders()
+
+    expect(await getReminderStatus()).toBe("decided")
+    expect(await getReminderState()).toEqual({ enabled: false, blocked: false, supported: true })
+  })
+})
+
+describe("settings switch", () => {
+  it("turns on: asks the system, schedules, and reports enabled", async () => {
+    // 권한을 허락한 뒤부터는 getPermissionsAsync도 granted를 돌려준다
+    notifications.requestPermissionsAsync.mockResolvedValue(granted)
+    notifications.getPermissionsAsync.mockResolvedValue(granted)
+
+    const state = await setRemindersEnabled(true, { monthCount: 1 })
+
+    expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1)
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalled()
+    expect(state.enabled).toBe(true)
+    expect(await AsyncStorage.getItem(REMINDER_DECISION_KEY)).toBe("accepted")
+  })
+
+  it("turns off: cancels what was scheduled and remembers the no", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(granted)
+
+    const state = await setRemindersEnabled(false, { monthCount: 1 })
+
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(REMINDER_IDS.monthly)
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(REMINDER_IDS.inactive)
+    expect(state.enabled).toBe(false)
+    expect(await AsyncStorage.getItem(REMINDER_DECISION_KEY)).toBe("declined")
+  })
+
+  it("reports blocked when iOS denied it — the app cannot ask again", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(denied)
+    expect(await getReminderState()).toEqual({ enabled: false, blocked: true, supported: true })
   })
 
   it("requests the system permission after the in-app yes and schedules both reminders", async () => {
