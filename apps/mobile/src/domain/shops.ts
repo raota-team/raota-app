@@ -1,4 +1,4 @@
-import type { Shop } from "@raota/shared"
+import type { Shop, ShopCatalogItem } from "@raota/shared"
 
 export type ShopSort = "distance" | "match" | "rating"
 
@@ -38,6 +38,34 @@ function searchableText(shop: Shop): string {
     .toLocaleLowerCase("ko-KR")
 }
 
+/** 서버 종류가 있으면 우선하고, 옛 원장은 대표 스타일로 돈코츠와 이에케를 구분한다. */
+export function matchesShopRamenType(
+  shop: Shop,
+  type: string,
+  keys?: readonly string[],
+): boolean {
+  if ((type === "돈코츠" || type === "이에케") && shop.ramenTypes?.length) {
+    return shop.ramenTypes.includes(type)
+  }
+  const catalog =
+    shop as Shop & Partial<Pick<ShopCatalogItem, "style" | "spec">>
+  const style = catalog.style?.replace(/\s*라멘$/, "").trim()
+  if (
+    (type === "돈코츠" || type === "이에케") &&
+    (style === "돈코츠" || style === "이에케")
+  ) {
+    return style === type
+  }
+  const hasKey = (key: string) =>
+    Boolean(
+      catalog.style?.includes(key) ||
+        catalog.spec?.includes(key) ||
+        shop.tags.some((tag) => tag.includes(key)),
+    )
+  if (type === "돈코츠" && hasKey("이에케")) return false
+  return keys ? keys.some(hasKey) : hasKey(type)
+}
+
 export function filterAndSortShops(
   shops: Shop[],
   filters: ShopFilters,
@@ -62,7 +90,11 @@ export function filterAndSortShops(
     const haystack = searchableText(shop)
     const matchesQuery = !query || haystack.includes(query)
     const matchesType =
-      !ramenType || ramenType === "전체" || haystack.includes(ramenType)
+      !ramenType ||
+      ramenType === "전체" ||
+      (ramenType === "돈코츠" || ramenType === "이에케"
+        ? matchesShopRamenType(shop, ramenType)
+        : haystack.includes(ramenType))
     const matchesArea =
       !area ||
       area === "전체 지역" ||

@@ -1,6 +1,6 @@
 import type { Shop, TasteReport } from "@raota/shared"
 
-import { distanceBetweenCoordinates } from "./shops"
+import { distanceBetweenCoordinates, matchesShopRamenType } from "./shops"
 
 export interface RecommendationOrigin {
   latitude: number
@@ -40,7 +40,8 @@ interface PrioritySignal {
 
 const SOUP_SIGNALS: Record<string, string[]> = {
   쇼유: ["쇼유", "간장", "블랙쇼유", "닭청탕", "타레"],
-  돈코츠: ["돈코츠", "돼지뼈", "이에케", "농후", "진한육수"],
+  돈코츠: ["돈코츠", "돼지뼈", "농후", "진한육수"],
+  이에케: ["이에케", "요코하마식", "돈코츠쇼유"],
   시오: ["시오", "소금", "유자", "청탕", "맑은"],
   미소: ["미소", "된장", "삿포로", "웍"],
   츠케멘: ["츠케멘", "찍어", "농축"],
@@ -120,6 +121,7 @@ function shopSearchText(shop: Shop): string {
       shop.address,
       shop.description,
       ...shop.tags,
+      ...(shop.ramenTypes ?? []),
       perks,
       reviews,
     ]
@@ -135,11 +137,7 @@ function matchedTermCount(haystack: string, terms: string[]): number {
 }
 
 function selectedSoupKey(soup: string): string {
-  const normalizedSoup = normalizedText(soup)
-  return (
-    Object.keys(SOUP_SIGNALS).find((key) => normalizedSoup.includes(key)) ??
-    normalizedSoup.split(" ")[0]
-  )
+  return normalizedText(soup).split(" ")[0]
 }
 
 function distanceScore(distanceM: number): number {
@@ -154,8 +152,14 @@ function qualityScore(shop: Shop): number {
   return rating + preference + availability
 }
 
-function soupScore(shopText: string, selectedSoup: string): number {
+function soupScore(shop: Shop, shopText: string, selectedSoup: string): number {
   const terms = SOUP_SIGNALS[selectedSoup] ?? [selectedSoup]
+  if (
+    (selectedSoup === "돈코츠" || selectedSoup === "이에케") &&
+    !matchesShopRamenType(shop, selectedSoup, terms)
+  ) {
+    return 0
+  }
   const exactMatch = shopText.includes(normalizedText(selectedSoup))
   const relatedMatches = matchedTermCount(shopText, terms)
   return clamp((exactMatch ? 40 : 0) + relatedMatches * 4, 0, 52)
@@ -374,7 +378,7 @@ export function rankShopsForAIRecommendation(
       const proximity = distanceScore(distanceM)
       const breakdown: RecommendationScoreBreakdown = {
         quality: qualityScore(shop),
-        soup: soupScore(shopText, soup),
+        soup: soupScore(shop, shopText, soup),
         mood: moodScore(shop, input.mood, proximity),
         priority: priorityScore(shopText, input.priority),
         prompt: promptScore(shop, shopText, input.prompt ?? "", proximity),

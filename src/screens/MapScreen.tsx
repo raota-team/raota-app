@@ -71,7 +71,8 @@ const REGION_OPTIONS = [
 const MENU_OPTIONS = [
   { value: 'ALL', label: '모든 메뉴', keys: [] as string[] },
   { value: '쇼유', label: '쇼유 라멘 (간장)', keys: ['쇼유'] },
-  { value: '돈코츠', label: '돈코츠/이에케 (돼지뼈)', keys: ['돈코츠', '이에케'] },
+  { value: '돈코츠', label: '돈코츠 라멘 (돼지뼈)', keys: ['돈코츠'] },
+  { value: '이에케', label: '이에케 (돈코츠쇼유)', keys: ['이에케'] },
   { value: '시오', label: '시오 라멘 (소금)', keys: ['시오'] },
   { value: '미소', label: '미소 라멘 (된장)', keys: ['미소'] },
   { value: '토리파이탄', label: '토리파이탄 (닭백탕)', keys: ['토리파이탄', '닭백탕'] },
@@ -317,6 +318,11 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
 
     // 3. 메뉴(계통) 필터
     const menuKeys = MENU_OPTIONS.find(option => option.value === menuFilter)?.keys ?? []
+    if (
+      (menuFilter === '돈코츠' || menuFilter === '이에케') &&
+      (shop.style.startsWith('돈코츠') || shop.style.startsWith('이에케')) &&
+      !shop.style.startsWith(menuFilter)
+    ) return false
     if (menuKeys.length > 0 && !menuKeys.some(key => shop.style.includes(key) || shop.spec.includes(key))) return false
 
     // 4. 키워드 검색

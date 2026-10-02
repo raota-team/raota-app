@@ -230,6 +230,9 @@ export const shadows = {
  */
 export const broth = ["#D6A24A", "#B87C22", "#8E5A15", "#5E340A"] as const
 
+/** 이에케 월별 분포 막대는 다른 종류와 구별되는 간장빛 국물 톤을 쓴다. */
+export const brothIeke = "#70410E"
+
 export const pressFade: ViewStyle = { opacity: 0.8 }
 
 export const pressInto = (offset: 2 | 3 = 2): ViewStyle => ({

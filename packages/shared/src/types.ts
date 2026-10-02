@@ -96,6 +96,8 @@ export interface Shop {
   naverMapId?: string
   photos: string[]
   tags: string[]
+  /** 서버가 분류한 라멘 종류. 없으면 원장 스타일과 태그로 판단한다. */
+  ramenTypes?: string[]
   /** AI 요약 소개. 없으면 description(가게 소개)을 보여준다 */
   aiSummary?: ShopAISummary
   matchScore: number
@@ -203,6 +205,7 @@ export const TASTE_FIELDS: Array<{
 export const RAMEN_TYPES = [
   "쇼유",
   "돈코츠",
+  "이에케",
   "시오",
   "미소",
   "츠케멘",

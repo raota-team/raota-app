@@ -144,7 +144,7 @@ export const TASTE_FIELDS: Array<{ key: TasteNoteKey; label: string; options: st
   { key: 'topping', label: '토핑', options: ['차슈 좋아요', '계란 좋아요', '멘마 좋아요', '파 향 좋아요', '구성 알차요'] },
 ]
 
-export const RAMEN_TYPES = ['쇼유', '돈코츠', '시오', '미소', '츠케멘', '탄탄멘', '마제소바', '아부라소바', '기타']
+export const RAMEN_TYPES = ['쇼유', '돈코츠', '이에케', '시오', '미소', '츠케멘', '탄탄멘', '마제소바', '아부라소바', '기타']
 export const REVISIT_OPTIONS: RevisitOption[] = ['자주 감', '가끔 생각남', '한번이면 충분']
 
 export interface UserProfile {

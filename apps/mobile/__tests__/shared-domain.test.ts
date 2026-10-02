@@ -75,6 +75,23 @@ describe("shared ledger", () => {
     expect(items.reduce((sum, item) => sum + item.pct, 0)).toBe(100)
     expect(items.find(item => item.name === "미소")?.count).toBe(1)
   })
+
+  it("counts 이에케 logs separately in the distribution and taste identity", () => {
+    const bowls = [
+      {
+        date: "2026-09-18",
+        shop: "하쿠텐",
+        type: "이에케",
+        menu: "이에케 라멘",
+      },
+    ]
+    const counts = typeCountsOf(bowls)
+    expect(counts.이에케).toBe(1)
+    expect(counts.돈코츠).toBe(0)
+    expect(
+      tasteIdentity(counts, { ...DEMO_BASE_PROFILE, count: 1 }).title,
+    ).toBe("진한 이에케파")
+  })
 })
 
 describe("5-axis taste profile", () => {

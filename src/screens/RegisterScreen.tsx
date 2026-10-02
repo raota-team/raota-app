@@ -22,6 +22,7 @@ const AVATAR_PRESETS = [
 const RAMEN_STYLE_OPTIONS = [
   { name: '쇼유 (간장)', key: '쇼유' },
   { name: '돈코츠 (돼지뼈)', key: '돈코츠' },
+  { name: '이에케 (돈코츠쇼유)', key: '이에케' },
   { name: '토리파이탄 (닭백탕)', key: '토리파이탄' },
   { name: '시오 (소금)', key: '시오' },
   { name: '미소 (된장)', key: '미소' },

@@ -11,7 +11,7 @@ import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, LoadingState, RamenTypeTag, Sticker } from "@/src/components/ui"
 import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
-import { distanceBetweenCoordinates } from "@/src/domain/shops"
+import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, maxFontScale, pressFade, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
 import { MENU_OPTIONS } from "./map.web"
@@ -102,7 +102,6 @@ function shopText(shop: Shop) {
 }
 
 const SOUP_KEYS: Record<string, string[]> = {
-  돈코츠: ["돈코츠", "이에케"],
   쇼유: ["쇼유"],
   시오: ["시오"],
   미소: ["미소"],
@@ -150,7 +149,12 @@ function personalRecommendations(shops: Shop[], identity: TasteIdentity, profile
     return ranked.slice(0, 5).map(({ shop }) => {
       const text = shopText(shop)
       const reasons: string[] = []
-      if (leader && hasAny(text, SOUP_KEYS[leader] ?? [leader])) reasons.push(`${leader}를 가장 자주 드셔서`)
+      if (leader) {
+        const matchesLeader = leader === "돈코츠" || leader === "이에케"
+          ? matchesShopRamenType(shop, leader)
+          : hasAny(text, SOUP_KEYS[leader] ?? [leader])
+        if (matchesLeader) reasons.push(`${leader}를 가장 자주 드셔서`)
+      }
       if (dense && hasAny(text, DENSE_KEYS)) reasons.push("진한 육수 취향")
       if (!dense && hasAny(text, CLEAN_KEYS)) reasons.push("맑은 육수 취향")
       return { shop, reason: reasons.length ? reasons.join(" · ") : plainReason(shop) }
@@ -275,12 +279,7 @@ export default function HomeScreen() {
   const styleTiles = useMemo(
     () =>
       MENU_OPTIONS.filter((option) => option.value !== "ALL").flatMap((option) => {
-        const matches = shops.filter((shop) => {
-          const catalog = catalogOf(shop)
-          return option.keys.some(
-            (key) => (catalog.style ?? "").includes(key) || (catalog.spec ?? "").includes(key) || shop.tags.some((tag) => tag.includes(key)),
-          )
-        })
+        const matches = shops.filter((shop) => matchesShopRamenType(shop, option.value, option.keys))
         const photo = matches.find((shop) => shop.photos[0])?.photos[0]
         return photo ? [{ value: option.value, label: option.short, count: matches.length, photo }] : []
       }),

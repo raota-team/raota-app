@@ -46,6 +46,7 @@ const BIO_MAX = 60
 const STYLE_HINTS: Record<string, string> = {
   쇼유: "간장",
   돈코츠: "돼지뼈",
+  이에케: "돈코츠쇼유",
   시오: "소금",
   미소: "된장",
 }

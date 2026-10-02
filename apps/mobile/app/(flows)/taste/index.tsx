@@ -822,13 +822,13 @@ export default function TasteReportScreen() {
                     const pct = typeTotal ? Math.round((count / typeTotal) * 100) : 0
                     // 많이 먹은 종류일수록 국물이 진하다. 같은 그릇 수는 같은 색이어야 해서 순위는 촘촘히 센다
                     // (그냥 정렬하면 4그릇 둘이 다른 진하기가 되어 색이 수량을 거짓으로 말한다).
-                    // 트랙이 흰 면이라 5위도 broth[0]까지만 옅어진다(border는 흰 면 위 1.3:1이라 빈 칸으로 읽힌다).
+                    // 트랙이 흰 면이라 네 번째 이후도 broth[0]까지만 옅어진다(border는 빈 칸으로 읽힌다).
                     const rank = typeRanks.indexOf(count)
                     const fill = broth[broth.length - 1 - Math.min(rank < 0 ? broth.length - 1 : rank, broth.length - 1)]
                     return (
                       <View accessibilityLabel={`${name} ${count}그릇, ${pct}%`} accessible key={name} style={styles.typeRow}>
                         <View style={styles.typeName}>
-                          {/* 다섯 줄이 이어지는 목록이라 종류는 굵은 먹색 글씨로 쓴다(노랑 스티커는 줄무늬가 된다) */}
+                          {/* 여러 줄이 이어지는 목록이라 종류는 굵은 먹색 글씨로 쓴다(노랑 스티커는 줄무늬가 된다) */}
                           <RamenTypeTag inList type={name} />
                         </View>
                         <View style={[styles.track, styles.trackThick]}>

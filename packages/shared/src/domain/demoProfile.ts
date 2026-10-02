@@ -20,6 +20,7 @@ export const DEMO_TOTAL_BOWLS = Object.values(DEMO_MONTHLY_RECORD_COUNTS).reduce
 /** 누적 그릇의 라멘 종류 분포. 합계는 DEMO_TOTAL_BOWLS와 같다. */
 export const DEMO_TYPE_COUNTS: Record<string, number> = {
   돈코츠: 14,
+  이에케: 0,
   쇼유: 12,
   시오: 8,
   미소: 4,

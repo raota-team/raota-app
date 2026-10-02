@@ -13,6 +13,7 @@ export const DENSE_BROTH_THRESHOLD = 3.5
 
 const TYPE_WORD: Record<MenuCategoryName, string> = {
   돈코츠: '돈골파',
+  이에케: '이에케파',
   쇼유: '쇼유파',
   시오: '시오파',
   미소: '미소파',

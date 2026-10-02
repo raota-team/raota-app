@@ -5,6 +5,7 @@ import {
   calculateMapClusters,
   filterAndSortShops,
   firstRecordValidationMessage,
+  matchesShopRamenType,
   rankShopsForAIRecommendation,
   validateRecordDraft,
 } from "@/src/domain"
@@ -103,6 +104,14 @@ describe("shop filtering and sorting", () => {
     })
 
     expect(result.map((shop) => shop.id)).toEqual([1])
+  })
+
+  it("matches an 이에케 shop only to the 이에케 filter, even if its tags also say 돈코츠", () => {
+    const ieke = { ...SHOPS[6], ramenTypes: ["이에케"], style: "이에케 라멘" }
+    expect(matchesShopRamenType(ieke, "이에케")).toBe(true)
+    expect(matchesShopRamenType(ieke, "돈코츠")).toBe(false)
+    expect(filterAndSortShops([ieke], { ramenType: "이에케" })).toEqual([ieke])
+    expect(filterAndSortShops([ieke], { ramenType: "돈코츠" })).toEqual([])
   })
 
   it("sorts a copy without mutating fixture order", () => {
@@ -240,6 +249,19 @@ describe("AI shop recommendation", () => {
     })
 
     expect(winner.shop.id).toBe(expectedShopId)
+  })
+
+  it("does not score an explicitly typed 이에케 shop as a 돈코츠 match", () => {
+    const ieke = { ...SHOPS[6], ramenTypes: ["이에케"], style: "이에케 라멘" }
+    const soupScore = (soup: string) =>
+      rankShopsForAIRecommendation([ieke], {
+        ...baseInput,
+        soup,
+        currentTasteReport: null,
+      })[0].breakdown.soup
+
+    expect(soupScore("돈코츠 (돼지뼈)")).toBe(0)
+    expect(soupScore("이에케 (돈코츠쇼유)")).toBeGreaterThan(0)
   })
 
   it("recomputes both score and displayed distance from a device origin", () => {

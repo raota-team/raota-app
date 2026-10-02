@@ -25,7 +25,7 @@ import {
 import { track } from "@/src/analytics"
 import { AppText, Chip, EmptyState, Header, LoadingState } from "@/src/components/ui"
 import { useMonthlyReports, useMyBowls } from "@/src/data"
-import { broth, colors, line, radii, spacing } from "@/src/theme"
+import { broth, brothIeke, colors, line, radii, spacing } from "@/src/theme"
 
 /*
  * 월별 취향 변화. 웹 MonthlyTasteScreen과 같은 구성이다.
@@ -35,14 +35,14 @@ import { broth, colors, line, radii, spacing } from "@/src/theme"
 
 /**
  * 분포는 수량이라 빨강을 쓰지 않고 국물 색(broth) 한 계열의 농도로 칠한다(빨강은 누르는 곳과 고른 것 전용).
- * 진하기는 전체 기록에서 흔한 순서(돈코츠 > 쇼유 > 시오 > 미소 > 기타)로 고정한다 — 한 화면에 여러 달의
- * 막대가 쌓이고 범례는 아래에 하나뿐이라, 달마다 순위로 색을 바꾸면 그 범례가 한 달 말고는 전부 거짓말이 된다.
- * 그래서 색은 "대체로 많이 먹는 쪽이 진하다"까지만 말하고, 그달의 정확한 많고 적음은 옆의 이름·그릇 수·%가 읽어 준다.
- * 이웃 단계는 1.5~1.8:1로만 갈리니 색으로 종류를 집어내게 두지 않는다. 5위 기타는 border로 "거의 없음"처럼 둔다.
- * 면 위 % 글씨는 대비로 고른다: broth[2]·broth[3]은 흰색(5.80·10.65:1), 옅은 쪽은 먹색(7.74·5.04:1).
+ * 종류마다 고정된 국물 톤을 쓰고, 이에케는 돈코츠와 다른 간장빛 갈색으로 칠한다.
+ * 달마다 순위로 색을 바꾸면 여러 달의 막대와 하나뿐인 범례가 어긋난다.
+ * 정확한 그릇 수와 비율은 옆의 이름·숫자로 읽고 색에만 의존하지 않는다.
+ * 진한 면에는 흰 글씨, 옅은 면에는 먹색 글씨를 쓴다.
  */
 export const MENU_CATEGORY_COLORS: Record<MenuCategoryName, { fill: string; text: string }> = {
   돈코츠: { fill: broth[3], text: colors.onDark },
+  이에케: { fill: brothIeke, text: colors.onDark },
   쇼유: { fill: broth[2], text: colors.onDark },
   시오: { fill: broth[1], text: colors.ink },
   미소: { fill: broth[0], text: colors.ink },

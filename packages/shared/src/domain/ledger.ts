@@ -79,7 +79,7 @@ export const DEMO_BOWLS: DemoBowl[] = [
 ]
 
 /** 월별 분포에 쓰는 종류. 그 밖의 종류(츠케멘, 아부라소바 등)는 기타로 센다. */
-export const MENU_CATEGORY_NAMES = ['돈코츠', '쇼유', '시오', '미소', '기타'] as const
+export const MENU_CATEGORY_NAMES = ['돈코츠', '이에케', '쇼유', '시오', '미소', '기타'] as const
 export type MenuCategoryName = (typeof MENU_CATEGORY_NAMES)[number]
 
 export function menuCategoryOf(type: string): MenuCategoryName {

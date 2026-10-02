@@ -22,6 +22,7 @@ import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, Button, Header, IconButton, RamenTypeTag, Screen, Sticker, StickyActionBar, Tag } from "@/src/components/ui"
 import { useShops } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
+import { matchesShopRamenType } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 
@@ -30,7 +31,8 @@ type Step = 1 | 2 | 3 | 4 | "loading" | "result"
 
 const SOUP_OPTIONS = [
   { id: "shoyu", label: "쇼유", sub: "간장 타레", keys: ["쇼유"] },
-  { id: "tonkotsu", label: "돈코츠", sub: "돼지뼈 육수", keys: ["돈코츠", "이에케"] },
+  { id: "tonkotsu", label: "돈코츠", sub: "돼지뼈 육수", keys: ["돈코츠"] },
+  { id: "ieke", label: "이에케", sub: "돈코츠쇼유", keys: ["이에케"] },
   { id: "shio", label: "시오", sub: "소금 타레", keys: ["시오"] },
   { id: "miso", label: "미소", sub: "된장 타레", keys: ["미소"] },
   { id: "tsukemen", label: "츠케멘", sub: "찍어 먹는 면", keys: ["츠케멘"] },
@@ -119,7 +121,12 @@ function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
   }
 
   const soup = SOUP_OPTIONS.find((option) => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
-  if (narrow((shop) => hasAnyKey(shop, soup.keys))) {
+  if (narrow((shop) => {
+    if (soup.label === "돈코츠" || soup.label === "이에케") {
+      return matchesShopRamenType(shop, soup.label, soup.keys)
+    }
+    return hasAnyKey(shop, soup.keys)
+  })) {
     conditions.push({ label: `${soup.label} 계보`, applied: true, note: `${soup.label} 계보 ${pool.length}곳 중에서 골랐어요` })
   } else {
     conditions.push({ label: `${soup.label} 계보`, applied: false, note: `${soup.label} 전문점이 아직 없어 전체 라멘집에서 골랐어요` })

@@ -276,6 +276,7 @@ describe("AI curator", () => {
     expect(view.getByRole("radio", { name: "쇼유, 간장 타레", checked: false })).toBeTruthy()
     expect(view.getByRole("button", { name: "다음" })).toBeDisabled()
 
+    expect(view.getByRole("radio", { name: "이에케, 돈코츠쇼유" })).toBeTruthy()
     await fireEvent.press(view.getByRole("radio", { name: "돈코츠, 돼지뼈 육수" }))
     await fireEvent.press(view.getByRole("button", { name: "다음" }))
     expect(view.getByText("2 / 4")).toBeTruthy()

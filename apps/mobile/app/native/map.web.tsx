@@ -8,7 +8,7 @@ import type { Shop, ShopCatalogItem } from "@raota/shared"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, BottomSheet, EmptyState, LoadingState, RamenTypeTag } from "@/src/components/ui"
 import { useShops } from "@/src/data/hooks"
-import { distanceBetweenCoordinates } from "@/src/domain/shops"
+import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
 import { colors, line, maxFontScale, pressInto, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
@@ -37,7 +37,8 @@ export const REGION_OPTIONS = [
 export const MENU_OPTIONS = [
   { value: "ALL", label: "모든 메뉴", short: "모든 메뉴", keys: [] as string[] },
   { value: "쇼유", label: "쇼유 라멘 (간장)", short: "쇼유", keys: ["쇼유"] },
-  { value: "돈코츠", label: "돈코츠/이에케 (돼지뼈)", short: "돈코츠", keys: ["돈코츠", "이에케"] },
+  { value: "돈코츠", label: "돈코츠 라멘 (돼지뼈)", short: "돈코츠", keys: ["돈코츠"] },
+  { value: "이에케", label: "이에케 (돈코츠쇼유)", short: "이에케", keys: ["이에케"] },
   { value: "시오", label: "시오 라멘 (소금)", short: "시오", keys: ["시오"] },
   { value: "미소", label: "미소 라멘 (된장)", short: "미소", keys: ["미소"] },
   { value: "토리파이탄", label: "토리파이탄 (닭백탕)", short: "토리파이탄", keys: ["토리파이탄", "닭백탕"] },
@@ -99,13 +100,13 @@ export function useMapFilters(origin: Coordinate | null) {
 
   const filtered = useMemo(() => {
     const regionKeys = REGION_OPTIONS.find((option) => option.value === region)?.keys ?? []
-    const menuKeys = MENU_OPTIONS.find((option) => option.value === menu)?.keys ?? []
+    const menuOption = MENU_OPTIONS.find((option) => option.value === menu)
     const query = search.trim().toLocaleLowerCase("ko-KR")
     return mapShops
       .filter((shop) => {
         if (onlyOpen && !statusOf(shop).open) return false
         if (regionKeys.length && !regionKeys.some((key) => (shop.branch ?? "").includes(key) || shop.address.includes(key))) return false
-        if (menuKeys.length && !menuKeys.some((key) => (shop.style ?? "").includes(key) || (shop.spec ?? "").includes(key) || shop.tags.some((tag) => tag.includes(key)))) {
+        if (menuOption && menuOption.value !== "ALL" && !matchesShopRamenType(shop, menuOption.value, menuOption.keys)) {
           return false
         }
         if (query) {

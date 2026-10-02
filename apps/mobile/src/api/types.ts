@@ -18,6 +18,7 @@ export type DateOnly = string
 export type RamenType =
   | "쇼유"
   | "돈코츠"
+  | "이에케"
   | "시오"
   | "미소"
   | "츠케멘"
