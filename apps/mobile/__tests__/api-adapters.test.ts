@@ -6,7 +6,6 @@ import {
   revisitFromWire,
   revisitToWire,
   toAppBowls,
-  toAppId,
   toAppMapPin,
   toAppMember,
   toAppRamenLog,
@@ -19,7 +18,6 @@ import {
   toPriceRange,
   toServicePerks,
   toTasteNoteCodes,
-  toWireId,
   todayLastOrder,
 } from "@/src/api/adapters"
 import type {
@@ -74,15 +72,11 @@ const wireShop: ShopSummary = {
   distanceMeters: 1204.6,
 }
 
-describe("id 변환", () => {
-  it("문자열 id를 number로 바꾼다", () => {
-    expect(toAppId("1204")).toBe(1204)
-    expect(toWireId(1204)).toBe("1204")
-  })
-
-  it("앱 number에 안전하게 담기지 않는 id는 조용히 반올림하지 않고 오류를 낸다", () => {
-    expect(() => toAppId("9007199254740993", "매장 id")).toThrow(/앱에서 다룰 수 없어요/)
-    expect(() => toAppId("abc")).toThrow()
+describe("문자열 id", () => {
+  it("BIGINT id를 손실 없이 앱 타입에 담는다", () => {
+    const id = "9007199254740993"
+    expect(toAppRamenLog({ ...wireLog, id, shop: { ...wireLog.shop, id } }).id).toBe(id)
+    expect(toAppShopSummary({ ...wireShop, id }).id).toBe(id)
   })
 })
 
@@ -90,8 +84,8 @@ describe("라멘로그", () => {
   it("점수·재방문·공개 범위를 앱 모양으로 바꾼다", () => {
     const log = toAppRamenLog(wireLog)
 
-    expect(log.id).toBe(101)
-    expect(log.shop).toEqual({ id: 7, name: "하쿠텐", branch: "연남점", location: "마포구" })
+    expect(log.id).toBe("101")
+    expect(log.shop).toEqual({ id: "7", name: "하쿠텐", branch: "연남점", location: "마포구" })
     expect(log.revisit).toBe("자주 감")
     expect(log.scores).toEqual({ satisfaction: 4, brothDensity: 5, noodleFirmness: 4, topping: 4, revisit: 5 })
     expect(log.isPublic).toBe(true)
@@ -187,8 +181,8 @@ describe("댓글", () => {
   it("답글 없는 한 줄 댓글로 바꾼다", () => {
     const [first, second] = toAppRamenLogComments(comments)
 
-    expect(first.id).toBe(201)
-    expect(first.logId).toBe(101)
+    expect(first.id).toBe("201")
+    expect(first.logId).toBe("101")
     expect(first.author).toEqual({ id: "77", name: "면발탐정", level: "라멘집 탐험가 (Lv.3)", avatar: null })
     expect(first.parentId).toBeUndefined()
     // 탈퇴한 회원은 숨기기·신고 대상이 되지 않도록 id를 비운다
@@ -199,7 +193,7 @@ describe("댓글", () => {
 
 describe("기록 저장 본문", () => {
   const input: CreateRamenLogInput = {
-    shopId: 7,
+    shopId: "7",
     menuName: "  특제 쇼유 라멘  ",
     ramenType: "쇼유",
     visitedAt: "2026-09-19",
@@ -290,7 +284,7 @@ describe("매장", () => {
   it("목록 항목을 앱 Shop으로 바꾼다", () => {
     const shop = toAppShopSummary(wireShop)
 
-    expect(shop.id).toBe(7)
+    expect(shop.id).toBe("7")
     expect(shop.branch).toBe("연남점")
     expect(shop.tags).toEqual(["이에케", "농후 육수"])
     // 라멘로그 수를 매장 상세의 "라멘로그 N개" 자리에 쓴다(외부 평점은 계약에서 빠졌다)
@@ -425,7 +419,7 @@ describe("매장", () => {
     expect(
       toAppMapPin({ id: "7", name: "하쿠텐", branchName: "연남점", latitude: 37.5, longitude: 126.9, ramenTypes: ["돈코츠"], isOpen: null }),
     ).toEqual({
-      id: 7,
+      id: "7",
       name: "하쿠텐",
       branch: "연남점",
       lat: 37.5,

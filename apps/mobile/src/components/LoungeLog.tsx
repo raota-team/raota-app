@@ -50,12 +50,12 @@ const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1)
  * 공감·댓글을 그대로 이어서 사용할 수 있다.
  */
 
-export function openShopDetail(shopId: number) {
-  router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shopId) } })
+export function openShopDetail(shopId: string) {
+  router.push({ pathname: "/shop/[shopId]", params: { shopId } })
 }
 
-export function openLogDetail(logId: number) {
-  router.push({ pathname: "/log/[logId]", params: { logId: String(logId) } })
+export function openLogDetail(logId: string) {
+  router.push({ pathname: "/log/[logId]", params: { logId } })
 }
 
 function shopLabel(shop: RamenLog["shop"]) {
@@ -381,7 +381,7 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
 
 export interface ModerationTarget {
   kind: "log" | "comment"
-  id: number
+  id: string
   authorId?: string
   authorName: string
 }

@@ -46,7 +46,7 @@ export interface LoungeViewer {
   reports: readonly ContentReport[]
 }
 
-function isReported(reports: readonly ContentReport[], kind: ContentReport["kind"], id: number) {
+function isReported(reports: readonly ContentReport[], kind: ContentReport["kind"], id: string) {
   return reports.some((report) => report.kind === kind && report.targetId === id)
 }
 

@@ -54,7 +54,7 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null)
   const [viewMode, setViewMode] = useState<"map" | "list">("map")
   const [region, setRegion] = useState<Region>(DEFAULT_REGION)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading")
   const [origin, setOrigin] = useState<Coordinate | null>(null)
   const [headerHeight, setHeaderHeight] = useState(insets.top + spacing.x2 + spacing.x12 + spacing.x16)
@@ -121,7 +121,7 @@ export default function MapScreen() {
 
 
   // 핀을 고르면 그 가게로 옮기기만 한다. 확대 수준을 바꾸면 묶음이 풀리며 핀들이 자리를 옮겨 고른 곳을 놓친다
-  const selectShop = (shopId: number, latitude: number, longitude: number) => {
+  const selectShop = (shopId: string, latitude: number, longitude: number) => {
     setSelectedId(shopId)
     void Haptics.selectionAsync().catch(() => undefined)
     animateTo({ ...region, latitude, longitude })
@@ -137,7 +137,7 @@ export default function MapScreen() {
   const focused = useIsFocused()
   const pendingFocus = useRef<Region | null>(null)
   useEffect(() => {
-    const target = shops.find((shop) => shop.id === Number(params.shopId))
+    const target = shops.find((shop) => shop.id === params.shopId)
     if (!target) return
     if (!filters.filtered.some((shop) => shop.id === target.id)) {
       filters.resetFilters()

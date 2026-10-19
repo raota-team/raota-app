@@ -420,8 +420,8 @@ describe("taste report", () => {
     const state = createInitialPersistedState()
     state.user = { ...state.user!, id: "local-taste", visitedCount: 2, membershipNo: "#RT-0022" }
     state.logs.push(
-      { ...state.logs[0], id: 901, author: { ...state.logs[0].author, id: "local-taste" }, visitedAt: "2026. 10. 01", ramenType: "쇼유" },
-      { ...state.logs[0], id: 902, author: { ...state.logs[0].author, id: "local-taste" }, visitedAt: "2026. 10. 02", ramenType: "시오" },
+      { ...state.logs[0], id: "901", author: { ...state.logs[0].author, id: "local-taste" }, visitedAt: "2026. 10. 01", ramenType: "쇼유" },
+      { ...state.logs[0], id: "902", author: { ...state.logs[0].author, id: "local-taste" }, visitedAt: "2026. 10. 02", ramenType: "시오" },
     )
     const view = await renderScreen(<TasteReportScreen />, state)
 
@@ -444,7 +444,7 @@ describe("taste report", () => {
     state.user = { ...state.user!, visitedCount: 43 }
     state.logs.push({
       ...state.logs[0],
-      id: 903,
+      id: "903",
       author: { ...state.logs[0].author, id: state.user!.id },
       visitedAt: "2026. 10. 15",
       ramenType: "츠케멘",

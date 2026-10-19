@@ -23,10 +23,11 @@ import {
 } from 'lucide-react'
 import type { RamenLog, UserProfile } from '../types'
 import RamenIcon from '../components/icons/RamenIcon'
+import { compareEntityIdsDescending, nextDemoEntityId } from '../utils/entityId'
 
 export interface PostComment {
-  id: number
-  authorId?: number
+  id: string
+  authorId?: string
   authorNickname: string
   authorLevel?: string
   createdAt: string
@@ -40,13 +41,13 @@ export interface PostComment {
 type PostCategory = 'REVIEW' | 'TIP' | 'QUESTION' | 'FREE' | 'POPULAR'
 
 export interface CommunityPost {
-  postId: number
+  postId: string
   category: PostCategory
   categoryLabel: string
   title: string
   content: string
   detailedContent?: string[]
-  authorId: number
+  authorId: string
   authorName: string
   authorLevel: string
   createdAt: string
@@ -62,8 +63,8 @@ export interface CommunityPost {
 export interface Props {
   logs: RamenLog[]
   user?: UserProfile | null
-  onToggleLike?: (logId: number) => void
-  onAddComment?: (logId: number, content: string, parentId?: number) => void
+  onToggleLike?: (logId: string) => void
+  onAddComment?: (logId: string, content: string, parentId?: string) => void
   onLoginRequest?: () => void
   onRecordClick: () => void
   onShopClick?: (shopName: string) => void
@@ -140,7 +141,7 @@ export function relativeTimeToMinutes(value?: string): number {
 // ----------------------------------------------------
 const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
-    postId: 1,
+    postId: '1',
     category: 'REVIEW',
     categoryLabel: '맛집후기',
     title: '망원·합정 일대 인생 쇼유 라멘 3곳 추천합니다',
@@ -151,7 +152,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
       '🥈 2위. 세상끝의라멘 (합정)\n진한 오사카 블랙풍의 끝라멘과 맑은 첫라멘 모두 개성이 뚜렷합니다. 닭가슴살 수비드 토핑이 예술입니다.',
       '🥉 3위. 묘코 (연남)\n오리 기름(오리기름 치유)의 향이 은은하게 퍼지며 끝맛이 매우 깔끔합니다.',
     ],
-    authorId: 101,
+    authorId: '101',
     authorName: '쇼유장인',
     authorLevel: '라멘 미식가 (Lv.5)',
     createdAt: '2026. 09. 01 12:40',
@@ -162,8 +163,8 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     shopName: '멘야준',
     comments: [
       {
-        id: 1,
-        authorId: 201,
+        id: '1',
+        authorId: '201',
         authorNickname: '멘마수집가',
         authorLevel: '라멘 미식가',
         createdAt: '2026. 09. 01 12:45',
@@ -172,8 +173,8 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         isLiked: false,
       },
       {
-        id: 2,
-        authorId: 202,
+        id: '2',
+        authorId: '202',
         authorNickname: '라린이',
         authorLevel: '라멘 입문자',
         createdAt: '2026. 09. 01 12:50',
@@ -182,8 +183,8 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         isLiked: false,
       },
       {
-        id: 3,
-        authorId: 101,
+        id: '3',
+        authorId: '101',
         authorNickname: '쇼유장인',
         authorLevel: '라멘 미식가',
         createdAt: '2026. 09. 01 12:55',
@@ -196,7 +197,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     ],
   },
   {
-    postId: 2,
+    postId: '2',
     category: 'QUESTION',
     categoryLabel: 'Q&A',
     title: '돈코츠 농도 높은 곳 처음 가보는데 어디가 입문용으로 좋을까요?',
@@ -205,7 +206,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
       '평소 맑은 국물 위주로 먹다가 진한 돈코츠에 입문해보려 합니다.',
       '후보군으로 하쿠텐(이에케)과 부탄츄(토코톤코츠)를 보고 있는데, 농도 조절이나 덜 부담스러운 주문 팁이 있을까요?',
     ],
-    authorId: 102,
+    authorId: '102',
     authorName: '라린이',
     authorLevel: '라멘집 탐험가 (Lv.3)',
     createdAt: '2026. 09. 01 11:20',
@@ -216,8 +217,8 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     shopName: '오레노라멘',
     comments: [
       {
-        id: 4,
-        authorId: 203,
+        id: '4',
+        authorId: '203',
         authorNickname: '돈골파마스터',
         authorLevel: '돈골파 장인',
         createdAt: '2026. 09. 01 11:35',
@@ -226,8 +227,8 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         isLiked: false,
       },
       {
-        id: 5,
-        authorId: 204,
+        id: '5',
+        authorId: '204',
         authorNickname: '오레노매니아',
         authorLevel: '라멘집 단골',
         createdAt: '2026. 09. 01 11:50',
@@ -238,7 +239,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     ],
   },
   {
-    postId: 3,
+    postId: '3',
     category: 'TIP',
     categoryLabel: '꿀팁',
     title: '라멘 먹을 때 염도 조절 실패하지 않는 완식 주문 꿀팁',
@@ -248,7 +249,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
       '2. 식사 중간에 너무 짜다고 느껴지면 주저하지 말고 "와리스프(연한 육수)"를 요청하시면 염도를 맞춰주십니다.',
       '3. 밥이나 면 리필이 무료인 곳(라오타 완식 가이드 참고)은 국물을 1/3 이상 남겨두시는 것이 좋습니다.',
     ],
-    authorId: 103,
+    authorId: '103',
     authorName: '스프의신',
     authorLevel: '라멘집 단골 (Lv.4)',
     createdAt: '2026. 09. 01 09:15',
@@ -258,8 +259,8 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     isLiked: false,
     comments: [
       {
-        id: 6,
-        authorId: 205,
+        id: '6',
+        authorId: '205',
         authorNickname: '차슈폭격기',
         authorLevel: '라멘 마스터',
         createdAt: '2026. 09. 01 09:30',
@@ -270,7 +271,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     ],
   },
   {
-    postId: 4,
+    postId: '4',
     category: 'FREE',
     categoryLabel: '자유',
     title: '올해 100그릇 달성했습니다! 취향 리포트 인증합니다',
@@ -279,7 +280,7 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
       '드디어 오늘 점심 완식으로 2026년 누적 100그릇 돌파했습니다.',
       '활동 등급도 최고 등급인 Lv.6 라멘 마스터로 승급했네요! 라오타 커뮤니티 덕분에 좋은 라멘집 많이 알아갑니다.',
     ],
-    authorId: 104,
+    authorId: '104',
     authorName: '차슈폭격기',
     authorLevel: '라멘 마스터 (Lv.6)',
     createdAt: '2026. 09. 01 08:00',
@@ -289,8 +290,8 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     isLiked: false,
     comments: [
       {
-        id: 7,
-        authorId: 206,
+        id: '7',
+        authorId: '206',
         authorNickname: '라멘러버',
         authorLevel: '라멘 미식가',
         createdAt: '2026. 09. 01 08:30',
@@ -407,10 +408,10 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
   const sortDropdownRef = useRef<HTMLDivElement>(null)
   const [communityCategory, setCommunityCategory] = useState('all')
   const [posts, setPosts] = useState<CommunityPost[]>(INITIAL_COMMUNITY_POSTS)
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null)
-  const [activePhotoIdx, setActivePhotoIdx] = useState<Record<number, number>>({})
-  const [expandedLogId, setExpandedLogId] = useState<number | null>(null)
-  const [showAllLogCommentsId, setShowAllLogCommentsId] = useState<number | null>(null)
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+  const [activePhotoIdx, setActivePhotoIdx] = useState<Record<string, number>>({})
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null)
+  const [showAllLogCommentsId, setShowAllLogCommentsId] = useState<string | null>(null)
   const [newCommentText, setNewCommentText] = useState('')
   const [newLogCommentText, setNewLogCommentText] = useState('')
   const [logCommentError, setLogCommentError] = useState<string | null>(null)
@@ -496,17 +497,17 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     if (expandedLogId !== null) logCommentInputRef.current?.focus()
   }, [expandedLogId])
 
-  const handleToggleLogLike = (id: number) => {
+  const handleToggleLogLike = (id: string) => {
     onToggleLike?.(id)
   }
 
-  const handleToggleLogComments = (logId: number) => {
+  const handleToggleLogComments = (logId: string) => {
     setExpandedLogId(current => (current === logId ? null : logId))
     setNewLogCommentText('')
     setLogCommentError(null)
   }
 
-  const handleAddLogComment = (logId: number) => {
+  const handleAddLogComment = (logId: string) => {
     if (!requireUser()) return
     const content = newLogCommentText.trim()
     if (content.length < 2) {
@@ -519,7 +520,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     setLogCommentError(null)
   }
 
-  const handleTogglePostLike = (postId: number) => {
+  const handleTogglePostLike = (postId: string) => {
     if (!requireUser()) return
     setPosts(prev =>
       prev.map(p =>
@@ -530,13 +531,14 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     )
   }
 
-  const handleAddComment = (postId: number) => {
+  const handleAddComment = (postId: string) => {
     const author = requireUser()
     if (!author) return
     const content = newCommentText.trim()
     if (!content) return
     const newComment: PostComment = {
-      id: Date.now(),
+      id: nextDemoEntityId(),
+      authorId: author.id,
       authorNickname: author.nickname,
       authorLevel: cleanGradeTitle(author.level),
       createdAt: '방금 전',
@@ -575,13 +577,13 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     if (!writeTitle.trim() || !writeContent.trim()) return
     const categoryObj = WRITE_CATEGORIES.find(c => c.id === writeCategory)
     const newPost: CommunityPost = {
-      postId: Date.now(),
+      postId: nextDemoEntityId(),
       category: writeCategory,
       categoryLabel: categoryObj?.name ?? '자유',
       title: writeTitle.trim(),
       content: writeContent.trim(),
       detailedContent: [writeContent.trim()],
-      authorId: 0,
+      authorId: author.id,
       authorName: author.nickname,
       authorLevel: `${author.level} (Lv.${author.levelNumber})`,
       createdAt: '방금 전',
@@ -600,7 +602,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     setToastMessage('커뮤니티에 글을 올렸습니다.')
   }
 
-  const handleScrollPhoto = (logId: number, direction: 'prev' | 'next', total: number) => {
+  const handleScrollPhoto = (logId: string, direction: 'prev' | 'next', total: number) => {
     const container = document.getElementById(`log-photos-${logId}`)
     if (!container) return
     const current = activePhotoIdx[logId] ?? 0
@@ -623,7 +625,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     if (sortBy === 'LIKES') {
       result.sort((a, b) => b.likes - a.likes || relativeTimeToMinutes(a.createdAt) - relativeTimeToMinutes(b.createdAt))
     } else {
-      result.sort((a, b) => relativeTimeToMinutes(a.createdAt) - relativeTimeToMinutes(b.createdAt) || b.id - a.id)
+      result.sort((a, b) => relativeTimeToMinutes(a.createdAt) - relativeTimeToMinutes(b.createdAt) || compareEntityIdsDescending(a.id, b.id))
     }
     return result
   }, [logs, shopFilter, sortBy])

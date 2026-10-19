@@ -1,10 +1,12 @@
 import type { Shop } from "@raota/shared"
 
+import { compareShopIds } from "./shops"
+
 export interface MapCluster {
   id: string
   latitude: number
   longitude: number
-  shopIds: number[]
+  shopIds: string[]
 }
 
 export interface ClusterViewport {
@@ -23,7 +25,7 @@ export function calculateMapClusters(
 ): MapCluster[] {
   if (shops.length === 0) return []
 
-  const ordered = [...shops].sort((left, right) => left.id - right.id)
+  const ordered = [...shops].sort((left, right) => compareShopIds(left.id, right.id))
   if (viewport.latitudeDelta <= aggregateThreshold || ordered.length === 1) {
     return ordered.map((shop) => ({
       id: `shop-${shop.id}`,
@@ -54,7 +56,7 @@ export function calculateMapClusters(
     .map((items): MapCluster => {
       const shopIds = items
         .map((shop) => shop.id)
-        .sort((left, right) => left - right)
+        .sort(compareShopIds)
       return {
         id:
           shopIds.length === 1
@@ -66,5 +68,8 @@ export function calculateMapClusters(
         shopIds,
       }
     })
-    .sort((left, right) => left.id.localeCompare(right.id))
+    .sort((left, right) =>
+      Number(left.shopIds.length === 1) - Number(right.shopIds.length === 1) ||
+      compareShopIds(left.shopIds[0], right.shopIds[0]),
+    )
 }

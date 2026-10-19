@@ -5,7 +5,7 @@ import { StyleSheet } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import MapScreen from "@/app/native/map"
-import { createInitialPersistedState } from "@/src/data/fixtures"
+import { SHOPS, createInitialPersistedState } from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider } from "@/src/state/RaotaStore"
 import { colors } from "@/src/theme"
@@ -103,7 +103,11 @@ function MapHarness() {
 }
 
 describe("map location permission states", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => {
+    jest.clearAllMocks()
+    const { useLocalSearchParams } = jest.requireMock("expo-router") as { useLocalSearchParams: jest.Mock }
+    useLocalSearchParams.mockReturnValue({})
+  })
 
   it("keeps a manual Seoul fallback and settings path when permission is denied", async () => {
     const location = jest.requireMock("expo-location") as {
@@ -151,6 +155,27 @@ describe("map location permission states", () => {
     expect(within(selectedPin).getByTestId("map-pin-label")).toBeTruthy()
     expect(view.getByRole("button", { name: /매장 상세 보기/ }).props.accessibilityLabel).toContain(name)
     expect(view.getAllByTestId("unselected-map-pin").every((pin) => within(pin).queryByTestId("map-pin-label") === null)).toBe(true)
+  })
+
+  it("focuses a shop from a BIGINT route ID and keeps that ID in navigation", async () => {
+    const shopId = "9007199254740993123"
+    const original = SHOPS[1]
+    SHOPS[1] = { ...original, id: shopId }
+    const location = jest.requireMock("expo-location") as { requestForegroundPermissionsAsync: jest.Mock }
+    const { router, useLocalSearchParams } = jest.requireMock("expo-router") as {
+      router: { push: jest.Mock }
+      useLocalSearchParams: jest.Mock
+    }
+    location.requestForegroundPermissionsAsync.mockResolvedValue({ status: "denied" })
+    useLocalSearchParams.mockReturnValue({ shopId, focus: "1" })
+    try {
+      const view = await render(<MapHarness />)
+      const quickView = await view.findByRole("button", { name: /후쿠 라멘.*매장 상세 보기/ })
+      await fireEvent.press(quickView)
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/shop/[shopId]", params: { shopId } })
+    } finally {
+      SHOPS[1] = original
+    }
   })
 
   it("enables the native user-location layer after permission is granted", async () => {

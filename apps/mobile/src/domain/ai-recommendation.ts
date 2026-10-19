@@ -1,6 +1,6 @@
 import type { Shop, TasteReport } from "@raota/shared"
 
-import { distanceBetweenCoordinates, matchesShopRamenType } from "./shops"
+import { compareShopIds, distanceBetweenCoordinates, matchesShopRamenType } from "./shops"
 
 export interface RecommendationOrigin {
   latitude: number
@@ -402,6 +402,6 @@ export function rankShopsForAIRecommendation(
         right.score - left.score ||
         right.shop.matchScore - left.shop.matchScore ||
         right.shop.rating - left.shop.rating ||
-        left.shop.id - right.shop.id,
+        compareShopIds(left.shop.id, right.shop.id),
     )
 }

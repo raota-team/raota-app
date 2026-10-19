@@ -30,7 +30,7 @@ export interface RecordDraft
     CreateRamenLogInput,
     "shopId" | "menuName" | "ramenType" | "note" | "tasteNotes" | "scores" | "revisit"
   > {
-  shopId?: number | null
+  shopId?: string | null
   menuName?: string | null
   ramenType?: string | null
   note?: string | null
@@ -44,7 +44,7 @@ export interface RecordDraft
 export const RECORD_NOTE_MAX_LENGTH = 500
 
 export interface RecordValidationOptions {
-  validShopIds?: Iterable<number>
+  validShopIds?: Iterable<string>
   now?: Date
 }
 
@@ -116,7 +116,7 @@ export function validateRecordDraft(
     ? new Set(options.validShopIds)
     : null
 
-  if (!draft.shopId || draft.shopId <= 0) {
+  if (!draft.shopId?.trim() || /^(?:0+|-\d+)$/.test(draft.shopId)) {
     errors.push({
       field: "shopId",
       message: "먼저 방문한 매장을 선택해주세요.",

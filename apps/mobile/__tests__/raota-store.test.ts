@@ -35,12 +35,12 @@ describe("raotaReducer", () => {
     })
     const selected = raotaReducer(started, {
       type: "SELECT_RECORD_DRAFT_SHOP",
-      payload: 3,
+      payload: "3",
     })
     const cleared = raotaReducer(selected, { type: "CLEAR_RECORD_DRAFT" })
 
     expect(started.recordDraft).toEqual({ shopId: null })
-    expect(selected.recordDraft).toEqual({ shopId: 3 })
+    expect(selected.recordDraft).toEqual({ shopId: "3" })
     expect(cleared.recordDraft).toBeNull()
   })
 
@@ -50,13 +50,13 @@ describe("raotaReducer", () => {
     const created = {
       ...source,
       author: { ...source.author, id: state.user?.id },
-      id: 9999,
+      id: "9999",
       revisit: "자주 감" as const,
       createdAt: "2026-09-04T00:00:00.000Z",
     }
 
     const next = raotaReducer(state, { type: "CREATE_LOG", payload: created })
-    expect(next.logs[0].id).toBe(9999)
+    expect(next.logs[0].id).toBe("9999")
     expect(next.user?.visitedCount).toBe((state.user?.visitedCount ?? 0) + 1)
     expect(next.user?.revisitCount).toBe((state.user?.revisitCount ?? 0) + 1)
   })

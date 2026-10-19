@@ -16,7 +16,7 @@ function repository(state = createInitialPersistedState()): RaotaRepository {
 }
 
 const logInput: CreateRamenLogInput = {
-  shopId: 1,
+  shopId: "1",
   menuName: "특제 쇼유 라멘",
   ramenType: "쇼유",
   visitedAt: "2026-09-04",

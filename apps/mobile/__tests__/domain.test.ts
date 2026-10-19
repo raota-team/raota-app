@@ -11,7 +11,7 @@ import {
 } from "@/src/domain"
 
 const validRecord: CreateRamenLogInput = {
-  shopId: 1,
+  shopId: "1",
   menuName: "특제 쇼유 라멘",
   ramenType: "쇼유",
   visitedAt: "2026-09-04",
@@ -76,14 +76,14 @@ describe("record validation", () => {
     const errors = validateRecordDraft(
       {
         ...validRecord,
-        shopId: 999,
+        shopId: "999",
         visitedAt: "2026-09-05",
         tasteNotes: {
           ...validRecord.tasteNotes,
           broth: ["존재하지 않는 태그"],
         },
       },
-      { validShopIds: [1, 2, 3], now: new Date("2026-09-04T12:00:00+09:00") },
+      { validShopIds: ["1", "2", "3"], now: new Date("2026-09-04T12:00:00+09:00") },
     )
 
     expect(errors.map((error) => error.field)).toEqual([
@@ -103,7 +103,7 @@ describe("shop filtering and sorting", () => {
       openOnly: true,
     })
 
-    expect(result.map((shop) => shop.id)).toEqual([1])
+    expect(result.map((shop) => shop.id)).toEqual(["1"])
   })
 
   it("matches an 이에케 shop only to the 이에케 filter, even if its tags also say 돈코츠", () => {
@@ -152,16 +152,27 @@ describe("map clusters", () => {
     })
     const centroid = clusters.find((cluster) => cluster.shopIds.length === 3)
 
-    expect(centroid?.shopIds).toEqual([1, 2, 3])
+    expect(centroid?.shopIds).toEqual(["1", "2", "3"])
     expect(centroid?.latitude).toBeCloseTo(
       shops.reduce((sum, shop) => sum + shop.lat, 0) / shops.length,
     )
   })
 
+  it("preserves the order and identity of adjacent BIGINT shop IDs", () => {
+    const bigger = "9007199254740993124"
+    const smaller = "9007199254740993123"
+    const clusters = calculateMapClusters(
+      [{ ...shops[0], id: bigger }, { ...shops[1], id: smaller }],
+      { latitudeDelta: 0.03, longitudeDelta: 0.03 },
+    )
+
+    expect(clusters.map((cluster) => cluster.shopIds)).toEqual([[smaller], [bigger]])
+  })
+
   it("does not merge shops that fall into distant spatial buckets", () => {
     // 원장 가게는 모두 마포 안이라, 도시 반대편에 있는 가상 가게로 확인한다
     const mapo = SHOPS[0]
-    const farAway = { ...mapo, id: 99, lat: mapo.lat + 0.05, lng: mapo.lng + 0.05 }
+    const farAway = { ...mapo, id: "99", lat: mapo.lat + 0.05, lng: mapo.lng + 0.05 }
     const clusters = calculateMapClusters([mapo, farAway], {
       latitudeDelta: 0.1,
       longitudeDelta: 0.1,
@@ -201,7 +212,7 @@ describe("AI shop recommendation", () => {
   it("uses soup, mood, priority, prompt, and taste report as real score inputs", () => {
     const scoreForShop = (
       input: Parameters<typeof rankShopsForAIRecommendation>[1],
-      shopId = 1,
+      shopId = "1",
     ) =>
       rankShopsForAIRecommendation(SHOPS, input).find(
         ({ shop }) => shop.id === shopId,
@@ -237,11 +248,11 @@ describe("AI shop recommendation", () => {
   })
 
   it.each([
-    ["쇼유 (간장)", 1],
-    ["돈코츠 (돼지뼈)", 7],
-    ["시오 (소금)", 8],
-    ["미소 (된장)", 2],
-    ["토리파이탄 (닭백탕)", 3],
+    ["쇼유 (간장)", "1"],
+    ["돈코츠 (돼지뼈)", "7"],
+    ["시오 (소금)", "8"],
+    ["미소 (된장)", "2"],
+    ["토리파이탄 (닭백탕)", "3"],
   ])("keeps the selected %s lineage meaningful", (soup, expectedShopId) => {
     const [winner] = rankShopsForAIRecommendation(SHOPS, {
       ...baseInput,

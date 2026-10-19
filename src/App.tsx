@@ -21,6 +21,7 @@ import NotificationScreen from './screens/NotificationScreen'
 import { findShopById, getShopDetail } from './data/shops'
 import { DEMO_BASE_PROFILE, DEMO_MONTHLY_RECORD_COUNTS, DEMO_SAVED_SHOP_NAMES, DEMO_TOTAL_BOWLS, DEMO_USER } from './data/demoProfile'
 import { EMPTY_PROFILE, mergeProfile } from './utils/taste'
+import { nextDemoEntityId } from './utils/entityId'
 import type { AppNotification, NotificationSettings, RamenLog, RamenLogComment, RevisitOption, TasteNotes, TasteProfile, TasteScores, UserProfile } from './types'
 
 type Screen = 'home' | 'map' | 'shopDetail' | 'record' | 'recordComplete' | 'my' | 'tasteDetail' | 'monthlyTaste' | 'lounge' | 'newsFeed' | 'aiRecommend' | 'login' | 'register' | 'notifications'
@@ -30,9 +31,9 @@ type Tab = 'home' | 'map' | 'lounge' | 'newsFeed' | 'my'
 
 const INITIAL_LOGS: RamenLog[] = [
   {
-    id: 1,
+    id: '1',
     author: { name: '멘마수집가', level: '라멘 미식가 (Lv.5)' },
-    shop: { id: 1, name: '멘야준', branch: '망원 본점', location: '서울 마포구' },
+    shop: { id: '1', name: '멘야준', branch: '망원 본점', location: '서울 마포구' },
     menuName: '특제 쇼유 라멘',
     ramenType: '쇼유',
     visitedAt: '2026. 09. 01',
@@ -57,18 +58,18 @@ const INITIAL_LOGS: RamenLog[] = [
     commentCount: 2,
     comments: [
       {
-        id: 101,
-        logId: 1,
-        author: { name: '쇼유러버', level: '라멘집 탐험가 (Lv.3)' },
+        id: '101',
+        logId: '1',
+        author: { id: 'user-shoyu-lover', name: '쇼유러버', level: '라멘집 탐험가 (Lv.3)' },
         createdAt: '1시간 전',
         content: '면을 꼬들하게 주문하면 국물 흡착이 정말 좋아요!',
         likes: 4,
         isLiked: false,
       },
       {
-        id: 102,
-        logId: 1,
-        author: { name: '차슈폭격기', level: '라멘 미식가 (Lv.5)' },
+        id: '102',
+        logId: '1',
+        author: { id: 'user-chashu-lover', name: '차슈폭격기', level: '라멘 미식가 (Lv.5)' },
         createdAt: '방금 전',
         content: '닭과 오리 더블 육수라니, 다음 방문 메뉴로 저장해둘게요.',
         likes: 2,
@@ -77,9 +78,9 @@ const INITIAL_LOGS: RamenLog[] = [
     ],
   },
   {
-    id: 2,
+    id: '2',
     author: { name: '토리파이탄러버', level: '라멘집 단골 (Lv.4)' },
-    shop: { id: 3, name: '오레노라멘', branch: '마포 본점', location: '서울 마포구' },
+    shop: { id: '3', name: '오레노라멘', branch: '마포 본점', location: '서울 마포구' },
     menuName: '토리파이탄 라멘',
     ramenType: '돈코츠',
     visitedAt: '2026. 08. 31',
@@ -103,9 +104,9 @@ const INITIAL_LOGS: RamenLog[] = [
     commentCount: 1,
     comments: [
       {
-        id: 103,
-        logId: 2,
-        author: { name: '돈골파마스터', level: '라멘집 단골 (Lv.4)' },
+        id: '103',
+        logId: '2',
+        author: { id: 'user-tonkotsu-master', name: '돈골파마스터', level: '라멘집 단골 (Lv.4)' },
         createdAt: '어제',
         content: '간 보통, 기름 보통, 면 꼬들하게 조합 추천합니다.',
         likes: 3,
@@ -114,9 +115,9 @@ const INITIAL_LOGS: RamenLog[] = [
     ],
   },
   {
-    id: 3,
+    id: '3',
     author: { name: '미소천사', level: '라멘집 탐험가 (Lv.3)' },
-    shop: { id: 2, name: '후쿠 라멘', branch: '합정점', location: '서울 마포구' },
+    shop: { id: '2', name: '후쿠 라멘', branch: '합정점', location: '서울 마포구' },
     menuName: '특제 삿포로 미소 라멘',
     ramenType: '미소',
     visitedAt: '2026. 08. 29',
@@ -151,7 +152,7 @@ interface State {
   recordSaved: boolean
   recordShopName: string
   recordStatus: 'idle' | 'saving' | 'error' | 'success'
-  mapSelectedPin: number
+  mapSelectedPin: string
   mapFilter: string
   logs: RamenLog[]
   lastLog: RamenLog | null
@@ -208,7 +209,7 @@ const INITIAL_NOTIFICATIONS: AppNotification[] = [
     content: '[세상끝의라멘]에서 가을 한정 특제 "바지락 시오 라멘"을 개시했습니다.',
     time: '2일 전',
     isRead: true,
-    targetShopId: 4,
+    targetShopId: '4',
   },
   {
     id: 'noti-5',
@@ -255,7 +256,7 @@ const INIT: State = {
   recordSheetMode: 'nearby',
   recordShopName: '멘야준',
   recordStatus: 'idle',
-  mapSelectedPin: 0,
+  mapSelectedPin: '0',
   mapFilter: '전체',
   logs: INITIAL_LOGS,
   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,
@@ -415,7 +416,7 @@ export default function App() {
     })
   }
 
-  const updateLog = (logId: number, update: (log: RamenLog) => RamenLog) => {
+  const updateLog = (logId: string, update: (log: RamenLog) => RamenLog) => {
     setS(prev => ({
       ...prev,
       logs: prev.logs.map(log => (log.id === logId ? update(log) : log)),
@@ -423,20 +424,20 @@ export default function App() {
     }))
   }
 
-  const toggleLogLike = (logId: number) => {
+  const toggleLogLike = (logId: string) => {
     if (!s.user) return requireLogin(s.screen)
     updateLog(logId, log => ({ ...log, isLiked: !log.isLiked, likes: Math.max(0, log.likes + (log.isLiked ? -1 : 1)) }))
   }
 
-  const addLogComment = (logId: number, content: string, parentId?: number) => {
+  const addLogComment = (logId: string, content: string, parentId?: string) => {
     const user = s.user
     if (!user) return requireLogin(s.screen)
     updateLog(logId, log => {
       const parent = log.comments?.find(comment => comment.id === parentId)
       const comment: RamenLogComment = {
-        id: Date.now(),
+        id: nextDemoEntityId(),
         logId,
-        author: { name: user.nickname, avatar: user.avatar ?? undefined, level: `${user.level} (Lv.${user.levelNumber})` },
+        author: { id: user.id, name: user.nickname, avatar: user.avatar ?? undefined, level: `${user.level} (Lv.${user.levelNumber})` },
         content,
         createdAt: '방금 전',
         likes: 0,
@@ -455,13 +456,13 @@ export default function App() {
     patch({ recordStatus: 'saving' })
 
     setTimeout(() => {
-      const createdId = Date.now()
+      const createdId = nextDemoEntityId()
       const shop = getShopDetail(logData.shopName)
       const photos = logData.photos?.length ? logData.photos : logData.imageUrl ? [logData.imageUrl] : []
       const createdLog: RamenLog = {
         id: createdId,
         author: { name: user.nickname, avatar: user.avatar ?? undefined, level: `${user.level} (Lv.${user.levelNumber})` },
-        shop: { id: shop.id || createdId, name: shop.name, branch: logData.branch || shop.branch, location: '서울 마포구' },
+        shop: { id: shop.id === '0' ? createdId : shop.id, name: shop.name, branch: logData.branch || shop.branch, location: '서울 마포구' },
         menuName: logData.menuName,
         ramenType: logData.ramenType,
         visitedAt: logData.visitedAt,

@@ -52,7 +52,7 @@ interface Props {
 type ActivityTab = 'logs' | 'visits' | 'saved' | 'posts' | 'comments'
 
 interface MyPostItem {
-  id: number
+  id: string
   category: string
   title: string
   content: string
@@ -64,7 +64,7 @@ interface MyPostItem {
 /** 데모 계정의 라운지 글. 매장과 날짜는 DEMO_BOWLS 원장과 맞춘다. */
 const DEMO_POSTS: MyPostItem[] = [
   {
-    id: 1,
+    id: '1',
     category: '맛집후기',
     title: '망원·합정 일대 쇼유 라멘 3곳 비교해봤어요',
     content: '멘야준, 세상끝의라멘, 라멘베라보를 두 달 동안 번갈아 다녀왔습니다. 자가제면과 간장 타레 밸런스 기준으로 정리했어요.',
@@ -73,7 +73,7 @@ const DEMO_POSTS: MyPostItem[] = [
     comments: 3,
   },
   {
-    id: 2,
+    id: '2',
     category: '라멘꿀팁',
     title: '오레노라멘 토리파이탄 카에다마 200% 즐기는 법',
     content: '국물이 1/3 남았을 때 카에다마를 요청하고 후추와 다시마 식초를 두 방울 떨어뜨리면 새로운 감칠맛이 열립니다.',
@@ -82,7 +82,7 @@ const DEMO_POSTS: MyPostItem[] = [
     comments: 5,
   },
   {
-    id: 3,
+    id: '3',
     category: '자유게시판',
     title: '하쿠텐 평일 점심 웨이팅 현황 공유',
     content: '11시 20분 도착 기준 대기 4팀 있었습니다. 회전율 빨라서 15분 만에 착석했네요. 이에케 기름 보통 추천!',
@@ -93,7 +93,7 @@ const DEMO_POSTS: MyPostItem[] = [
 ]
 
 interface MyCommentItem {
-  id: number
+  id: string
   targetTitle: string
   targetAuthor: string
   comment: string
@@ -103,7 +103,7 @@ interface MyCommentItem {
 
 const DEMO_COMMENTS: MyCommentItem[] = [
   {
-    id: 1,
+    id: '1',
     targetTitle: '세상끝의라멘 처음 가보려는데 첫라멘 끝라멘 추천',
     targetAuthor: '라린이',
     comment: '쇼유 본연의 깊은 풍미를 원하시면 첫 방문엔 끝라멘 추천드려요. 두툼한 차슈가 인상적이에요.',
@@ -111,7 +111,7 @@ const DEMO_COMMENTS: MyCommentItem[] = [
     likes: 5,
   },
   {
-    id: 2,
+    id: '2',
     targetTitle: '망원동 혼밥하기 좋은 라멘집 베스트',
     targetAuthor: '멘덕후',
     comment: '멘야준 카운터석이 넓고 조용해서 혼밥 난이도 최하입니다. 사장님도 친절하세요.',
@@ -119,7 +119,7 @@ const DEMO_COMMENTS: MyCommentItem[] = [
     likes: 3,
   },
   {
-    id: 3,
+    id: '3',
     targetTitle: '이에케 라멘 간 조절 다들 어떻게 드시나요?',
     targetAuthor: '쇼유장인',
     comment: '저는 무조건 맛 보통, 기름 보통, 면 단단하게로 갑니다. 밥 시켜서 김 싸먹으면 극락!',

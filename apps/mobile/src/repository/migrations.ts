@@ -34,22 +34,68 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(isString)
 }
 
-function cleanNumberIds(value: unknown): number[] {
-  if (!Array.isArray(value)) return []
-  return [
-    ...new Set(
-      value.filter(
-        (item): item is number =>
-          isFiniteNumber(item) && Number.isInteger(item) && item > 0,
-      ),
-    ),
-  ]
+/** 예전 숫자 ID만 문자열로 올린다. 서버 BIGINT 문자열은 Number로 바꾸지 않는다. */
+function entityId(value: unknown): string | null {
+  if (isString(value)) return value.trim() ? value : null
+  return isFiniteNumber(value) && Number.isSafeInteger(value) && value > 0
+    ? String(value)
+    : null
 }
 
-/** 숨긴 사용자 id 목록. 빈 문자열과 중복은 버린다 */
-function cleanStringIds(value: unknown): string[] {
+function cleanEntityIds(value: unknown): string[] {
   if (!Array.isArray(value)) return []
-  return [...new Set(value.filter((item): item is string => isString(item) && item.trim().length > 0))]
+  return [...new Set(value.map(entityId).filter((id): id is string => id !== null))]
+}
+
+function withEntityIds(value: Record<string, unknown>, ...fields: string[]): Record<string, unknown> {
+  const migrated = { ...value }
+  for (const field of fields) {
+    const id = entityId(migrated[field])
+    if (id !== null) migrated[field] = id
+  }
+  return migrated
+}
+
+function migratedComment(value: unknown, relation: "logId" | "postId"): unknown {
+  if (!isRecord(value)) return value
+  return {
+    ...withEntityIds(value, "id", relation, "parentId"),
+    author: isRecord(value.author) ? withEntityIds(value.author, "id") : value.author,
+  }
+}
+
+function migratedLog(value: unknown): unknown {
+  if (!isRecord(value)) return value
+  return {
+    ...withEntityIds(value, "id"),
+    author: isRecord(value.author) ? withEntityIds(value.author, "id") : value.author,
+    shop: isRecord(value.shop) ? withEntityIds(value.shop, "id") : value.shop,
+    comments: Array.isArray(value.comments)
+      ? value.comments.map((comment) => migratedComment(comment, "logId"))
+      : value.comments,
+  }
+}
+
+function migratedPost(value: unknown): unknown {
+  if (!isRecord(value)) return value
+  return {
+    ...withEntityIds(value, "id", "shopId"),
+    author: isRecord(value.author) ? withEntityIds(value.author, "id") : value.author,
+    comments: Array.isArray(value.comments)
+      ? value.comments.map((comment) => migratedComment(comment, "postId"))
+      : value.comments,
+  }
+}
+
+function migratedTasteReport(value: unknown): unknown {
+  if (!isRecord(value)) return value
+  return {
+    ...value,
+    // 리포트의 id/volume은 월호 식별자라 바꾸지 않고, 추천 매장 참조만 올린다.
+    topShops: Array.isArray(value.topShops)
+      ? value.topShops.map((shop) => isRecord(shop) ? withEntityIds(shop, "shopId") : shop)
+      : value.topShops,
+  }
 }
 
 const REPORT_REASONS: ReadonlyArray<ContentReport["reason"]> = ["spam", "abuse", "sexual", "privacy", "other"]
@@ -59,7 +105,7 @@ function isContentReport(value: unknown): value is ContentReport {
     isRecord(value) &&
     isString(value.id) &&
     (value.kind === "log" || value.kind === "comment") &&
-    isFiniteNumber(value.targetId) &&
+    isString(value.targetId) &&
     REPORT_REASONS.includes(value.reason as ContentReport["reason"]) &&
     isString(value.createdAt)
   )
@@ -90,14 +136,14 @@ function isTasteNotes(value: unknown): value is RamenLog["tasteNotes"] {
 function isRamenLogComment(value: unknown): value is RamenLogComment {
   return (
     isRecord(value) &&
-    isFiniteNumber(value.id) &&
-    isFiniteNumber(value.logId) &&
+    isString(value.id) &&
+    isString(value.logId) &&
     isCommunityAuthor(value.author) &&
     isString(value.content) &&
     isString(value.createdAt) &&
     isFiniteNumber(value.likes) &&
     typeof value.isLiked === "boolean" &&
-    (value.parentId === undefined || isFiniteNumber(value.parentId)) &&
+    (value.parentId === undefined || isString(value.parentId)) &&
     (value.parentAuthorName === undefined || isString(value.parentAuthorName))
   )
 }
@@ -106,12 +152,12 @@ function isRamenLog(value: unknown): value is RamenLog {
   if (!isRecord(value) || !isRecord(value.author) || !isRecord(value.shop))
     return false
   return (
-    isFiniteNumber(value.id) &&
+    isString(value.id) &&
     (value.author.id === undefined || isString(value.author.id)) &&
     isString(value.author.name) &&
     isString(value.author.level) &&
     (value.author.avatar === undefined || isString(value.author.avatar)) &&
-    isFiniteNumber(value.shop.id) &&
+    isString(value.shop.id) &&
     isString(value.shop.name) &&
     (value.shop.branch === undefined || isString(value.shop.branch)) &&
     (value.shop.location === undefined || isString(value.shop.location)) &&
@@ -145,14 +191,14 @@ function withValidScores(log: RamenLog): RamenLog {
 function isCommunityComment(value: unknown): value is CommunityComment {
   return (
     isRecord(value) &&
-    isFiniteNumber(value.id) &&
-    isFiniteNumber(value.postId) &&
+    isString(value.id) &&
+    isString(value.postId) &&
     isCommunityAuthor(value.author) &&
     isString(value.content) &&
     isString(value.createdAt) &&
     isFiniteNumber(value.likes) &&
     typeof value.isLiked === "boolean" &&
-    (value.parentId === undefined || isFiniteNumber(value.parentId)) &&
+    (value.parentId === undefined || isString(value.parentId)) &&
     (value.parentAuthorName === undefined || isString(value.parentAuthorName))
   )
 }
@@ -160,7 +206,7 @@ function isCommunityComment(value: unknown): value is CommunityComment {
 function isCommunityPost(value: unknown): value is CommunityPost {
   if (!isRecord(value)) return false
   return (
-    isFiniteNumber(value.id) &&
+    isString(value.id) &&
     ["REVIEW", "TIP", "QUESTION", "FREE", "POPULAR"].includes(
       String(value.category),
     ) &&
@@ -175,7 +221,7 @@ function isCommunityPost(value: unknown): value is CommunityPost {
     isFiniteNumber(value.commentCount) &&
     isFiniteNumber(value.viewCount) &&
     typeof value.isLiked === "boolean" &&
-    (value.shopId === undefined || isFiniteNumber(value.shopId)) &&
+    (value.shopId === undefined || isString(value.shopId)) &&
     (value.shopName === undefined || isString(value.shopName)) &&
     isStringArray(value.imageUrls) &&
     Array.isArray(value.comments) &&
@@ -195,9 +241,9 @@ function isNotification(value: unknown): value is AppNotification {
     isString(value.time) &&
     typeof value.isRead === "boolean" &&
     (value.targetScreen === undefined || isString(value.targetScreen)) &&
-    (value.targetShopId === undefined || isFiniteNumber(value.targetShopId)) &&
-    (value.targetLogId === undefined || isFiniteNumber(value.targetLogId)) &&
-    (value.targetPostId === undefined || isFiniteNumber(value.targetPostId)) &&
+    (value.targetShopId === undefined || isString(value.targetShopId)) &&
+    (value.targetLogId === undefined || isString(value.targetLogId)) &&
+    (value.targetPostId === undefined || isString(value.targetPostId)) &&
     (value.targetReportId === undefined || isString(value.targetReportId))
   )
 }
@@ -216,7 +262,7 @@ function isTasteTopShop(value: unknown): value is TasteTopShop {
   return (
     isRecord(value) &&
     isFiniteNumber(value.rank) &&
-    isFiniteNumber(value.shopId) &&
+    isString(value.shopId) &&
     isString(value.style) &&
     (value.matchPercent === undefined || isFiniteNumber(value.matchPercent)) &&
     isString(value.mustTry) &&
@@ -308,14 +354,14 @@ function settingsFrom(
   }
 }
 
-function migratedShopSubscriptions(raw: Record<string, unknown>): number[] {
+function migratedShopSubscriptions(raw: Record<string, unknown>): string[] {
   if (Array.isArray(raw.subscribedShopIds))
-    return cleanNumberIds(raw.subscribedShopIds)
+    return cleanEntityIds(raw.subscribedShopIds)
 
-  // Compatibility with early local V1 builds that accidentally persisted news IDs.
-  return cleanNumberIds(raw.subscribedNewsIds)
+  // 예전 로컬 V1이 뉴스 id로 저장한 구독은 매장 id로 돌려놓는다.
+  return cleanEntityIds(raw.subscribedNewsIds)
     .map((newsId) => NEWS_ITEMS.find((item) => item.id === newsId)?.shopId)
-    .filter((shopId): shopId is number => shopId !== undefined)
+    .filter((shopId): shopId is string => shopId !== undefined)
 }
 
 /**
@@ -327,30 +373,35 @@ export function migratePersistedState(raw: unknown): PersistedAppStateV1 {
   if (!isRecord(raw) || raw.version !== 1) return fallback
 
   const logs = Array.isArray(raw.logs)
-    ? raw.logs.filter(isRamenLog).map(withValidScores)
+    ? raw.logs.map(migratedLog).filter(isRamenLog).map(withValidScores)
     : []
   const communityPosts = Array.isArray(raw.communityPosts)
-    ? raw.communityPosts.filter(isCommunityPost)
+    ? raw.communityPosts.map(migratedPost).filter(isCommunityPost)
     : []
   const notifications = Array.isArray(raw.notifications)
-    ? raw.notifications.filter(isNotification)
+    ? raw.notifications
+        .map((value) => isRecord(value)
+          ? withEntityIds(value, "id", "targetShopId", "targetLogId", "targetPostId")
+          : value)
+        .filter(isNotification)
     : []
   const tasteReports = Array.isArray(raw.tasteReports)
-    ? raw.tasteReports.filter(isTasteReport)
+    ? raw.tasteReports.map(migratedTasteReport).filter(isTasteReport)
     : []
   const requestedReportId = isString(raw.currentTasteReportId)
     ? raw.currentTasteReportId
     : null
+  const user = isRecord(raw.user) ? withEntityIds(raw.user, "id") : raw.user
 
   return {
     version: 1,
-    user: raw.user === null ? null : isUserProfile(raw.user) ? raw.user : null,
+    user: user === null ? null : isUserProfile(user) ? user : null,
     onboardingCompleted:
       typeof raw.onboardingCompleted === "boolean"
         ? raw.onboardingCompleted
         : fallback.onboardingCompleted,
     logs,
-    bookmarkedShopIds: cleanNumberIds(raw.bookmarkedShopIds),
+    bookmarkedShopIds: cleanEntityIds(raw.bookmarkedShopIds),
     subscribedShopIds: migratedShopSubscriptions(raw),
     communityPosts,
     notifications,
@@ -365,9 +416,13 @@ export function migratePersistedState(raw: unknown): PersistedAppStateV1 {
         ? requestedReportId
         : (tasteReports[0]?.id ?? null),
     // 라운지 숨김·신고는 나중에 추가한 필드다. 없는 옛 저장본은 빈 목록으로 시작한다
-    hiddenAuthorIds: cleanStringIds(raw.hiddenAuthorIds),
+    hiddenAuthorIds: Array.isArray(raw.hiddenAuthorIds)
+      ? [...new Set(raw.hiddenAuthorIds.filter(isString).filter((id) => Boolean(id.trim())))]
+      : [],
     contentReports: Array.isArray(raw.contentReports)
-      ? raw.contentReports.filter(isContentReport)
+      ? raw.contentReports
+          .map((value) => isRecord(value) ? withEntityIds(value, "id", "targetId") : value)
+          .filter(isContentReport)
       : [],
   }
 }

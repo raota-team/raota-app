@@ -56,8 +56,8 @@ jest.mock("@/src/analytics", () => ({ track: jest.fn() }))
 jest.mock("@/src/data/fixtures", () => {
   const actual = jest.requireActual<typeof FixturesModule>("@/src/data/fixtures")
   const { SHOP_LEDGER } = jest.requireActual<typeof SharedModule>("@raota/shared")
-  const sparse = SHOP_LEDGER.find((shop) => shop.id === 2)
-  return { ...actual, SHOPS: actual.SHOPS.map((shop) => (shop.id === 2 && sparse ? sparse : shop)) }
+  const sparse = SHOP_LEDGER.find((shop) => shop.id === "2")
+  return { ...actual, SHOPS: actual.SHOPS.map((shop) => (shop.id === "2" && sparse ? sparse : shop)) }
 })
 
 const { router } = jest.requireMock("expo-router") as { router: Record<string, jest.Mock> }
@@ -164,7 +164,7 @@ describe("shop detail", () => {
     expect(view.queryByText(/전화번호/)).toBeNull()
     // 공개 라멘로그의 실제 5축 평가가 있을 때만 접근 가능한 맛 지문을 표시한다.
     expect(view.getByRole("text", { name: /^맛 지문\. 공개 라멘로그 2개 기준\. 만족도 4\.5, 육수 농도 4\.0/ }).props.accessibilityLabel).toContain("재방문 4.0")
-    expect(track).toHaveBeenCalledWith("shop_viewed", { shopId: 2 })
+    expect(track).toHaveBeenCalledWith("shop_viewed", { shopId: "2" })
   })
 
   it("opens the shop on the app map, and the address in Naver Map app first then web", async () => {
@@ -242,14 +242,32 @@ describe("shop detail", () => {
     mockParams.shopId = "1"
     const view = await renderScreen(<ShopDetailScreen />)
     await view.findByText(/^멘야준/)
-    const initiallySaved = INITIAL.bookmarkedShopIds.includes(1)
+    const initiallySaved = INITIAL.bookmarkedShopIds.includes("1")
     const saveLabel = initiallySaved ? "저장됨, 가고 싶어요 취소" : "가고 싶어요"
     await fireEvent.press(view.getByRole("button", { name: saveLabel }))
-    expect(track).toHaveBeenCalledWith("bookmark_toggled", { shopId: 1, saved: !initiallySaved })
+    expect(track).toHaveBeenCalledWith("bookmark_toggled", { shopId: "1", saved: !initiallySaved })
     expect(await view.findByRole("button", { name: initiallySaved ? "가고 싶어요" : "저장됨, 가고 싶어요 취소" })).toBeTruthy()
 
     await fireEvent.press(view.getByRole("button", { name: "먹은 라멘 기록하기" }))
     expect(router.push).toHaveBeenCalledWith({ pathname: "/record/new", params: { shopId: "1" } })
+  })
+
+  it("keeps a BIGINT shop ID intact from detail lookup through record and map routes", async () => {
+    const shopId = "9007199254740993123"
+    const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
+    const original = SHOPS[0]
+    SHOPS[0] = { ...original, id: shopId }
+    mockParams.shopId = shopId
+    try {
+      const view = await renderScreen(<ShopDetailScreen />)
+      expect(await view.findByText(/^멘야준/)).toBeTruthy()
+      await fireEvent.press(view.getByRole("button", { name: "먹은 라멘 기록하기" }))
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/record/new", params: { shopId } })
+      await fireEvent.press(view.getByRole("link", { name: "지도에서 보기" }))
+      expect(router.navigate).toHaveBeenCalledWith({ pathname: "/native/map", params: expect.objectContaining({ shopId }) })
+    } finally {
+      SHOPS[0] = original
+    }
   })
 
   it("opens weekday hours as a dismissible sheet with today's row and actual break", async () => {

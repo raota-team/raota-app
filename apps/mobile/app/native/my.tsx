@@ -86,7 +86,7 @@ const shortDate = (iso: string) => iso.slice(5).replace("-", ".")
 const haptic = () => void Haptics.selectionAsync().catch(() => undefined)
 
 function openShop(shop: Shop | undefined) {
-  if (shop) router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shop.id) } })
+  if (shop) router.push({ pathname: "/shop/[shopId]", params: { shopId: shop.id } })
 }
 
 // ---------------------------------------------------------------------------

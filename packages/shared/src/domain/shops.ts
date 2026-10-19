@@ -40,7 +40,7 @@ const unknownShop = {
 /** 확인된 정보만 담은 원장. 정보가 빈 매장의 빈 상태를 확인할 때도 이것을 쓴다 */
 export const SHOP_LEDGER: ShopCatalogItem[] = [
   {
-    id: 1,
+    id: '1',
     name: '멘야준',
     branch: '망원 본점',
     style: '쇼유 라멘',
@@ -113,7 +113,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 2,
+    id: '2',
     name: '후쿠 라멘',
     branch: '합정점',
     style: '미소 라멘',
@@ -133,7 +133,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 3,
+    id: '3',
     name: '오레노라멘',
     branch: '마포 본점',
     style: '토리파이탄',
@@ -159,7 +159,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 4,
+    id: '4',
     name: '세상끝의라멘',
     branch: '합정점',
     style: '쇼유 라멘',
@@ -179,7 +179,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 5,
+    id: '5',
     name: '묘코',
     branch: '연남점',
     style: '쇼유 라멘',
@@ -199,7 +199,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 6,
+    id: '6',
     name: '멘지',
     branch: '망원 본점',
     style: '토리파이탄',
@@ -218,7 +218,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 7,
+    id: '7',
     name: '하쿠텐',
     branch: '연남점',
     style: '돈코츠 라멘',
@@ -237,7 +237,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 8,
+    id: '8',
     name: '담택',
     branch: '합정점',
     style: '시오 라멘',
@@ -256,7 +256,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 9,
+    id: '9',
     name: '이리에라멘',
     branch: '망원점',
     style: '시오 라멘',
@@ -275,7 +275,7 @@ export const SHOP_LEDGER: ShopCatalogItem[] = [
   },
   {
     ...unknownShop,
-    id: 10,
+    id: '10',
     name: '무타히로',
     branch: '홍대점',
     style: '쇼유 라멘',
@@ -304,7 +304,7 @@ const withDayOff = (hours: string, ...offDays: string[]) =>
   everyDay(hours).map(line => (offDays.some(day => line.startsWith(day)) ? `${line.split(':')[0]}: 정기 휴무` : line))
 
 /** 화면 확인용 더미 상세. 위 주석대로 서버 연결 때 지운다 */
-const DEMO_DETAILS: Record<number, Partial<ShopCatalogItem>> = {
+const DEMO_DETAILS: Record<string, Partial<ShopCatalogItem>> = {
   // 멘야준은 원장에 확인된 정보가 거의 다 있다. 비어 있던 혜택 두 칸만 채운다
   1: {
     servicePerks: { noodleRefill: '1회 무료 리필 가능', riceRefill: '요청 시 무료 제공', soupRefill: '육수 추가 1,000원', condiments: '흑후추 · 시치미 · 다진 생강' },
@@ -510,7 +510,7 @@ export function findShopByName(name: string): ShopCatalogItem | undefined {
   return SHOP_CATALOG.find(shop => shop.name === canonical)
 }
 
-export function findShopById(id: number): ShopCatalogItem | undefined {
+export function findShopById(id: string): ShopCatalogItem | undefined {
   return SHOP_CATALOG.find(shop => shop.id === id)
 }
 
@@ -520,7 +520,7 @@ export function getShopDetail(name: string): ShopCatalogItem {
   if (found) return found
   return {
     ...unknownShop,
-    id: 0,
+    id: '0',
     name,
     style: '라멘',
     pinLabel: name.slice(0, 1),

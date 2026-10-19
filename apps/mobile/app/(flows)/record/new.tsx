@@ -264,8 +264,7 @@ export default function NewRecordScreen() {
   const reduceMotion = useReducedMotion()
   // 날짜 선택기는 hex 문자열만 받는다
   const palette = usePalette()
-  const parsedShopId = Number(shopId)
-  const initialShopId = Number.isInteger(parsedShopId) && parsedShopId > 0 ? parsedShopId : null
+  const initialShopId = typeof shopId === "string" && shopId.length > 0 ? shopId : null
   const selectedShopId = state.recordDraft?.shopId ?? initialShopId
   const shop = useShop(selectedShopId).data
   const shops = useShops().data
@@ -503,7 +502,7 @@ export default function NewRecordScreen() {
       track("record_saved", { hasPhoto: photos.length > 0, scoresComplete: true })
       allowLeave.current = true
       actions.clearRecordDraft()
-      router.replace({ pathname: "/record/complete", params: { logId: String(log.id) } })
+      router.replace({ pathname: "/record/complete", params: { logId: log.id } })
     } catch (error) {
       const message =
         error instanceof Error && error.message ? error.message : "연결을 확인한 뒤 다시 시도해주세요."

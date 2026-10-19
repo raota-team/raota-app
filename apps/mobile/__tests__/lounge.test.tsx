@@ -77,10 +77,10 @@ const guestState = () => {
 /** 로그인한 데모 계정의 기록과 남의 비공개 기록을 하나씩 더한 상태 */
 function stateWithPrivateLogs() {
   const state = createInitialPersistedState()
-  const base = state.logs.find((log) => log.id === 4) as RamenLog
+  const base = state.logs.find((log) => log.id === "4") as RamenLog
   const othersPrivate: RamenLog = {
     ...base,
-    id: 90,
+    id: "90",
     author: { id: "user-feed-900", name: "비공개작성자", level: "라멘 입문자 (Lv.2)" },
     menuName: "남의 비공개 라멘",
     isPublic: false,
@@ -90,7 +90,7 @@ function stateWithPrivateLogs() {
   }
   const minePublic: RamenLog = {
     ...base,
-    id: 91,
+    id: "91",
     author: { id: state.user?.id, name: state.user?.nickname ?? "", level: "라멘집 단골 (Lv.4)" },
     menuName: "내가 공개한 라멘",
     isPublic: true,
@@ -98,7 +98,7 @@ function stateWithPrivateLogs() {
     comments: [],
     commentCount: 0,
   }
-  const minePrivate: RamenLog = { ...minePublic, id: 92, menuName: "내 비공개 라멘", isPublic: false, createdAt: "2026-09-19T07:00:00+09:00" }
+  const minePrivate: RamenLog = { ...minePublic, id: "92", menuName: "내 비공개 라멘", isPublic: false, createdAt: "2026-09-19T07:00:00+09:00" }
   return { ...state, logs: [othersPrivate, minePublic, minePrivate, ...state.logs] }
 }
 
@@ -116,6 +116,16 @@ describe("라운지 피드", () => {
     expect(view.getByText("전체 ▾")).toBeTruthy()
     expect((await view.findByTestId("lounge-log-4")).props.testID).toBe("lounge-log-4")
     expect(within(view.getByTestId("lounge-column-0")).getAllByTestId(/^lounge-log-/)[0].props.testID).toBe("lounge-log-4")
+  })
+
+  it("navigates with the full BIGINT ID from a lounge pin", async () => {
+    const logId = "9007199254740993123"
+    const state = createInitialPersistedState()
+    state.logs.unshift({ ...state.logs[0], id: logId, createdAt: "2026-10-19T12:00:00Z", comments: [], commentCount: 0 })
+    const { view } = await renderWith(<LoungeScreen />, state)
+
+    await fireEvent.press(await view.findByTestId(`lounge-log-${logId}`))
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/log/[logId]", params: { logId } })
   })
 
   it("shows public logs only (mine included), newest first, and tracks the visit", async () => {
@@ -266,7 +276,7 @@ describe("라운지 피드", () => {
     expect(track).toHaveBeenCalledWith("content_reported", { kind: "log", reason: "spam" })
     await waitFor(() =>
       expect(repo.save).toHaveBeenLastCalledWith(
-        expect.objectContaining({ contentReports: [expect.objectContaining({ kind: "log", targetId: 4, reason: "spam" })] }),
+        expect.objectContaining({ contentReports: [expect.objectContaining({ kind: "log", targetId: "4", reason: "spam" })] }),
       ),
     )
     sheet.mockRestore()
@@ -302,6 +312,35 @@ describe("라멘로그 상세", () => {
     expect(view.getByText("댓글 1")).toBeTruthy()
     expect(view.getByLabelText("댓글 입력").props.value).toBe("")
     expect(track).toHaveBeenCalledWith("log_commented")
+  })
+
+  it("opens and comments on a BIGINT log without rounding its log or shop ID", async () => {
+    const logId = "9007199254740993123"
+    const shopId = "9007199254740993124"
+    const state = createInitialPersistedState()
+    state.logs.unshift({
+      ...state.logs[0],
+      id: logId,
+      shop: { ...state.logs[0].shop, id: shopId },
+      comments: [],
+      commentCount: 0,
+    })
+    useLocalSearchParams.mockReturnValue({ logId })
+    const { view, repo } = await renderWith(<LogDetailScreen />, state)
+    expect(await view.findByTestId("log-detail")).toBeTruthy()
+
+    await fireEvent.press(view.getByRole("button", { name: /매장 정보$/ }))
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/shop/[shopId]", params: { shopId } })
+    await fireEvent.changeText(view.getByLabelText("댓글 입력"), "큰 ID 댓글")
+    await fireEvent.press(view.getByRole("button", { name: "등록" }))
+    await waitFor(() => expect(repo.save).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        logs: expect.arrayContaining([expect.objectContaining({
+          id: logId,
+          comments: expect.arrayContaining([expect.objectContaining({ logId, content: "큰 ID 댓글" })]),
+        })]),
+      }),
+    ))
   })
 
   it("shows every taste axis, the photo count, and a shop link on a log detail", async () => {
@@ -390,6 +429,7 @@ describe("라운지 저장 필드", () => {
     })
     expect(migrated.hiddenAuthorIds).toEqual(["user-1"])
     expect(migrated.contentReports).toHaveLength(1)
+    expect(migrated.contentReports[0].targetId).toBe("4")
   })
 })
 

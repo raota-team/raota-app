@@ -54,8 +54,8 @@ export function statusOf(shop: Shop): { label: string; open: boolean } {
   return shop.isOpen ? { label: "영업 중", open: true } : { label: "준비 중", open: false }
 }
 
-export function openShop(shopId: number) {
-  router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shopId) } })
+export function openShop(shopId: string) {
+  router.push({ pathname: "/shop/[shopId]", params: { shopId } })
 }
 
 function shopLabel(shop: MapShop) {
@@ -484,7 +484,7 @@ export function ShopListView({ filters, notice }: { filters: MapFilters; notice?
       ItemSeparatorComponent={() => <View style={styles.listDivider} />}
       contentContainerStyle={styles.listContent}
       data={filters.filtered}
-      keyExtractor={(shop) => String(shop.id)}
+      keyExtractor={(shop) => shop.id}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       renderItem={({ item }) => <ListRow shop={item} />}

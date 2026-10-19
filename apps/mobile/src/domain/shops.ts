@@ -13,6 +13,16 @@ export interface ShopFilters {
 
 const EARTH_RADIUS_M = 6_371_000
 
+/** 숫자형 매장 ID는 "10"이 "2"보다 앞서지 않도록 정밀도를 잃지 않고 비교한다. */
+export function compareShopIds(left: string, right: string): number {
+  if (/^\d+$/.test(left) && /^\d+$/.test(right)) {
+    const leftId = BigInt(left)
+    const rightId = BigInt(right)
+    if (leftId !== rightId) return leftId < rightId ? -1 : 1
+  }
+  return left.localeCompare(right)
+}
+
 export function distanceBetweenCoordinates(
   from: { latitude: number; longitude: number },
   to: { latitude: number; longitude: number },

@@ -22,7 +22,7 @@ type Mode = "nearby" | "saved" | "search"
 type NearbyFilter = "all" | "500m" | "open"
 
 interface ShopItem {
-  id: number
+  id: string
   name: string
   branch: string
   style: string
@@ -201,7 +201,7 @@ export default function SelectShopScreen() {
     if (params.source !== "tab") {
       track("record_started", { mode, source: params.source === "reminder" ? "reminder" : "select_shop" })
     }
-    router.replace({ pathname: "/record/new", params: { shopId: String(shop.id) } })
+    router.replace({ pathname: "/record/new", params: { shopId: shop.id } })
   }
 
   const data = mode === "nearby" ? nearbyList : mode === "saved" ? savedShops : searchResults
@@ -337,7 +337,7 @@ export default function SelectShopScreen() {
           ListHeaderComponent={listHeader}
           contentContainerStyle={styles.listContent}
           data={data}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => item.id}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => <ShopRow onSelect={() => choose(item)} shop={item} />}

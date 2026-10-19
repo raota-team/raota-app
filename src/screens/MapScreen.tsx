@@ -7,16 +7,16 @@ import { SHOP_CATALOG, type ShopCatalogItem } from '../data/shops'
 interface Props {
   /** 탭이 보이는 상태인지. 숨겨졌다 다시 보일 때 지도 크기를 다시 계산한다. */
   isActive?: boolean
-  selectedPin: number
+  selectedPin: string
   filter?: string
-  onPinSelect: (i: number) => void
+  onPinSelect: (i: string) => void
   onFilterChange?: (f: string) => void
   onShopClick: (shopName: string) => void
 }
 
 /** 지도 화면이 쓰는 매장 뷰 모델. 원장(`SHOP_CATALOG`)에서만 만든다. */
 interface Shop {
-  id: number
+  id: string
   name: string
   branch: string
   address: string
@@ -211,7 +211,7 @@ interface ClusterGroup {
 }
 
 // 줌 레벨에 따른 거리 기반 클러스터링 알고리즘
-function clusterShops(shops: Shop[], map: L.Map, selectedPin: number): Array<{ type: 'single'; shop: Shop } | { type: 'cluster'; cluster: ClusterGroup }> {
+function clusterShops(shops: Shop[], map: L.Map, selectedPin: string): Array<{ type: 'single'; shop: Shop } | { type: 'cluster'; cluster: ClusterGroup }> {
   const zoom = map.getZoom()
   // 줌 레벨 15 이상이면 개별 매장 모두 상세 표시
   if (zoom >= 15) {
@@ -221,7 +221,7 @@ function clusterShops(shops: Shop[], map: L.Map, selectedPin: number): Array<{ t
   // 줌 레벨이 낮아질수록(멀어질수록) 합쳐지는 반경(픽셀) 증가
   const pixelThreshold = zoom <= 12 ? 80 : zoom <= 13 ? 65 : 48
   const clusters: ClusterGroup[] = []
-  const assigned = new Set<number>()
+  const assigned = new Set<string>()
 
   shops.forEach(shop => {
     if (assigned.has(shop.id)) return

@@ -54,7 +54,7 @@ function repository(state = createInitialPersistedState()): RaotaRepository {
 
 /** 데모 계정의 42그릇 평균을 기준으로 재방문 점수가 가장 크게 벗어나는 기록 */
 const logInput: CreateRamenLogInput = {
-  shopId: 1,
+  shopId: "1",
   menuName: "특제 쇼유 라멘",
   ramenType: "쇼유",
   visitedAt: "2026-09-18",
@@ -171,6 +171,17 @@ describe("record complete screen", () => {
     expect(await view.findByText("멘야준 · 특제 쇼유 라멘")).toBeTruthy()
     expect(view.getByText(state.logs[0].note)).toBeTruthy()
     expect(view.queryByText("내 취향 변화")).toBeNull()
+  })
+
+  it("finds a saved log by its full BIGINT route ID", async () => {
+    const logId = "9007199254740993123"
+    const state = createInitialPersistedState()
+    state.logs[0].id = logId
+    mockParams.logId = logId
+    const view = await renderScreen(<RecordCompleteScreen />, state)
+
+    expect(await view.findByText("멘야준 · 특제 쇼유 라멘")).toBeTruthy()
+    expect(view.queryByText("기록을 찾을 수 없어요")).toBeNull()
   })
 
   it("shows the empty state for an unknown logId", async () => {

@@ -70,7 +70,8 @@ export interface ShopAISummary {
 }
 
 export interface Shop {
-  id: number
+  /** 서버 BIGINT 식별자는 정밀도 손실을 막기 위해 문자열로 둔다. */
+  id: string
   name: string
   branch?: string
   address: string
@@ -119,7 +120,7 @@ export interface Shop {
 }
 
 export interface RamenLog {
-  id: number
+  id: string
   author: {
     /** Local account ownership. Older persisted fixtures may not have this field. */
     id?: string
@@ -128,7 +129,7 @@ export interface RamenLog {
     level: string
   }
   shop: {
-    id: number
+    id: string
     name: string
     branch?: string
     location?: string
@@ -152,14 +153,14 @@ export interface RamenLog {
 }
 
 export interface RamenLogComment {
-  id: number
-  logId: number
+  id: string
+  logId: string
   author: CommunityAuthor
   content: string
   createdAt: string
   likes: number
   isLiked: boolean
-  parentId?: number
+  parentId?: string
   parentAuthorName?: string
 }
 
@@ -246,9 +247,9 @@ export interface AppNotification {
   time: string
   isRead: boolean
   targetScreen?: string
-  targetShopId?: number
-  targetLogId?: number
-  targetPostId?: number
+  targetShopId?: string
+  targetLogId?: string
+  targetPostId?: string
   targetReportId?: string
   avatar?: string
   senderName?: string
@@ -276,7 +277,7 @@ export interface LoginInput {
 export type ProfileUpdateInput = Partial<Pick<UserProfile, "name" | "nickname" | "email" | "avatar" | "bio" | "favoriteRamenType">>
 
 export interface CreateRamenLogInput {
-  shopId: number
+  shopId: string
   shopName?: string
   branch?: string
   menuName: string
@@ -297,8 +298,8 @@ export interface CreateRamenLogInput {
 export type NewsCategory = "한정 메뉴" | "영업 공지" | "이벤트" | "신메뉴"
 
 export interface NewsItem {
-  id: number
-  shopId: number
+  id: string
+  shopId: string
   shopName: string
   branch?: string
   handle: string
@@ -320,19 +321,19 @@ export interface CommunityAuthor {
 }
 
 export interface CommunityComment {
-  id: number
-  postId: number
+  id: string
+  postId: string
   author: CommunityAuthor
   content: string
   createdAt: string
   likes: number
   isLiked: boolean
-  parentId?: number
+  parentId?: string
   parentAuthorName?: string
 }
 
 export interface CommunityPost {
-  id: number
+  id: string
   category: CommunityPostCategory
   categoryLabel: string
   title: string
@@ -344,7 +345,7 @@ export interface CommunityPost {
   commentCount: number
   viewCount: number
   isLiked: boolean
-  shopId?: number
+  shopId?: string
   shopName?: string
   imageUrls: string[]
   comments: CommunityComment[]
@@ -355,18 +356,18 @@ export interface CreateCommunityPostInput {
   title: string
   content: string
   detailedContent?: string[]
-  shopId?: number
+  shopId?: string
   imageUrls?: string[]
 }
 
 export interface CreateCommunityCommentInput {
   content: string
-  parentId?: number
+  parentId?: string
 }
 
 export interface CreateRamenLogCommentInput {
   content: string
-  parentId?: number
+  parentId?: string
 }
 
 export type TasteMetricKey = "brothRichness" | "noodleFirmness" | "saltBalance" | "umami" | "oilRichness"
@@ -380,7 +381,7 @@ export interface TasteMetric {
 
 export interface TasteTopShop {
   rank: number
-  shopId: number
+  shopId: string
   style: string
   matchPercent?: number
   mustTry: string
@@ -421,7 +422,7 @@ export interface ContentReport {
   id: string
   kind: "log" | "comment"
   /** 신고한 라멘로그 또는 댓글의 id */
-  targetId: number
+  targetId: string
   reason: ContentReportReason
   createdAt: string
 }
@@ -436,9 +437,9 @@ export interface PersistedAppStateV1 {
   user: UserProfile | null
   onboardingCompleted: boolean
   logs: RamenLog[]
-  bookmarkedShopIds: number[]
+  bookmarkedShopIds: string[]
   /** Shop IDs whose future news should also remain subscribed. */
-  subscribedShopIds: number[]
+  subscribedShopIds: string[]
   communityPosts: CommunityPost[]
   notifications: AppNotification[]
   notificationSettings: NotificationSettings

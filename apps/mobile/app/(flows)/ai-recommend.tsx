@@ -437,7 +437,7 @@ export default function AIRecommendScreen() {
       router.push("/auth/login")
       return
     }
-    router.push({ pathname: "/record/new", params: { shopId: String(shop.id) } })
+    router.push({ pathname: "/record/new", params: { shopId: shop.id } })
   }
 
   if (step === "loading" && curation) {
@@ -695,7 +695,7 @@ export default function AIRecommendScreen() {
           />
           <Button
             fullWidth
-            onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: String(result.shop.id) } })}
+            onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: result.shop.id } })}
             rightIcon={compact ? undefined : <ChevronRight color={colors.onDark} size={16} />}
             style={[styles.stickyButton, ctaSize]}
             title="매장 상세 보기"

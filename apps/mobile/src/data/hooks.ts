@@ -69,7 +69,7 @@ export function useShops(): Query<Shop[]> {
 }
 
 /** 매장 하나. 없으면 data가 null이다 */
-export function useShop(shopId: number | null | undefined): Query<Shop | null> {
+export function useShop(shopId: string | null | undefined): Query<Shop | null> {
   const { getShop } = useRaota()
   const status = useQueryState()
   return { data: shopId ? (getShop(shopId) ?? null) : null, ...status }
@@ -90,7 +90,7 @@ export function useMyLogs(): Query<RamenLog[]> {
 }
 
 /** 기록 하나 */
-export function useLog(logId: number | null | undefined): Query<RamenLog | null> {
+export function useLog(logId: string | null | undefined): Query<RamenLog | null> {
   const { getLog } = useRaota()
   const status = useQueryState()
   return { data: logId ? (getLog(logId) ?? null) : null, ...status }
@@ -140,7 +140,7 @@ export interface TasteProfileData {
 }
 
 /** 5축 누적 평균. 같은 계산을 웹과 공유한다(packages/shared mergeProfile) */
-export function useTasteProfile(excludeLogId?: number | null): Query<TasteProfileData> {
+export function useTasteProfile(excludeLogId?: string | null): Query<TasteProfileData> {
   const { currentUser, userLogs } = useRaota()
   const status = useQueryState()
   const data = useMemo(
@@ -309,7 +309,7 @@ export interface LoungeLogDetail {
  * TODO(API): remoteReads.loungeLog(logId) (GET /ramen-logs/{id} + GET /ramen-logs/{id}/comments)로 바꾼다.
  * 서버가 비공개·차단·신고한 글을 이미 빼고 주므로 그때는 이 파일의 거르기가 이중 안전장치가 된다
  */
-export function useLoungeLog(logId: number | null | undefined): Query<LoungeLogDetail | null> {
+export function useLoungeLog(logId: string | null | undefined): Query<LoungeLogDetail | null> {
   const { getLog } = useRaota()
   const status = useQueryState()
   const viewer = useLoungeViewer()

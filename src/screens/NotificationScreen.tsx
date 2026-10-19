@@ -11,7 +11,7 @@ interface Props {
   onReadNotification: (id: string) => void
   onDeleteNotification?: (id: string) => void
   onUpdateSettings: (newSettings: NotificationSettings) => void
-  onNavigateToShop?: (shopId: number) => void
+  onNavigateToShop?: (shopId: string) => void
   onNavigateToLounge?: () => void
   onNavigateToMy?: () => void
 }

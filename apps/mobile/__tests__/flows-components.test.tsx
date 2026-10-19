@@ -3,7 +3,7 @@ import type { ReactElement } from "react"
 import { Alert, StyleSheet } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
-import { createInitialPersistedState } from "@/src/data/fixtures"
+import { SHOPS, createInitialPersistedState } from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider } from "@/src/state/RaotaStore"
 import LoginScreen from "@/app/(flows)/auth/login"
@@ -191,6 +191,8 @@ describe("shared taste marks", () => {
 describe("record screens", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    const { useLocalSearchParams } = jest.requireMock("expo-router") as { useLocalSearchParams: jest.Mock }
+    useLocalSearchParams.mockReturnValue({ shopId: "1" })
   })
 
   it("keeps five radio choices for both score kinds, with hero feedback and invalid guidance", async () => {
@@ -251,6 +253,21 @@ describe("record screens", () => {
     expect(view.getByRole("button", { name: "사진 추가" })).toBeTruthy()
     expect(view.getByLabelText("기억해둘 점")).toBeTruthy()
     expect(details.props.accessibilityState.expanded).toBe(true)
+  })
+
+  it("selects a shop by its full BIGINT route ID on the record form", async () => {
+    const shopId = "9007199254740993123"
+    const original = SHOPS[0]
+    const { useLocalSearchParams } = jest.requireMock("expo-router") as { useLocalSearchParams: jest.Mock }
+    SHOPS[0] = { ...original, id: shopId }
+    useLocalSearchParams.mockReturnValue({ shopId })
+    try {
+      const view = await renderWithStore(<NewRecordScreen />)
+      expect(await view.findByText("멘야준 · 망원 본점")).toBeTruthy()
+      expect(view.getByRole("button", { name: "기록 저장하기, 남은 필수 6개" })).toBeTruthy()
+    } finally {
+      SHOPS[0] = original
+    }
   })
 
   it("offers a private default and an explicit public choice beside Save", async () => {

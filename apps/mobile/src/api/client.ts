@@ -46,8 +46,6 @@ export type ApiErrorCode =
   | "INVALID_RESPONSE"
   /** 봉투 없이 온 HTTP 오류 */
   | "HTTP_ERROR"
-  /** 서버 id(BIGINT)가 앱의 number id로 담기지 않는다 */
-  | "UNSUPPORTED_ID"
 
 export interface ApiFieldError {
   field: string

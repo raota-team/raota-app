@@ -14,7 +14,7 @@ interface Props {
 }
 
 interface ShopItem {
-  id: number
+  id: string
   name: string
   branch: string
   style: string

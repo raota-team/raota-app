@@ -71,9 +71,8 @@ function goBack() {
 
 
 export default function ShopDetailScreen() {
-  const { shopId } = useLocalSearchParams<{ shopId: string }>()
-  const id = Number(shopId)
-  const shopQuery = useShop(Number.isFinite(id) ? id : null)
+  const { shopId } = useLocalSearchParams<{ shopId?: string }>()
+  const shopQuery = useShop(typeof shopId === "string" && shopId.length > 0 ? shopId : null)
   const shop = shopQuery.data as DetailShop | null
 
   if (!shop) {
@@ -228,7 +227,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
       return
     }
     track("record_started", { mode: "shop", source: "shop_detail" })
-    router.push({ pathname: "/record/new", params: { shopId: String(shop.id) } })
+    router.push({ pathname: "/record/new", params: { shopId: shop.id } })
   }
 
   const openUrl = (url: string) => {
@@ -277,7 +276,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
       hint: "라오타 지도에서 이 가게 위치를 봐요",
       icon: <MapIcon color={colors.ink} size={20} />,
       // focus는 같은 가게로 다시 와도 지도가 다시 옮겨 가게 하려는 값이다(탭 파라미터가 같으면 효과가 돌지 않는다)
-      onPress: () => router.navigate({ pathname: "/native/map", params: { shopId: String(shop.id), focus: String(Date.now()) } }),
+      onPress: () => router.navigate({ pathname: "/native/map", params: { shopId: shop.id, focus: String(Date.now()) } }),
     },
     shop.catchTableUrl
       ? {
@@ -597,7 +596,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                   accessibilityLabel={`${other.name}${other.branch ? ` ${other.branch}` : ""}, 매장 상세 보기`}
                   accessibilityRole="button"
                   key={other.id}
-                  onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: String(other.id) } })}
+                  onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: other.id } })}
                   style={styles.similarCard}
                 >
                   <View style={[styles.similarPhoto, { height: 220 }]}>

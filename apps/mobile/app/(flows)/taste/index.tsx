@@ -74,7 +74,7 @@ const categoryOfStyle = (style: string | undefined): MenuCategoryName | null =>
   style ? (MENU_CATEGORY_NAMES.find((name) => name !== "기타" && style.startsWith(name)) ?? null) : null
 
 function openShop(shop: Shop | undefined) {
-  if (shop) router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shop.id) } })
+  if (shop) router.push({ pathname: "/shop/[shopId]", params: { shopId: shop.id } })
 }
 
 /**

@@ -101,7 +101,7 @@ function bowlComment(log: RamenLog, scores: TasteScores | null, before: TastePro
 
 export default function RecordCompleteScreen() {
   const { logId } = useLocalSearchParams<{ logId?: string }>()
-  const parsedLogId = typeof logId === "string" && /^\d+$/.test(logId) ? Number(logId) : null
+  const parsedLogId = typeof logId === "string" && logId.length > 0 ? logId : null
   const { data: log, isLoading } = useLog(parsedLogId)
   const { data: bowlCount } = useBowlCount()
   const { data: taste } = useTasteProfile(parsedLogId)

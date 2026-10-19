@@ -2,8 +2,6 @@ export type TasteNoteKey = 'broth' | 'noodle' | 'seasoning' | 'topping'
 export type TasteNotes = Record<TasteNoteKey, string[]>
 export type RevisitOption = '자주 감' | '가끔 생각남' | '한번이면 충분'
 
-import type { TasteScores } from '@raota/shared'
-
 // 5축 타입은 iOS 앱과 공유한다.
 export type { TasteAxisKey, TasteScores, TasteProfile } from '@raota/shared'
 
@@ -48,94 +46,8 @@ export interface GoogleShopCsvRecord {
   google_match_status?: string
 }
 
-/** 앱 내 정형화된 라멘 매장 인터페이스 (raota-front 스펙 일치) */
-export interface Shop {
-  id: number
-  name: string
-  branch?: string
-  address: string
-  lat: number
-  lng: number
-  phone?: string
-  rating: number
-  reviewCount: number
-  businessStatus: string
-  isOpen: boolean
-  openingHours: string[]
-  priceRange?: string
-  dineIn: boolean
-  delivery: boolean
-  reservable: boolean
-  googleMapsUri?: string
-  websiteUri?: string
-  instagramUrl?: string
-  catchTableUrl?: string
-  photos: string[]
-  tags: string[]
-  matchScore: number
-  distanceM: number
-  reviews: Array<{
-    author: string
-    level?: string
-    rating: number
-    text: string
-    time: string
-  }>
-  description?: string
-  servicePerks?: {
-    noodleRefill?: string
-    riceRefill?: string
-    soupRefill?: string
-    condiments?: string
-  }
-}
-
-export interface RamenLog {
-  id: number
-  author: {
-    name: string
-    avatar?: string
-    level: string
-  }
-  shop: {
-    id: number
-    name: string
-    branch?: string
-    location?: string
-  }
-  menuName: string
-  ramenType: string
-  visitedAt: string
-  imageUrl: string | null
-  photos?: string[]
-  note: string
-  tasteNotes: TasteNotes
-  /** 5축 평가. 이전 버전 데모 로그에는 없을 수 있다. */
-  scores?: TasteScores
-  revisit: RevisitOption
-  likes: number
-  isLiked: boolean
-  isPublic: boolean
-  createdAt: string
-  commentCount?: number
-  comments?: RamenLogComment[]
-}
-
-export interface RamenLogComment {
-  id: number
-  logId: number
-  author: {
-    name: string
-    avatar?: string
-    level: string
-  }
-  content: string
-  createdAt: string
-  likes: number
-  isLiked: boolean
-  parentId?: number
-  parentAuthorName?: string
-}
+// 매장·로그 식별자는 웹과 앱이 같은 문자열 계약을 쓰도록 공유 타입을 쓴다.
+export type { Shop, RamenLog, RamenLogComment } from '@raota/shared'
 
 export const TASTE_FIELDS: Array<{ key: TasteNoteKey; label: string; options: string[] }> = [
   { key: 'broth', label: '국물', options: ['진해요', '깔끔해요', '감칠맛 좋아요', '기름져요', '어패류 향'] },
@@ -163,27 +75,4 @@ export interface UserProfile {
   isLoggedIn: boolean
 }
 
-export type NotificationType = 'like' | 'comment' | 'level' | 'shop' | 'notice'
-
-export interface AppNotification {
-  id: string
-  type: NotificationType
-  title: string
-  content: string
-  time: string
-  isRead: boolean
-  targetScreen?: string
-  targetShopId?: number
-  avatar?: string
-  senderName?: string
-  shopName?: string
-}
-
-export interface NotificationSettings {
-  pushEnabled: boolean
-  likesEnabled: boolean
-  commentsEnabled: boolean
-  levelUpEnabled: boolean
-  shopNewsEnabled: boolean
-}
-
+export type { AppNotification, NotificationType, NotificationSettings } from '@raota/shared'

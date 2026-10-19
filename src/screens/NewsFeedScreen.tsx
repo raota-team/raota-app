@@ -13,7 +13,7 @@ interface Props {
 const FILTERS = ['전체', '한정 메뉴', '영업 공지', '이벤트']
 
 interface NewsPost {
-  id: number
+  id: string
   shop: string
   branch: string
   /** 확인된 인스타그램 계정. 없으면 원문 링크를 숨긴다. */
@@ -31,7 +31,7 @@ interface NewsPost {
 
 const NEWS_POSTS: NewsPost[] = [
   {
-    id: 1,
+    id: '1',
     shop: '멘야준',
     branch: '망원 본점',
     handle: '@menyajun_official',
@@ -49,7 +49,7 @@ const NEWS_POSTS: NewsPost[] = [
     notifying: true,
   },
   {
-    id: 2,
+    id: '2',
     shop: '오레노라멘',
     branch: '마포 본점',
     handle: '@orenoramen_kr',
@@ -67,7 +67,7 @@ const NEWS_POSTS: NewsPost[] = [
     notifying: true,
   },
   {
-    id: 3,
+    id: '3',
     shop: '후쿠 라멘',
     branch: '합정점',
     handle: '@fuku_ramen_seoul',
@@ -84,7 +84,7 @@ const NEWS_POSTS: NewsPost[] = [
     notifying: false,
   },
   {
-    id: 4,
+    id: '4',
     shop: '묘코',
     branch: '연남점',
     handle: '@myoko_ramen',
@@ -128,7 +128,7 @@ const formatPeriod = (post: NewsPost) => {
 
 export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Props) {
   const [activeFilter, setActiveFilter] = useState('전체')
-  const [notifications, setNotifications] = useState<Record<number, boolean>>(
+  const [notifications, setNotifications] = useState<Record<string, boolean>>(
     Object.fromEntries(NEWS_POSTS.map(p => [p.id, p.notifying]))
   )
   const today = todayInSeoul()
@@ -139,7 +139,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
     return [...base].sort((a, b) => Number(isEnded(a, today)) - Number(isEnded(b, today)))
   }, [activeFilter, today])
 
-  const toggleNotify = (id: number) => {
+  const toggleNotify = (id: string) => {
     // App이 user를 넘겨 비회원임이 확실할 때만 로그인으로 보낸다
     if (user === null && onLoginRequest) {
       onLoginRequest()

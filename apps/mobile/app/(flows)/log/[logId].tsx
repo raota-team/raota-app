@@ -89,7 +89,7 @@ function CommentRow({ comment, own, onMore }: { comment: RamenLogComment; own: b
   )
 }
 
-function CommentComposer({ logId, onPosted }: { logId: number; onPosted: () => void }) {
+function CommentComposer({ logId, onPosted }: { logId: string; onPosted: () => void }) {
   const { currentUser, actions } = useRaota()
   const insets = useSafeAreaInsets()
   const keyboardVisible = useKeyboardVisible()
@@ -214,9 +214,8 @@ function CommentComposer({ logId, onPosted }: { logId: number; onPosted: () => v
 }
 
 export default function LogDetailScreen() {
-  const { logId } = useLocalSearchParams<{ logId: string }>()
-  const id = Number(logId)
-  const query = useLoungeLog(Number.isInteger(id) && id > 0 ? id : null)
+  const { logId } = useLocalSearchParams<{ logId?: string }>()
+  const query = useLoungeLog(typeof logId === "string" && logId.length > 0 ? logId : null)
   const detail = query.data
   const { currentUser, actions } = useRaota()
   const like = useLikeLog()
@@ -308,7 +307,7 @@ export default function LogDetailScreen() {
         ListHeaderComponent={<LogDetailHeader commentCount={comments.length} log={log} onLike={() => like(log)} onMore={own ? undefined : openLogMenu} />}
         contentContainerStyle={styles.listContent}
         data={comments}
-        keyExtractor={(comment) => String(comment.id)}
+        keyExtractor={(comment) => comment.id}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         ref={listRef}

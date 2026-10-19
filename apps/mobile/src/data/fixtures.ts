@@ -25,7 +25,7 @@ const RAMEN_PHOTO_3 =
 export const SHOPS: Shop[] = SHOP_CATALOG
 
 /** 라멘로그의 가게 표기는 원장에서 가져온다(이름·지점을 손으로 옮겨 적다 어긋나지 않게) */
-function logShop(shopId: number): RamenLog["shop"] {
+function logShop(shopId: string): RamenLog["shop"] {
   const shop = findShopById(shopId)
   if (!shop) throw new Error(`fixtures: 원장에 없는 매장 id ${shopId}`)
   return { id: shop.id, name: shop.name, branch: shop.branch, location: shop.address.split(" ").slice(0, 2).join(" ") }
@@ -38,9 +38,9 @@ function logShop(shopId: number): RamenLog["shop"] {
  */
 const LOUNGE_FEED_LOGS: RamenLog[] = [
   {
-    id: 4,
+    id: "4",
     author: { id: "user-feed-104", name: "면발탐정", level: "라멘집 탐험가 (Lv.3)" },
-    shop: logShop(7),
+    shop: logShop("7"),
     menuName: "이에케 라멘",
     ramenType: "돈코츠",
     visitedAt: "2026. 09. 18",
@@ -62,8 +62,8 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     commentCount: 1,
     comments: [
       {
-        id: 104,
-        logId: 4,
+        id: "104",
+        logId: "4",
         author: { id: "user-feed-106", name: "합정야식러", level: "라멘 입문자 (Lv.2)" },
         content: "이에케는 밥이랑 같이 먹어야 제맛이죠. 마늘 넣어보셨어요?",
         createdAt: "2026-09-18T21:02:00+09:00",
@@ -73,9 +73,9 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     ],
   },
   {
-    id: 5,
+    id: "5",
     author: { id: "user-feed-105", name: "국물한모금", level: "라멘 미식가 (Lv.5)" },
-    shop: logShop(9),
+    shop: logShop("9"),
     menuName: "도미 시오 라멘",
     ramenType: "시오",
     visitedAt: "2026. 09. 16",
@@ -98,9 +98,9 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     comments: [],
   },
   {
-    id: 6,
+    id: "6",
     author: { id: "user-201", name: "멘마수집가", level: "라멘 미식가 (Lv.5)" },
-    shop: logShop(10),
+    shop: logShop("10"),
     menuName: "니보시 쇼유 라멘",
     ramenType: "쇼유",
     visitedAt: "2026. 09. 14",
@@ -122,8 +122,8 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     commentCount: 2,
     comments: [
       {
-        id: 105,
-        logId: 6,
+        id: "105",
+        logId: "6",
         author: { id: "user-feed-105", name: "국물한모금", level: "라멘 미식가 (Lv.5)" },
         content: "멘마 추가 팁 감사합니다. 다음엔 꼭 추가해볼게요.",
         createdAt: "2026-09-14T20:11:00+09:00",
@@ -131,8 +131,8 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
         isLiked: false,
       },
       {
-        id: 106,
-        logId: 6,
+        id: "106",
+        logId: "6",
         author: { id: "user-feed-107", name: "시오러버", level: "라멘집 단골 (Lv.4)" },
         content: "니보시 향이 강하다고 해서 망설였는데 용기 내볼게요.",
         createdAt: "2026-09-15T09:40:00+09:00",
@@ -142,9 +142,9 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     ],
   },
   {
-    id: 7,
+    id: "7",
     author: { id: "user-feed-106", name: "합정야식러", level: "라멘 입문자 (Lv.2)" },
-    shop: logShop(4),
+    shop: logShop("4"),
     menuName: "블랙 쇼유 라멘",
     ramenType: "쇼유",
     visitedAt: "2026. 09. 12",
@@ -167,9 +167,9 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     comments: [],
   },
   {
-    id: 8,
+    id: "8",
     author: { id: "user-feed-107", name: "시오러버", level: "라멘집 단골 (Lv.4)" },
-    shop: logShop(8),
+    shop: logShop("8"),
     menuName: "유자 시오 라멘",
     ramenType: "시오",
     visitedAt: "2026. 09. 10",
@@ -191,8 +191,8 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     commentCount: 1,
     comments: [
       {
-        id: 107,
-        logId: 8,
+        id: "107",
+        logId: "8",
         author: { id: "user-201", name: "멘마수집가", level: "라멘 미식가 (Lv.5)" },
         content: "여기 계란 반숙 정도가 정말 좋더라고요.",
         createdAt: "2026-09-10T15:03:00+09:00",
@@ -202,9 +202,9 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     ],
   },
   {
-    id: 9,
+    id: "9",
     author: { id: "user-feed-102", name: "토리파이탄러버", level: "라멘집 단골 (Lv.4)" },
-    shop: logShop(6),
+    shop: logShop("6"),
     menuName: "토리파이탄 라멘",
     ramenType: "돈코츠",
     visitedAt: "2026. 09. 07",
@@ -227,9 +227,9 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     comments: [],
   },
   {
-    id: 10,
+    id: "10",
     author: { id: "user-feed-108", name: "주말면식가", level: "라멘집 탐험가 (Lv.3)" },
-    shop: logShop(5),
+    shop: logShop("5"),
     menuName: "오리 쇼유 라멘",
     ramenType: "쇼유",
     visitedAt: "2026. 09. 05",
@@ -252,9 +252,9 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     comments: [],
   },
   {
-    id: 11,
+    id: "11",
     author: { id: "user-feed-104", name: "면발탐정", level: "라멘집 탐험가 (Lv.3)" },
-    shop: logShop(2),
+    shop: logShop("2"),
     menuName: "삿포로 미소 라멘",
     ramenType: "미소",
     visitedAt: "2026. 09. 03",
@@ -276,8 +276,8 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
     commentCount: 2,
     comments: [
       {
-        id: 108,
-        logId: 11,
+        id: "108",
+        logId: "11",
         author: { id: "user-feed-103", name: "미소천사", level: "라멘집 탐험가 (Lv.3)" },
         content: "버터 추가 조합 인정합니다. 콘도 같이 넣으면 더 좋아요.",
         createdAt: "2026-09-03T20:30:00+09:00",
@@ -285,8 +285,8 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
         isLiked: false,
       },
       {
-        id: 109,
-        logId: 11,
+        id: "109",
+        logId: "11",
         author: { id: "user-feed-108", name: "주말면식가", level: "라멘집 탐험가 (Lv.3)" },
         content: "이번 주말에 가보려고요. 웨이팅은 어느 정도였나요?",
         createdAt: "2026-09-04T11:15:00+09:00",
@@ -299,11 +299,11 @@ const LOUNGE_FEED_LOGS: RamenLog[] = [
 
 export const INITIAL_LOGS: RamenLog[] = [
   {
-    id: 1,
+    id: "1",
     // 데모 계정의 기록은 공유 원장(DEMO_BOWLS)에 있다. 여기 넣으면 42그릇이 두 번 세어진다.
     author: { id: "user-201", name: "멘마수집가", level: "라멘 미식가 (Lv.5)" },
     shop: {
-      id: 1,
+      id: "1",
       name: "멘야준",
       branch: "망원 본점",
       location: "서울 마포구",
@@ -329,8 +329,8 @@ export const INITIAL_LOGS: RamenLog[] = [
     commentCount: 2,
     comments: [
       {
-        id: 101,
-        logId: 1,
+        id: "101",
+        logId: "1",
         author: {
           id: "user-feed-201",
           name: "쇼유러버",
@@ -342,8 +342,8 @@ export const INITIAL_LOGS: RamenLog[] = [
         isLiked: false,
       },
       {
-        id: 102,
-        logId: 1,
+        id: "102",
+        logId: "1",
         author: {
           id: "user-feed-202",
           name: "차슈폭격기",
@@ -357,14 +357,14 @@ export const INITIAL_LOGS: RamenLog[] = [
     ],
   },
   {
-    id: 2,
+    id: "2",
     author: {
       id: "user-feed-102",
       name: "토리파이탄러버",
       level: "라멘집 단골 (Lv.4)",
     },
     shop: {
-      id: 3,
+      id: "3",
       name: "오레노라멘",
       branch: "마포 본점",
       location: "서울 마포구",
@@ -390,8 +390,8 @@ export const INITIAL_LOGS: RamenLog[] = [
     commentCount: 1,
     comments: [
       {
-        id: 103,
-        logId: 2,
+        id: "103",
+        logId: "2",
         author: {
           id: "user-feed-203",
           name: "돈골파마스터",
@@ -405,14 +405,14 @@ export const INITIAL_LOGS: RamenLog[] = [
     ],
   },
   {
-    id: 3,
+    id: "3",
     author: {
       id: "user-feed-103",
       name: "미소천사",
       level: "라멘집 탐험가 (Lv.3)",
     },
     shop: {
-      id: 2,
+      id: "2",
       name: "후쿠 라멘",
       branch: "합정점",
       location: "서울 마포구",
@@ -452,7 +452,7 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
     isRead: false,
     senderName: "멘마수집가",
     targetScreen: "lounge",
-    targetLogId: 1,
+    targetLogId: "1",
   },
   {
     id: "noti-2",
@@ -463,7 +463,7 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
     isRead: false,
     senderName: "쇼유러버",
     targetScreen: "community-post",
-    targetPostId: 1,
+    targetPostId: "1",
   },
   {
     id: "noti-3",
@@ -482,7 +482,7 @@ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
     time: "2일 전",
     isRead: true,
     targetScreen: "shop",
-    targetShopId: 4,
+    targetShopId: "4",
     shopName: "세상끝의라멘",
   },
   {
@@ -506,8 +506,8 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 
 export const NEWS_ITEMS: NewsItem[] = [
   {
-    id: 1,
-    shopId: 1,
+    id: "1",
+    shopId: "1",
     shopName: "멘야준",
     branch: "망원 본점",
     handle: "@menyajun_official",
@@ -523,8 +523,8 @@ export const NEWS_ITEMS: NewsItem[] = [
     instagramUrl: "https://www.instagram.com/menyajun_official",
   },
   {
-    id: 2,
-    shopId: 3,
+    id: "2",
+    shopId: "3",
     shopName: "오레노라멘",
     branch: "마포 본점",
     handle: "@orenoramen_kr",
@@ -540,8 +540,8 @@ export const NEWS_ITEMS: NewsItem[] = [
     instagramUrl: "https://www.instagram.com/orenoramen_kr",
   },
   {
-    id: 3,
-    shopId: 2,
+    id: "3",
+    shopId: "2",
     shopName: "후쿠 라멘",
     branch: "합정점",
     handle: "@fuku_ramen_seoul",
@@ -557,8 +557,8 @@ export const NEWS_ITEMS: NewsItem[] = [
     instagramUrl: "https://www.instagram.com/fuku_ramen_seoul",
   },
   {
-    id: 4,
-    shopId: 4,
+    id: "4",
+    shopId: "4",
     shopName: "세상끝의라멘",
     branch: "합정점",
     handle: "@ramen_end_of_world",
@@ -577,7 +577,7 @@ export const NEWS_ITEMS: NewsItem[] = [
 
 export const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
-    id: 1,
+    id: "1",
     category: "REVIEW",
     categoryLabel: "맛집후기",
     title: "망원·합정 인생 쇼유 라멘 3곳 추천합니다",
@@ -592,13 +592,13 @@ export const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     commentCount: 2,
     viewCount: 318,
     isLiked: true,
-    shopId: 1,
+    shopId: "1",
     shopName: "멘야준",
     imageUrls: [RAMEN_PHOTO_1],
     comments: [
       {
-        id: 1,
-        postId: 1,
+        id: "1",
+        postId: "1",
         author: { id: "user-201", name: "멘마수집가", level: "라멘 미식가" },
         content: "특제 쇼유는 정말 반박하기 어려운 1위죠!",
         createdAt: "2026-09-01T12:45:00+09:00",
@@ -606,20 +606,20 @@ export const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
         isLiked: false,
       },
       {
-        id: 2,
-        postId: 1,
+        id: "2",
+        postId: "1",
         author: { id: "user-101", name: "쇼유장인", level: "라멘 미식가" },
         content: "첫 방문에는 특제 쇼유와 꼬들한 면을 추천해요.",
         createdAt: "2026-09-01T12:55:00+09:00",
         likes: 7,
         isLiked: true,
-        parentId: 1,
+        parentId: "1",
         parentAuthorName: "멘마수집가",
       },
     ],
   },
   {
-    id: 2,
+    id: "2",
     category: "QUESTION",
     categoryLabel: "Q&A",
     title: "진한 돈코츠 입문용 매장을 추천해 주세요",
@@ -630,13 +630,13 @@ export const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     commentCount: 1,
     viewCount: 184,
     isLiked: false,
-    shopId: 7,
+    shopId: "7",
     shopName: "하쿠텐",
     imageUrls: [],
     comments: [
       {
-        id: 3,
-        postId: 2,
+        id: "3",
+        postId: "2",
         author: { id: "user-203", name: "돈골파마스터", level: "라멘 미식가" },
         content: "하쿠텐에서 맛 보통, 기름 적게로 시작해 보세요.",
         createdAt: "2026-09-01T11:31:00+09:00",
@@ -646,7 +646,7 @@ export const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     ],
   },
   {
-    id: 3,
+    id: "3",
     category: "TIP",
     categoryLabel: "꿀팁",
     title: "라멘 사진이 맛있어 보이는 세 가지 각도",
@@ -666,7 +666,7 @@ export const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
     comments: [],
   },
   {
-    id: 4,
+    id: "4",
     category: "FREE",
     categoryLabel: "자유",
     title: "이번 주말 합정 라멘 투어 동선",
@@ -710,7 +710,7 @@ export const INITIAL_TASTE_REPORTS: TasteReport[] = [
     topShops: [
       {
         rank: 1,
-        shopId: 1,
+        shopId: "1",
         style: "쇼유",
         matchPercent: 96,
         mustTry: "특제 쇼유 라멘",
@@ -719,7 +719,7 @@ export const INITIAL_TASTE_REPORTS: TasteReport[] = [
       },
       {
         rank: 2,
-        shopId: 3,
+        shopId: "3",
         style: "토리파이탄",
         matchPercent: 92,
         mustTry: "토리파이탄 라멘",
@@ -728,7 +728,7 @@ export const INITIAL_TASTE_REPORTS: TasteReport[] = [
       },
       {
         rank: 3,
-        shopId: 4,
+        shopId: "4",
         style: "블랙 쇼유",
         matchPercent: 90,
         mustTry: "끝라멘",
@@ -787,7 +787,7 @@ export const INITIAL_TASTE_REPORTS: TasteReport[] = [
     topShops: [
       {
         rank: 1,
-        shopId: 1,
+        shopId: "1",
         style: "쇼유",
         matchPercent: 94,
         mustTry: "쇼유 라멘",
@@ -830,7 +830,7 @@ export const INITIAL_TASTE_REPORTS: TasteReport[] = [
     topShops: [
       {
         rank: 1,
-        shopId: 8,
+        shopId: "8",
         style: "시오",
         matchPercent: 88,
         mustTry: "유자 시오 라멘",
@@ -857,8 +857,8 @@ export const INITIAL_PERSISTED_STATE: PersistedAppStateV1 = {
   onboardingCompleted: true,
   logs: INITIAL_LOGS,
   // 웹과 같은 데모 찜 목록(DEMO_SAVED_SHOP_NAMES: 멘야준·오레노라멘·묘코·세상끝의라멘)
-  bookmarkedShopIds: [1, 3, 5, 4],
-  subscribedShopIds: [1, 3],
+  bookmarkedShopIds: ["1", "3", "5", "4"],
+  subscribedShopIds: ["1", "3"],
   communityPosts: INITIAL_COMMUNITY_POSTS,
   notifications: INITIAL_NOTIFICATIONS,
   notificationSettings: DEFAULT_NOTIFICATION_SETTINGS,

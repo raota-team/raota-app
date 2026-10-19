@@ -44,6 +44,7 @@ import {
 } from "../repository"
 import { track } from "../analytics"
 import { validateRecordDraft } from "../domain/record"
+import { compareShopIds } from "../domain/shops"
 import {
   clearPersistedMediaDirectory,
   deletePersistedMediaMany,
@@ -54,7 +55,7 @@ import {
 type HydrationStatus = "loading" | "ready" | "error"
 
 export interface PendingRecordDraft {
-  shopId: number | null
+  shopId: string | null
 }
 
 export interface RaotaState extends PersistedAppStateV1 {
@@ -66,8 +67,8 @@ export interface RaotaState extends PersistedAppStateV1 {
 export type RaotaAction =
   | { type: "HYDRATE"; payload: PersistedAppStateV1 }
   | { type: "STORAGE_ERROR"; payload: string | null }
-  | { type: "START_RECORD_DRAFT"; payload: number | null }
-  | { type: "SELECT_RECORD_DRAFT_SHOP"; payload: number }
+  | { type: "START_RECORD_DRAFT"; payload: string | null }
+  | { type: "SELECT_RECORD_DRAFT_SHOP"; payload: string }
   | { type: "CLEAR_RECORD_DRAFT" }
   | {
       type: "LOGIN"
@@ -75,27 +76,27 @@ export type RaotaAction =
       /** 이 기기에서 처음 쓰는 계정이면 온보딩을 다시 거친다 */
       onboardingCompleted?: boolean
       /** 계정이 바뀌면 찜 목록도 그 계정 것으로 바꾼다 */
-      bookmarkedShopIds?: number[]
+      bookmarkedShopIds?: string[]
     }
   | { type: "COMPLETE_ONBOARDING"; payload: UserProfile }
   | { type: "LOGOUT" }
   | { type: "WITHDRAW"; payload: PersistedAppStateV1 }
   | { type: "UPDATE_PROFILE"; payload: ProfileUpdateInput }
-  | { type: "TOGGLE_BOOKMARK"; payload: number }
+  | { type: "TOGGLE_BOOKMARK"; payload: string }
   | { type: "CREATE_LOG"; payload: RamenLog }
-  | { type: "DELETE_LOG"; payload: number }
-  | { type: "TOGGLE_LOG_LIKE"; payload: number }
+  | { type: "DELETE_LOG"; payload: string }
+  | { type: "TOGGLE_LOG_LIKE"; payload: string }
   | {
       type: "ADD_LOG_COMMENT"
-      payload: { logId: number; comment: RamenLogComment }
+      payload: { logId: string; comment: RamenLogComment }
     }
-  | { type: "TOGGLE_SHOP_SUBSCRIPTION"; payload: number }
+  | { type: "TOGGLE_SHOP_SUBSCRIPTION"; payload: string }
   | { type: "CREATE_POST"; payload: CommunityPost }
   | {
       type: "ADD_COMMENT"
-      payload: { postId: number; comment: CommunityComment }
+      payload: { postId: string; comment: CommunityComment }
     }
-  | { type: "TOGGLE_POST_LIKE"; payload: number }
+  | { type: "TOGGLE_POST_LIKE"; payload: string }
   | { type: "MARK_NOTIFICATION_READ"; payload: string }
   | { type: "MARK_ALL_NOTIFICATIONS_READ" }
   | { type: "DELETE_NOTIFICATION"; payload: string }
@@ -109,9 +110,9 @@ export type RaotaAction =
   | { type: "REPORT_CONTENT"; payload: ContentReport }
 
 /** 데모 계정의 찜 목록(웹과 같은 DEMO_SAVED_SHOP_NAMES) */
-function demoBookmarkIds(): number[] {
+function demoBookmarkIds(): string[] {
   return DEMO_SAVED_SHOP_NAMES.map((name) => findShopByName(name)?.id).filter(
-    (id): id is number => typeof id === "number",
+    (id): id is string => typeof id === "string",
   )
 }
 
@@ -163,7 +164,7 @@ export function selectUnreadNotificationCount(state: RaotaState): number {
   )
 }
 
-function toggleNumber(items: number[], id: number): number[] {
+function toggleId(items: string[], id: string): string[] {
   return items.includes(id)
     ? items.filter((item) => item !== id)
     : [...items, id]
@@ -276,7 +277,7 @@ export function raotaReducer(
     case "TOGGLE_BOOKMARK":
       return {
         ...state,
-        bookmarkedShopIds: toggleNumber(
+        bookmarkedShopIds: toggleId(
           state.bookmarkedShopIds,
           action.payload,
         ),
@@ -347,7 +348,7 @@ export function raotaReducer(
     case "TOGGLE_SHOP_SUBSCRIPTION":
       return {
         ...state,
-        subscribedShopIds: toggleNumber(
+        subscribedShopIds: toggleId(
           state.subscribedShopIds,
           action.payload,
         ),
@@ -446,8 +447,15 @@ const CATEGORY_LABELS: Record<CreateCommunityPostInput["category"], string> = {
   FREE: "자유",
 }
 
-function nextNumericId(items: Array<{ id: number }>): number {
-  return items.reduce((max, item) => Math.max(max, item.id), 0) + 1
+function nextNumericId(items: Array<{ id: string }>, lastAllocatedId: string): string {
+  let maxId = BigInt(lastAllocatedId)
+  // 서버 BIGINT 문자열도 Number로 줄이지 않고 다음 데모 번호를 만든다.
+  for (const item of items) {
+    if (!/^\d+$/.test(item.id)) continue
+    const id = BigInt(item.id)
+    if (id > maxId) maxId = id
+  }
+  return (maxId + BigInt(1)).toString()
 }
 
 function formatKoreanDate(date: Date): string {
@@ -481,16 +489,16 @@ export function buildTasteReport(
   }, {})
   const rankedStyles = Object.entries(styleCounts).sort((a, b) => b[1] - a[1])
   const favoriteStyle = rankedStyles[0]?.[0] ?? "쇼유"
-  const shopCounts = logs.reduce<Record<number, number>>((counts, log) => {
+  const shopCounts = logs.reduce<Record<string, number>>((counts, log) => {
     counts[log.shop.id] = (counts[log.shop.id] ?? 0) + 1
     return counts
   }, {})
   const topShopEntries = Object.entries(shopCounts)
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => b[1] - a[1] || compareShopIds(a[0], b[0]))
     .slice(0, 3)
   const fallbackTopShops = shops
     .slice(0, 3)
-    .map((shop) => [String(shop.id), 0] as const)
+    .map((shop) => [shop.id, 0] as const)
   const selectedTopShops =
     topShopEntries.length > 0 ? topShopEntries : fallbackTopShops
 
@@ -550,7 +558,7 @@ export function buildTasteReport(
     ],
     topShops: selectedTopShops.map(([shopId, count], index) => {
       const shop =
-        shops.find((item) => item.id === Number(shopId)) ??
+        shops.find((item) => item.id === shopId) ??
         shops[index] ??
         SHOPS[0]
       return {
@@ -560,7 +568,7 @@ export function buildTasteReport(
         matchPercent: Math.max(75, shop.matchScore - index * 2),
         mustTry: `${shop.tags[0] ?? favoriteStyle} 추천 메뉴`,
         reason: `${shop.name}에서 남긴 취향 기록과 높은 일치도를 보입니다.`,
-        visitCount: Number(count),
+        visitCount: count,
       }
     }),
     styleShares: rankedStyles.length
@@ -608,7 +616,7 @@ function createWithdrawnState(): PersistedAppStateV1 {
 export interface ReportContentInput {
   kind: ContentReport["kind"]
   /** 라멘로그 id 또는 댓글 id */
-  id: number
+  id: string
   reason: ContentReportReason
 }
 
@@ -618,24 +626,24 @@ export interface RaotaActions {
   logout(): void
   withdraw(): Promise<void>
   updateProfile(input: ProfileUpdateInput): Promise<UserProfile | null>
-  startRecordDraft(shopId?: number | null): void
-  selectRecordDraftShop(shopId: number): void
+  startRecordDraft(shopId?: string | null): void
+  selectRecordDraftShop(shopId: string): void
   clearRecordDraft(): void
-  toggleBookmark(shopId: number): void
+  toggleBookmark(shopId: string): void
   createLog(input: CreateRamenLogInput): Promise<RamenLog>
-  deleteLog(logId: number): Promise<void>
-  toggleLogLike(logId: number): void
+  deleteLog(logId: string): Promise<void>
+  toggleLogLike(logId: string): void
   addLogComment(
-    logId: number,
+    logId: string,
     input: CreateRamenLogCommentInput,
   ): RamenLogComment | null
-  toggleShopSubscription(shopId: number): void
+  toggleShopSubscription(shopId: string): void
   createPost(input: CreateCommunityPostInput): Promise<CommunityPost>
   addComment(
-    postId: number,
+    postId: string,
     input: CreateCommunityCommentInput,
   ): CommunityComment | null
-  togglePostLike(postId: number): void
+  togglePostLike(postId: string): void
   markNotificationRead(notificationId: string): void
   markAllNotificationsRead(): void
   deleteNotification(notificationId: string): void
@@ -668,9 +676,9 @@ export interface RaotaContextValue {
   unreadNotificationCount: number
   bookmarkedShops: Shop[]
   subscribedNewsItems: NewsItem[]
-  getShop(id: number): Shop | undefined
-  getLog(id: number): RamenLog | undefined
-  getPost(id: number): CommunityPost | undefined
+  getShop(id: string): Shop | undefined
+  getLog(id: string): RamenLog | undefined
+  getPost(id: string): CommunityPost | undefined
   actions: RaotaActions
 }
 
@@ -695,7 +703,7 @@ export function RaotaProvider({
     undefined,
     createInitialRaotaState,
   )
-  const allocatedIds = useRef({ log: 0, post: 0, comment: 0 })
+  const allocatedIds = useRef({ log: "0", post: "0", comment: "0" })
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
@@ -865,17 +873,17 @@ export function RaotaProvider({
   )
 
   const toggleBookmark = useCallback(
-    (shopId: number) => dispatch({ type: "TOGGLE_BOOKMARK", payload: shopId }),
+    (shopId: string) => dispatch({ type: "TOGGLE_BOOKMARK", payload: shopId }),
     [],
   )
 
   const startRecordDraft = useCallback(
-    (shopId: number | null = null) =>
+    (shopId: string | null = null) =>
       dispatch({ type: "START_RECORD_DRAFT", payload: shopId }),
     [],
   )
   const selectRecordDraftShop = useCallback(
-    (shopId: number) =>
+    (shopId: string) =>
       dispatch({ type: "SELECT_RECORD_DRAFT_SHOP", payload: shopId }),
     [],
   )
@@ -907,10 +915,7 @@ export function RaotaProvider({
           : await persistMediaFile(input.imageUrl, "ramen-log-cover")
         : (persistedPhotos[0] ?? null)
       const shop = SHOPS.find((item) => item.id === input.shopId)
-      const nextLogId = Math.max(
-        nextNumericId(state.logs),
-        allocatedIds.current.log + 1,
-      )
+      const nextLogId = nextNumericId(state.logs, allocatedIds.current.log)
       allocatedIds.current.log = nextLogId
       const log: RamenLog = {
         id: nextLogId,
@@ -963,7 +968,7 @@ export function RaotaProvider({
   )
 
   const deleteLog = useCallback(
-    async (logId: number) => {
+    async (logId: string) => {
       const log = state.logs.find((item) => item.id === logId)
       if (!log) return
       const currentUser = selectCurrentUser(state)
@@ -975,12 +980,12 @@ export function RaotaProvider({
   )
 
   const toggleLogLike = useCallback(
-    (logId: number) => dispatch({ type: "TOGGLE_LOG_LIKE", payload: logId }),
+    (logId: string) => dispatch({ type: "TOGGLE_LOG_LIKE", payload: logId }),
     [],
   )
   const addLogComment = useCallback(
     (
-      logId: number,
+      logId: string,
       input: CreateRamenLogCommentInput,
     ): RamenLogComment | null => {
       const log = state.logs.find((item) => item.id === logId)
@@ -989,10 +994,7 @@ export function RaotaProvider({
       if (!log || !user || !content) return null
 
       const allComments = state.logs.flatMap((item) => item.comments ?? [])
-      const nextCommentId = Math.max(
-        nextNumericId(allComments),
-        allocatedIds.current.comment + 1,
-      )
+      const nextCommentId = nextNumericId(allComments, allocatedIds.current.comment)
       allocatedIds.current.comment = nextCommentId
       const parent = input.parentId
         ? (log.comments ?? []).find((comment) => comment.id === input.parentId)
@@ -1019,7 +1021,7 @@ export function RaotaProvider({
     [state],
   )
   const toggleShopSubscription = useCallback(
-    (shopId: number) =>
+    (shopId: string) =>
       dispatch({ type: "TOGGLE_SHOP_SUBSCRIPTION", payload: shopId }),
     [],
   )
@@ -1035,10 +1037,7 @@ export function RaotaProvider({
       const shop = input.shopId
         ? SHOPS.find((item) => item.id === input.shopId)
         : undefined
-      const nextPostId = Math.max(
-        nextNumericId(state.communityPosts),
-        allocatedIds.current.post + 1,
-      )
+      const nextPostId = nextNumericId(state.communityPosts, allocatedIds.current.post)
       allocatedIds.current.post = nextPostId
       const post: CommunityPost = {
         id: nextPostId,
@@ -1071,7 +1070,7 @@ export function RaotaProvider({
 
   const addComment = useCallback(
     (
-      postId: number,
+      postId: string,
       input: CreateCommunityCommentInput,
     ): CommunityComment | null => {
       const post = state.communityPosts.find((item) => item.id === postId)
@@ -1082,10 +1081,7 @@ export function RaotaProvider({
         ? post.comments.find((comment) => comment.id === input.parentId)
         : undefined
       const allComments = state.communityPosts.flatMap((item) => item.comments)
-      const nextCommentId = Math.max(
-        nextNumericId(allComments),
-        allocatedIds.current.comment + 1,
-      )
+      const nextCommentId = nextNumericId(allComments, allocatedIds.current.comment)
       allocatedIds.current.comment = nextCommentId
       const comment: CommunityComment = {
         id: nextCommentId,
@@ -1110,7 +1106,7 @@ export function RaotaProvider({
   )
 
   const togglePostLike = useCallback(
-    (postId: number) => dispatch({ type: "TOGGLE_POST_LIKE", payload: postId }),
+    (postId: string) => dispatch({ type: "TOGGLE_POST_LIKE", payload: postId }),
     [],
   )
   const markNotificationRead = useCallback(

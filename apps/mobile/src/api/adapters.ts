@@ -17,13 +17,11 @@ import {
   type UserProfile,
 } from "@raota/shared"
 
-import { ApiError } from "./client"
 import type {
   Author,
   BusinessHour,
   BusinessStatus,
   CreateRamenLogRequest,
-  Id,
   MapPin,
   MemberMe,
   RamenLogComment,
@@ -41,36 +39,7 @@ import type {
 /**
  * 전선(wire) 타입 ⇄ 앱 타입(@raota/shared) 변환. 순수 함수만 둔다(요청·저장 없음).
  * 화면은 앱 타입만 보고, 서버 필드 이름은 이 파일 밖으로 새지 않는다.
- *
- * TODO(앱 id): 앱 타입의 id는 아직 number(Shop.id, RamenLog.id, RamenLogComment.id)인데
- * 서버 id는 BIGINT 문자열이다. Number.MAX_SAFE_INTEGER를 넘는 id는 담을 수 없어
- * toAppId가 조용히 반올림하지 않고 UNSUPPORTED_ID 오류를 낸다.
- * 서버를 붙이기 전에 앱 타입의 id를 문자열로 옮기는 작업(별도 PR)이 필요하다.
  */
-
-// ---------------------------------------------------------------------------
-// id
-// ---------------------------------------------------------------------------
-
-const DECIMAL_ID = /^\d+$/
-
-/** 서버 id(10진수 문자열) → 앱 id(number). 안전하게 담기지 않으면 오류를 낸다 */
-export function toAppId(id: Id, label = "id"): number {
-  const value = Number(id)
-  if (typeof id !== "string" || !DECIMAL_ID.test(id) || !Number.isSafeInteger(value)) {
-    throw new ApiError({
-      status: 0,
-      code: "UNSUPPORTED_ID",
-      message: `서버 ${label}(${String(id)})를 앱에서 다룰 수 없어요. 앱 업데이트가 필요해요.`,
-    })
-  }
-  return value
-}
-
-/** 앱 id(number) → 서버 id(문자열) */
-export function toWireId(id: number | string): Id {
-  return typeof id === "string" ? id : String(id)
-}
 
 // ---------------------------------------------------------------------------
 // 글쓴이·등급
@@ -233,10 +202,10 @@ export function toAppRamenLog(log: RamenLogSummary | RamenLogDetail): RamenLog {
   const revisit = revisitFromWire(log.revisitIntention)
   const photos = log.imageUrls ?? []
   return {
-    id: toAppId(log.id, "라멘로그 id"),
+    id: log.id,
     author: toAppAuthor(log.author),
     shop: {
-      id: toAppId(log.shop.id, "매장 id"),
+      id: log.shop.id,
       name: log.shop.name,
       branch: log.shop.branchName ?? undefined,
       location: log.shop.region ?? undefined,
@@ -263,8 +232,8 @@ export function toAppRamenLog(log: RamenLogSummary | RamenLogDetail): RamenLog {
 /** 답글 없는 한 줄 댓글. 앱의 parentId·공감은 서버에 없어 비워 둔다 */
 export function toAppRamenLogComment(comment: RamenLogComment): AppRamenLogComment {
   return {
-    id: toAppId(comment.id, "댓글 id"),
-    logId: toAppId(comment.logId, "라멘로그 id"),
+    id: comment.id,
+    logId: comment.logId,
     author: toAppCommentAuthor(comment.author),
     content: comment.content,
     createdAt: comment.createdAt,
@@ -291,7 +260,7 @@ export function toCreateRamenLogBody(
   options: CreateRamenLogBodyOptions = {},
 ): CreateRamenLogRequest {
   return {
-    shopId: toWireId(input.shopId),
+    shopId: input.shopId,
     visitedAt: input.visitedAt,
     menuName: input.menuName.trim(),
     ramenType: input.ramenType,
@@ -524,7 +493,7 @@ function businessStatusOf(shop: ShopSummary): string {
  */
 export function toAppShopSummary(shop: ShopSummary): RemoteShop {
   return {
-    id: toAppId(shop.id, "매장 id"),
+    id: shop.id,
     name: shop.name,
     branch: shop.branchName ?? undefined,
     address: shop.address,
@@ -580,7 +549,7 @@ export function toAppShopDetail(shop: ShopDetail, today: Date = new Date()): Rem
 }
 
 export interface RemoteMapPin {
-  id: number
+  id: string
   name: string
   branch?: string
   lat: number
@@ -596,7 +565,7 @@ export function toAppMapPin(pin: MapPin): RemoteMapPin {
   if (pin.isOpen === null) unknownFields.push("isOpen")
   if (pin.latitude === null || pin.longitude === null) unknownFields.push("location")
   return {
-    id: toAppId(pin.id, "매장 id"),
+    id: pin.id,
     name: pin.name,
     branch: pin.branchName ?? undefined,
     lat: pin.latitude ?? 0,

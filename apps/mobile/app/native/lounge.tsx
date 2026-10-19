@@ -40,7 +40,8 @@ export default function LoungeScreen() {
     const heights = [0, 0]
     for (const [index, log] of feed.data.entries()) {
       const hasPhoto = photosOf(log).length > 0
-      const tall = log.id % 3 !== 0
+      // 숫자로 바꾸면 BIGINT ID가 반올림돼 핀 높이 배치가 달라진다.
+      const tall = BigInt(log.id) % 3n !== 0n
       const noteLines = Math.min(5, Math.ceil((log.note.trim() || log.menuName).length / 14))
       const estimate = (hasPhoto ? (tall ? 250 : 180) : 28 + noteLines * 19) + 64
       const target = heights[0] <= heights[1] ? 0 : 1

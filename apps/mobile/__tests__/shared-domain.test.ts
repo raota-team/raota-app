@@ -23,9 +23,9 @@ import { migratePersistedState } from "@/src/repository/migrations"
 import { createInitialPersistedState } from "@/src/data/fixtures"
 
 const log = (overrides: Partial<RamenLog> = {}): RamenLog => ({
-  id: 9001,
+  id: "9001",
   author: { name: "테스터", level: "라멘 입문자" },
-  shop: { id: 2, name: "후쿠 라멘", branch: "합정점" },
+  shop: { id: "2", name: "후쿠 라멘", branch: "합정점" },
   menuName: "삿포로 미소 라멘",
   ramenType: "미소",
   visitedAt: "2026-09-18",
@@ -66,8 +66,8 @@ describe("shared ledger", () => {
     expect(fuku?.reviews).toEqual([])
     expect(fuku?.phone).toBeUndefined()
     expect(fuku?.instagramUrl).toBeUndefined()
-    expect(findShopById(4)?.name).toBe("세상끝의라멘")
-    expect(getShopDetail("없는 가게").id).toBe(0)
+    expect(findShopById("4")?.name).toBe("세상끝의라멘")
+    expect(getShopDetail("없는 가게").id).toBe("0")
   })
 
   it("rounds menu distribution labels to exactly 100 percent", () => {
@@ -107,7 +107,7 @@ describe("5-axis taste profile", () => {
   it("derives revisit from the revisit answer and skips logs without scores", () => {
     const after = mergeProfile({ count: 0, scores: { satisfaction: 0, brothDensity: 0, noodleFirmness: 0, topping: 0, revisit: 0 } }, [
       log({ revisit: "한번이면 충분" }),
-      log({ id: 2, scores: undefined }),
+      log({ id: "2", scores: undefined }),
     ])
     expect(after.count).toBe(1)
     expect(after.scores.revisit).toBe(1)

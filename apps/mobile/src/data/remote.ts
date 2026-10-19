@@ -31,7 +31,6 @@ import {
   toAppShopSummary,
   toCreateRamenLogBody,
   toUpdateMemberBody,
-  toWireId,
   revisitCountOf,
   type AppMember,
   type CreateRamenLogRequest,
@@ -126,8 +125,8 @@ export const remoteReads = {
   },
 
   /** 매장 하나. 없으면 null */
-  async shop(shopId: number | string): Promise<Shop | null> {
-    const detail = await orNull(shopApi.detail(toWireId(shopId)))
+  async shop(shopId: string): Promise<Shop | null> {
+    const detail = await orNull(shopApi.detail(shopId))
     return detail ? toAppShopDetail(detail) : null
   },
 
@@ -145,8 +144,8 @@ export const remoteReads = {
     return toAppBowls(await memberApi.myRamenLogSummary())
   },
 
-  async log(logId: number | string): Promise<RamenLog | null> {
-    const detail = await orNull(ramenLogApi.get(toWireId(logId)))
+  async log(logId: string): Promise<RamenLog | null> {
+    const detail = await orNull(ramenLogApi.get(logId))
     return detail ? toAppRamenLog(detail) : null
   },
 
@@ -162,11 +161,10 @@ export const remoteReads = {
   },
 
   /** 라멘로그 상세 + 댓글 첫 쪽 */
-  async loungeLog(logId: number | string): Promise<{ log: RamenLog; comments: RamenLogComment[] } | null> {
-    const id = toWireId(logId)
-    const detail = await orNull(ramenLogApi.get(id))
+  async loungeLog(logId: string): Promise<{ log: RamenLog; comments: RamenLogComment[] } | null> {
+    const detail = await orNull(ramenLogApi.get(logId))
     if (!detail) return null
-    const comments = await loungeApi.comments(id)
+    const comments = await loungeApi.comments(logId)
     return { log: toAppRamenLog(detail), comments: toAppRamenLogComments(comments.items ?? []) }
   },
 
@@ -206,9 +204,8 @@ export interface CreateRamenLogOptions {
 }
 
 export const remoteWrites = {
-  async toggleBookmark(shopId: number | string, saved: boolean): Promise<void> {
-    const id = toWireId(shopId)
-    await (saved ? shopApi.bookmark(id) : shopApi.removeBookmark(id))
+  async toggleBookmark(shopId: string, saved: boolean): Promise<void> {
+    await (saved ? shopApi.bookmark(shopId) : shopApi.removeBookmark(shopId))
   },
 
   /**
@@ -230,43 +227,42 @@ export const remoteWrites = {
     return toAppRamenLog(detail)
   },
 
-  async deleteRamenLog(logId: number | string): Promise<void> {
-    await ramenLogApi.remove(toWireId(logId))
+  async deleteRamenLog(logId: string): Promise<void> {
+    await ramenLogApi.remove(logId)
   },
 
   /** 공감. 서버가 바뀐 공감 수를 돌려주므로 화면은 그 값으로 맞춘다 */
-  async toggleLogLike(logId: number | string, liked: boolean): Promise<{ liked: boolean; likeCount: number }> {
-    const id = toWireId(logId)
-    return liked ? loungeApi.like(id) : loungeApi.unlike(id)
+  async toggleLogLike(logId: string, liked: boolean): Promise<{ liked: boolean; likeCount: number }> {
+    return liked ? loungeApi.like(logId) : loungeApi.unlike(logId)
   },
 
   /** 댓글 작성(답글은 없다) */
   async addLogComment(
-    logId: number | string,
+    logId: string,
     input: CreateRamenLogCommentInput,
     options: CreateRamenLogOptions = {},
   ): Promise<RamenLogComment> {
     const body = { content: input.content.trim() }
-    const comment = await loungeApi.createComment(toWireId(logId), body, {
+    const comment = await loungeApi.createComment(logId, body, {
       accountId: options.accountId,
-      fingerprint: fingerprintOf({ operation: "CREATE_COMMENT", logId: toWireId(logId), body }),
+      fingerprint: fingerprintOf({ operation: "CREATE_COMMENT", logId, body }),
     })
     return toAppRamenLogComment(comment)
   },
 
-  async deleteLogComment(commentId: number | string): Promise<void> {
-    await loungeApi.deleteComment(toWireId(commentId))
+  async deleteLogComment(commentId: string): Promise<void> {
+    await loungeApi.deleteComment(commentId)
   },
 
   /** 신고. 같은 대상을 다시 신고해도 성공이다 */
   async reportContent(input: {
     kind: ContentReport["kind"]
-    id: number | string
+    id: string
     reason: ContentReportReason
   }): Promise<void> {
     await loungeApi.report({
       targetType: input.kind === "log" ? "RAMEN_LOG" : "RAMEN_LOG_COMMENT",
-      targetId: toWireId(input.id),
+      targetId: input.id,
       reason: REPORT_REASON_TO_WIRE[input.reason],
     })
   },

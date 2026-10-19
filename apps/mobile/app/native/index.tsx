@@ -64,8 +64,8 @@ function formatPickDate(isoDate: string) {
   return `${month}월 ${day}일 (${weekday})`
 }
 
-function openShop(shopId: number) {
-  router.push({ pathname: "/shop/[shopId]", params: { shopId: String(shopId) } })
+function openShop(shopId: string) {
+  router.push({ pathname: "/shop/[shopId]", params: { shopId } })
 }
 
 /** 원장 매장의 표시용 텍스트(스타일·특징·태그·소개). 추천 이유를 판정할 때 쓴다 */
@@ -539,7 +539,7 @@ export default function HomeScreen() {
                   accessibilityLabel={`${log.author.name}의 라멘로그, ${log.shop.name} ${log.menuName}`}
                   accessibilityRole="button"
                   key={log.id}
-                  onPress={() => router.push({ pathname: "/log/[logId]", params: { logId: String(log.id) } })}
+                  onPress={() => router.push({ pathname: "/log/[logId]", params: { logId: log.id } })}
                   style={({ pressed }) => [styles.loungePin, pressed && pressFade]}
                 >
                   <View style={styles.loungePhoto}>

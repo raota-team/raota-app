@@ -51,7 +51,7 @@ describe("src/data/remote", () => {
     // 비회원도 볼 수 있는 읽기라 토큰 없이 나간다
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined()
     expect(page.nextCursor).toBe("c2")
-    expect(page.items[0]).toMatchObject({ id: 7, name: "하쿠텐", branch: "연남점", reviewCount: 128 })
+    expect(page.items[0]).toMatchObject({ id: "7", name: "하쿠텐", branch: "연남점", reviewCount: 128 })
   })
 
   it("hook마다 대응하는 함수가 준비돼 있다", () => {
