@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import type { Shop, ShopCatalogItem } from "@raota/shared"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, BottomSheet, EmptyState, LoadingState } from "@/src/components/ui"
-import { useShops } from "@/src/data/hooks"
+import { useMapShops } from "@/src/data/hooks"
 import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
 import { colors, line, maxFontScale, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
 
@@ -49,9 +49,11 @@ export function formatDistance(meters: number) {
 }
 
 function distanceLabel(shop: MapShop) {
-  return "unknownFields" in shop && Array.isArray(shop.unknownFields) && shop.unknownFields.includes("distance")
-    ? "거리 정보 없음"
-    : formatDistance(shop.distanceM)
+  return shop.distanceM > 0
+    ? formatDistance(shop.distanceM)
+    : "unknownFields" in shop && Array.isArray(shop.unknownFields) && shop.unknownFields.includes("distance")
+      ? "거리 정보 없음"
+      : formatDistance(shop.distanceM)
 }
 
 /** 영업 상태는 원장의 businessStatus와 isOpen에서만 계산한다 */
@@ -69,9 +71,7 @@ function shopLabel(shop: MapShop) {
   return `${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${distanceLabel(shop)}, ${status.label}`
 }
 
-/**
- * 지역 · 메뉴 · 영업 중 · 검색어 필터와 거리/인기 정렬. 위치가 있으면 실제 거리로 다시 계산한다.
- */
+/** 서버 모드에서는 전체 지도 매장을 같은 요청으로 받아 핀과 목록을 만든다. mock은 기존 필터·정렬을 유지한다. */
 export function useMapFilters(origin: Coordinate | null) {
   const [search, setSearch] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
@@ -83,15 +83,14 @@ export function useMapFilters(origin: Coordinate | null) {
     const timer = setTimeout(() => setSearchQuery(search.trim()), 300)
     return () => clearTimeout(timer)
   }, [search])
-  const shopsQuery = useShops({
+  const shopsQuery = useMapShops({
     query: searchQuery || undefined,
     ramenType: menu === "ALL" ? undefined : menu,
     openNow: onlyOpen || undefined,
-    sort: sort === "popular" ? "POPULAR" : origin ? "DISTANCE" : undefined,
+    sort: sort === "popular" || !origin ? "POPULAR" : "DISTANCE",
     latitude: origin?.latitude,
     longitude: origin?.longitude,
   })
-
   // 홈의 "스타일로 찾기"가 지도 탭으로 넘기는 메뉴 필터(예: ?menu=쇼유). 모르는 값은 무시한다.
   // 같은 값으로 다시 들어오면 탭 파라미터가 바뀌지 않아 효과가 다시 돌지 않는다(사용자가 필터를 직접 풀었을 때).
   const params = useLocalSearchParams<{ menu?: string }>()
@@ -102,23 +101,26 @@ export function useMapFilters(origin: Coordinate | null) {
   const mapShops = useMemo<MapShop[]>(
     () =>
       shopsQuery.data
-        .filter((shop) => shop.lat && shop.lng)
+        .filter((shop) => shopsQuery.remote || (shop.lat && shop.lng))
         .map((shop) =>
-          origin
+          origin && shop.lat && shop.lng
             ? { ...shop, distanceM: Math.round(distanceBetweenCoordinates(origin, { latitude: shop.lat, longitude: shop.lng })) }
             : shop,
         ),
-    [origin, shopsQuery.data],
+    [origin, shopsQuery.data, shopsQuery.remote],
   )
 
   const filtered = useMemo(() => {
     const regionKeys = REGION_OPTIONS.find((option) => option.value === region)?.keys ?? []
+    const inRegion = regionKeys.length
+      ? mapShops.filter((shop) => regionKeys.some((key) => (shop.branch ?? "").includes(key) || shop.address.includes(key)))
+      : mapShops
+    if (shopsQuery.remote) return inRegion // 나머지 필터와 정렬은 서버의 전체 결과를 따른다.
     const menuOption = MENU_OPTIONS.find((option) => option.value === menu)
     const query = search.trim().toLocaleLowerCase("ko-KR")
-    return mapShops
+    return inRegion
       .filter((shop) => {
         if (onlyOpen && !statusOf(shop).open) return false
-        if (regionKeys.length && !regionKeys.some((key) => (shop.branch ?? "").includes(key) || shop.address.includes(key))) return false
         if (menuOption && menuOption.value !== "ALL" && !matchesShopRamenType(shop, menuOption.value, menuOption.keys)) {
           return false
         }
@@ -136,14 +138,14 @@ export function useMapFilters(origin: Coordinate | null) {
           ? b.reviewCount - a.reviewCount || b.rating - a.rating || a.distanceM - b.distanceM
           : a.distanceM - b.distanceM,
       )
-  }, [mapShops, menu, onlyOpen, region, search, sort])
-
+  }, [mapShops, menu, onlyOpen, region, search, shopsQuery.remote, sort])
   const hasActiveFilter = region !== "ALL" || menu !== "ALL" || onlyOpen
+  const pendingSearch = shopsQuery.remote && search.trim() !== searchQuery
   return {
-    isLoading: shopsQuery.isLoading,
+    isLoading: shopsQuery.isLoading || pendingSearch,
     error: shopsQuery.error,
-    hasMore: shopsQuery.hasMore,
-    loadMore: shopsQuery.loadMore,
+    allShops: mapShops,
+    remote: shopsQuery.remote,
     search,
     setSearch,
     region,
@@ -152,9 +154,9 @@ export function useMapFilters(origin: Coordinate | null) {
     setMenu,
     onlyOpen,
     setOnlyOpen,
-    sort,
+    sort: shopsQuery.remote && !origin ? "popular" : sort,
     setSort,
-    filtered,
+    filtered: pendingSearch ? [] : filtered,
     hasActiveFilter,
     resetFilters: () => {
       setRegion("ALL")
@@ -475,7 +477,7 @@ export function ShopListView({ filters, notice }: { filters: MapFilters; notice?
           {notice}
           <View style={styles.listHead}>
             <AppText capScale style={styles.bold} variant="cardTitle">
-              {filters.hasMore ? `${filters.filtered.length}곳+` : `${filters.filtered.length}곳`}
+              {`${filters.filtered.length}곳`}
             </AppText>
             <View accessibilityLabel="정렬" accessibilityRole="radiogroup" style={styles.sortGroup}>
               <View style={styles.sortInner}>
@@ -503,16 +505,9 @@ export function ShopListView({ filters, notice }: { filters: MapFilters; notice?
         </View>
       }
       ItemSeparatorComponent={() => <View style={styles.listDivider} />}
-      ListFooterComponent={filters.error && filters.filtered.length ? (
-        <EmptyState actionLabel="다시 불러오기" onAction={filters.loadMore} title="다음 가게를 불러오지 못했어요" />
-      ) : filters.isLoading && filters.filtered.length ? <LoadingState label="더 불러오는 중…" /> : null}
       contentContainerStyle={styles.listContent}
       data={filters.filtered}
       keyExtractor={(shop) => shop.id}
-      onEndReached={() => {
-        if (filters.hasMore && !filters.isLoading && !filters.error) filters.loadMore()
-      }}
-      onEndReachedThreshold={0.6}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       renderItem={({ item }) => <ListRow shop={item} />}

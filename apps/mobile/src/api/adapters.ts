@@ -22,7 +22,6 @@ import type {
   BusinessHour,
   BusinessStatus,
   CreateRamenLogRequest,
-  MapPin,
   MemberMe,
   RamenLogComment,
   RamenLogDetail,
@@ -551,33 +550,6 @@ export function toAppShopDetail(shop: ShopDetail, today: Date = new Date()): Rem
   }
 }
 
-export interface RemoteMapPin {
-  id: string
-  name: string
-  branch?: string
-  lat: number
-  lng: number
-  ramenTypes: string[]
-  isOpen: boolean
-  unknownFields: ShopUnknownField[]
-}
-
-/** 지도 핀. 좌표를 모르는 매장은 지도에 찍을 수 없어 호출하는 쪽에서 걸러 낸다 */
-export function toAppMapPin(pin: MapPin): RemoteMapPin {
-  const unknownFields: ShopUnknownField[] = []
-  if (pin.isOpen === null) unknownFields.push("isOpen")
-  if (pin.latitude === null || pin.longitude === null) unknownFields.push("location")
-  return {
-    id: pin.id,
-    name: pin.name,
-    branch: pin.branchName ?? undefined,
-    lat: pin.latitude ?? 0,
-    lng: pin.longitude ?? 0,
-    ramenTypes: pin.ramenTypes ?? [],
-    isOpen: pin.isOpen ?? false,
-    unknownFields,
-  }
-}
 
 // ---------------------------------------------------------------------------
 // 회원

@@ -265,16 +265,8 @@ export interface ShopListParams extends CursorParams {
   longitude?: number
 }
 
-/** 지도 핀(전체 매장, 페이지 없음) */
-export interface MapPin {
-  id: Id
-  name: string
-  branchName: string | null
-  latitude: number | null
-  longitude: number | null
-  ramenTypes: RamenType[]
-  isOpen: boolean | null
-}
+/** 전체 지도 목록은 커서 없이 같은 필터를 사용한다. */
+export type ShopMapParams = Omit<ShopListParams, "cursor" | "size">
 
 // ---------------------------------------------------------------------------
 // 라멘로그 (#62)

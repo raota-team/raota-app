@@ -6,7 +6,6 @@ import {
   revisitFromWire,
   revisitToWire,
   toAppBowls,
-  toAppMapPin,
   toAppMember,
   toAppRamenLog,
   toAppRamenLogComments,
@@ -417,20 +416,6 @@ describe("매장", () => {
     expect(toServicePerks([])).toBeUndefined()
   })
 
-  it("지도 핀은 좌표를 모르면 표시해 둔다", () => {
-    expect(
-      toAppMapPin({ id: "7", name: "하쿠텐", branchName: "연남점", latitude: 37.5, longitude: 126.9, ramenTypes: ["돈코츠"], isOpen: null }),
-    ).toEqual({
-      id: "7",
-      name: "하쿠텐",
-      branch: "연남점",
-      lat: 37.5,
-      lng: 126.9,
-      ramenTypes: ["돈코츠"],
-      isOpen: false,
-      unknownFields: ["isOpen"],
-    })
-  })
 })
 
 describe("회원", () => {

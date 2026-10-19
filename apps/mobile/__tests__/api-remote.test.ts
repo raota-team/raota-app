@@ -2,11 +2,7 @@ import type { MemberMe, RamenLogDetail } from "@/src/api/types"
 import { tokenStore } from "@/src/api/tokens"
 import { OnboardingProfileUpdateError, remoteReads, remoteWrites, subscribeSessionEndedToLogout, type CompleteOnboardingInput } from "@/src/data/remote"
 
-/**
- * 서버로 옮길 때 쓸 자리(src/data/remote.ts)가 실제로 굴러가는지 본다.
- * 화면은 아직 이 파일을 쓰지 않아서(기본값 mock) 여기서 한 번은 불러 봐야
- * 모듈 연결(api/index → endpoints → adapters)과 전역 fetch 호출이 맞는지 확인할 수 있다.
- */
+/** 서버 읽기/쓰기 함수의 경로, 인증 및 화면용 변환을 테스트한다. */
 function success<T>(data: T) {
   return {
     status: 200,
@@ -107,6 +103,17 @@ describe("src/data/remote", () => {
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined()
     expect(page.nextCursor).toBe("c2")
     expect(page.items[0]).toMatchObject({ id: "7", name: "하쿠텐", branch: "연남점", reviewCount: 128 })
+  })
+
+  it("지도 전체 매장은 필터만 보내고 응답을 Shop[]으로 변환한다", async () => {
+    fetchMock.mockResolvedValueOnce(success([wireShop, { ...wireShop, id: "8", name: "좌표 없음", latitude: null, longitude: null }]))
+    const shops = await remoteReads.mapShops({ query: "566", sort: "POPULAR" })
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain("/shops/map?sort=POPULAR&query=566")
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined()
+    expect(shops).toHaveLength(2)
+    expect(shops[1]).toMatchObject({ name: "좌표 없음", lat: 0, lng: 0 })
   })
 
   it("상세 응답의 댓글 미리보기와 다음 커서만 쓰고 첫 댓글을 재요청하지 않는다", async () => {
@@ -220,7 +227,7 @@ describe("src/data/remote", () => {
   })
 
   it("hook마다 대응하는 함수가 준비돼 있다", () => {
-    for (const name of ["shops", "mapPins", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "loungeLogComments", "nicknameAvailability", "me", "todayCuration", "recommendations"] as const) {
+    for (const name of ["shops", "mapShops", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "loungeLogComments", "nicknameAvailability", "me", "todayCuration", "recommendations"] as const) {
       expect(typeof remoteReads[name]).toBe("function")
     }
     for (const name of ["completeOnboarding", "toggleBookmark", "createRamenLog", "deleteRamenLog", "toggleLogLike", "addLogComment", "deleteLogComment", "reportContent", "hideAuthor", "unhideAuthor", "updateProfile"] as const) {

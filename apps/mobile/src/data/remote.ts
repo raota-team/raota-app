@@ -22,7 +22,6 @@ import {
   shopApi,
   subscribeSessionEnded,
   toAppBowls,
-  toAppMapPin,
   toAppMember,
   toAppRamenLog,
   toAppRamenLogComment,
@@ -37,9 +36,9 @@ import {
   type LoungeSortParam,
   type OnboardingRequest,
   type RamenLogSummary,
-  type RemoteMapPin,
   type ReportReason,
   type ShopListParams,
+  type ShopMapParams,
 } from "../api"
 import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
 
@@ -49,7 +48,7 @@ import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
  *
  * 현재 연결된 hook ↔ 함수 ↔ 서버 경로
  * - useShops             → remoteReads.shops             GET /shops (커서)
- * - useMapPins           → remoteReads.mapPins           GET /shops/map-pins
+ * - useMapShops          → remoteReads.mapShops          GET /shops/map (전체 매장)
  * - useShop              → remoteReads.shop              GET /shops/{id}
  * - useTodayCuration     → remoteReads.todayCuration     GET /curations/today
  * - useLoungeLogs        → remoteReads.loungeLogs        GET /ramen-logs (커서)
@@ -129,10 +128,9 @@ export const remoteReads = {
     return toPage(await shopApi.list(params), toAppShopSummary)
   },
 
-  /** 지도 핀 전체. 좌표를 모르는 매장은 지도에 찍지 않는다 */
-  async mapPins(): Promise<RemoteMapPin[]> {
-    const pins = await shopApi.mapPins()
-    return pins.map(toAppMapPin).filter((pin) => !pin.unknownFields.includes("location"))
+  /** 지도와 목록의 전체 매장. 좌표 없는 매장도 목록에는 남겨 둔다. */
+  async mapShops(params: ShopMapParams = {}): Promise<Shop[]> {
+    return (await shopApi.map(params)).map(toAppShopSummary)
   },
 
   /** 매장 하나. 없으면 null */

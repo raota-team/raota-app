@@ -29,7 +29,7 @@ import {
   type TasteScores,
 } from "@raota/shared"
 
-import { isRemote, type RemoteMapPin, type ShopListParams } from "../api"
+import { isRemote, type ShopListParams, type ShopMapParams } from "../api"
 import { remoteReads, type RemoteLoungeLogDetail, type RemotePage } from "./remote"
 
 import {
@@ -190,20 +190,13 @@ export function useLocalShops(): Query<Shop[]> {
   return { data: shops, ...status }
 }
 
-/** 서버 지도 핀은 목록 커서와 별개로 전체를 읽는다. */
-export function useMapPins(): Query<RemoteMapPin[]> & { remote: boolean } {
+/** 지도와 목록은 같은 전체 매장을 읽는다. 좌표가 없는 매장은 지도에서만 제외한다. */
+export function useMapShops(params: ShopMapParams = {}): Query<Shop[]> & { remote: boolean } {
   const { shops } = useRaota()
   const status = useQueryState()
   const enabled = isRemote("shops")
-  const remote = useRemoteResult(enabled ? "shops:map-pins" : null, [] as RemoteMapPin[], remoteReads.mapPins)
-  const local = useMemo<RemoteMapPin[]>(
-    () => shops.filter((shop) => shop.lat && shop.lng).map((shop) => ({
-      id: shop.id, name: shop.name, branch: shop.branch, lat: shop.lat, lng: shop.lng,
-      ramenTypes: [], isOpen: shop.isOpen, unknownFields: [],
-    })),
-    [shops],
-  )
-  return enabled ? { ...remote, remote: true } : { data: local, ...status, remote: false }
+  const remote = useRemoteResult(enabled ? `shops:map:${JSON.stringify(params)}` : null, [] as Shop[], () => remoteReads.mapShops(params))
+  return enabled ? { ...remote, remote: true } : { data: shops, ...status, remote: false }
 }
 
 /** 없는 오늘의 큐레이션은 null(서버가 픽을 발행하지 않았을 때). */

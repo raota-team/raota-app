@@ -3,7 +3,7 @@ import type { PropsWithChildren } from "react"
 
 import { isRemote } from "@/src/api/config"
 import { createInitialPersistedState, SHOPS } from "@/src/data/fixtures"
-import { useLocalShops, useLoungeLog, useLoungeLogs, useMapPins, useShop, useShops, useTodayCuration } from "@/src/data/hooks"
+import { useLocalShops, useLoungeLog, useLoungeLogs, useMapShops, useShop, useShops, useTodayCuration } from "@/src/data/hooks"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider } from "@/src/state/RaotaStore"
 
@@ -65,15 +65,24 @@ describe("public data hooks", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("지도 핀은 목록 커서와 별개로 전부 받고 좌표 없는 가게는 찍지 않는다", async () => {
+  it("지도와 목록은 같은 전체 매장을 쓰며 좌표 없는 매장도 목록에 남긴다", async () => {
     remoteSwitch.mockImplementation((domain) => domain === "shops")
     fetchMock.mockResolvedValueOnce(success([
-      { id: "288", name: "566라멘", branchName: null, latitude: 37.56, longitude: 126.92, ramenTypes: ["기타"], isOpen: null },
-      { id: "missing-location", name: "좌표 없음", branchName: null, latitude: null, longitude: null, ramenTypes: [], isOpen: null },
+      wireShop,
+      { ...wireShop, id: "missing-location", name: "좌표 없음", latitude: null, longitude: null },
     ]))
-    const { result } = await renderHook(() => useMapPins(), { wrapper })
-    await waitFor(() => expect(result.current.data.map((pin) => pin.name)).toEqual(["566라멘"]))
-    expect(fetchMock.mock.calls[0][0]).toContain("/shops/map-pins")
+    const { result } = await renderHook(() => useMapShops({ query: "566", ramenType: "기타" }), { wrapper })
+    await waitFor(() => expect(result.current.data.map((shop) => shop.name)).toEqual(["566라멘", "좌표 없음"]))
+    expect(result.current.data[1]).toMatchObject({ id: "missing-location", lat: 0, lng: 0 })
+    expect(fetchMock.mock.calls[0][0]).toContain("/shops/map?query=566&ramenType=")
+    expect(fetchMock.mock.calls[0][0]).not.toMatch(/cursor=|size=/)
+  })
+
+  it("mock 지도 목록은 기존 전체 원장으로 유지하며 네트워크에 접속하지 않는다", async () => {
+    const { result } = await renderHook(() => useMapShops({ query: "566" }), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.data).toBe(SHOPS)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("remote 매장 목록은 커서 요청 후 다음 페이지를 이어 붙이고 중복 ID를 없앤다", async () => {

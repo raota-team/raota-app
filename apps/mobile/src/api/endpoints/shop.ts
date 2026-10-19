@@ -1,8 +1,8 @@
 import { apiClient, type ApiClient } from "../client"
-import type { CursorPage, Id, MapPin, ShopDetail, ShopListParams, ShopSummary } from "../types"
+import type { CursorPage, Id, ShopDetail, ShopListParams, ShopMapParams, ShopSummary } from "../types"
 
 /**
- * 매장 목록·지도 핀·상세·찜(#61).
+ * 매장 목록·지도 전체 매장·상세·찜(#61).
  * 목록과 상세는 비회원도 볼 수 있다(로그인했으면 찜 여부까지 함께 온다 → auth: "optional").
  */
 export function createShopApi(client: ApiClient = apiClient) {
@@ -25,9 +25,20 @@ export function createShopApi(client: ApiClient = apiClient) {
       })
     },
 
-    /** 지도에 찍을 전체 매장. 페이지가 없다 */
-    mapPins(): Promise<MapPin[]> {
-      return client.get<MapPin[]>("/shops/map-pins", { auth: "optional" })
+    /** 지도와 목록이 함께 쓰는 전체 매장. 커서 없이 서버 필터·정렬을 적용한다. */
+    map(params: ShopMapParams = {}): Promise<ShopSummary[]> {
+      return client.get<ShopSummary[]>("/shops/map", {
+        auth: "optional",
+        query: {
+          sort: params.sort,
+          query: params.query,
+          region: params.region,
+          ramenType: params.ramenType,
+          openNow: params.openNow,
+          latitude: params.latitude,
+          longitude: params.longitude,
+        },
+      })
     },
 
     detail(shopId: Id): Promise<ShopDetail> {

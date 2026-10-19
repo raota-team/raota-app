@@ -9,12 +9,11 @@ import { useReducedMotion } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { AppText } from "@/src/components/ui"
-import { useMapPins, useShop } from "@/src/data/hooks"
+import { useShop } from "@/src/data/hooks"
 import { calculateMapClusters } from "@/src/domain/map"
 import { colors, radii, spacing, touchTarget } from "@/src/theme"
 import {
   MAP_PIN_HEIGHT,
-  REGION_OPTIONS,
   MapHeader,
   MapClusterPin,
   MapShopPin,
@@ -66,7 +65,6 @@ export default function MapScreen() {
    */
   const [trackingPins, setTrackingPins] = useState(true)
   const filters = useMapFilters(origin)
-  const mapPins = useMapPins()
 
   useEffect(() => {
     let mounted = true
@@ -101,20 +99,11 @@ export default function MapScreen() {
   }, [])
 
   const filtered = filters.filtered
-  const selectedShop = useShop(selectedId).data
-  const selected = filtered.find((shop) => shop.id === selectedId) ?? selectedShop ?? filtered[0] ?? null
-  const markerShops = useMemo(() => {
-    if (!mapPins.remote) return filtered
-    const search = filters.search.trim().toLocaleLowerCase("ko-KR")
-    const regionKeys = REGION_OPTIONS.find((option) => option.value === filters.region)?.keys ?? []
-    return mapPins.data.filter((pin) => {
-      if (search && !`${pin.name} ${pin.branch ?? ""}`.toLocaleLowerCase("ko-KR").includes(search)) return false
-      if (filters.onlyOpen && !pin.isOpen) return false
-      if (filters.menu !== "ALL" && !pin.ramenTypes.includes(filters.menu)) return false
-      if (regionKeys.length && !filtered.some((shop) => shop.id === pin.id)) return false
-      return true
-    })
-  }, [filtered, filters.menu, filters.onlyOpen, filters.region, filters.search, mapPins.data, mapPins.remote])
+  // 좌표 없는 매장도 목록에 남기되, 지도 마커는 좌표가 있는 매장만 사용한다.
+  const markerShops = useMemo(() => filtered.filter((shop) => shop.lat && shop.lng), [filtered])
+  const selectedInList = filtered.find((shop) => shop.id === selectedId)
+  const selectedShop = useShop(selectedInList ? null : selectedId).data
+  const selected = selectedInList ?? selectedShop ?? markerShops[0] ?? null
   const clusters = useMemo(() => calculateMapClusters(markerShops, region), [markerShops, region])
 
   // 핀이 바뀌면 잠깐 다시 그리게 두고(로고가 실릴 시간) 곧 고정한다
@@ -148,12 +137,18 @@ export default function MapScreen() {
    * 지도 이동은 탭이 화면에 올라온 뒤에 한다. 가게 상세 뒤에 가려진 채로 부르면 Apple 지도가 무시한다.
    */
   const params = useLocalSearchParams<{ shopId?: string; focus?: string }>()
-  const focusShop = useShop(params.shopId).data
+  const focusInList = filters.allShops.find((shop) => shop.id === params.shopId)
+  const focusShop = useShop(focusInList ? null : params.shopId).data
   const focused = useIsFocused()
   const pendingFocus = useRef<Region | null>(null)
+  const handledFocus = useRef<string | null>(null)
   useEffect(() => {
-    const target = mapPins.data.find((pin) => pin.id === params.shopId) ?? focusShop
-    if (!target) return
+    if (!params.shopId) return
+    const target = focusInList ?? focusShop
+    if (!target?.lat || !target.lng) return
+    const focusKey = `${params.shopId}:${params.focus ?? ""}`
+    if (handledFocus.current === focusKey) return
+    handledFocus.current = focusKey
     if (!filters.filtered.some((shop) => shop.id === target.id)) {
       filters.resetFilters()
       filters.setSearch("")
@@ -161,9 +156,9 @@ export default function MapScreen() {
     setViewMode("map")
     setSelectedId(target.id)
     pendingFocus.current = { latitude: target.lat, longitude: target.lng, latitudeDelta: 0.012, longitudeDelta: 0.01 }
-    // 매장과 focus 값이 바뀔 때만 옮긴다. 필터가 바뀔 때마다 다시 끌려가면 안 된다
+    // 같은 이동 요청은 한 번만 처리한다. 검색·필터로 목록이 바뀌어도 카메라를 다시 끌어오지 않는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.shopId, params.focus, mapPins.data, focusShop])
+  }, [params.shopId, params.focus, focusInList, focusShop])
 
   const flushFocus = () => {
     if (!pendingFocus.current || !mapRef.current) return
@@ -266,8 +261,8 @@ export default function MapScreen() {
             />
             <View pointerEvents="box-none" style={[styles.mapOverlays, { top: headerHeight + spacing.x2 }]}>
               {deniedNotice ? <View style={styles.noticeWrap}>{deniedNotice}</View> : null}
-              {mapPins.error ? (
-                <View style={styles.noticeWrap}><AppText tone="sub" variant="secondary">지도 핀을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</AppText></View>
+              {filters.error ? (
+                <View style={styles.noticeWrap}><AppText tone="sub" variant="secondary">라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</AppText></View>
               ) : null}
               {locationStatus !== "loading" ? (
                 <View style={styles.controls}>
