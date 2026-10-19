@@ -267,6 +267,9 @@ export default function HomeScreen() {
     : ""
   const pickAiSummary = curation.remote ? "" : todayPick?.aiSummary?.text.trim() || ""
   const pickQuote = curation.remote ? curation.data?.reason?.trim() || "" : pickAiSummary || todayPick?.description?.trim() || ""
+  // 서버의 오늘의 큐레이션 이유는 AI가 쓴 요약이라 기본으로 "AI가 요약했어요"를 붙인다.
+  // 데모 원장에서는 AI 요약이 있을 때만 붙이고, 매장 설명을 그대로 보일 때는 붙이지 않는다
+  const pickByAi = curation.remote ? Boolean(pickQuote) : Boolean(pickAiSummary)
   const pickDateLabel = formatPickDate(today)
   const curatorPhoto = recommendations.find(({ shop }) => shop.photos[0] && shop.photos[0] !== todayPick?.photos[0])?.shop.photos[0]
     ?? todayPick?.photos[1]
@@ -394,7 +397,7 @@ export default function HomeScreen() {
               title="오늘의 큐레이션"
             />
             <Pressable
-              accessibilityLabel={`오늘의 큐레이션, ${todayPick.name}${todayPick.branch ? ` ${todayPick.branch}` : ""}${pickCatalog.spec ? `, ${pickCatalog.spec}` : ""}${pickQuote ? `, ${pickAiSummary ? "AI가 요약했어요, " : ""}${pickQuote}` : ""}, 매장 상세 보기`}
+              accessibilityLabel={`오늘의 큐레이션, ${todayPick.name}${todayPick.branch ? ` ${todayPick.branch}` : ""}${pickCatalog.spec ? `, ${pickCatalog.spec}` : ""}${pickQuote ? `, ${pickByAi ? "AI가 요약했어요, " : ""}${pickQuote}` : ""}, 매장 상세 보기`}
               accessibilityRole="button"
               onPress={() => openShop(todayPick.id)}
               style={({ pressed }) => pressed && pressFade}
@@ -411,7 +414,7 @@ export default function HomeScreen() {
                 {pickMeta ? <AppText capScale numberOfLines={1} style={styles.pickMeta} tone="muted" variant="meta">{pickMeta}</AppText> : null}
                 {pickQuote ? (
                   <View style={styles.pickSummary} testID="home-curation-summary">
-                    {pickAiSummary ? (
+                    {pickByAi ? (
                       <View style={styles.pickSummaryLabel}>
                         <Sparkles color={colors.textMuted} size={14} />
                         <AppText capScale tone="muted" variant="meta">AI가 요약했어요</AppText>
