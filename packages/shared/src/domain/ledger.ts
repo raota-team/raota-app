@@ -22,6 +22,8 @@ export interface DemoBowl {
   /** RAMEN_TYPES 중 하나 */
   type: string
   menu: string
+  /** 기록 요약의 5축 평가. 옛 기록에는 없다. */
+  scores?: TasteScores
 }
 
 const bowl = (date: string, shop: string, type: string, menu: string): DemoBowl => ({ date, shop, type, menu })

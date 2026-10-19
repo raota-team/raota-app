@@ -284,12 +284,14 @@ export function toCreateRamenLogBody(
  * 서버가 캘린더·방문 매장 API를 주지 않기로 해서, 앱이 요약 목록 하나로 다 만든다.
  */
 export function toAppBowl(item: RamenLogSummaryItem): DemoBowl {
-  return {
+  const bowl: DemoBowl = {
     date: item.visitedAt,
     shop: item.shop.name,
     type: item.ramenType,
     menu: item.menuName,
   }
+  if (item.scores) bowl.scores = item.scores
+  return bowl
 }
 
 export function toAppBowls(items: readonly RamenLogSummaryItem[]): DemoBowl[] {
