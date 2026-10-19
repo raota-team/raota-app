@@ -1,14 +1,12 @@
 /**
  * 기본값은 mock(로컬 더미 데이터)이고, 공개 화면은 도메인 스위치를 켰을 때만 서버를 읽는다.
+ * 서버 주소는 저장소에 적지 않는다. EXPO_PUBLIC_API_BASE_URL(.env, 커밋하지 않음)이 없으면 remote를 켜도 mock으로 돈다.
  *
  * Metro는 `process.env.EXPO_PUBLIC_*`를 "글자 그대로 쓴 자리"에서만 값으로 바꾼다.
  * 구조 분해(const { EXPO_PUBLIC_API_MODE } = process.env)나 동적 키는 빌드에서 undefined가 되니 쓰지 않는다.
  */
 
 export type ApiMode = "mock" | "remote"
-
-/** 기본 서버 주소. dev 서버는 EXPO_PUBLIC_API_BASE_URL로 바꾼다 */
-export const DEFAULT_API_BASE_URL = "https://api.raota.net/api/v2"
 
 /** 한 번의 요청이 기다리는 최대 시간 */
 export const DEFAULT_API_TIMEOUT_MS = 15_000
@@ -20,10 +18,10 @@ export function parseApiMode(raw: string | undefined | null): ApiMode {
   return raw?.trim().toLowerCase() === "remote" ? "remote" : "mock"
 }
 
-/** 끝의 "/"는 떼고, 값이 없거나 http(s)가 아니면 기본 주소를 쓴다 */
-export function parseBaseUrl(raw: string | undefined | null): string {
+/** 끝의 "/"는 뗀다. 값이 없거나 http(s)가 아니면 null(서버 주소 없음) */
+export function parseBaseUrl(raw: string | undefined | null): string | null {
   const value = raw?.trim()
-  if (!value || !/^https?:\/\//i.test(value)) return DEFAULT_API_BASE_URL
+  if (!value || !/^https?:\/\//i.test(value)) return null
   return value.replace(/\/+$/, "")
 }
 
@@ -32,8 +30,9 @@ export function parseTimeoutMs(raw: string | undefined | null): number {
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_API_TIMEOUT_MS
 }
 
-export const API_MODE: ApiMode = parseApiMode(process.env.EXPO_PUBLIC_API_MODE)
-export const API_BASE_URL: string = parseBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL)
+export const API_BASE_URL: string | null = parseBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL)
+/** 서버 주소가 없으면 remote를 적어도 mock이다 */
+export const API_MODE: ApiMode = API_BASE_URL ? parseApiMode(process.env.EXPO_PUBLIC_API_MODE) : "mock"
 export const API_TIMEOUT_MS: number = parseTimeoutMs(process.env.EXPO_PUBLIC_API_TIMEOUT_MS)
 
 /**

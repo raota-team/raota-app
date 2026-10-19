@@ -1,5 +1,8 @@
 import mockAsyncStorage from "@react-native-async-storage/async-storage/jest/async-storage-mock"
 
+// 서버 주소는 저장소에 없다. config를 읽는 테스트 파일보다 먼저 가짜 주소를 넣어 둔다
+process.env.EXPO_PUBLIC_API_BASE_URL ??= "https://api.example.test/api/v2"
+
 jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage)
 
 // expo-secure-store는 불러오는 순간 네이티브 모듈을 찾는다. 메모리 대체본(__mocks__)으로 바꿔 둔다

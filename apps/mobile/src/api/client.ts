@@ -344,7 +344,7 @@ export function isRetryableError(error: unknown): boolean {
 }
 
 export class ApiClient {
-  private readonly baseUrl: string
+  private readonly baseUrl: string | null
   private readonly timeoutMs: number
   private readonly tokens: TokenStore
   private readonly retryPolicy: RetryPolicy
@@ -530,6 +530,9 @@ export class ApiClient {
 
   /** 실제 fetch 한 번 */
   private async dispatch<T>(path: string, options: RequestOptions, accessToken: string | null): Promise<ApiResponse<T>> {
+    if (!this.baseUrl) {
+      throw new ApiError({ status: 0, code: "NETWORK_ERROR", message: "서버 주소가 설정되지 않았어요." })
+    }
     const url = `${this.baseUrl}${path}${buildQuery(options.query)}`
     const headers: Record<string, string> = { Accept: "application/json", ...options.headers }
     if (options.body !== undefined) headers["Content-Type"] = "application/json"
