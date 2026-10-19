@@ -289,11 +289,11 @@ export const remoteWrites = {
   },
 } as const
 
-/** 새로 고른 사진이면 올려서 주소를 만들고, 지웠으면 null, 그대로면 undefined(보내지 않는다) */
+/** 고른 사진은 업로드하고, URL은 그대로 보내며, 삭제는 서버에 빈 문자열로 보낸다 */
 async function uploadedAvatarUrl(input: ProfileUpdateInput): Promise<string | null | undefined> {
   if (input.avatar === undefined) return undefined
-  if (input.avatar === null) return null
-  if (/^https?:\/\//i.test(input.avatar)) return undefined
+  if (input.avatar === null || input.avatar === "") return null
+  if (/^https?:\/\//i.test(input.avatar)) return input.avatar
   return (await fileApi.uploadImages("PROFILE", [input.avatar]))[0] ?? null
 }
 

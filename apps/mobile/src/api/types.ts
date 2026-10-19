@@ -139,12 +139,13 @@ export interface ReissueResponse {
 // 회원 (#44)
 // ---------------------------------------------------------------------------
 
+/** 누락하면 유지, 빈 문자열이면 삭제한다. 닉네임은 이 요청으로 바꿀 수 없다. */
 export interface UpdateMemberRequest {
-  email?: string | null
+  email?: string
   /** 업로드가 끝난 사진 주소 */
-  avatarUrl?: string | null
-  bio?: string | null
-  favoriteRamenType?: RamenType | null
+  avatarUrl?: string
+  bio?: string
+  favoriteRamenType?: string
 }
 
 export type ConsentType = "TERMS" | "PRIVACY" | "MARKETING"

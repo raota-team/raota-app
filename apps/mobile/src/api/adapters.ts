@@ -632,11 +632,9 @@ export function toAppMember(member: MemberMe, options: AppMemberOptions = {}): A
  */
 export function toUpdateMemberBody(input: ProfileUpdateInput, avatarUrl?: string | null): UpdateMemberRequest {
   const body: UpdateMemberRequest = {}
-  if (input.email !== undefined) body.email = input.email ?? null
-  if (input.bio !== undefined) body.bio = input.bio ?? null
-  if (input.favoriteRamenType !== undefined) {
-    body.favoriteRamenType = (input.favoriteRamenType ?? null) as UpdateMemberRequest["favoriteRamenType"]
-  }
-  if (avatarUrl !== undefined) body.avatarUrl = avatarUrl
+  if (input.email !== undefined) body.email = input.email ?? ""
+  if (input.bio !== undefined) body.bio = input.bio ?? ""
+  if (input.favoriteRamenType !== undefined) body.favoriteRamenType = input.favoriteRamenType ?? ""
+  if (avatarUrl !== undefined) body.avatarUrl = avatarUrl ?? ""
   return body
 }

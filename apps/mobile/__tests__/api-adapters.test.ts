@@ -18,6 +18,7 @@ import {
   toPriceRange,
   toServicePerks,
   toTasteNoteCodes,
+  toUpdateMemberBody,
   todayLastOrder,
 } from "@/src/api/adapters"
 import type {
@@ -470,4 +471,16 @@ describe("회원", () => {
     expect(profile.revisitCount).toBe(0)
     expect(onboardingCompleted).toBe(false)
   })
+
+  it("지울 필드만 빈 문자열로 보내고 나머지는 생략한다", () => {
+    expect(toUpdateMemberBody({ nickname: "서버 닉네임", email: "", bio: "", favoriteRamenType: "", avatar: null }, null)).toEqual({
+      email: "",
+      bio: "",
+      favoriteRamenType: "",
+      avatarUrl: "",
+    })
+    expect(toUpdateMemberBody({ nickname: "변경 불가" })).toEqual({})
+    expect(toUpdateMemberBody({ bio: "소개 변경" })).toEqual({ bio: "소개 변경" })
+  })
+
 })
