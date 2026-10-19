@@ -2,7 +2,6 @@ import { ApiError } from "@/src/api/client"
 import {
   IdempotencyOutbox,
   OUTBOX_STORAGE_KEY,
-  OUTBOX_TTL_MS,
   fingerprintOf,
   isPermanentFailure,
   sendIdempotent,
@@ -69,7 +68,7 @@ describe("IdempotencyOutbox", () => {
     expect(again.firstSentAt).toBe(entry.firstSentAt)
   })
 
-  it("본문이 달라지면 새 키를 만든다(같은 키로 다른 본문을 보내면 409가 된다)", async () => {
+  it("본문이 달라지면 다른 요청으로 새 키를 만든다(서버는 같은 키의 본문을 비교하지 않는다)", async () => {
     const outbox = new IdempotencyOutbox(createStorage(), () => 1_000, keyMaker())
     const first = await outbox.begin({
       accountId: "member-1",
@@ -113,11 +112,11 @@ describe("IdempotencyOutbox", () => {
     expect(await outbox.pending("member-2")).toHaveLength(1)
   })
 
-  it("24시간이 지난 항목은 버린다(서버도 그때는 키를 잊는다)", async () => {
+  it("24시간이 훨씬 지나도 같은 키와 원래 본문으로 다시 보낸다", async () => {
     const storage = createStorage()
     let now = 1_000_000
     const outbox = new IdempotencyOutbox(storage, () => now, keyMaker())
-    await outbox.begin({
+    const original = await outbox.begin({
       accountId: "member-1",
       operation: "CREATE_RAMEN_LOG",
       path: "/ramen-logs",
@@ -125,9 +124,11 @@ describe("IdempotencyOutbox", () => {
       body: BODY,
     })
 
-    now += OUTBOX_TTL_MS + 1
-    expect(await outbox.find("member-1", "CREATE_RAMEN_LOG", fingerprintOf(BODY))).toBeNull()
-    expect(storage.dump()).toBeNull()
+    now += 365 * 24 * 60 * 60 * 1000
+    const restarted = new IdempotencyOutbox(storage, () => now, keyMaker("later"))
+    expect(await restarted.find("member-1", "CREATE_RAMEN_LOG", fingerprintOf(BODY))).toEqual(original)
+    expect(await restarted.pending("member-1")).toEqual([original])
+    expect(storage.dump()).toEqual([original])
   })
 })
 
@@ -195,7 +196,7 @@ describe("sendIdempotent", () => {
 
   it("다시 보낼 수 있는 실패와 아닌 실패를 가른다", () => {
     expect(isPermanentFailure(new ApiError({ status: 400, code: "VALIDATION_ERROR", message: "" }))).toBe(true)
-    expect(isPermanentFailure(new ApiError({ status: 409, code: "IDEMPOTENCY_KEY_REUSED", message: "" }))).toBe(true)
+    expect(isPermanentFailure(new ApiError({ status: 409, code: "CONFLICT", message: "삭제된 댓글의 요청 키입니다." }))).toBe(true)
     expect(isPermanentFailure(new ApiError({ status: 409, code: "IDEMPOTENCY_IN_PROGRESS", message: "" }))).toBe(false)
     expect(isPermanentFailure(new ApiError({ status: 429, code: "RATE_LIMITED", message: "" }))).toBe(false)
     expect(isPermanentFailure(new ApiError({ status: 0, code: "NETWORK_ERROR", message: "" }))).toBe(false)

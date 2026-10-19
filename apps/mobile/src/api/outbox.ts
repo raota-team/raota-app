@@ -6,16 +6,12 @@ import { createIdempotencyKey, isApiError } from "./client"
  * 멱등 생성 요청(라멘로그·댓글)의 로컬 아웃박스.
  *
  * 왜 필요한가: 저장을 눌렀는데 답이 오지 않으면 서버에 만들어졌는지 알 수 없다.
- * 같은 Idempotency-Key로 다시 보내면 서버가 같은 결과를 돌려주므로(24시간) 기록이 두 번 생기지 않는다.
+ * 서버는 같은 (회원, Idempotency-Key)를 만료 없이 기억하고, 본문이 달라도 처음 결과를 돌려준다.
  * 그래서 보내기 전에 (계정, 키, 작업, 본문, 처음 보낸 시각)을 남겨 두고, 앱을 껐다 켜도 같은 키를 다시 쓴다.
- *
- * 24시간이 지나면 서버가 키를 잊는다. 그때는 항목을 버리고 자동 재시도도 멈춘다(그 뒤엔 사용자에게 묻는다).
+ * 삭제된 기록이나 삭제·다른 기록의 댓글에 쓰인 키는 409다. 완료·로그아웃한 항목은 지운다.
  */
 
 export const OUTBOX_STORAGE_KEY = "@raota/idempotency-outbox"
-
-/** 서버가 같은 키를 기억하는 시간 */
-export const OUTBOX_TTL_MS = 24 * 60 * 60 * 1000
 
 export type OutboxOperation = "CREATE_RAMEN_LOG" | "CREATE_COMMENT"
 
@@ -32,7 +28,7 @@ export interface OutboxEntry {
    * 재시도 때 사진을 다시 올리지 않고 같은 키·같은 본문으로 보낼 수 있다.
    */
   fingerprint: string
-  /** 실제로 보낸 본문. 다시 보낼 때 그대로 쓴다(본문이 달라지면 서버가 409로 막는다) */
+  /** 실제로 보낸 본문. 서버는 본문을 비교하지 않으므로 재시도 때 원래 요청을 유지한다. */
   body: unknown
   /** 처음 보낸 시각(ISO) */
   firstSentAt: string
@@ -150,7 +146,7 @@ export class IdempotencyOutbox {
     return next
   }
 
-  /** 읽을 때마다 24시간이 지난 항목을 버린다 */
+  /** 서버 키에 만료가 없으므로 나이로 버리지 않고 망가진 항목만 제거한다 */
   private async read(): Promise<OutboxEntry[]> {
     let raw: string | null = null
     try {
@@ -166,12 +162,9 @@ export class IdempotencyOutbox {
       return []
     }
     if (!Array.isArray(parsed)) return []
-    const limit = this.now() - OUTBOX_TTL_MS
-    const fresh = parsed.filter(
-      (entry): entry is OutboxEntry => isEntry(entry) && Date.parse(entry.firstSentAt) > limit,
-    )
-    if (fresh.length !== parsed.length) await this.write(fresh)
-    return fresh
+    const valid = parsed.filter(isEntry)
+    if (valid.length !== parsed.length) await this.write(valid)
+    return valid
   }
 
   private async write(entries: OutboxEntry[]): Promise<void> {
@@ -186,7 +179,7 @@ export class IdempotencyOutbox {
 
 export const idempotencyOutbox = new IdempotencyOutbox()
 
-/** 다시 보내도 결과가 같은 실패(본문·권한·대상 문제). 이런 항목은 아웃박스에서 지운다 */
+/** 다시 보내도 소용없는 4xx(입력·권한·삭제한 대상)를 만나면 항목을 지운다 */
 export function isPermanentFailure(error: unknown): boolean {
   if (!isApiError(error)) return false
   if (error.isOffline) return false
