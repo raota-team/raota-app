@@ -112,6 +112,32 @@ describe("src/data/remote", () => {
     expect(page).toMatchObject({ items: [{ id: "201" }], nextCursor: null, hasNext: false })
   })
 
+  it("필터로 빈 피드는 다음 커서를 읽어 데이터 쪽을 돌려준다", async () => {
+    fetchMock.mockResolvedValueOnce(success({ items: [], nextCursor: "filtered-2", hasNext: true }))
+      .mockResolvedValueOnce(success({ items: [wireLogDetail], nextCursor: "visible-3", hasNext: true }))
+
+    const page = await remoteReads.loungeLogs({ type: "쇼유", sort: "likes", size: 10 })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1][0]).toContain(`cursor=filtered-2&size=10`)
+    expect(page).toMatchObject({ items: [{ id: "101" }], nextCursor: "visible-3", hasNext: true })
+  })
+
+  it("빈 댓글을 넘어 다음 쪽을 돌려주고 연속 빈 쪽은 다섯 번만 읽는다", async () => {
+    fetchMock.mockResolvedValueOnce(success({ items: [], nextCursor: "filtered-2", hasNext: true }))
+      .mockResolvedValueOnce(success({ items: [wireComment], nextCursor: null, hasNext: false }))
+
+    const visible = await remoteReads.loungeLogComments("101", "start")
+    expect(visible).toMatchObject({ items: [{ id: "201" }], nextCursor: null, hasNext: false })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    fetchMock.mockReset().mockImplementation(async () =>
+      success({ items: [], nextCursor: `page-${fetchMock.mock.calls.length}`, hasNext: true }))
+    const empty = await remoteReads.loungeLogComments("101", "page-0")
+    expect(fetchMock).toHaveBeenCalledTimes(5)
+    expect(empty).toEqual({ items: [], nextCursor: "page-5", hasNext: true })
+  })
+
   it("hook마다 대응하는 함수가 준비돼 있다", () => {
     for (const name of ["shops", "mapPins", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "loungeLogComments", "me", "todayCuration", "recommendations"] as const) {
       expect(typeof remoteReads[name]).toBe("function")

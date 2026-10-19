@@ -84,6 +84,24 @@ function toPage<TWire, TApp>(page: CursorPage<TWire>, map: (item: TWire) => TApp
   return { items: (page.items ?? []).map(map), nextCursor: page.nextCursor ?? null, hasNext: Boolean(page.hasNext) }
 }
 
+/** 서버가 숨긴 항목만 읽힌 페이지도 다음 커서로 몇 묶음 더 찾아본다. */
+const MAX_FILTERED_PAGE_READS = 5
+
+async function readVisiblePage<TWire, TApp>(
+  read: (cursor: string | null) => Promise<CursorPage<TWire>>,
+  initialCursor: string | null,
+  map: (item: TWire) => TApp,
+): Promise<RemotePage<TApp>> {
+  let cursor = initialCursor
+  for (let reads = 0; ; reads++) {
+    const page = await read(cursor)
+    if (page.items?.length || !page.hasNext || reads === MAX_FILTERED_PAGE_READS - 1) return toPage(page, map)
+    // 잘못된 커서를 반복하면 호출자가 같은 빈 페이지를 계속 요청하지 않게 멈춘다.
+    if (!page.nextCursor || page.nextCursor === cursor) return { items: [], nextCursor: null, hasNext: false }
+    cursor = page.nextCursor
+  }
+}
+
 /** 없는 자원(404)은 오류가 아니라 "없음"으로 다룬다 */
 async function orNull<T>(request: Promise<T>): Promise<T | null> {
   try {
@@ -149,15 +167,18 @@ export const remoteReads = {
     return detail ? toAppRamenLog(detail) : null
   },
 
-  /** 라운지 피드. 차단·신고한 글은 서버가 이미 빼고 준다 */
+  /** 라운지 피드. 차단·신고로 빈 쪽이 오면 다음 커서를 이어 읽는다 */
   async loungeLogs({ type, sort = "latest", cursor, size }: LoungeFeedRequest = {}): Promise<RemotePage<RamenLog>> {
-    const page = await loungeApi.feed({
-      sort: LOUNGE_SORT_TO_WIRE[sort],
-      ramenType: !type || type === LOUNGE_ALL_TYPES ? undefined : type,
-      cursor,
-      size,
-    })
-    return toPage(page, (log: RamenLogSummary) => toAppRamenLog(log))
+    return readVisiblePage(
+      (nextCursor) => loungeApi.feed({
+        sort: LOUNGE_SORT_TO_WIRE[sort],
+        ramenType: !type || type === LOUNGE_ALL_TYPES ? undefined : type,
+        cursor: nextCursor,
+        size,
+      }),
+      cursor ?? null,
+      toAppRamenLog,
+    )
   },
 
   /** 상세 응답의 댓글 미리보기(최대 20개). 다음 쪽은 커서로 별도 요청한다 */
@@ -180,9 +201,13 @@ export const remoteReads = {
     }
   },
 
-  /** 상세 미리보기 뒤의 댓글 페이지 */
+  /** 상세 미리보기 뒤의 댓글 페이지. 걸러진 빈 쪽은 다음 커서를 이어 읽는다 */
   async loungeLogComments(logId: string, cursor: string | null, size?: number): Promise<RemotePage<RamenLogComment>> {
-    return toPage(await loungeApi.comments(logId, { cursor, size }), toAppRamenLogComment)
+    return readVisiblePage(
+      (nextCursor) => loungeApi.comments(logId, { cursor: nextCursor, size }),
+      cursor,
+      toAppRamenLogComment,
+    )
   },
 
   /**
