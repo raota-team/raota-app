@@ -226,6 +226,7 @@ export function toAppRamenLog(log: RamenLogSummary | RamenLogDetail): RamenLog {
     commentCount: log.commentCount,
     // 목록 응답에는 댓글이 없다(undefined = 아직 모름). 상세 응답은 미리보기 댓글을 채운다
     comments: detail ? detail.commentsPreview.map(toAppRamenLogComment) : undefined,
+    commentsNextCursor: detail ? detail.commentsNextCursor : undefined,
   }
 }
 

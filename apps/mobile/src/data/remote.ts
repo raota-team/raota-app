@@ -26,7 +26,6 @@ import {
   toAppMember,
   toAppRamenLog,
   toAppRamenLogComment,
-  toAppRamenLogComments,
   toAppShopDetail,
   toAppShopSummary,
   toCreateRamenLogBody,
@@ -64,7 +63,8 @@ import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
  *                           (캘린더·방문 매장 API는 없다. 요약 목록 하나로 앱이 계산한다)
  * - useLog                → remoteReads.log              GET /ramen-logs/{id}
  * - useLoungeLogs         → remoteReads.loungeLogs       GET /ramen-logs?sort=LATEST|LIKES
- * - useLoungeLog          → remoteReads.loungeLog        GET /ramen-logs/{id} + /comments
+ * - useLoungeLog          → remoteReads.loungeLog        GET /ramen-logs/{id} (댓글 미리보기 포함)
+ * - 댓글 다음 쪽          → remoteReads.loungeLogComments GET /ramen-logs/{id}/comments?cursor=
  * - 홈 오늘의 큐레이션      → remoteReads.todayCuration    GET /curations/today
  * - AI 추천 화면           → remoteReads.recommendations  POST /ai/recommendations
  * - 스토어 actions(찜·기록·공감·댓글·신고·숨기기) → remoteWrites.*
@@ -160,12 +160,29 @@ export const remoteReads = {
     return toPage(page, (log: RamenLogSummary) => toAppRamenLog(log))
   },
 
-  /** 라멘로그 상세 + 댓글 첫 쪽 */
-  async loungeLog(logId: string): Promise<{ log: RamenLog; comments: RamenLogComment[] } | null> {
+  /** 상세 응답의 댓글 미리보기(최대 20개). 다음 쪽은 커서로 별도 요청한다 */
+  async loungeLog(logId: string): Promise<{
+    log: RamenLog
+    comments: RamenLogComment[]
+    commentCount: number
+    nextCursor: string | null
+    hasNext: boolean
+  } | null> {
     const detail = await orNull(ramenLogApi.get(logId))
     if (!detail) return null
-    const comments = await loungeApi.comments(logId)
-    return { log: toAppRamenLog(detail), comments: toAppRamenLogComments(comments.items ?? []) }
+    const log = toAppRamenLog(detail)
+    return {
+      log,
+      comments: log.comments ?? [],
+      commentCount: detail.commentCount,
+      nextCursor: detail.commentsNextCursor,
+      hasNext: detail.commentsNextCursor !== null,
+    }
+  },
+
+  /** 상세 미리보기 뒤의 댓글 페이지 */
+  async loungeLogComments(logId: string, cursor: string | null, size?: number): Promise<RemotePage<RamenLogComment>> {
+    return toPage(await loungeApi.comments(logId, { cursor, size }), toAppRamenLogComment)
   },
 
   /**

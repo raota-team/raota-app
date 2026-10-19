@@ -150,6 +150,8 @@ export interface RamenLog {
   createdAt: string
   commentCount?: number
   comments?: RamenLogComment[]
+  /** 상세 미리보기 뒤의 댓글 커서. null이면 더 읽을 댓글이 없다. */
+  commentsNextCursor?: string | null
 }
 
 export interface RamenLogComment {

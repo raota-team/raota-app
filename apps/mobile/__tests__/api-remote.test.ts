@@ -1,3 +1,4 @@
+import type { RamenLogDetail } from "@/src/api/types"
 import { remoteReads, remoteWrites, subscribeSessionEndedToLogout } from "@/src/data/remote"
 
 /**
@@ -34,6 +35,38 @@ const wireShop = {
   distanceMeters: null,
 }
 
+const wireComment = {
+  id: "201",
+  logId: "101",
+  author: { id: "12", nickname: "면탐험가", avatarUrl: null, logCount: 1 },
+  content: "라면 좋아요",
+  createdAt: "2026-09-18T12:00:00Z",
+  isMine: false,
+}
+
+const wireLogDetail: RamenLogDetail = {
+  id: "101",
+  author: wireComment.author,
+  shop: { id: "7", name: "하쿠텐", branchName: null, region: null },
+  menuName: "쇼유 라멘",
+  ramenType: "쇼유",
+  visitedAt: "2026-09-18",
+  imageUrls: [],
+  note: "",
+  tasteNoteCodes: [],
+  revisitIntention: "OFTEN",
+  visibility: "PUBLIC",
+  scores: null,
+  likeCount: 0,
+  commentCount: 25,
+  isLiked: false,
+  isMine: false,
+  createdAt: "2026-09-18T11:00:00Z",
+  updatedAt: "2026-09-18T11:00:00Z",
+  commentsPreview: [wireComment],
+  commentsNextCursor: "page-2",
+}
+
 let fetchMock: jest.Mock
 
 beforeEach(() => {
@@ -54,8 +87,33 @@ describe("src/data/remote", () => {
     expect(page.items[0]).toMatchObject({ id: "7", name: "하쿠텐", branch: "연남점", reviewCount: 128 })
   })
 
+  it("상세 응답의 댓글 미리보기와 다음 커서만 쓰고 첫 댓글을 재요청하지 않는다", async () => {
+    fetchMock.mockResolvedValueOnce(success(wireLogDetail))
+
+    const detail = await remoteReads.loungeLog("101")
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toContain("/ramen-logs/101")
+    expect(detail).toMatchObject({
+      log: { id: "101", commentsNextCursor: "page-2" },
+      comments: [{ id: "201", logId: "101", content: "라면 좋아요" }],
+      commentCount: 25,
+      nextCursor: "page-2",
+      hasNext: true,
+    })
+  })
+
+  it("댓글 다음 쪽은 상세 커서로 따로 이어 읽는다", async () => {
+    fetchMock.mockResolvedValueOnce(success({ items: [wireComment], nextCursor: null, hasNext: false }))
+
+    const page = await remoteReads.loungeLogComments("101", "page-2", 10)
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/ramen-logs/101/comments?cursor=page-2&size=10")
+    expect(page).toMatchObject({ items: [{ id: "201" }], nextCursor: null, hasNext: false })
+  })
+
   it("hook마다 대응하는 함수가 준비돼 있다", () => {
-    for (const name of ["shops", "mapPins", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "me", "todayCuration", "recommendations"] as const) {
+    for (const name of ["shops", "mapPins", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "loungeLogComments", "me", "todayCuration", "recommendations"] as const) {
       expect(typeof remoteReads[name]).toBe("function")
     }
     for (const name of ["toggleBookmark", "createRamenLog", "deleteRamenLog", "toggleLogLike", "addLogComment", "deleteLogComment", "reportContent", "hideAuthor", "unhideAuthor", "updateProfile"] as const) {

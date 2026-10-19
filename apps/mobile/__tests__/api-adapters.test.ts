@@ -141,6 +141,7 @@ describe("라멘로그", () => {
     }
 
     expect(toAppRamenLog(detail).comments).toEqual([])
+    expect(toAppRamenLog({ ...detail, commentsNextCursor: "next-comments" }).commentsNextCursor).toBe("next-comments")
   })
 })
 

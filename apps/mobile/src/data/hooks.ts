@@ -306,7 +306,8 @@ export interface LoungeLogDetail {
 
 /**
  * 라멘로그 상세와 댓글. 없는 기록, 남의 비공개 기록, 숨긴 사람의 기록, 내가 신고한 기록이면 data가 null이다.
- * TODO(API): remoteReads.loungeLog(logId) (GET /ramen-logs/{id} + GET /ramen-logs/{id}/comments)로 바꾼다.
+ * TODO(API): remoteReads.loungeLog(logId)의 상세 미리보기를 쓰고, 이후 댓글은
+ * remoteReads.loungeLogComments(logId, cursor)로 이어 읽는다.
  * 서버가 비공개·차단·신고한 글을 이미 빼고 주므로 그때는 이 파일의 거르기가 이중 안전장치가 된다
  */
 export function useLoungeLog(logId: string | null | undefined): Query<LoungeLogDetail | null> {
