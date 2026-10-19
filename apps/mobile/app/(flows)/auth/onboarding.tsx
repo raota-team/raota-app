@@ -188,7 +188,8 @@ export default function OnboardingScreen() {
     setSaving(true)
     setSaveError(null)
     try {
-      // TODO(#44): 서버 가입 API로 교체하면서 마케팅 수신 동의(agreeMarketing)도 함께 저장한다
+      // TODO(API): remoteWrites.completeOnboarding({ nickname, consents, profile })로 교체한다.
+      // PATCH만 실패했다면 이미 가입됐으므로 PUT을 다시 보내지 않고 프로필만 재시도한다.
       const profile = await actions.completeOnboarding({
         name: trimmed,
         nickname: trimmed,

@@ -35,6 +35,7 @@ import {
   type CreateRamenLogRequest,
   type CursorPage,
   type LoungeSortParam,
+  type OnboardingRequest,
   type RamenLogSummary,
   type RemoteMapPin,
   type ReportReason,
@@ -67,6 +68,7 @@ import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
  * - 댓글 다음 쪽          → remoteReads.loungeLogComments GET /ramen-logs/{id}/comments?cursor=
  * - 홈 오늘의 큐레이션      → remoteReads.todayCuration    GET /curations/today
  * - AI 추천 화면           → remoteReads.recommendations  POST /ai/recommendations
+ * - auth/onboarding       → remoteWrites.completeOnboarding PUT /members/me/onboarding → 선택값만 PATCH /members/me
  * - 스토어 actions(찜·기록·공감·댓글·신고·숨기기) → remoteWrites.*
  *
  * 스토어(RaotaProvider)가 붙일 것
@@ -245,7 +247,36 @@ export interface CreateRamenLogOptions {
   accountId?: string
 }
 
+export interface CompleteOnboardingInput extends OnboardingRequest {
+  profile?: Pick<ProfileUpdateInput, "bio" | "favoriteRamenType" | "avatar">
+}
+
+/** PUT은 끝났다. 화면은 온보딩을 다시 제출하지 말고 회원을 유지한 채 프로필만 다시 저장한다. */
+export class OnboardingProfileUpdateError extends Error {
+  readonly onboardingCompleted = true
+
+  constructor(readonly member: AppMember, readonly cause: unknown) {
+    super("가입은 완료됐지만 추가 프로필을 저장하지 못했어요.")
+    this.name = "OnboardingProfileUpdateError"
+  }
+}
+
 export const remoteWrites = {
+  async completeOnboarding({ nickname, consents, profile }: CompleteOnboardingInput): Promise<AppMember> {
+    const member = toAppMember(await memberApi.onboarding({ nickname, consents }))
+    const extras: ProfileUpdateInput = {}
+    if (profile?.favoriteRamenType) extras.favoriteRamenType = profile.favoriteRamenType
+    if (profile?.bio?.trim()) extras.bio = profile.bio.trim()
+    if (profile?.avatar) extras.avatar = profile.avatar
+    if (!extras.favoriteRamenType && !extras.bio && !extras.avatar) return member
+
+    try {
+      return await remoteWrites.updateProfile(extras)
+    } catch (cause) {
+      throw new OnboardingProfileUpdateError(member, cause)
+    }
+  },
+
   async toggleBookmark(shopId: string, saved: boolean): Promise<void> {
     await (saved ? shopApi.bookmark(shopId) : shopApi.removeBookmark(shopId))
   },

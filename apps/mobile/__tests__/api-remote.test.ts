@@ -1,5 +1,6 @@
-import type { RamenLogDetail } from "@/src/api/types"
-import { remoteReads, remoteWrites, subscribeSessionEndedToLogout } from "@/src/data/remote"
+import type { MemberMe, RamenLogDetail } from "@/src/api/types"
+import { tokenStore } from "@/src/api/tokens"
+import { OnboardingProfileUpdateError, remoteReads, remoteWrites, subscribeSessionEndedToLogout, type CompleteOnboardingInput } from "@/src/data/remote"
 
 /**
  * 서버로 옮길 때 쓸 자리(src/data/remote.ts)가 실제로 굴러가는지 본다.
@@ -67,11 +68,32 @@ const wireLogDetail: RamenLogDetail = {
   commentsNextCursor: "page-2",
 }
 
+const wireMember: MemberMe = {
+  id: "77",
+  nickname: "라멘러버",
+  email: null,
+  avatarUrl: null,
+  bio: null,
+  favoriteRamenType: null,
+  status: "ACTIVE",
+  logCount: 0,
+  onboardingCompletedAt: "2026-10-19T08:00:00Z",
+}
+
+const onboarding: CompleteOnboardingInput = {
+  nickname: "라멘러버",
+  consents: [{ type: "TERMS", documentVersion: "2026-10-19", granted: true }],
+}
+
 let fetchMock: jest.Mock
 
 beforeEach(() => {
   fetchMock = jest.fn(async () => success({ items: [wireShop], nextCursor: "c2", hasNext: true }))
   ;(globalThis as { fetch: unknown }).fetch = fetchMock
+})
+
+afterEach(async () => {
+  await tokenStore.clear()
 })
 
 describe("src/data/remote", () => {
@@ -138,11 +160,62 @@ describe("src/data/remote", () => {
     expect(empty).toEqual({ items: [], nextCursor: "page-5", hasNext: true })
   })
 
+  it("추가 프로필이 없으면 닉네임·동의만 PUT하고 PATCH를 생략한다", async () => {
+    await tokenStore.set({ accessToken: "a1", refreshToken: "r1" })
+    fetchMock.mockResolvedValueOnce(success(wireMember))
+
+    const member = await remoteWrites.completeOnboarding({ ...onboarding, profile: { avatar: null, bio: "" } })
+
+    expect(member).toMatchObject({ onboardingCompleted: true, profile: { nickname: "라멘러버" } })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain("/members/me/onboarding")
+    expect(init.method).toBe("PUT")
+    expect(JSON.parse(String(init.body))).toEqual(onboarding)
+  })
+
+  it("선택 프로필만 이어서 PATCH하고 최종 회원을 돌려준다", async () => {
+    await tokenStore.set({ accessToken: "a1", refreshToken: "r1" })
+    fetchMock.mockResolvedValueOnce(success(wireMember))
+      .mockResolvedValueOnce(success({ ...wireMember, avatarUrl: "https://cdn.test/avatar.png", bio: "소개", favoriteRamenType: "돈코츠" }))
+
+    const member = await remoteWrites.completeOnboarding({
+      ...onboarding,
+      profile: { bio: " 소개 ", favoriteRamenType: "돈코츠", avatar: "https://cdn.test/avatar.png" },
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const [, put] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [patchUrl, patch] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect(JSON.parse(String(put.body))).toEqual(onboarding)
+    expect(patchUrl).toContain("/members/me")
+    expect(patch.method).toBe("PATCH")
+    expect(JSON.parse(String(patch.body))).toEqual({ bio: "소개", favoriteRamenType: "돈코츠", avatarUrl: "https://cdn.test/avatar.png" })
+    expect(member.profile).toMatchObject({ bio: "소개", favoriteRamenType: "돈코츠", avatar: "https://cdn.test/avatar.png" })
+  })
+
+  it("PATCH 실패는 가입이 끝난 회원을 오류에 남겨 PUT 재제출을 막는다", async () => {
+    await tokenStore.set({ accessToken: "a1", refreshToken: "r1" })
+    fetchMock.mockResolvedValueOnce(success(wireMember)).mockResolvedValueOnce({
+      status: 503,
+      ok: false,
+      headers: { get: () => null },
+      text: async () => JSON.stringify({ success: false, error: { code: "INTERNAL_ERROR", message: "저장 실패" } }),
+    })
+
+    const error: unknown = await remoteWrites.completeOnboarding({ ...onboarding, profile: { bio: "소개" } })
+      .catch((cause: unknown) => cause)
+
+    expect(error).toBeInstanceOf(OnboardingProfileUpdateError)
+    expect(error).toMatchObject({ onboardingCompleted: true, member: { onboardingCompleted: true, profile: { nickname: "라멘러버" } } })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it("hook마다 대응하는 함수가 준비돼 있다", () => {
     for (const name of ["shops", "mapPins", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "loungeLogComments", "me", "todayCuration", "recommendations"] as const) {
       expect(typeof remoteReads[name]).toBe("function")
     }
-    for (const name of ["toggleBookmark", "createRamenLog", "deleteRamenLog", "toggleLogLike", "addLogComment", "deleteLogComment", "reportContent", "hideAuthor", "unhideAuthor", "updateProfile"] as const) {
+    for (const name of ["completeOnboarding", "toggleBookmark", "createRamenLog", "deleteRamenLog", "toggleLogLike", "addLogComment", "deleteLogComment", "reportContent", "hideAuthor", "unhideAuthor", "updateProfile"] as const) {
       expect(typeof remoteWrites[name]).toBe("function")
     }
   })
