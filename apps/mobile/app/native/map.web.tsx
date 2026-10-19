@@ -694,6 +694,8 @@ const styles = StyleSheet.create({
     height: spacing.x10,
     flexDirection: "row",
     alignItems: "center",
+    // 지역·메뉴 칩은 긴 이름에 맞춘 고정 폭이라, 짧은 이름일 때 오른쪽만 비지 않게 글씨와 화살표를 가운데로 모은다
+    justifyContent: "center",
     gap: spacing.x1_5,
     paddingHorizontal: spacing.x3_5,
     borderRadius: radii.pill,

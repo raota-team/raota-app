@@ -621,7 +621,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     backgroundColor: colors.canvasSoft,
   },
-  hero: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x1 },
+  // 로고 줄과 인사말이 붙어 보이지 않게 한 줄쯤 띄운다
+  hero: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5 },
   heroTitle: { alignSelf: "flex-start" },
   statusSlot: { height: touchTarget, marginTop: spacing.x1_5 },
   statusLine: {

@@ -275,6 +275,17 @@ export function useTasteAxisPalette(): Record<TasteAxisKey, string> {
 export const broth = ["#D6A24A", "#B87C22", "#8E5A15", "#5E340A"] as const
 
 /**
+ * 라멘로그 캘린더(잔디)의 하루 그릇 수 단계. 1그릇 · 2그릇 · 3그릇 · 4그릇 이상 순으로 라오타 빨강이 연했다가 진해진다.
+ * 대부분의 날이 1그릇이라 첫 단계도 회색 빈 칸과 또렷이 구별되게 둔다. 3그릇이 브랜드 빨강, 4그릇 이상은 더 깊은 빨강.
+ * 다크 모드는 어두운 바탕에서 단계가 읽히게 어두운 붉은색에서 시작해 밝은 빨강으로 간다.
+ */
+const ramenHeatTones = adaptive(
+  { l1: "#F6AFAF", l2: "#EE6767", l3: "#E60000", l4: "#A30000" },
+  { l1: "#5A1A1A", l2: "#8F1818", l3: "#C80F0F", l4: "#F01E1E" },
+)
+export const ramenHeat = [ramenHeatTones.l1, ramenHeatTones.l2, ramenHeatTones.l3, ramenHeatTones.l4] as const
+
+/**
  * 라멘 종류마다의 실제 국물 색. "어떤 종류인가"를 말하는 자리에만 쓰고, broth(많고 적음)와 섞지 않는다.
  * 국물 색은 모드와 상관없이 같다. 규칙과 추가 방법은 docs/RAOTA_COLORS.md의 "국물 색".
  *

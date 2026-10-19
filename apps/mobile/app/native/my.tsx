@@ -59,7 +59,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, maxFontScale, radii, soupColorOf, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, maxFontScale, radii, ramenHeat, spacing, touchTarget, typography } from "@/src/theme"
 import { shopSpecOf, shopStyleOf } from "../(flows)/taste/index"
 import Svg, { Path } from "react-native-svg"
 
@@ -103,40 +103,30 @@ const weekdayOf = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay()
 interface CalendarDay {
   date: string
   count: number
-  type?: string
   inRange: boolean
 }
 
 /** 일요일로 시작하는 주 단위 열. 끝날(오늘)은 항상 포함한다 */
 function buildCalendar(bowls: DemoBowl[], start: string, end: string) {
-  const days = new Map<string, { count: number; type: string }>()
-  for (const bowl of bowls) {
-    const day = days.get(bowl.date)
-    if (day) day.count += 1
-    else days.set(bowl.date, { count: 1, type: bowl.type })
-  }
+  const days = new Map<string, number>()
+  for (const bowl of bowls) days.set(bowl.date, (days.get(bowl.date) ?? 0) + 1)
   const weeks: CalendarDay[][] = []
   const monthLabels: { week: number; label: string }[] = []
   let total = 0
   const levelDays = LEVEL_LABELS.map(() => 0)
-  const types = new Set<string>()
   for (let day = addDays(start, -weekdayOf(start)); day <= end; day = addDays(day, 1)) {
     if (weekdayOf(day) === 0) weeks.push([])
     const inRange = day >= start
-    const record = inRange ? days.get(day) : undefined
-    const count = record?.count ?? 0
+    const count = inRange ? days.get(day) ?? 0 : 0
     total += count
-    if (count > 0) {
-      levelDays[Math.min(4, count) - 1]++
-      types.add(record!.type)
-    }
-    weeks[weeks.length - 1].push({ date: day, count, type: record?.type, inRange })
+    if (count > 0) levelDays[Math.min(4, count) - 1]++
+    weeks[weeks.length - 1].push({ date: day, count, inRange })
     if (inRange && (day === start || day.endsWith("-01"))) {
       const week = weeks.length - 1
       if (!monthLabels.some((item) => item.week >= week - 2)) monthLabels.push({ week, label: `${Number(day.slice(5, 7))}월` })
     }
   }
-  return { weeks, monthLabels, total, levelDays, types: [...types] }
+  return { weeks, monthLabels, total, levelDays }
 }
 
 /** 약관 전문은 시트가 아니라 별도 화면(스와이프 뒤로가기)으로 연다 */
@@ -233,8 +223,6 @@ function MemberView() {
   const [toast, setToast] = useState<string | null>(null)
   const mainScrollRef = useRef<ScrollView>(null)
   const calendarRef = useRef<ScrollView>(null)
-  /** 가로로 넘긴 캘린더에서 왼쪽 끝에 온전히 보이는 첫 주 */
-  const [calendarFirstWeek, setCalendarFirstWeek] = useState(0)
   const [compactHeader, setCompactHeader] = useState(false)
   const [profileHeight, setProfileHeight] = useState(0)
   const reducedMotion = useReducedMotion()
@@ -290,15 +278,8 @@ function MemberView() {
     const end = `${period}-12-31` < today ? `${period}-12-31` : today
     return buildCalendar(bowls, `${period}-01-01`, end)
   }, [bowls, period, today])
-  // 월 라벨이 스크롤 경계에 걸려 반쯤 잘리지 않게, 가려진 라벨은 빼고 왼쪽 끝 주의 달을 대신 붙인다.
-  // 바로 뒤(2주 안)에 다음 달 라벨이 오면 겹치므로 붙이지 않는다
-  const monthLabels = useMemo(() => {
-    const visible = calendar.monthLabels.filter((item) => item.week >= calendarFirstWeek)
-    const firstWeek = calendar.weeks[calendarFirstWeek]
-    if (!firstWeek || visible.some((item) => item.week <= calendarFirstWeek + 2)) return visible
-    const day = firstWeek.find((item) => item.inRange) ?? firstWeek[0]
-    return [{ week: calendarFirstWeek, label: `${Number(day.date.slice(5, 7))}월` }, ...visible]
-  }, [calendar, calendarFirstWeek])
+  // 월 라벨은 그 달이 시작하는 주에 붙박아 둔다. 스크롤에 따라 라벨을 옮기면 왔다 갔다 할 때 달이 밀려 보인다
+  const monthLabels = calendar.monthLabels
   // 기록이 있는 단계만 읽어 준다("1그릇 8일, 2그릇 3일")
   const levelSummary = calendar.levelDays
     .map((days, index) => (days > 0 ? `${LEVEL_LABELS[index]} ${days}일` : null))
@@ -581,6 +562,14 @@ function MemberView() {
                   </ScrollView>
                 </View>
                 <View style={styles.calendarCard}>
+                  {/* 기록 없는 기간 안내는 빈 칸 위에 얹는다. 아래에 자리를 따로 비워 두지 않아 최근 기록이 바로 붙는다 */}
+                  {calendar.total === 0 ? (
+                    <View pointerEvents="none" style={styles.calendarEmpty}>
+                      <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="secondary">
+                        이 기간에는 기록이 없어요.{"\n"}라멘로그를 남기면 캘린더가 채워져요.
+                      </AppText>
+                    </View>
+                  ) : null}
                   <View
                     accessibilityLabel={`${periodLabel} ${calendar.total}그릇 기록${streak > 1 ? `, 최장 ${streak}일 연속` : ""}${levelSummary ? `, ${levelSummary}` : ""}`}
                     accessibilityRole="image"
@@ -597,12 +586,7 @@ function MemberView() {
                     <ScrollView
                       horizontal
                       onContentSizeChange={() => calendarRef.current?.scrollToEnd({ animated: false })}
-                      onScroll={(event) => {
-                        const week = Math.max(0, Math.ceil(event.nativeEvent.contentOffset.x / (CELL + CELL_GAP) - 0.05))
-                        if (week !== calendarFirstWeek) setCalendarFirstWeek(week)
-                      }}
                       ref={calendarRef}
-                      scrollEventThrottle={16}
                       showsHorizontalScrollIndicator={false}
                       style={styles.flex}
                     >
@@ -630,8 +614,8 @@ function MemberView() {
                                     styles.cell,
                                     !day.inRange
                                       ? styles.cellOut
-                                      : day.type
-                                        ? { backgroundColor: soupColorOf(day.type), borderColor: colors.soupEdge, borderWidth: line.base }
+                                      : day.count > 0
+                                        ? { backgroundColor: ramenHeat[Math.min(4, day.count) - 1] }
                                         : null,
                                   ]}
                                 />
@@ -642,13 +626,14 @@ function MemberView() {
                       </View>
                     </ScrollView>
                   </View>
-                  <View accessibilityLabel={`범례. ${calendar.types.join(", ") || "기록 없음"}`} accessible style={styles.legend}>
-                    {calendar.types.map((type) => (
-                      <View key={type} style={styles.rowGap}>
-                        <View style={[styles.legendDot, { backgroundColor: soupColorOf(type) }]} />
-                        <AppText capScale tone="sub" variant="meta">{type}</AppText>
-                      </View>
+                  {/* 잔디처럼 하루에 먹은 그릇 수만큼 진해진다. 범례는 적음 → 많음 한 줄 */}
+                  <View accessibilityLabel={`범례. 하루 ${LEVEL_LABELS.join(", ")} 순으로 빨강이 진해져요`} accessible style={styles.legend}>
+                    <AppText capScale tone="sub" variant="meta">적음</AppText>
+                    <View style={[styles.legendDot, styles.legendEmpty]} />
+                    {ramenHeat.map((color, index) => (
+                      <View key={LEVEL_LABELS[index]} style={[styles.legendDot, { backgroundColor: color }]} />
                     ))}
+                    <AppText capScale tone="sub" variant="meta">많음</AppText>
                   </View>
                 </View>
                 <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="meta">
@@ -657,13 +642,6 @@ function MemberView() {
                   </AppText>
                   {streak > 1 ? ` · 최장 ${streak}일 연속` : ""}
                 </AppText>
-                <View style={styles.calendarHintSlot}>
-                  {calendar.total === 0 ? (
-                    <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
-                      이 기간에는 기록이 없어요. 라멘로그를 남기면 캘린더가 채워져요.
-                    </AppText>
-                  ) : null}
-                </View>
               </View>
 
               <View style={styles.infoSection}>
@@ -1426,9 +1404,11 @@ const styles = StyleSheet.create({
   week: { gap: CELL_GAP },
   cell: { width: CELL, height: CELL, borderRadius: 3, backgroundColor: colors.secondary },
   cellOut: { backgroundColor: colors.transparent },
-  legend: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", columnGap: spacing.x3, rowGap: spacing.x1_5, minHeight: (typography.meta.lineHeight ?? 18) * 2 + spacing.x1_5 },
-  legendDot: { width: CELL, height: CELL, borderRadius: 3, borderColor: colors.soupEdge, borderWidth: line.base },
-  calendarHintSlot: { minHeight: (typography.secondary.lineHeight ?? 20) * 2 },
+  legend: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: CELL_GAP + 1 },
+  legendDot: { width: CELL, height: CELL, borderRadius: 3 },
+  legendEmpty: { backgroundColor: colors.secondary },
+  // 카드 안쪽(위 월 라벨 줄부터 칸 영역까지)에 겹쳐 안내를 보인다
+  calendarEmpty: { position: "absolute", left: spacing.x4, right: spacing.x4, top: spacing.x4, height: 17 + spacing.x1 + CELL * 7 + CELL_GAP * 6, alignItems: "center", justifyContent: "center", zIndex: 1 },
   monthlyCard: { flexDirection: "row", alignItems: "center", gap: spacing.x3, minHeight: spacing.x4 * 2 + (typography.cardTitle.lineHeight ?? 22) + (typography.secondary.lineHeight ?? 20) * 2, paddingHorizontal: spacing.x4, paddingVertical: spacing.x4, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
   monthlyIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: radii.pill, backgroundColor: colors.canvas },
   listFrame: { flexGrow: 0, overflow: "hidden", backgroundColor: colors.canvasSoft, borderRadius: radii.sm },
