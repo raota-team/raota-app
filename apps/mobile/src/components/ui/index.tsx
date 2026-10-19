@@ -1,3 +1,4 @@
+import Svg, { Line, Path } from "react-native-svg"
 import { ChevronLeft, X } from "lucide-react-native"
 import {
   AccessibilityInfo,
@@ -13,6 +14,7 @@ import {
   Text as NativeText,
   View,
   useWindowDimensions,
+  type ColorValue,
   type PressableProps,
   type ScrollViewProps,
   type StyleProp,
@@ -23,28 +25,57 @@ import {
   type ViewStyle,
 } from "react-native"
 import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context"
-import { RAMEN_TYPES } from "@raota/shared"
 import * as Haptics from "expo-haptics"
 import { forwardRef, useEffect, useRef, useState, type PropsWithChildren, type ReactNode } from "react"
-
+import Reanimated, { Easing as MotionEasing, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
 import {
   colors,
   line,
   maxFontScale,
   pressFade,
-  pressInto,
   radii,
   shadows,
+  soupColorOf,
   spacing,
   touchTarget,
   typography,
+  usePalette,
 } from "../../theme"
 
-/*
- * RAOTA 공통 부품. 모양은 apps/mobile/DESIGN.md(네오 브루탈리즘 라이트)를 따른다.
- * 부품의 테두리는 2pt 먹선, 번지지 않는 그림자는 누를 수 있는 것(버튼, 사진 위 아이콘 버튼)에만 있다.
- * 새 화면은 hex나 임의 크기 대신 여기 부품과 src/theme 토큰만 쓴다.
- */
+const AnimatedPressable = Reanimated.createAnimatedComponent(Pressable)
+const SELECTION_EASE = MotionEasing.bezier(0.22, 1, 0.36, 1)
+
+/** 고른 면·글씨는 색만 바꾸고, 눌림은 레이아웃 대신 시각적 크기로 돌려준다. */
+function useSelectableMotion(selected: boolean) {
+  const palette = usePalette()
+  const reducedMotion = useReducedMotion()
+  const selection = useSharedValue(selected ? 1 : 0)
+  const pressScale = useSharedValue(1)
+
+  useEffect(() => {
+    selection.value = reducedMotion ? (selected ? 1 : 0) : withTiming(selected ? 1 : 0, { duration: 200, easing: SELECTION_EASE })
+    if (reducedMotion) pressScale.value = 1
+  }, [selected, reducedMotion, selection, pressScale])
+
+  const containerStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(selection.value, [0, 1], [palette.canvasSoft, palette.selected]),
+    transform: [{ scale: pressScale.value }],
+  }), [palette])
+  const textStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(selection.value, [0, 1], [palette.ink, palette.onSelected]),
+  }), [palette])
+
+  const pressIn = () => {
+    if (!reducedMotion) pressScale.value = withTiming(0.97, { duration: 120 })
+  }
+  const pressOut = () => {
+    pressScale.value = reducedMotion ? 1 : withTiming(1, { duration: 180, easing: SELECTION_EASE })
+  }
+
+  return { containerStyle, textStyle, pressIn, pressOut }
+}
+
+/** 공통 부품은 화면 바탕·의미 색·상호작용 면을 같은 토큰으로 맞춘다. */
 
 // ---------------------------------------------------------------------------
 // 글씨
@@ -58,13 +89,15 @@ export type TextVariant =
   | "cardTitle"
   | "body"
   | "bodyStrong"
+  | "button"
   | "secondary"
   | "meta"
 
-export type TextTone = "ink" | "sub" | "muted" | "brand" | "onDark" | "onDarkMuted" | "positive" | "critical"
+export type TextTone = "ink" | "onInk" | "sub" | "muted" | "brand" | "onDark" | "onDarkMuted" | "positive" | "critical"
 
-const toneColor: Record<TextTone, string> = {
+const toneColor: Record<TextTone, ColorValue> = {
   ink: colors.ink,
+  onInk: colors.onInk,
   sub: colors.inkSub,
   muted: colors.textMuted,
   brand: colors.brand,
@@ -158,11 +191,13 @@ export interface HeaderProps {
   right?: ReactNode
   /** 웹과 같은 왼쪽 정렬이 기본. 가운데 정렬은 모달 헤더에만 쓴다 */
   align?: "left" | "center"
+  /** 탭 루트처럼 헤더 제목이 곧 화면 제목일 때는 headline을 쓴다. */
+  large?: boolean
   style?: StyleProp<ViewStyle>
   titleStyle?: StyleProp<TextStyle>
 }
 
-/** 스택 헤더 56pt: 44pt 뒤로가기 · 제목(screen-title) · 44pt 행동 슬롯 · hairline */
+/** 스택 헤더: 56pt 높이 안에 뒤로가기·제목·행동 슬롯을 둔다. */
 export function Header({
   title,
   subtitle,
@@ -171,6 +206,7 @@ export function Header({
   left,
   right,
   align = "left",
+  large = false,
   style,
   titleStyle,
 }: HeaderProps) {
@@ -181,7 +217,7 @@ export function Header({
         accessibilityLabel={backLabel}
         accessibilityRole="button"
         onPress={onBack}
-        style={({ pressed }) => [styles.iconButton, pressed && styles.pressedWash]}
+        style={({ pressed }) => [styles.iconButton, styles.headerBack, pressed && styles.pressedWash]}
       >
         <ChevronLeft color={colors.ink} size={24} strokeWidth={2.2} />
       </Pressable>
@@ -197,7 +233,7 @@ export function Header({
           adjustsFontSizeToFit
           minimumFontScale={0.7}
           numberOfLines={1}
-          style={[typography.screenTitle, { color: colors.ink }, align === "center" && styles.textCenter, titleStyle]}
+          style={[large ? typography.headline : typography.navTitle, { color: colors.ink }, align === "center" && styles.textCenter, titleStyle]}
         >
           {title}
         </NativeText>
@@ -217,18 +253,20 @@ export interface SectionHeaderProps {
   /** 오른쪽의 짧은 보조 정보 ("필수", "최근 5그릇") */
   meta?: string
   metaTone?: TextTone
+  /** Changing metadata can reserve its widest label without moving the title. */
+  metaStyle?: StyleProp<TextStyle>
   style?: StyleProp<ViewStyle>
 }
 
 /** 섹션 제목(section-title) + 오른쪽 메타. 제목 위 eyebrow 라벨은 쓰지 않는다 */
-export function SectionHeader({ title, meta, metaTone = "sub", style }: SectionHeaderProps) {
+export function SectionHeader({ title, meta, metaTone = "sub", metaStyle, style }: SectionHeaderProps) {
   return (
     <View style={[styles.sectionHeader, style]}>
       <AppText accessibilityRole="header" style={styles.flex} variant="sectionTitle">
         {title}
       </AppText>
       {meta ? (
-        <AppText capScale tone={metaTone} variant="meta">
+        <AppText capScale style={metaStyle} tone={metaTone} variant="meta">
           {meta}
         </AppText>
       ) : null}
@@ -240,10 +278,7 @@ export function SectionHeader({ title, meta, metaTone = "sub", style }: SectionH
 // 버튼
 // ---------------------------------------------------------------------------
 
-/**
- * primary 빨강 · secondary 먹색 · outline 흰 면: 12pt 사각 + 2pt 먹선 + 번지지 않는 그림자(누르면 그림자 속으로 들어간다).
- * utility 6pt 사각 + 1.5pt 선(그림자 없음) · ghost 글씨만 · danger 되돌릴 수 없는 행동(빨강)
- */
+/** 화면마다 하나의 주요 행동은 빨강, 나머지 행동은 회색 면이나 글씨로 둔다. */
 export type ButtonVariant = "primary" | "secondary" | "outline" | "utility" | "ghost" | "danger"
 export type ButtonSize = "small" | "medium" | "large"
 
@@ -260,43 +295,33 @@ export interface ButtonProps extends Omit<PressableProps, "children" | "style"> 
 }
 
 const buttonVariants: Record<ButtonVariant, ViewStyle> = {
-  primary: { backgroundColor: colors.brand, borderColor: colors.outline, borderRadius: radii.sm, ...shadows.hardS },
-  secondary: { backgroundColor: colors.ink, borderColor: colors.outline, borderRadius: radii.sm, ...shadows.hardS },
-  outline: { backgroundColor: colors.canvas, borderColor: colors.outline, borderRadius: radii.sm, ...shadows.hardS },
-  utility: { backgroundColor: colors.canvas, borderColor: colors.outline, borderRadius: radii.xs, borderWidth: line.thin },
-  ghost: { backgroundColor: colors.transparent, borderColor: colors.transparent, borderRadius: radii.sm },
-  danger: { backgroundColor: colors.brand, borderColor: colors.outline, borderRadius: radii.sm, ...shadows.hardS },
+  primary: { backgroundColor: colors.brand },
+  secondary: { backgroundColor: colors.secondary },
+  outline: { backgroundColor: colors.secondary },
+  utility: { backgroundColor: colors.secondary },
+  ghost: { backgroundColor: colors.transparent },
+  danger: { backgroundColor: colors.brand },
 }
 
-/** 그림자가 있는 버튼은 누르면 그림자 속으로 들어간다. 없는 버튼은 옅은 면으로 바뀐다 */
-const buttonHasShadow: Record<ButtonVariant, boolean> = {
-  primary: true,
-  secondary: true,
-  outline: true,
-  utility: false,
-  ghost: false,
-  danger: true,
-}
-
-const buttonTextColor: Record<ButtonVariant, string> = {
+const buttonTextColor: Record<ButtonVariant, ColorValue> = {
   primary: colors.onDark,
-  secondary: colors.onDark,
+  secondary: colors.ink,
   outline: colors.ink,
   utility: colors.ink,
-  ghost: colors.brand,
+  ghost: colors.ink,
   danger: colors.onDark,
 }
 
 const buttonSizes: Record<ButtonSize, ViewStyle> = {
   small: { minHeight: touchTarget, paddingHorizontal: spacing.x4 },
-  medium: { minHeight: 50, paddingHorizontal: spacing.x5 },
+  medium: { minHeight: 48, paddingHorizontal: spacing.x5 },
   large: { minHeight: 52, paddingHorizontal: spacing.x6 },
 }
 
 export function Button({
   title,
   variant = "primary",
-  size = "medium",
+  size = variant === "utility" ? "small" : "medium",
   loading = false,
   disabled = false,
   leftIcon,
@@ -308,9 +333,13 @@ export function Button({
   ...props
 }: ButtonProps) {
   const unavailable = disabled || loading
-  // 그림자는 "누를 수 있다"는 표시라서 못 누르는 동안에는 없앤다. 비활성은 옅은 면 + 흐린 선, 처리 중은 면 색을 유지한다
-  const flatDisabled = disabled && !loading && buttonHasShadow[variant]
-  const color = flatDisabled ? colors.textMuted : buttonTextColor[variant]
+  // Keep optional icons in the row when the button becomes unavailable; hiding their paint
+  // must not change the label's position or the width of a neighboring button.
+  const inactive = disabled && !loading
+  const color = inactive ? colors.textMuted : buttonTextColor[variant]
+  const pressedBackground = variant === "primary" || variant === "danger"
+    ? styles.pressedBrand
+    : variant === "ghost" ? styles.pressedWash : styles.pressedSecondary
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
@@ -323,24 +352,29 @@ export function Button({
         buttonVariants[variant],
         buttonSizes[size],
         fullWidth && styles.fullWidth,
-        pressed && !unavailable && (buttonHasShadow[variant] ? styles.pressedInto : styles.pressedWash),
-        unavailable && (buttonHasShadow[variant] ? styles.buttonNoShadow : styles.disabled),
-        flatDisabled && styles.buttonDisabled,
+        pressed && !unavailable && pressedBackground,
+        inactive && styles.disabledButton,
+        loading && styles.disabled,
         style,
       ]}
     >
-      {loading ? <ActivityIndicator color={color} size="small" /> : leftIcon}
+      {leftIcon ? <View style={unavailable && styles.buttonIconHidden}>{leftIcon}</View> : null}
       <NativeText
         maxFontSizeMultiplier={maxFontScale}
         // 큰 글씨에서 "괜찮아요"가 "괜찮…"이 되던 자리다. 높이는 minHeight라 두 줄이면 버튼이 늘어난다.
-        // DESIGN.md: CTA 문구와 오류 문구는 자르지 않는다
+        // CTA 문구와 오류 문구는 자르지 않는다
         lineBreakStrategyIOS="hangul-word"
         numberOfLines={2}
-        style={[variant === "utility" ? typography.secondary : typography.bodyStrong, styles.buttonText, { color }, variant === "utility" && styles.bold, textStyle]}
+        style={[typography.button, styles.buttonText, { color }, loading && styles.buttonIconHidden, textStyle]}
       >
         {title}
       </NativeText>
-      {!loading ? rightIcon : null}
+      {rightIcon ? <View style={unavailable && styles.buttonIconHidden}>{rightIcon}</View> : null}
+      {loading ? (
+        <View pointerEvents="none" style={styles.buttonSpinner}>
+          <ActivityIndicator color={color} size="small" />
+        </View>
+      ) : null}
     </Pressable>
   )
 }
@@ -349,12 +383,12 @@ export interface IconButtonProps extends Omit<PressableProps, "children" | "styl
   /** VoiceOver가 읽을 이름. 아이콘 전용 버튼에는 필수 */
   accessibilityLabel: string
   icon: ReactNode
-  /** 사진 위에 띄울 때: 흰 12pt 사각 + 2pt 먹선 + 번지지 않는 그림자. 아이콘은 ink 색으로 넘긴다 */
+  /** 사진 위에서는 photoPill 면으로 띄운다. */
   onImage?: boolean
   style?: StyleProp<ViewStyle>
 }
 
-/** 44pt 아이콘 버튼. 기본은 테두리 없는 12pt 사각(헤더·시트), onImage는 사진 위에 뜨는 흰 키 */
+/** 44pt 원형 아이콘 버튼. onImage 아이콘은 호출부에서 colors.onPhotoPill을 사용한다. */
 export function IconButton({ icon, onImage = false, style, ...props }: IconButtonProps) {
   return (
     <Pressable
@@ -363,7 +397,7 @@ export function IconButton({ icon, onImage = false, style, ...props }: IconButto
       style={({ pressed }) => [
         styles.iconButton,
         onImage && styles.iconButtonOnImage,
-        pressed && (onImage ? styles.pressedInto : styles.pressedWash),
+        pressed && styles.pressedWash,
         style,
       ]}
     >
@@ -376,6 +410,8 @@ export function IconButton({ icon, onImage = false, style, ...props }: IconButto
 // 칩, 태그, 5축 입력
 // ---------------------------------------------------------------------------
 
+const CHIP_HIT_SLOP = { top: 2, bottom: 2 } as const
+
 export interface ChipProps extends Omit<PressableProps, "children" | "style"> {
   label: string
   selected?: boolean
@@ -384,7 +420,7 @@ export interface ChipProps extends Omit<PressableProps, "children" | "style"> {
   textStyle?: StyleProp<TextStyle>
 }
 
-/** 흰 면 + 1.5pt 먹선 알약, 선택은 빨강 면. 그림자는 없다. 선택 상태를 VoiceOver에 알린다 */
+/** 기본은 따뜻한 회색 알약, 선택은 selected 면 알약이다. */
 export function Chip({
   label,
   selected = false,
@@ -393,39 +429,45 @@ export function Chip({
   style,
   textStyle,
   accessibilityLabel = label,
+  onPressIn,
+  onPressOut,
   ...props
 }: ChipProps) {
+  const motion = useSelectableMotion(selected)
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ selected, disabled: Boolean(disabled) }}
       disabled={disabled}
+      hitSlop={CHIP_HIT_SLOP}
       {...props}
-      style={({ pressed }) => [
-        styles.chip,
-        selected && styles.chipSelected,
-        pressed && !selected && styles.pressedWash,
-        disabled && styles.disabled,
-        style,
-      ]}
+      onPressIn={(event) => {
+        motion.pressIn()
+        onPressIn?.(event)
+      }}
+      onPressOut={(event) => {
+        motion.pressOut()
+        onPressOut?.(event)
+      }}
+      style={[styles.chip, motion.containerStyle, disabled && styles.disabled, style]}
     >
       {leading}
-      <NativeText
+      <Reanimated.Text
         maxFontSizeMultiplier={maxFontScale}
-        style={[typography.secondary, styles.bold, { color: selected ? colors.onDark : colors.ink }, textStyle]}
+        style={[typography.button, motion.textStyle, textStyle]}
       >
         {label}
-      </NativeText>
-    </Pressable>
+      </Reanimated.Text>
+    </AnimatedPressable>
   )
 }
 
-/** 읽기 전용 태그. 흰 면 + 1.5pt 먹선 + 6pt 모서리 */
+/** 읽기 전용 보조 정보는 칩과 같은 면에 얹는다. */
 export function Tag({ label, style }: { label: string; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[styles.tag, style]}>
-      <AppText capScale variant="meta">
+      <AppText capScale style={styles.tagText} tone="muted" variant="meta">
         {label}
       </AppText>
     </View>
@@ -434,29 +476,26 @@ export function Tag({ label, style }: { label: string; style?: StyleProp<ViewSty
 
 export interface StickerProps extends Omit<ViewProps, "style" | "children"> {
   label: string
-  /** yolk: 표시(기본). ink: 먹색 면 + 흰 글씨("종합 리포트" 같은 묶음 이름) */
-  tone?: "yolk" | "ink"
+  /** 사진 위에 얹을 때 photoPill 알약이 된다. */
+  onImage?: boolean
   icon?: ReactNode
   style?: StyleProp<ViewStyle>
 }
 
-/**
- * 표시 스티커. 노랑 면 + 1.5pt 먹선 + 6pt 모서리. 기울이지 않는다.
- * "오늘의 픽", "AI가 요약했어요", 추천 1위처럼 읽기만 하는 표시에 쓰고 버튼에는 쓰지 않는다. 한 화면에 세 개까지.
- */
-export function Sticker({ label, tone = "yolk", icon, style, ...props }: StickerProps) {
+/** 읽기 전용 표시 라벨. 사진 위는 photoPill 알약, 평소에는 따뜻한 회색 알약. onImage 아이콘은 호출부에서 colors.onPhotoPill을 쓴다. */
+export function Sticker({ label, onImage = false, icon, style, ...props }: StickerProps) {
   return (
     <View
       // 라벨을 준 스티커는 하나로 묶어 읽는다. 묶지 않으면 라벨이 무시되고 안쪽 글씨만 읽힌다
       accessible={props.accessibilityLabel ? true : undefined}
       {...props}
-      style={[styles.sticker, tone === "ink" && styles.stickerInk, style]}
+      style={[styles.sticker, onImage && styles.onImagePill, style]}
     >
       {icon}
       <NativeText
         maxFontSizeMultiplier={maxFontScale}
         numberOfLines={1}
-        style={[typography.meta, styles.stickerText, { color: tone === "ink" ? colors.onDark : colors.ink }]}
+        style={[typography.meta, styles.stickerText, { color: colors.ink }, onImage && styles.onImageText]}
       >
         {label}
       </NativeText>
@@ -464,44 +503,105 @@ export function Sticker({ label, tone = "yolk", icon, style, ...props }: Sticker
   )
 }
 
+/** 식권 바깥 면이 파인 것처럼 보이도록 절취선 양 끝을 비운다. */
+const NOTCH_RADIUS = 9
+
+export interface TicketCutProps {
+  /** horizontal: 위아래를 나누는 절취선, vertical: 왼쪽 본문과 오른쪽 꼬리를 나누는 절취선 */
+  orientation?: "horizontal" | "vertical"
+  /** 파임 뒤에 보이는 바깥 면 색. 기본은 흰 화면 바탕. */
+  startFill?: ColorValue
+  endFill?: ColorValue
+}
+
 /**
- * 라멘 종류 태그(쇼유, 돈코츠, 시오…). 기록은 종류(RAMEN_TYPES), 매장은 원장의 대표 스타일(style)을 넘긴다.
- * style은 "쇼유 라멘"처럼 적혀 있어서 뒤의 "라멘"을 떼고 같은 글자로 보여 준다(데이터는 바꾸지 않는다).
- *
- * 노랑 스티커는 RAMEN_TYPES 아홉 가지에만 준다. "토리파이탄"처럼 원장에만 있고 기록할 수 없는 스타일은
- * 흰 태그로 그려서, 사용자가 "이 종류로 기록할 수 있겠다"고 오해하지 않게 한다.
- * RAMEN_TYPES에 토리파이탄을 넣으려면 서버 명세의 RamenType부터 함께 바꿔야 한다(DESIGN.md 참고).
+ * 테두리 없는 회색 식권 안의 점선과 파임. iOS가 단일 dashed border를
+ * 그리지 못하므로 선과 반원을 SVG로 그리고, 양 끝의 바탕색으로 식권 면을 덮는다.
  */
-export function RamenTypeTag({ type, inList = false, style }: RamenTypeTagProps) {
-  const label = type.replace(/\s*라멘$/, "").trim()
-  // 종류가 비었거나 그냥 "라멘"(원장에 없는 가게의 기본값)이면 알려 주는 것이 없으므로 그리지 않는다
-  if (!label) return null
-  const recordable = RAMEN_TYPES.includes(label)
-  // 줄이 이어지는 목록에서는 굵은 먹색 글씨로 쓴다. 줄마다 노랑이 반복되면 노랑이 신호를 잃는다.
-  // 기록할 수 없는 종류는 목록에서도 보통 굵기 보조 글씨로 두어 구분을 남긴다
-  if (inList) {
+export function TicketCut({ orientation = "horizontal", startFill = colors.paper, endFill = colors.paper }: TicketCutProps) {
+  const r = NOTCH_RADIUS
+  const thick = r + line.base
+  const span = 2 * r + 2
+  const across = line.base / 2 - (r + 1)
+  if (orientation === "vertical") {
     return (
-      <AppText
-        accessibilityLabel={`라멘 종류 ${label}`}
-        capScale
-        numberOfLines={1}
-        style={[recordable ? styles.typeInList : styles.typeInListOther, style as StyleProp<TextStyle>]}
-        tone={recordable ? "ink" : "sub"}
-        variant="meta"
-      >
-        {label}
-      </AppText>
+      <View pointerEvents="none" style={styles.ticketCutVertical}>
+        <View style={[styles.flex, { marginVertical: r }]}>
+          <Svg height="100%" width={line.base}>
+            <Line stroke={colors.border} strokeDasharray="4 4" strokeWidth={line.base} x1={line.base / 2} x2={line.base / 2} y1={0} y2="100%" />
+          </Svg>
+        </View>
+        <Svg height={thick} style={[styles.notch, { top: 0, left: across }]} width={span}>
+          <Path d={`M1 0 A${r} ${r} 0 0 0 ${span - 1} 0 Z`} fill={startFill} />
+          <Path d={`M1 0 A${r} ${r} 0 0 0 ${span - 1} 0`} fill="none" stroke={colors.border} strokeWidth={line.base} />
+        </Svg>
+        <Svg height={thick} style={[styles.notch, { bottom: 0, left: across }]} width={span}>
+          <Path d={`M1 ${thick} A${r} ${r} 0 0 1 ${span - 1} ${thick} Z`} fill={endFill} />
+          <Path d={`M1 ${thick} A${r} ${r} 0 0 1 ${span - 1} ${thick}`} fill="none" stroke={colors.border} strokeWidth={line.base} />
+        </Svg>
+      </View>
     )
   }
-  if (!recordable) return <Tag label={label} style={style} />
-  return <Sticker accessibilityLabel={`라멘 종류 ${label}`} label={label} style={style} />
+  return (
+    <View pointerEvents="none" style={styles.ticketCutHorizontal}>
+      <View style={[styles.flex, { marginHorizontal: r }]}>
+        <Svg height={line.base} width="100%">
+          <Line stroke={colors.border} strokeDasharray="4 4" strokeWidth={line.base} x1={0} x2="100%" y1={line.base / 2} y2={line.base / 2} />
+        </Svg>
+      </View>
+      <Svg height={span} style={[styles.notch, { left: 0, top: across }]} width={thick}>
+        <Path d={`M0 1 A${r} ${r} 0 0 1 0 ${span - 1} Z`} fill={startFill} />
+        <Path d={`M0 1 A${r} ${r} 0 0 1 0 ${span - 1}`} fill="none" stroke={colors.border} strokeWidth={line.base} />
+      </Svg>
+      <Svg height={span} style={[styles.notch, { right: 0, top: across }]} width={thick}>
+        <Path d={`M${thick} 1 A${r} ${r} 0 0 0 ${thick} ${span - 1} Z`} fill={endFill} />
+        <Path d={`M${thick} 1 A${r} ${r} 0 0 0 ${thick} ${span - 1}`} fill="none" stroke={colors.border} strokeWidth={line.base} />
+      </Svg>
+    </View>
+  )
+}
+
+/** 원장 스타일과 기록 종류를 모두 종류 이름으로 보여 준다. */
+export function RamenTypeTag({ type, inList = false, onImage = false, style }: RamenTypeTagProps) {
+  const label = type.replace(/\s*라멘$/, "").trim()
+  // 이름이 "라멘"뿐이면 종류 정보가 없어 표시하지 않는다.
+  if (!label) return null
+  return (
+    <View
+      accessibilityLabel={`라멘 종류 ${label}`}
+      accessible
+      style={[inList ? styles.typeInList : styles.ramenTypeTag, onImage && styles.onImagePill, style]}
+    >
+      <AppText capScale numberOfLines={1} style={[styles.bold, onImage && styles.onImageText]} variant="meta">{label}</AppText>
+    </View>
+  )
 }
 
 export interface RamenTypeTagProps {
   type: string
-  /** 여러 줄이 이어지는 목록 안이면 true. 노랑 스티커 대신 굵은 먹색 글씨로 나온다 */
+  /** 여러 줄이 이어지는 목록에서는 면 없이 이름만 보여 준다. */
   inList?: boolean
+  /** 사진 위 알약은 모드에 맞춘 photoPill 면과 onPhotoPill 글씨를 쓴다. */
+  onImage?: boolean
   style?: StyleProp<ViewStyle>
+}
+
+export interface SoupDotProps {
+  type: string
+  size?: number
+  style?: StyleProp<ViewStyle>
+}
+
+/** 이름 없이 색만으로 종류를 알 수 없으므로 점 자체는 읽지 않는다. */
+export function SoupDot({ type, size = 12, style }: SoupDotProps) {
+  return (
+    <View
+      accessibilityElementsHidden
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+      style={[style, { width: size, height: size, borderRadius: size / 2, backgroundColor: soupColorOf(type) }, styles.soupDot]}
+    />
+  )
 }
 
 export interface ScoreSegmentProps {
@@ -513,14 +613,13 @@ export interface ScoreSegmentProps {
   high: string
   value: number | null
   onChange: (value: number) => void
-  /**
-   * quality: 좋고 나쁨. 고른 점수까지 차오른다(별점처럼). hero면 크게 그리고 한 마디 반응을 붙인다.
-   * spectrum: 좋고 나쁨이 아닌 취향의 위치(맑음↔진함). 선 위의 한 점을 고른다.
-   */
+  /** 평가 축의 말투를 유지한다. 선택 방식과 칸 모양은 모든 축에서 같다. */
   kind?: "quality" | "spectrum"
   hero?: boolean
   /** 1~5점 각각의 한 마디("맛있었어요", "진한 편"). 없으면 "N점" */
   words?: readonly string[]
+  /** 재방문 의사처럼 점수 대신 말을 적는 세 칸에도 같은 알약 줄을 쓴다. */
+  options?: readonly { value: number; label: string }[]
   /** 제출을 시도했는데 비어 있으면 빨간 안내를 보여준다 */
   invalid?: boolean
   /** 화면 순서 번호(1~5). 축 이름 앞에 붙는다 */
@@ -528,122 +627,104 @@ export interface ScoreSegmentProps {
   style?: StyleProp<ViewStyle>
 }
 
-const SCORES = [1, 2, 3, 4, 5] as const
+const SCORE_OPTIONS = [1, 2, 3, 4, 5].map((score) => ({ value: score, label: String(score) }))
+
+function ScorePill({
+  accessibilityLabel,
+  selected,
+  label,
+  variant,
+  onPress,
+}: {
+  accessibilityLabel: string
+  selected: boolean
+  label: string
+  variant: "button" | "cardTitle"
+  onPress: () => void
+}) {
+  const motion = useSelectableMotion(selected)
+  return (
+    <AnimatedPressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      onPress={onPress}
+      onPressIn={motion.pressIn}
+      onPressOut={motion.pressOut}
+      style={[styles.scoreCell, motion.containerStyle]}
+    >
+      <Reanimated.Text
+        lineBreakStrategyIOS="hangul-word"
+        maxFontSizeMultiplier={maxFontScale}
+        style={[typography[variant], styles.scoreCellText, motion.textStyle]}
+      >
+        {label}
+      </Reanimated.Text>
+    </AnimatedPressable>
+  )
+}
 
 /**
- * 맛 평가 한 줄. 칸마다 44pt 이상, 고르면 가벼운 선택 햅틱.
- * VoiceOver: radiogroup + radio(checked), 라벨은 "육수 농도 4점, 진함 쪽".
- * ref는 첫 번째 칸 묶음에 걸려 빠진 항목으로 스크롤할 때 쓴다.
+ * 각각 독립된 알약으로 고르되 VoiceOver의 radiogroup + radio 의미와
+ * 축별 점수·말 라벨은 그대로 유지한다.
  */
 export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSegment(
-  { label, low, high, value, onChange, kind = "quality", hero = false, words, invalid = false, index, style },
+  { label, low, high, value, onChange, hero = false, words, options, invalid = false, index, style },
   ref,
 ) {
   const lean = (score: number) => (score <= 2 ? `${low} 쪽` : score >= 4 ? `${high} 쪽` : "보통")
-  const word = value ? (words?.[value - 1] ?? `${value}점`) : null
+  const word = value !== null ? (options?.find((option) => option.value === value)?.label ?? words?.[value - 1] ?? `${value}점`) : null
+  const status = invalid && value === null ? "골라주세요" : word ?? "미선택"
   const choose = (score: number) => {
     if (Platform.OS !== "web" && score !== value) void Haptics.selectionAsync().catch(() => undefined)
     onChange(score)
   }
-  const status = invalid && !value ? "골라주세요" : word ?? "미선택"
 
   return (
     <View style={style}>
       <View style={styles.scoreHead}>
-        <AppText variant={hero ? "sectionTitle" : "bodyStrong"}>
-          {index ? <AppText tone="sub" variant={hero ? "sectionTitle" : "bodyStrong"}>{`${index}  `}</AppText> : null}
+        <AppText variant={hero ? "cardTitle" : "bodyStrong"}>
+          {index ? <AppText tone="sub" variant="bodyStrong">{`${index}  `}</AppText> : null}
           {label}
         </AppText>
-        {hero ? null : (
-          <AppText capScale style={styles.scoreWord} tone={invalid && !value ? "critical" : value ? "ink" : "sub"} variant="secondary">
-            {status}
-          </AppText>
-        )}
+        <AppText
+          capScale
+          numberOfLines={2}
+          style={styles.scoreWord}
+          tone={invalid && value === null ? "critical" : value !== null ? "ink" : "sub"}
+          variant="secondary"
+        >
+          {status}
+        </AppText>
       </View>
-
       <View
         accessibilityLabel={label}
         accessibilityRole="radiogroup"
         ref={ref}
-        style={kind === "spectrum" ? styles.spectrum : styles.quality}
+        style={styles.scoreCells}
       >
-        {/* 스펙트럼은 다섯 점을 잇는 선 위에서 고른다 */}
-        {kind === "spectrum" ? <View pointerEvents="none" style={[styles.spectrumTrack, invalid && !value && styles.trackInvalid]} /> : null}
-        {SCORES.map((score) => {
-          const selected = value === score
-          // 고른 점수는 진한 빨강, 그 아래 점수는 옅은 빨강으로 차오른다(한 화면에 진한 빨강은 하나씩)
-          const filled = kind === "quality" && value !== null && score < value
+        {(options ?? SCORE_OPTIONS).map((option) => {
+          const selected = value === option.value
           return (
-            <Pressable
-              accessibilityLabel={`${label} ${score}점, ${lean(score)}`}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              hitSlop={kind === "spectrum" ? { top: 6, bottom: 6 } : undefined}
-              key={score}
-              onPress={() => choose(score)}
-              style={({ pressed }) => [styles.scoreCell, pressed && !selected && styles.pressedDimScore]}
-            >
-              {kind === "spectrum" ? (
-                selected ? (
-                  <View style={styles.spectrumPick}>
-                    <NativeText maxFontSizeMultiplier={maxFontScale} style={[typography.bodyStrong, styles.onDarkText]}>
-                      {score}
-                    </NativeText>
-                  </View>
-                ) : (
-                  <View style={[styles.spectrumDot, invalid && !value && styles.dotInvalid]}>
-                    <NativeText maxFontSizeMultiplier={maxFontScale} style={[typography.meta, styles.spectrumDotText]}>
-                      {score}
-                    </NativeText>
-                  </View>
-                )
-              ) : (
-                <View
-                  style={[
-                    styles.qualityDot,
-                    hero && styles.qualityDotHero,
-                    filled && styles.qualityDotFilled,
-                    kind === "quality" && selected && styles.qualityDotSelected,
-                    invalid && !value && styles.dotInvalid,
-                  ]}
-                >
-                  <NativeText
-                    maxFontSizeMultiplier={maxFontScale}
-                    style={[
-                      hero ? typography.sectionTitle : typography.bodyStrong,
-                      { color: selected ? colors.onDark : filled ? colors.brand : colors.ink },
-                    ]}
-                  >
-                    {score}
-                  </NativeText>
-                </View>
-              )}
-            </Pressable>
+            <ScorePill
+              accessibilityLabel={options
+                ? `${label} ${option.label}, ${option.value}점`
+                : `${label} ${option.value}점, ${lean(option.value)}`}
+              key={option.value}
+              label={option.label}
+              onPress={() => choose(option.value)}
+              selected={selected}
+              variant={options ? "button" : "cardTitle"}
+            />
           )
         })}
       </View>
-
-      {hero ? (
-        // 고른 점수에 한 마디로 답한다. 비어 있으면 양 끝 설명
-        <AppText
-          accessibilityLiveRegion="polite"
-          capScale
-          style={styles.heroWord}
-          tone={invalid && !value ? "critical" : value ? "ink" : "sub"}
-          variant={value ? "cardTitle" : "secondary"}
-        >
-          {value ? word : invalid ? "골라주세요" : `${low} ← → ${high}`}
-        </AppText>
-      ) : (
+      {!options ? (
         <View style={styles.scoreEnds}>
-          <AppText capScale tone="sub" variant="meta">
-            {low}
-          </AppText>
-          <AppText capScale tone="sub" variant="meta">
-            {high}
-          </AppText>
+          <AppText capScale tone="sub" variant="meta">{low}</AppText>
+          <AppText capScale tone="sub" variant="meta">{high}</AppText>
         </View>
-      )}
+      ) : null}
     </View>
   )
 })
@@ -660,7 +741,7 @@ export interface CardProps extends PropsWithChildren {
   testID?: string
 }
 
-/** 흰 면, 12pt, 2pt 먹선, 그림자 없음. 카드 안에 카드를 넣지 않는다 */
+/** 따뜻한 회색 면을 사용하며, 누를 때도 테두리 없이 면으로만 반응한다. */
 export function Card({ children, onPress, accessibilityLabel, style, contentStyle, testID }: CardProps) {
   if (onPress) {
     return (
@@ -668,7 +749,7 @@ export function Card({ children, onPress, accessibilityLabel, style, contentStyl
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         onPress={onPress}
-        style={({ pressed }) => [styles.card, pressed && styles.pressedWashBg, style]}
+        style={({ pressed }) => [styles.card, pressed && styles.pressedWash, style]}
         testID={testID}
       >
         <View style={contentStyle}>{children}</View>
@@ -692,24 +773,14 @@ export interface ToastProps {
   onDismiss?: () => void
   actionLabel?: string
   onAction?: () => void
-  /**
-   * dark: 기본(먹색 블록). light: 흰 블록 + 2pt 먹선. 먹색 면 위에서도 묻히지 않아야 하는 화면
-   * (매장 상세처럼 아래쪽에 차콜 섹션이 있는 곳)에서 쓴다
-   */
+  /** 표시 방식과 관계없이 토스트 바탕은 deep으로 일정하게 유지한다. */
   appearance?: "dark" | "light"
-  /** 문구 앞 아이콘(예: 저장 표시). 색은 호출하는 쪽이 appearance에 맞춘다 */
+  /** 문구 앞 아이콘(예: 저장 표시). 흰색으로 넘긴다. */
   icon?: ReactNode
   style?: StyleProp<ViewStyle>
 }
 
-const toastColors: Record<FeedbackVariant, string> = {
-  neutral: colors.ink,
-  positive: colors.ink,
-  critical: colors.critical,
-  informative: colors.ink,
-}
-
-/** 먹색 12pt 블록 토스트. 성공·실패를 색만으로 구분하지 않도록 문구에 결과를 쓴다 */
+/** 잠깐 뜨는 안내는 한 가지 깊은 면과 흰 글씨로 읽는다. */
 export function Toast({
   visible,
   message,
@@ -718,7 +789,6 @@ export function Toast({
   onDismiss,
   actionLabel,
   onAction,
-  appearance = "dark",
   icon,
   style,
 }: ToastProps) {
@@ -731,21 +801,17 @@ export function Toast({
   if (!visible) return null
   return (
     <View
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={variant === "critical" ? "assertive" : "polite"}
       accessibilityRole="alert"
-      style={[
-        styles.toast,
-        appearance === "light" ? styles.toastLight : { backgroundColor: toastColors[variant] },
-        style,
-      ]}
+      style={[styles.toast, style]}
     >
       {icon}
-      <AppText style={[styles.flex, appearance === "light" && styles.bold]} tone={appearance === "light" ? "ink" : "onDark"} variant="secondary">
+      <AppText style={styles.flex} tone="onDark" variant="secondary">
         {message}
       </AppText>
       {actionLabel && onAction ? (
         <Pressable accessibilityRole="button" onPress={onAction} style={styles.toastAction}>
-          <AppText style={styles.underline} tone={appearance === "light" ? "ink" : "onDark"} variant="secondary">
+          <AppText style={styles.underline} tone="onDark" variant="secondary">
             {actionLabel}
           </AppText>
         </Pressable>
@@ -789,11 +855,11 @@ export const Empty = EmptyState
 export interface LoadingStateProps {
   label?: string
   fullScreen?: boolean
-  color?: string
+  color?: ColorValue
   style?: StyleProp<ViewStyle>
 }
 
-export function LoadingState({ label = "불러오는 중…", fullScreen = false, color = colors.brand, style }: LoadingStateProps) {
+export function LoadingState({ label = "불러오는 중…", fullScreen = false, color = colors.ink, style }: LoadingStateProps) {
   return (
     <View
       accessibilityLabel={label}
@@ -822,6 +888,10 @@ export interface StickyActionBarProps extends PropsWithChildren {
   /** 버튼 위 한 줄 안내. 비활성 이유("육수 농도를 골라주세요")를 여기 쓴다 */
   hint?: string
   hintTone?: TextTone
+  /** 저장 실패처럼 복구가 필요한 안내는 잘리지 않는 경고로 읽는다. */
+  hintIsError?: boolean
+  /** Reserve space for a changing hint so the buttons and content above stay in place. */
+  reserveHintLines?: number
   style?: StyleProp<ViewStyle>
 }
 
@@ -829,14 +899,29 @@ export interface StickyActionBarProps extends PropsWithChildren {
  * 화면 하단에 고정되는 행동 영역. 하단 inset을 더해 홈 인디케이터와 겹치지 않는다.
  * 320×568 화면에서도 스크롤 없이 보여야 하는 CTA(기록 저장, 완료, 다음 단계)에 쓴다.
  */
-export function StickyActionBar({ hint, hintTone = "muted", style, children }: StickyActionBarProps) {
+export function StickyActionBar({ hint, hintTone = "muted", hintIsError = false, reserveHintLines = 0, style, children }: StickyActionBarProps) {
   const insets = useSafeAreaInsets()
+  const hintText = hint ? (
+    <AppText
+      accessibilityLiveRegion={hintIsError ? "assertive" : "polite"}
+      accessibilityRole={hintIsError ? "alert" : undefined}
+      capScale
+      lineBreakStrategyIOS="hangul-word"
+      numberOfLines={hintIsError ? undefined : 2}
+      tone={hintTone}
+      variant="meta"
+    >
+      {hint}
+    </AppText>
+  ) : null
   return (
-    <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, spacing.x3) }, style]}>
-      {hint ? (
-        <AppText accessibilityLiveRegion="polite" capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} tone={hintTone} variant="meta">
-          {hint}
-        </AppText>
+    <View style={[styles.stickyBar, { paddingBottom: Math.max(insets.bottom, spacing.x4) }, style]}>
+      {hint || reserveHintLines ? (
+        <View style={[styles.stickyHintSlot, reserveHintLines ? { height: reserveHintLines * 18 * maxFontScale + spacing.x1 } : undefined]}>
+          {hintIsError && reserveHintLines ? (
+            <ScrollView nestedScrollEnabled style={styles.flex}>{hintText}</ScrollView>
+          ) : hintText}
+        </View>
       ) : null}
       <View style={styles.stickyActions}>{children}</View>
     </View>
@@ -858,7 +943,7 @@ export interface BottomSheetProps extends PropsWithChildren {
   footer?: ReactNode
 }
 
-/** 입력이 필요한 짧은 과제용. 12pt 윗모서리 + 2pt 먹선, 36×4 손잡이, 검정 50% 뒤판 */
+/** 짧은 작업은 흰 시트로 띄우고 뒤판은 검정 반투명 면으로 분리한다. */
 export function BottomSheet({
   visible,
   onClose,
@@ -871,6 +956,12 @@ export function BottomSheet({
   children,
 }: BottomSheetProps) {
   const { mounted, progress, sheetHeight, onSheetLayout } = useSheetTransition(visible)
+  // Keep the header mounted while the sheet exits. Some callers clear their title
+  // together with `visible`, which otherwise shortens the sheet mid-animation.
+  const lastHeader = useRef({ title, description })
+  if (visible) lastHeader.current = { title, description }
+  const shownTitle = visible ? title : lastHeader.current.title
+  const shownDescription = visible ? description : lastHeader.current.description
   if (!mounted) return null
   return (
     <Modal
@@ -885,7 +976,7 @@ export function BottomSheet({
         {/* 뒤판은 제자리에서 흐려진다. 시트와 함께 밀려 올라오면 화면 전체가 딸려 오는 것처럼 보인다 */}
         <Animated.View style={[styles.backdrop, { opacity: progress }]}>
           <Pressable
-            accessibilityLabel={`${title ?? "시트"} 닫기`}
+            accessibilityLabel={`${shownTitle ?? "시트"} 닫기`}
             accessibilityRole="button"
             onPress={dismissOnBackdropPress ? onClose : undefined}
             style={styles.fill}
@@ -900,17 +991,17 @@ export function BottomSheet({
         >
         <SafeAreaView accessibilityViewIsModal edges={["bottom"]} style={styles.sheet}>
           <View style={styles.sheetHandle} />
-          {title || description ? (
+          {shownTitle || shownDescription ? (
             <View style={styles.sheetHeader}>
               <View style={styles.flex}>
-                {title ? (
+                {shownTitle ? (
                   <AppText accessibilityRole="header" variant="sectionTitle">
-                    {title}
+                    {shownTitle}
                   </AppText>
                 ) : null}
-                {description ? (
+                {shownDescription ? (
                   <AppText style={styles.sheetDescription} tone="muted" variant="secondary">
-                    {description}
+                    {shownDescription}
                   </AppText>
                 ) : null}
               </View>
@@ -1013,7 +1104,7 @@ export function ConfirmDialog({
             </AppText>
           ) : null}
           <View style={[styles.dialogActions, stacked && styles.dialogActionsStacked]}>
-            <Button disabled={loading} fullWidth onPress={onCancel} title={cancelLabel} variant="outline" />
+            <Button disabled={loading} fullWidth onPress={onCancel} title={cancelLabel} variant="ghost" />
             <Button
               fullWidth
               loading={loading}
@@ -1036,6 +1127,10 @@ const styles = StyleSheet.create({
   textCenter: { textAlign: "center" },
   bold: { fontWeight: "700" },
   underline: { textDecorationLine: "underline" },
+  // 파임은 테두리 없는 식권 면을 덮으므로 절취선을 면 가장자리에 붙인다
+  ticketCutHorizontal: { height: line.base, flexDirection: "row" },
+  ticketCutVertical: { width: line.base, alignSelf: "stretch" },
+  notch: { position: "absolute" },
   screen: { flex: 1, backgroundColor: colors.paper },
   screenContent: { flexGrow: 1 },
   header: {
@@ -1044,33 +1139,29 @@ const styles = StyleSheet.create({
     paddingRight: spacing.x2,
     flexDirection: "row",
     alignItems: "center",
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
     backgroundColor: colors.paper,
   },
   headerSide: { minWidth: touchTarget, minHeight: touchTarget, justifyContent: "center" },
   headerRight: { alignItems: "flex-end" },
   headerTitles: { flex: 1, paddingHorizontal: spacing.x2 },
   headerTitlesCenter: { alignItems: "center" },
-  sectionHeader: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2 },
+  sectionHeader: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2, marginBottom: spacing.x3 },
   iconButton: {
     width: touchTarget,
     height: touchTarget,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.sm,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
   },
-  iconButtonOnImage: {
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.base,
-    ...shadows.hardS,
-  },
-  pressedWash: { backgroundColor: colors.canvasSoft },
-  pressedWashBg: { backgroundColor: colors.canvasSoft },
-  pressedInto: pressInto(2),
+  // 스택 헤더의 뒤로가기는 면 없이 아이콘만 두고, 누를 때만 회색 원이 보인다
+  headerBack: { backgroundColor: colors.transparent },
+  iconButtonOnImage: { backgroundColor: colors.photoPill },
+  pressedWash: { backgroundColor: colors.surfacePressed },
+  pressedSecondary: { backgroundColor: colors.secondaryPressed },
+  pressedBrand: { backgroundColor: colors.brandPressed },
   button: {
-    borderWidth: line.base,
+    borderRadius: radii.sm,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1078,109 +1169,78 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.x2,
   },
   buttonText: { textAlign: "center" },
+  buttonIconHidden: { opacity: 0 },
+  buttonSpinner: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center" },
   fullWidth: { alignSelf: "stretch", flex: 1 },
   disabled: { opacity: 0.4 },
-  buttonNoShadow: { shadowOpacity: 0 },
-  buttonDisabled: { backgroundColor: colors.canvasSoft, borderColor: colors.textFaint },
+  disabledButton: { backgroundColor: colors.canvasSoft },
   chip: {
-    minHeight: touchTarget,
+    height: 40,
     paddingHorizontal: spacing.x4,
     borderRadius: radii.pill,
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.thin,
+    backgroundColor: colors.canvasSoft,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.x1_5,
   },
-  chipSelected: { backgroundColor: colors.brand, borderColor: colors.outline },
   tag: {
     alignSelf: "flex-start",
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.thin,
-    borderRadius: radii.xs,
-    paddingHorizontal: 9,
-    paddingVertical: spacing.x1,
+    backgroundColor: colors.canvasSoft,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.x3,
+    paddingVertical: spacing.x1_5,
   },
+  tagText: { fontWeight: "600" },
   sticker: {
     alignSelf: "flex-start",
     minHeight: 26,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.x1,
-    backgroundColor: colors.yolk,
-    borderColor: colors.outline,
-    borderWidth: line.thin,
-    borderRadius: radii.xs,
-    paddingHorizontal: 9,
+    backgroundColor: colors.canvasSoft,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.x2_5,
   },
-  stickerInk: { backgroundColor: colors.ink },
-  // 목록 줄의 라멘 종류. 스티커와 같은 12pt 800이되 면 없이 먹색 글씨만
-  typeInList: { fontWeight: "800", flexShrink: 0 },
-  typeInListOther: { fontWeight: "600", flexShrink: 0 },
-  stickerText: { fontWeight: "800" },
+  onImagePill: { backgroundColor: colors.photoPill },
+  onImageText: { color: colors.onPhotoPill },
+  typeInList: { flexShrink: 0 },
+  ramenTypeTag: {
+    alignSelf: "flex-start",
+    justifyContent: "center",
+    minHeight: 28,
+    paddingHorizontal: spacing.x2_5,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
+  },
+  soupDot: { borderWidth: line.base, borderColor: colors.soupEdge, flexShrink: 0 },
+  stickerText: { fontWeight: "700" },
   scoreHead: {
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "space-between",
+    gap: spacing.x2,
+    // Reserve two lines for selected words and validation without moving the score pills.
+    minHeight: 2 * (typography.secondary.lineHeight ?? 20) * maxFontScale,
     marginBottom: spacing.x2,
   },
-  scoreWord: { fontWeight: "700" },
-  // 점수 칸은 원·칸이 이미 꽉 차 있어 배경을 바꿔도 보이지 않는다
-  pressedDimScore: pressFade,
-  quality: { flexDirection: "row", justifyContent: "space-between" },
-  spectrum: { flexDirection: "row", justifyContent: "space-between" },
-  scoreCell: { flex: 1, minHeight: touchTarget, alignItems: "center", justifyContent: "center" },
-  // 좋고 나쁨: 원이 고른 점수까지 차오른다
-  qualityDot: {
-    width: touchTarget,
-    height: touchTarget,
-    borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.canvas,
-  },
-  qualityDotHero: { width: 56, height: 56, borderWidth: line.base },
-  qualityDotFilled: { backgroundColor: colors.brandWeak },
-  qualityDotSelected: { backgroundColor: colors.brand },
-  // 취향 위치: 다섯 칸의 가운데를 잇는 선(첫 칸 중앙 10% ~ 마지막 칸 중앙 90%)
-  // 다섯 점을 하나의 컨트롤로 묶는 선. 옅으면 점들이 무관해 보이므로 본문 글씨와 같은 무게로 둔다
-  spectrumTrack: { position: "absolute", left: "10%", right: "10%", top: "50%", height: 2, marginTop: -1, backgroundColor: colors.inkSub },
-  trackInvalid: { backgroundColor: colors.brand },
-  spectrumDot: {
-    width: 28,
-    height: 28,
+  scoreWord: { fontWeight: "700", flexShrink: 1, textAlign: "right" },
+  scoreCells: { flexDirection: "row", gap: spacing.x1_5 },
+  scoreCell: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: touchTarget,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    paddingHorizontal: spacing.x1,
+    backgroundColor: colors.canvasSoft,
   },
-  spectrumDotText: { fontWeight: "700", color: colors.inkSub },
-  spectrumPick: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.brand,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-  },
-  onDarkText: { color: colors.onDark },
-  dotInvalid: { borderColor: colors.brand },
-  heroWord: { marginTop: spacing.x2, textAlign: "center" },
+  scoreCellText: { fontWeight: "700", fontVariant: ["tabular-nums"], textAlign: "center" },
   scoreEnds: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.x1_5 },
   card: {
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
     borderRadius: radii.sm,
-    borderColor: colors.outline,
-    borderWidth: line.base,
     padding: spacing.x4,
   },
   toast: {
@@ -1190,6 +1250,7 @@ const styles = StyleSheet.create({
     bottom: spacing.x6,
     minHeight: touchTarget,
     borderRadius: radii.sm,
+    backgroundColor: colors.deep,
     paddingHorizontal: spacing.x4,
     paddingVertical: spacing.x3,
     flexDirection: "row",
@@ -1197,7 +1258,6 @@ const styles = StyleSheet.create({
     gap: spacing.x3,
   },
   toastAction: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x1 },
-  toastLight: { backgroundColor: colors.canvas, borderWidth: line.base, borderColor: colors.outline },
   stateContainer: { alignItems: "center", justifyContent: "center", padding: spacing.x8 },
   stateIcon: { marginBottom: spacing.x3 },
   stateDescription: { marginTop: spacing.x1_5 },
@@ -1214,10 +1274,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     gap: spacing.x2,
     backgroundColor: colors.canvas,
-    borderTopColor: colors.outline,
+    borderTopColor: colors.border,
     borderTopWidth: line.base,
   },
   stickyActions: { flexDirection: "row", gap: spacing.x2 },
+  stickyHintSlot: { justifyContent: "flex-end" },
   modalRoot: { flex: 1, justifyContent: "flex-end" },
   fill: { flex: 1 },
   backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: colors.overlay },
@@ -1225,16 +1286,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
-    borderColor: colors.outline,
-    borderWidth: line.base,
-    borderBottomWidth: 0,
-    overflow: "hidden",
+    ...shadows.modal,
   },
   sheetHandle: {
     width: 36,
     height: 4,
     borderRadius: radii.pill,
-    backgroundColor: colors.border,
+    backgroundColor: colors.secondaryPressed,
     alignSelf: "center",
     marginTop: spacing.x3,
   },
@@ -1244,17 +1302,17 @@ const styles = StyleSheet.create({
     paddingRight: spacing.x2,
     flexDirection: "row",
     alignItems: "center",
-    borderBottomColor: colors.canvasSoft,
-    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    borderBottomWidth: line.base,
   },
   sheetDescription: { marginTop: spacing.x0_5 },
   // 긴 본문이 하단 버튼을 밀어내지 않도록 줄어들 수 있게 둔다
-  sheetContent: { flexShrink: 1, paddingHorizontal: spacing.gutter, paddingVertical: spacing.x4 },
+  sheetContent: { flexShrink: 1, paddingHorizontal: spacing.x4, paddingVertical: spacing.x4 },
   sheetFooter: {
     paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.x3,
-    borderTopColor: colors.canvasSoft,
-    borderTopWidth: 1,
+    paddingVertical: spacing.x4,
+    borderTopColor: colors.border,
+    borderTopWidth: line.base,
   },
   dialogRoot: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.x8 },
   dialog: {
@@ -1265,8 +1323,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x5,
     paddingTop: spacing.x6,
     paddingBottom: spacing.x5,
-    borderColor: colors.outline,
-    borderWidth: line.base,
+    ...shadows.modal,
   },
   dialogMessage: { marginTop: spacing.x2 },
   dialogActions: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x5 },

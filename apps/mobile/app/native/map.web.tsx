@@ -1,23 +1,18 @@
 import { router, useLocalSearchParams } from "expo-router"
-import { Check, ChevronDown, ChevronRight, List, Map as MapIcon, MapPin, Search, Soup, X } from "lucide-react-native"
+import { Check, ChevronDown, List, Map as MapIcon, MapPin, Search, X } from "lucide-react-native"
 import { useEffect, useMemo, useState, type ReactElement } from "react"
-import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native"
+import { FlatList, Image, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import type { Shop, ShopCatalogItem } from "@raota/shared"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, BottomSheet, EmptyState, LoadingState, RamenTypeTag } from "@/src/components/ui"
+import { AppText, BottomSheet, EmptyState, LoadingState } from "@/src/components/ui"
 import { useShops } from "@/src/data/hooks"
 import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
-import { colors, line, maxFontScale, pressInto, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, maxFontScale, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
 
-/*
- * 지도 탭의 공용 부품(검색·필터 머리, 목록, 하단 퀵뷰). 웹 MapScreen과 같은 배치·크기·문구를 쓴다.
- * iOS(map.tsx)는 여기에 Apple 지도를 더하고, Expo 웹(이 파일의 기본 내보내기)은 목록만 보여준다.
- * 겉모습은 네오 브루탈리즘 라이트: 검색창·퀵뷰는 흰 면 + 2pt 먹선(그림자 없음), 필터는 1.5pt 선 알약,
- * 목록·표는 1pt 구분선으로 깔끔하게 두고, 그림자는 누를 수 있는 키에만 붙인다.
- * 퀵뷰와 목록에 취향 일치도는 표시하지 않는다(MVP 범위 밖).
- */
+/** 검색·필터·퀵뷰는 지도 위에 떠 있고, 목록에서는 사진과 정보 사이에 줄만 둔다. */
+export const MAP_PIN_HEIGHT = touchTarget + spacing.x1 + 28
 
 export type MapShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec" | "lastOrder">>
 export type MapSort = "distance" | "popular"
@@ -26,7 +21,7 @@ export interface Coordinate {
   longitude: number
 }
 
-/** short는 좁은 화면(iPhone SE)의 필터 버튼에 쓰는 짧은 이름 */
+/** 좁은 필터 키에서도 읽히는 짧은 이름. 시트와 접근성에는 전체 이름을 쓴다 */
 export const REGION_OPTIONS = [
   { value: "ALL", label: "전체 지역", short: "전체 지역", keys: [] as string[] },
   { value: "망원", label: "마포 · 망원동", short: "망원동", keys: ["망원"] },
@@ -173,16 +168,19 @@ export function MapHeader({
   filters,
   viewMode,
   onToggleView,
+  onHeight,
 }: {
   filters: MapFilters
   viewMode: "map" | "list"
-  /** 없으면 전환 버튼을 숨긴다(웹 미리보기) */
+  /** 웹 미리보기는 목록만 보여 주므로 전환 버튼이 없다. */
   onToggleView?: () => void
+  /** 지도 조작키를 검색·필터 아래에 놓을 때 실제 머리 높이를 사용한다. */
+  onHeight?: (height: number) => void
 }) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  /** iPhone SE 폭에서는 필터를 내용 크기로 두고 가로로 넘긴다(DESIGN.md: 가로 스크롤 필터 허용) */
-  const narrow = width < 375
+  /** 좁은 화면과 초기화 키가 생긴 상태는 세 필터를 가로 스크롤한다. */
+  const scrollFilters = width < 390 || filters.hasActiveFilter
   const [picker, setPicker] = useState<"region" | "menu" | null>(null)
   const regionOption = REGION_OPTIONS.find((option) => option.value === filters.region) ?? REGION_OPTIONS[0]
   const menuOption = MENU_OPTIONS.find((option) => option.value === filters.menu) ?? MENU_OPTIONS[0]
@@ -194,9 +192,10 @@ export function MapHeader({
   const current = picker === "region" ? filters.region : filters.menu
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + spacing.x3 }]}>
+    // 목록 ↔ 지도 전환 때 검색창과 전환 버튼이 같은 자리에 있도록 두 모드의 위 여백을 같게 둔다
+    <View onLayout={onHeight ? ({ nativeEvent }) => onHeight(nativeEvent.layout.height) : undefined} style={[styles.header, viewMode === "map" && styles.mapHeader, { paddingTop: insets.top + spacing.x2 }]}>
       <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
+        <View style={[styles.searchBox, viewMode === "map" && styles.mapFloating]}>
           <Search color={colors.textMuted} size={16} />
           <TextInput
             accessibilityLabel="라멘집 검색"
@@ -218,71 +217,72 @@ export function MapHeader({
             >
               <X color={colors.textMuted} size={16} />
             </Pressable>
-          ) : null}
+          ) : <View style={styles.clearButton} />}
         </View>
         {onToggleView ? (
           <Pressable
             accessibilityLabel={viewMode === "map" ? "목록으로 보기" : "지도로 보기"}
             accessibilityRole="button"
             onPress={onToggleView}
-            style={({ pressed }) => [styles.toggle, pressed && styles.pressedInto]}
+            style={({ pressed }) => [styles.toggle, viewMode === "map" && styles.mapFloating, pressed && styles.pressedWash]}
           >
-            {viewMode === "map" ? <List color={colors.ink} size={16} /> : <MapIcon color={colors.ink} size={16} />}
-            <AppText capScale style={styles.bold} variant="secondary">
+            {viewMode === "map" ? <List color={colors.ink} size={18} /> : <MapIcon color={colors.ink} size={18} />}
+            <AppText capScale style={styles.bold} variant="meta">
               {viewMode === "map" ? "목록" : "지도"}
             </AppText>
           </Pressable>
         ) : null}
       </View>
 
-      <FilterRow narrow={narrow}>
+      <FilterRow narrow={scrollFilters}>
         <Pressable
           accessibilityHint="지역을 골라요"
           accessibilityLabel={`지역 필터: ${regionLabel}`}
           accessibilityRole="button"
           accessibilityState={{ expanded: picker === "region" }}
+          hitSlop={{ top: 2, bottom: 2 }}
           onPress={() => setPicker("region")}
-          style={[styles.filterButton, !narrow && styles.filterButtonWide, regionActive && styles.filterButtonActive]}
+          style={({ pressed }) => [styles.filterButton, styles.regionFilter, viewMode === "map" && styles.mapFloating, regionActive && styles.filterButtonActive, pressed && !regionActive && styles.pressedWash]}
         >
-          <MapPin color={regionActive ? colors.onDark : colors.ink} size={14} />
           <AppText
             capScale
             numberOfLines={1}
-            style={[styles.filterText, !narrow && styles.filterTextWide, regionActive && styles.filterTextActive]}
-            variant="secondary"
+            style={[styles.filterText, regionActive && styles.filterTextActive]}
+            variant="button"
           >
-            {narrow ? regionOption.short : regionLabel}
+            {regionOption.short}
           </AppText>
-          <ChevronDown color={regionActive ? colors.onDark : colors.ink} size={16} />
+          <ChevronDown color={regionActive ? colors.onSelected : colors.ink} size={16} />
         </Pressable>
         <Pressable
           accessibilityHint="라멘 종류를 골라요"
           accessibilityLabel={`메뉴 필터: ${menuLabel}`}
           accessibilityRole="button"
           accessibilityState={{ expanded: picker === "menu" }}
+          hitSlop={{ top: 2, bottom: 2 }}
           onPress={() => setPicker("menu")}
-          style={[styles.filterButton, !narrow && styles.filterButtonWide, menuActive && styles.filterButtonActive]}
+          style={({ pressed }) => [styles.filterButton, styles.menuFilter, viewMode === "map" && styles.mapFloating, menuActive && styles.filterButtonActive, pressed && !menuActive && styles.pressedWash]}
         >
-          <Soup color={menuActive ? colors.onDark : colors.ink} size={16} />
           <AppText
             capScale
             numberOfLines={1}
-            style={[styles.filterText, !narrow && styles.filterTextWide, menuActive && styles.filterTextActive]}
-            variant="secondary"
+            style={[styles.filterText, menuActive && styles.filterTextActive]}
+            variant="button"
           >
-            {narrow ? menuOption.short : menuLabel}
+            {menuOption.short}
           </AppText>
-          <ChevronDown color={menuActive ? colors.onDark : colors.ink} size={16} />
+          <ChevronDown color={menuActive ? colors.onSelected : colors.ink} size={16} />
         </Pressable>
         <Pressable
           accessibilityLabel="영업 중인 곳만 보기"
           accessibilityRole="switch"
           accessibilityState={{ checked: filters.onlyOpen }}
+          hitSlop={{ top: 2, bottom: 2 }}
           onPress={() => filters.setOnlyOpen(!filters.onlyOpen)}
-          style={[styles.openToggle, filters.onlyOpen && styles.openToggleActive]}
+          style={({ pressed }) => [styles.filterButton, viewMode === "map" && styles.mapFloating, filters.onlyOpen && styles.filterButtonActive, pressed && !filters.onlyOpen && styles.pressedWash]}
         >
-          <View style={[styles.openDot, filters.onlyOpen && styles.openDotActive]} />
-          <AppText capScale style={styles.bold} tone={filters.onlyOpen ? "onDark" : "ink"} variant="secondary">
+          <View style={styles.openDot} testID="map-open-lamp" />
+          <AppText capScale style={[styles.bold, filters.onlyOpen && styles.filterTextActive]} variant="button">
             영업 중
           </AppText>
         </Pressable>
@@ -290,8 +290,9 @@ export function MapHeader({
           <Pressable
             accessibilityLabel="필터 초기화"
             accessibilityRole="button"
+            hitSlop={{ top: 2, bottom: 2 }}
             onPress={filters.resetFilters}
-            style={({ pressed }) => [styles.resetButton, pressed && styles.pressedWash]}
+            style={({ pressed }) => [styles.resetButton, viewMode === "map" && styles.mapFloating, pressed && styles.pressedWash]}
           >
             <X color={colors.ink} size={16} />
           </Pressable>
@@ -319,10 +320,12 @@ export function MapHeader({
                 }}
                 style={({ pressed }) => [styles.option, selected && styles.optionSelected, pressed && !selected && styles.pressedWash]}
               >
-                <AppText style={selected && styles.bold} tone={selected ? "brand" : "ink"} variant="secondary">
+                <AppText style={selected && styles.onSelectedText} variant="secondary">
                   {option.label}
                 </AppText>
-                {selected ? <Check color={colors.brand} size={16} /> : null}
+                <View style={styles.optionCheck}>
+                  {selected ? <Check color={colors.onSelected} size={16} /> : null}
+                </View>
               </Pressable>
             )
           })}
@@ -339,57 +342,52 @@ export function MapHeader({
 export function QuickView({ shop }: { shop: MapShop | null }) {
   if (!shop) {
     return (
-      <View style={styles.quickView}>
-        <View accessibilityLiveRegion="polite" style={styles.quickEmpty}>
-          <AppText style={styles.center} variant="cardTitle">
-            조건에 맞는 라멘집이 없어요
-          </AppText>
-          <AppText style={[styles.center, styles.gapTop]} tone="muted" variant="secondary">
-            검색어나 필터를 바꿔 다시 찾아보세요.
-          </AppText>
-        </View>
+      <View accessibilityLiveRegion="polite" style={[styles.quickView, styles.quickEmpty]}>
+        <AppText style={styles.center} variant="cardTitle">
+          조건에 맞는 라멘집이 없어요
+        </AppText>
+        <AppText style={[styles.center, styles.gapTop]} tone="muted" variant="secondary">
+          검색어나 필터를 바꿔 다시 찾아보세요.
+        </AppText>
       </View>
     )
   }
   const status = statusOf(shop)
   return (
-    <View style={styles.quickView}>
-      <Pressable
-        accessibilityHint="매장 상세로 이동해요"
-        accessibilityLabel={`${shopLabel(shop)}, 매장 상세 보기`}
-        accessibilityRole="button"
-        onPress={() => openShop(shop.id)}
-        style={({ pressed }) => [styles.quickRow, pressed && styles.pressedWash]}
-      >
-        <ResilientUriImage accessibilityLabel="" style={styles.quickPhoto} uri={shop.photos[0]} />
-        <View style={styles.flexBody}>
-          <View style={styles.titleRow}>
-            <AppText numberOfLines={1} style={styles.flexShrink} variant="cardTitle">
-              {shop.name}
-              {shop.branch ? <AppText tone="muted" variant="cardTitle">{` · ${shop.branch}`}</AppText> : null}
-            </AppText>
-            {shop.style ? <RamenTypeTag type={shop.style} /> : null}
-          </View>
-          {shop.spec ? (
-            <AppText capScale numberOfLines={1} style={styles.gapTop} tone="muted" variant="secondary">
-              {shop.spec}
-            </AppText>
-          ) : null}
-          <View style={styles.metaRow}>
-            <AppText capScale style={styles.bold} tone={status.open ? "positive" : "muted"} variant="meta">
-              {`● ${status.label}`}
-            </AppText>
-            <AppText capScale style={styles.dot} variant="meta">
-              ·
-            </AppText>
-            <AppText capScale style={styles.bold} tone="muted" variant="meta">
-              {formatDistance(shop.distanceM)}
+    <Pressable
+      accessibilityHint="매장 상세로 이동해요"
+      accessibilityLabel={`${shopLabel(shop)}${shop.style ? `, ${shop.style}` : ""}${shop.spec ? `, ${shop.spec}` : ""}${shop.lastOrder ? `, 라스트오더 ${shop.lastOrder}` : ""}, 매장 상세 보기`}
+      accessibilityRole="button"
+      onPress={() => openShop(shop.id)}
+      style={({ pressed }) => [styles.quickView, styles.quickRow, pressed && styles.pressedWash]}
+    >
+      <ResilientUriImage accessibilityLabel="" style={styles.quickPhoto} uri={shop.photos[0]} />
+      <View style={styles.flexBody}>
+        <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.shopTitle} variant="cardTitle">
+          {shop.name}
+          {shop.branch ? <AppText style={styles.shopBranch} tone="muted" variant="cardTitle">{` · ${shop.branch}`}</AppText> : null}
+        </AppText>
+        {shop.style ? (
+          <AppText capScale numberOfLines={1} tone="sub" variant="secondary">{shop.style}</AppText>
+        ) : null}
+        {shop.spec ? (
+          <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.gapTop} tone="sub" variant="secondary">
+            {shop.spec}
+          </AppText>
+        ) : null}
+        <View style={styles.metaRow}>
+          <View style={styles.statusRow}>
+            <View style={[styles.openDot, !status.open && styles.hiddenDot]} testID={status.open ? "map-open-status-lamp" : undefined} />
+            <AppText capScale numberOfLines={1} style={[status.open && styles.bold, status.open && styles.openText]} tone={status.open ? "ink" : "muted"} variant="meta">
+              {status.label}
             </AppText>
           </View>
+          <AppText capScale numberOfLines={1} style={styles.flexShrinkGrow} tone="muted" variant="meta">
+            {` · ${formatDistance(shop.distanceM)}${shop.lastOrder ? ` · 라스트오더 ${shop.lastOrder}` : ""}`}
+          </AppText>
         </View>
-        <ChevronRight color={colors.textMuted} size={20} />
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   )
 }
 
@@ -397,10 +395,8 @@ export function QuickView({ shop }: { shop: MapShop | null }) {
 // 목록
 // ---------------------------------------------------------------------------
 
-/** narrow는 iPhone SE 폭. 한 줄에 다 넣으면 라스트오더가 잘려 영업 정보를 잃는다 */
-function ListRow({ shop, narrow }: { shop: MapShop; narrow: boolean }) {
+function ListRow({ shop }: { shop: MapShop }) {
   const status = statusOf(shop)
-  const line = [shop.style, shop.spec].filter(Boolean).join(" · ")
   const lastOrder = shop.lastOrder ? `라스트오더 ${shop.lastOrder}` : null
   return (
     <Pressable
@@ -410,43 +406,29 @@ function ListRow({ shop, narrow }: { shop: MapShop; narrow: boolean }) {
       style={({ pressed }) => [styles.listRow, pressed && styles.pressedWash]}
     >
       <ResilientUriImage accessibilityLabel="" style={styles.listPhoto} uri={shop.photos[0]} />
-      <View style={styles.flexBody}>
-        <AppText numberOfLines={1} variant="cardTitle">
+      <View style={[styles.flexBody, styles.listBody]}>
+        <AppText lineBreakStrategyIOS="hangul-word" style={styles.shopTitle} variant="cardTitle">
           {shop.name}
-          {shop.branch ? <AppText tone="sub" variant="cardTitle">{` · ${shop.branch}`}</AppText> : null}
+          {shop.branch ? <AppText style={styles.shopBranch} tone="muted" variant="cardTitle">{` · ${shop.branch}`}</AppText> : null}
         </AppText>
-        {line ? (
-          <AppText capScale numberOfLines={1} style={styles.gapTop} tone="sub" variant="secondary">
-            {line}
+        {shop.spec ? (
+          <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.gapTop} tone="sub" variant="secondary">
+            {shop.spec}
           </AppText>
         ) : null}
-        <View style={[styles.listMeta, narrow && styles.listMetaWrap]}>
-          <AppText capScale numberOfLines={1} style={[styles.bold, styles.noShrink]} tone={status.open ? "positive" : "sub"} variant="meta">
-            {`● ${status.label}`}
-          </AppText>
-          <AppText capScale style={styles.dot} variant="meta">
-            ·
-          </AppText>
-          <AppText capScale numberOfLines={1} style={[styles.bold, styles.noShrink]} tone="sub" variant="meta">
-            {formatDistance(shop.distanceM)}
-          </AppText>
-          {lastOrder ? (
-            narrow ? (
-              // 좁은 폭에서는 같은 정보 묶음 안에서 줄만 바꾼다(390폭은 지금처럼 한 줄)
-              <AppText capScale numberOfLines={1} style={[styles.bold, styles.metaLine]} tone="sub" variant="meta">
-                {lastOrder}
-              </AppText>
-            ) : (
-              <>
-                <AppText capScale style={styles.dot} variant="meta">
-                  ·
-                </AppText>
-                <AppText capScale numberOfLines={1} style={[styles.bold, styles.flexShrink]} tone="sub" variant="meta">
-                  {lastOrder}
-                </AppText>
-              </>
-            )
+        <View style={styles.listMeta} testID="map-list-meta">
+          {shop.style ? (
+            <AppText capScale tone="sub" variant="meta">{shop.style}</AppText>
           ) : null}
+          <View style={styles.statusRow}>
+            <View style={[styles.openDot, !status.open && styles.hiddenDot]} testID={status.open ? "map-open-status-lamp" : undefined} />
+            <AppText capScale numberOfLines={1} style={[status.open && styles.bold, status.open && styles.openText]} tone={status.open ? "ink" : "muted"} variant="meta">
+              {status.label}
+            </AppText>
+          </View>
+          <AppText capScale tone="muted" variant="meta">
+            {` · ${formatDistance(shop.distanceM)}${lastOrder ? ` · ${lastOrder}` : ""}`}
+          </AppText>
         </View>
       </View>
     </Pressable>
@@ -454,9 +436,6 @@ function ListRow({ shop, narrow }: { shop: MapShop; narrow: boolean }) {
 }
 
 export function ShopListView({ filters, notice }: { filters: MapFilters; notice?: ReactElement | null }) {
-  const { width } = useWindowDimensions()
-  /** 머리의 필터와 같은 기준. 이 아래에서는 한 줄 메타가 잘린다 */
-  const narrow = width < 375
   return (
     <FlatList
       ListEmptyComponent={
@@ -474,30 +453,30 @@ export function ShopListView({ filters, notice }: { filters: MapFilters; notice?
         <View>
           {notice}
           <View style={styles.listHead}>
-            <AppText capScale style={styles.bold} tone="sub" variant="secondary">
-              총{" "}
-              <AppText style={styles.extraBold} variant="secondary">
-                {`${filters.filtered.length}곳`}
-              </AppText>
+            <AppText capScale style={styles.bold} variant="cardTitle">
+              총 {`${filters.filtered.length}곳`}
             </AppText>
             <View accessibilityLabel="정렬" accessibilityRole="radiogroup" style={styles.sortGroup}>
-              {SORT_OPTIONS.map((option, index) => {
-                const selected = filters.sort === option.value
-                return (
-                  <Pressable
-                    accessibilityLabel={option.label}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selected }}
-                    key={option.value}
-                    onPress={() => filters.setSort(option.value)}
-                    style={[styles.sortButton, index > 0 && styles.sortButtonDivided, selected && styles.sortButtonActive]}
-                  >
-                    <AppText capScale style={styles.bold} tone={selected ? "onDark" : "ink"} variant="secondary">
-                      {option.label}
-                    </AppText>
-                  </Pressable>
-                )
-              })}
+              <View style={styles.sortInner}>
+                {SORT_OPTIONS.map((option) => {
+                  const selected = filters.sort === option.value
+                  return (
+                    <Pressable
+                      accessibilityLabel={option.label}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selected }}
+                      key={option.value}
+                      onPress={() => filters.setSort(option.value)}
+                      hitSlop={{ top: 4, bottom: 4 }}
+                      style={({ pressed }) => [styles.sortButton, selected && styles.sortButtonActive, pressed && !selected && styles.sortButtonPressed]}
+                    >
+                      <AppText capScale style={[styles.bold, selected && styles.onSelectedText]} variant="button">
+                        {option.label}
+                      </AppText>
+                    </Pressable>
+                  )
+                })}
+              </View>
             </View>
           </View>
         </View>
@@ -508,7 +487,7 @@ export function ShopListView({ filters, notice }: { filters: MapFilters; notice?
       keyExtractor={(shop) => String(shop.id)}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
-      renderItem={({ item }) => <ListRow narrow={narrow} shop={item} />}
+      renderItem={({ item }) => <ListRow shop={item} />}
       showsVerticalScrollIndicator={false}
     />
   )
@@ -533,6 +512,52 @@ export function LocationNotice({ message, actionLabel, onAction }: { message: st
   )
 }
 
+/** 핀 그림은 지도 조작과 별개인 뷰로 두어 두 플랫폼에서 같은 모양을 쓸 수 있다. */
+export function MapShopPin({ name, selected }: { name: string; selected: boolean }) {
+  return (
+    <View style={mapStyles.pin} testID={selected ? "selected-map-pin" : "unselected-map-pin"}>
+      {selected ? (
+        <SelectedMapPin name={name} />
+      ) : (
+        <View style={mapStyles.pinHitArea}>
+          <View style={mapStyles.pinCircle} testID="map-pin-symbol">
+            <Image accessible={false} source={require("@/assets/images/logo.png")} style={mapStyles.pinLogo} testID="map-pin-logo" />
+          </View>
+        </View>
+      )}
+    </View>
+  )
+}
+
+function SelectedMapPin({ name }: { name: string }) {
+  return (
+    <>
+      <View style={mapStyles.pinHitArea}>
+        <View style={[mapStyles.pinCircle, mapStyles.pinCircleSelected]} testID="map-pin-symbol">
+          <Image accessible={false} source={require("@/assets/images/logo.png")} style={mapStyles.pinLogo} testID="map-pin-logo" />
+        </View>
+      </View>
+      <View style={mapStyles.pinLabel} testID="map-pin-label">
+        <AppText capScale numberOfLines={1} style={mapStyles.pinLabelText} variant="meta">
+          {name}
+        </AppText>
+      </View>
+    </>
+  )
+}
+
+export function MapClusterPin({ count }: { count: number }) {
+  return (
+    <View style={mapStyles.pinHitArea}>
+      <View style={mapStyles.clusterPin} testID="map-cluster">
+        <AppText capScale style={mapStyles.clusterCount} tone="onDark" variant="button">
+          {count}
+        </AppText>
+      </View>
+    </View>
+  )
+}
+
 /** Expo 웹 미리보기: Apple 지도는 iOS에만 있으므로 같은 검색·필터와 목록만 보여준다 */
 export default function WebMapScreen() {
   const filters = useMapFilters(null)
@@ -548,117 +573,131 @@ export default function WebMapScreen() {
 }
 
 export const mapStyles = StyleSheet.create({
-  /** 지도 위에 뜨는 흰 키: 2pt 먹선 + 번지지 않는 그림자 */
+  /** 지도 위 조작키는 44pt 흰 원으로 띄운다. */
   floatingButton: {
     width: touchTarget,
     height: touchTarget,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
+    borderRadius: radii.pill,
     backgroundColor: colors.canvas,
-    ...shadows.hardS,
+    ...shadows.modal,
   },
-  floatingPressed: pressInto(2),
+  floatingPressed: { backgroundColor: colors.surfacePressed },
+  pin: { alignItems: "center", minWidth: touchTarget, height: MAP_PIN_HEIGHT },
+  // 고른 핀만 이름표가 보인다. 비선택 핀도 같은 높이를 써서 원의 중심은 선택 전후 제자리에 남는다.
+  pinHitArea: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center" },
+  pinCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.black,
+  },
+  pinCircleSelected: { backgroundColor: colors.brand },
+  pinLogo: { width: 28, height: 28, resizeMode: "contain", tintColor: colors.white },
+  pinLabel: {
+    height: 28,
+    maxWidth: 160,
+    marginTop: spacing.x1,
+    paddingHorizontal: spacing.x2_5,
+    justifyContent: "center",
+    borderRadius: radii.pill,
+    backgroundColor: colors.selected,
+  },
+  pinLabelText: { color: colors.onSelected, fontWeight: "700", textAlign: "center" },
+  clusterPin: {
+    width: touchTarget,
+    height: 36,
+    borderRadius: radii.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.black,
+  },
+  clusterCount: { fontWeight: "700", fontVariant: ["tabular-nums"] },
 })
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
   bold: { fontWeight: "700" },
-  extraBold: { fontWeight: "800" },
+  onSelectedText: { color: colors.onSelected },
+  openText: { color: colors.open },
   center: { textAlign: "center" },
   gapTop: { marginTop: spacing.x0_5 },
-  flexBody: { flex: 1, minWidth: 0 },
-  flexShrink: { flexShrink: 1, minWidth: 0 },
+  flexBody: { flex: 1, minWidth: 0, gap: spacing.x0_5 },
+  listBody: { gap: spacing.x0_5 },
   flexShrinkGrow: { flex: 1, minWidth: 0 },
-  pressedInto: pressInto(2),
-  // 흰 면의 행·칩·키는 canvasSoft 배경으로 눌린다(그림자 있는 키만 pressInto)
-  pressedWash: { backgroundColor: colors.canvasSoft },
-  dot: { color: colors.textFaint },
-  noShrink: { flexShrink: 0 },
+  pressedWash: { backgroundColor: colors.surfacePressed },
 
   header: {
     paddingHorizontal: spacing.x4,
-    paddingBottom: spacing.x3,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingBottom: 0,
     backgroundColor: colors.paper,
     zIndex: 2,
   },
+  mapHeader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.transparent,
+  },
+  mapFloating: { backgroundColor: colors.canvas, ...shadows.modal },
   searchRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
-  // 검색창: 흰 면 + 2pt 먹선, 그림자 없음
   searchBox: {
     flex: 1,
-    height: touchTarget,
+    height: spacing.x12,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.x2,
-    paddingLeft: spacing.x3_5,
+    gap: spacing.x2_5,
+    paddingLeft: spacing.x4,
     paddingRight: spacing.x0_5,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
   },
   searchInput: { ...typography.body, flex: 1, minWidth: 0, height: "100%", color: colors.ink, paddingVertical: 0 },
   clearButton: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center" },
-  // "목록으로 보기"는 누를 수 있는 키
   toggle: {
-    height: touchTarget,
+    width: spacing.x12,
+    height: spacing.x12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
+  },
+  filterRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2, paddingTop: spacing.x3, paddingBottom: spacing.x3 },
+  filterButton: {
+    height: spacing.x10,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.x1_5,
     paddingHorizontal: spacing.x3_5,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    ...shadows.hardS,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
   },
-  filterRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2, paddingTop: spacing.x2_5 },
-  // 필터는 1.5pt 선 알약. 고른 것은 빨강 면 + 흰 글씨
-  filterButton: {
-    height: touchTarget,
+  regionFilter: { width: spacing.x12 * 2 + spacing.x6 },
+  menuFilter: { width: spacing.x12 * 2 + spacing.x6 },
+  filterButtonActive: { backgroundColor: colors.selected },
+  filterText: { fontWeight: "700", color: colors.ink, flexShrink: 1, minWidth: 0 },
+  filterTextActive: { color: colors.onSelected },
+  filterScroller: { marginHorizontal: -spacing.x4, marginTop: spacing.x3 },
+  filterRowScroll: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.x1_5,
+    gap: spacing.x2,
     paddingHorizontal: spacing.x4,
-    borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    paddingBottom: spacing.x3,
   },
-  filterButtonWide: { flex: 1, minWidth: 0 },
-  filterButtonActive: { backgroundColor: colors.brand },
-  filterText: { fontWeight: "700", color: colors.ink },
-  filterTextWide: { flex: 1, minWidth: 0 },
-  filterTextActive: { color: colors.onDark },
-  filterScroller: { marginHorizontal: -spacing.x4, marginTop: spacing.x2_5 },
-  filterRowScroll: { flexDirection: "row", alignItems: "center", gap: spacing.x2, paddingHorizontal: spacing.x4 },
-  openToggle: {
-    height: touchTarget,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.x1_5,
-    paddingHorizontal: spacing.x4,
-    borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-  },
-  openToggleActive: { backgroundColor: colors.brand },
-  openDot: { width: 6, height: 6, borderRadius: radii.pill, backgroundColor: colors.positive },
-  openDotActive: { backgroundColor: colors.onDark },
+  openDot: { width: 8, height: 8, borderRadius: radii.pill, backgroundColor: colors.open },
+  hiddenDot: { opacity: 0 },
   resetButton: {
-    width: touchTarget,
-    height: touchTarget,
+    width: spacing.x10,
+    height: spacing.x10,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
   optionList: { gap: spacing.x0_5 },
   option: {
@@ -670,81 +709,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x3_5,
     borderRadius: radii.sm,
   },
-  optionSelected: { backgroundColor: colors.brandWeak },
+  optionSelected: { backgroundColor: colors.selected },
+  optionCheck: { width: spacing.x4, height: spacing.x4 },
 
-  // 하단 퀵뷰: 흰 카드 + 2pt 먹선, 그림자 없음
   quickView: {
-    margin: spacing.x4,
-    padding: spacing.x3_5,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
+    // 사진 84pt + 위아래 12pt. 가게가 바뀌어도 카드 크기가 그대로이도록 고정한다
+    height: 112,
+    paddingVertical: spacing.x3,
+    paddingLeft: spacing.x3,
+    paddingRight: spacing.x4_5,
+    borderRadius: radii.lg,
     backgroundColor: colors.canvas,
+    ...shadows.modal,
   },
-  quickEmpty: { paddingVertical: spacing.x3 },
+  quickEmpty: { paddingVertical: spacing.x4, justifyContent: "center" },
   quickRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3_5 },
-  // 48pt를 넘는 사진이라 8pt가 아니라 12pt 모서리다(8pt는 48pt 이하 썸네일과 지도 핀에만)
-  quickPhoto: { width: 64, height: 64, borderRadius: radii.sm, borderWidth: line.base, borderColor: colors.outline },
-  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
+  quickPhoto: { width: 84, height: 84, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
+  shopTitle: { flexShrink: 1, fontWeight: "700" },
+  shopBranch: { fontWeight: "400" },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginTop: spacing.x0_5 },
 
-  listContent: { padding: spacing.x4, paddingBottom: spacing.x8 },
+  listContent: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.x8 },
   listHead: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.x2,
-    paddingBottom: spacing.x2,
-    marginBottom: spacing.x1,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.x3,
+    paddingBottom: spacing.x0_5,
   },
-  // 거리순/인기순도 2pt 먹선으로 두른 두 칸 세그먼트
-  sortGroup: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    overflow: "hidden",
+  sortGroup: { flexDirection: "row" },
+  sortInner: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
+  sortButton: {
+    minHeight: touchTarget,
+    justifyContent: "center",
+    paddingHorizontal: spacing.x3_5,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
   },
-  sortButton: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2_5 },
-  sortButtonDivided: { borderLeftWidth: line.base, borderLeftColor: colors.outline },
-  sortButtonActive: { backgroundColor: colors.ink },
-  listDivider: { height: 1, backgroundColor: colors.border },
-  // 목록은 깔끔한 줄: 테두리 없이 1pt 구분선으로만 나눈다
+  sortButtonActive: { backgroundColor: colors.selected },
+  sortButtonPressed: { backgroundColor: colors.surfacePressed },
+  listDivider: { height: line.hair, backgroundColor: colors.border },
   listRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.x3_5,
+    gap: spacing.x3,
     paddingVertical: spacing.x3,
   },
-  listPhoto: { width: 72, height: 72, borderRadius: radii.sm, borderWidth: line.base, borderColor: colors.outline },
-  listMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.x1_5,
-    marginTop: spacing.x2,
-    paddingTop: spacing.x2,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    overflow: "hidden",
-  },
-  listMetaWrap: { flexWrap: "wrap" },
-  // 줄을 바꿔 붙는 라스트오더. 위 줄과는 listMeta의 gap(6pt)만큼 떨어진다
-  metaLine: { width: "100%" },
+  listPhoto: { width: 48, height: 48, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
+  listMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x0_5 },
   notice: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.x2,
     paddingHorizontal: spacing.x3,
-    paddingVertical: spacing.x2,
-    marginBottom: spacing.x3,
+    paddingVertical: spacing.x3_5,
+    marginBottom: spacing.x4,
     borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
   noticeAction: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2, borderRadius: radii.sm },
 })

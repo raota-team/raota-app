@@ -9,7 +9,7 @@ import {
 } from "@raota/shared"
 import { AppText, Button, EmptyState, Header, Screen } from "@/src/components/ui"
 import { LegalBlockView } from "@/src/components/LegalBlocks"
-import { colors, spacing } from "@/src/theme"
+import { colors, line, spacing } from "@/src/theme"
 
 /**
  * 이용약관·개인정보처리방침 전문. 원문은 raota-front와 같은 packages/shared LEGAL_DOCUMENTS.
@@ -22,7 +22,7 @@ export default function LegalDocumentScreen() {
 
   if (!isLegalDocumentKey(doc)) {
     return (
-      <Screen>
+      <Screen style={styles.screen}>
         <Header onBack={goBack} title="문서를 찾을 수 없어요" />
         <EmptyState actionLabel="돌아가기" onAction={goBack} title="요청한 문서가 없어요" />
       </Screen>
@@ -30,49 +30,45 @@ export default function LegalDocumentScreen() {
   }
 
   const document = LEGAL_DOCUMENTS[doc]
+  const contactSection = document.sections.find(
+    (section) => section.heading.includes("문의") && section.blocks.some(
+      (block) => block.type === "paragraph" && block.text.includes(LEGAL_CONTACT_EMAIL),
+    ),
+  )
   return (
-    <Screen>
+    <Screen style={styles.screen}>
       <Header onBack={goBack} title={document.title} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.x8 }]}>
-        <AppText style={styles.effective} tone="sub" variant="meta">
+        <AppText tone="muted" variant="meta">
           시행일 {document.effectiveDate}
         </AppText>
         {document.sections.map((section) => (
           <View key={section.heading} style={styles.section}>
-            <AppText accessibilityRole="header" variant="cardTitle">
+            <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" variant="cardTitle">
               {section.heading}
             </AppText>
             {section.blocks.map((block, index) => (
               <LegalBlockView block={block} key={index} />
             ))}
+            {section === contactSection ? (
+              <Button
+                onPress={() => void Linking.openURL(`mailto:${LEGAL_CONTACT_EMAIL}`).catch(() => undefined)}
+                size="small"
+                style={styles.contactButton}
+                title={LEGAL_CONTACT_EMAIL}
+                variant="utility"
+              />
+            ) : null}
           </View>
         ))}
-        <View style={styles.contact}>
-          <AppText tone="sub" variant="secondary">
-            문의는 이메일로 받아요.
-          </AppText>
-          <Button
-            onPress={() => void Linking.openURL(`mailto:${LEGAL_CONTACT_EMAIL}`).catch(() => undefined)}
-            size="small"
-            title={LEGAL_CONTACT_EMAIL}
-            variant="outline"
-          />
-        </View>
       </ScrollView>
     </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, gap: spacing.x6 },
-  effective: { marginBottom: -spacing.x2 },
-  section: { gap: spacing.x2 },
-  contact: {
-    marginTop: spacing.x2,
-    paddingTop: spacing.x5,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    alignItems: "flex-start",
-    gap: spacing.x3,
-  },
+  screen: { backgroundColor: colors.paper },
+  content: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, gap: spacing.x5 },
+  section: { gap: spacing.x2, borderTopWidth: line.hair, borderTopColor: colors.border, paddingTop: spacing.x5 },
+  contactButton: { alignSelf: "flex-start", marginTop: spacing.x2 },
 })

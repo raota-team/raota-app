@@ -2,7 +2,7 @@ import { StyleSheet, View } from "react-native"
 
 import type { LegalBlock } from "@raota/shared"
 
-import { colors, radii, spacing } from "../theme"
+import { colors, line, spacing } from "../theme"
 import { AppText } from "./ui"
 
 /** 약관 본문 한 덩어리(문단·목록·표). 약관 화면과 PolicySheet가 함께 쓴다 */
@@ -52,8 +52,8 @@ const styles = StyleSheet.create({
   listItem: { flexDirection: "row", gap: spacing.x2 },
   bullet: { width: 8 },
   listText: { flex: 1 },
-  // 읽는 정보 표라서 2pt 먹선 대신 1pt 구분선으로 깔끔하게 둔다(DESIGN.md Elevation & Depth)
-  table: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm, overflow: "hidden" },
-  tableRow: { paddingHorizontal: spacing.x4, paddingVertical: spacing.x3, gap: spacing.x1 },
-  tableDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+  // 표 항목은 카드 테두리 대신 목록처럼 가는 구분선만 쓴다
+  table: { borderTopWidth: line.hair, borderTopColor: colors.border },
+  tableRow: { paddingHorizontal: spacing.x2, paddingVertical: spacing.x3, gap: spacing.x1 },
+  tableDivider: { borderTopWidth: line.hair, borderTopColor: colors.border },
 })

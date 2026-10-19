@@ -1,6 +1,6 @@
 import { act, fireEvent, render, waitFor, within } from "@testing-library/react-native"
 import type { ReactElement } from "react"
-import { ActionSheetIOS } from "react-native"
+import { ActionSheetIOS, View } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import type { PersistedAppStateV1, RamenLog } from "@raota/shared"
@@ -108,113 +108,161 @@ beforeEach(() => {
 })
 
 describe("라운지 피드", () => {
+  it("starts with an unselected 전체 sort chip while keeping the feed newest first", async () => {
+    const { view } = await renderWith(<LoungeScreen />)
+    const chip = view.getByRole("button", { name: "정렬, 전체" })
+    expect(chip.props.accessibilityHint).toContain("정렬 메뉴")
+    expect(chip.props.accessibilityState.selected).toBe(false)
+    expect(view.getByText("전체 ▾")).toBeTruthy()
+    expect((await view.findByTestId("lounge-log-4")).props.testID).toBe("lounge-log-4")
+    expect(within(view.getByTestId("lounge-column-0")).getAllByTestId(/^lounge-log-/)[0].props.testID).toBe("lounge-log-4")
+  })
+
   it("shows public logs only (mine included), newest first, and tracks the visit", async () => {
     const { view } = await renderWith(<LoungeScreen />, stateWithPrivateLogs())
 
-    expect(await view.findByText("내가 공개한 라멘")).toBeTruthy()
+    expect(await view.findByRole("button", { name: /내가 공개한 라멘/ })).toBeTruthy()
     expect(view.queryByText("남의 비공개 라멘")).toBeNull()
     expect(view.queryByText("내 비공개 라멘")).toBeNull()
-    // 내 기록에는 신고·숨기기 메뉴가 없다
+    // 피드에서는 가벼운 핀만 보이고 신고·숨기기 메뉴는 상세에서 열린다.
     const mine = view.getByTestId("lounge-log-91")
-    expect(within(mine).getByText("내 기록")).toBeTruthy()
     expect(within(mine).queryByLabelText(/라멘로그 메뉴/)).toBeNull()
-    // 최신순: 방금 공개한 내 기록 → 9월 18일 이에케
-    const cards = view.getAllByTestId(/^lounge-log-/).map((card) => card.props.testID)
-    expect(cards.slice(0, 2)).toEqual(["lounge-log-91", "lounge-log-4"])
+    // 두 열은 최신순으로 번갈아 배치되므로 첫 줄의 왼쪽과 오른쪽에 두 최신 기록이 놓인다.
+    const left = within(view.getByTestId("lounge-column-0")).getAllByTestId(/^lounge-log-/)
+    const right = within(view.getByTestId("lounge-column-1")).getAllByTestId(/^lounge-log-/)
+    expect([left[0].props.testID, right[0].props.testID]).toEqual(["lounge-log-91", "lounge-log-4"])
     expect(track).toHaveBeenCalledWith("lounge_viewed")
     // 화면 문구에 내부 용어를 쓰지 않는다
     expect(view.queryByText(/5축|취향 여권/)).toBeNull()
   })
 
-  it("filters by ramen type and sorts by 공감순", async () => {
+  it("filters by ramen type and chooses, dismisses, and resets the anchored sort menu", async () => {
+    const measure = jest.spyOn(View.prototype, "measureInWindow").mockImplementation((callback) => callback(16, 120, 96, 40))
     const { view } = await renderWith(<LoungeScreen />)
     await view.findByTestId("lounge-log-4")
 
     await fireEvent.press(view.getByRole("button", { name: "시오 라멘만 보기" }))
-    const shio = view.getAllByTestId(/^lounge-log-/).map((card) => card.props.testID)
-    expect(shio).toEqual(["lounge-log-5", "lounge-log-8"])
+    expect(within(view.getByTestId("lounge-column-0")).getByTestId("lounge-log-5")).toBeTruthy()
+    expect(within(view.getByTestId("lounge-column-1")).getByTestId("lounge-log-8")).toBeTruthy()
     expect(view.getByRole("button", { name: "시오 라멘만 보기" }).props.accessibilityState).toEqual(
       expect.objectContaining({ selected: true }),
     )
 
-    await fireEvent.press(view.getByRole("button", { name: "공감순 정렬" }))
-    expect(view.getAllByTestId(/^lounge-log-/).map((card) => card.props.testID)).toEqual(["lounge-log-8", "lounge-log-5"])
+    await fireEvent.press(view.getByRole("button", { name: "정렬, 전체" }))
+    expect(measure).toHaveBeenCalled()
+    expect(view.getByTestId("lounge-sort-menu")).toBeTruthy()
+    expect(view.getByRole("button", { name: "전체" }).props.accessibilityState.selected).toBe(true)
+    expect(view.getByRole("button", { name: "최신순" }).props.accessibilityState.selected).toBe(false)
+    await fireEvent.press(view.getByTestId("lounge-sort-dismiss", { includeHiddenElements: true }))
+    expect(view.queryByTestId("lounge-sort-menu")).toBeNull()
+    expect(view.getByRole("button", { name: "정렬, 전체" }).props.accessibilityState.selected).toBe(false)
+
+    await fireEvent.press(view.getByRole("button", { name: "정렬, 전체" }))
+    await fireEvent.press(view.getByRole("button", { name: "최신순" }))
+    expect(view.getByRole("button", { name: "정렬, 최신순" }).props.accessibilityState.selected).toBe(true)
+    expect(view.getByText("최신순 ▾")).toBeTruthy()
+    expect(within(view.getByTestId("lounge-column-0")).getByTestId("lounge-log-5")).toBeTruthy()
+
+    await fireEvent.press(view.getByRole("button", { name: "정렬, 최신순" }))
+    expect(view.getByRole("button", { name: "최신순" }).props.accessibilityState.selected).toBe(true)
+    await fireEvent.press(view.getByRole("button", { name: "인기순" }))
+    expect(view.getByRole("button", { name: "정렬, 인기순" }).props.accessibilityState.selected).toBe(true)
+    expect(within(view.getByTestId("lounge-column-0")).getByTestId("lounge-log-8")).toBeTruthy()
+    expect(within(view.getByTestId("lounge-column-1")).getByTestId("lounge-log-5")).toBeTruthy()
+
+    await fireEvent.press(view.getByRole("button", { name: "정렬, 인기순" }))
+    expect(view.getByRole("button", { name: "인기순" }).props.accessibilityState.selected).toBe(true)
+    await fireEvent.press(view.getByRole("button", { name: "전체" }))
+    expect(view.getByRole("button", { name: "정렬, 전체" }).props.accessibilityState.selected).toBe(false)
+    expect(within(view.getByTestId("lounge-column-0")).getByTestId("lounge-log-5")).toBeTruthy()
 
     // 결과가 없는 종류는 빈 상태와 "전체 보기"
     await fireEvent.press(view.getByRole("button", { name: "탄탄멘 라멘만 보기" }))
     expect(view.getByText("탄탄멘 라멘로그가 아직 없어요")).toBeTruthy()
     await fireEvent.press(view.getByRole("button", { name: "전체 보기" }))
-    expect(view.getAllByTestId(/^lounge-log-/)[0].props.testID).toBe("lounge-log-11")
+    expect(within(view.getByTestId("lounge-column-0")).getAllByTestId(/^lounge-log-/)[0].props.testID).toBe("lounge-log-4")
+    measure.mockRestore()
   })
 
-  it("toggles 공감 with a haptic and keeps the count in the store", async () => {
+  it("opens a photo pin without a score overlay while keeping its soup type and photo count", async () => {
     const { view } = await renderWith(<LoungeScreen />)
-    const card = await view.findByTestId("lounge-log-4")
+    const pin = await view.findByTestId("lounge-log-6")
 
-    await fireEvent.press(within(card).getByRole("button", { name: "공감 5개" }))
-    const liked = within(view.getByTestId("lounge-log-4")).getByRole("button", { name: "공감 6개" })
+    expect(within(pin).queryByText(/만족도 4 ·/)).toBeNull()
+    expect(within(pin).getByText("쇼유")).toBeTruthy()
+    expect(within(pin).getByText("2")).toBeTruthy()
+    await fireEvent.press(pin)
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/log/[logId]", params: { logId: "6" } })
+    expect(within(pin).queryByRole("button", { name: /공감 \d+개/ })).toBeNull()
+  })
+
+  it("keeps pins short in the feed so the grid doesn't look crowded", async () => {
+    const { view } = await renderWith(<LoungeScreen />)
+    const quote = await view.findByTestId("lounge-log-5")
+    const note = within(quote).getByText(
+      "도미 뼈 육수가 맑은데도 끝맛이 길게 남아요. 유자 껍질 조금 올라간 게 포인트. 간이 약한 편이라 슴슴한 걸 좋아하면 추천합니다.",
+    )
+    expect(note.props.numberOfLines).toBe(5)
+
+    const photo = view.getByTestId("lounge-log-4")
+    expect(within(photo).getByText("면 단단하게, 기름 보통으로 주문. 김 세 장에 밥까지 말아 먹으니 완벽한 저녁이었어요. 시금치가 생각보다 많이 들어가서 좋았음.").props.numberOfLines).toBe(2)
+    expect(within(photo).getByText(/면발탐정 · 하쿠텐/).props.numberOfLines).toBe(1)
+  })
+
+  it("opens 공감 on the pin detail, toggles it with a haptic, and keeps the count in the store", async () => {
+    useLocalSearchParams.mockReturnValue({ logId: "4" })
+    const { view } = await renderWith(<LogDetailScreen />)
+    const like = await view.findByRole("button", { name: "공감 5개" })
+
+    await fireEvent.press(like)
+    const liked = view.getByRole("button", { name: "공감 6개" })
     expect(liked.props.accessibilityState).toEqual(expect.objectContaining({ selected: true }))
     expect(haptics.impactAsync).toHaveBeenCalled()
     expect(track).toHaveBeenCalledWith("log_liked")
 
     await fireEvent.press(liked)
-    expect(within(view.getByTestId("lounge-log-4")).getByRole("button", { name: "공감 5개" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "공감 5개" })).toBeTruthy()
   })
 
-  it("sends a guest who presses 공감 to login without changing the count", async () => {
-    const { view } = await renderWith(<LoungeScreen />, guestState())
-    const card = await view.findByTestId("lounge-log-4")
-
-    await fireEvent.press(within(card).getByRole("button", { name: "공감 5개" }))
+  it("sends a guest who presses detail 공감 to login without changing the count", async () => {
+    useLocalSearchParams.mockReturnValue({ logId: "4" })
+    const { view } = await renderWith(<LogDetailScreen />, guestState())
+    const like = await view.findByRole("button", { name: "공감 5개" })
+    await fireEvent.press(like)
     expect(router.push).toHaveBeenCalledWith("/auth/login")
-    expect(within(view.getByTestId("lounge-log-4")).getByRole("button", { name: "공감 5개" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "공감 5개" })).toBeTruthy()
   })
 
-  it("hides every log of an author at once, persists it, and can undo", async () => {
+  it("hides a detail's author, persists it, and can undo", async () => {
     const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(1))
-    const { view, repo } = await renderWith(<LoungeScreen />)
-    await view.findByTestId("lounge-log-4")
-    await fireEvent.press(view.getByRole("button", { name: "공감순 정렬" }))
-    // 공감순: 삿포로 미소(11) · 멘마수집가의 니보시(6) · 멘마수집가의 멘야준(1) · 유자 시오(8)
-    expect(view.getByTestId("lounge-log-6")).toBeTruthy()
-    expect(view.getByTestId("lounge-log-1")).toBeTruthy()
-
-    await fireEvent.press(within(view.getByTestId("lounge-log-6")).getByLabelText("멘마수집가님의 라멘로그 메뉴"))
+    useLocalSearchParams.mockReturnValue({ logId: "6" })
+    const { view, repo } = await renderWith(<LogDetailScreen />)
+    await fireEvent.press(await view.findByLabelText("멘마수집가님의 라멘로그 메뉴"))
     expect(sheet).toHaveBeenCalledWith(
       expect.objectContaining({ options: ["신고하기", "이 사용자 숨기기", "취소"] }),
       expect.any(Function),
     )
-    expect(view.queryByTestId("lounge-log-6")).toBeNull()
-    expect(view.queryByTestId("lounge-log-1")).toBeNull()
-    expect(view.getByText("멘마수집가님의 글을 더 이상 보여주지 않아요.")).toBeTruthy()
-    // 그 사람이 남의 기록에 단 댓글도 세지 않는다(상세와 같은 수)
-    expect(within(view.getByTestId("lounge-log-8")).getByRole("button", { name: "댓글 0개" })).toBeTruthy()
+    expect(await view.findByText("멘마수집가님의 글을 숨겼어요")).toBeTruthy()
     expect(track).toHaveBeenCalledWith("author_hidden")
     await waitFor(() =>
       expect(repo.save).toHaveBeenLastCalledWith(expect.objectContaining({ hiddenAuthorIds: ["user-201"] })),
     )
-
-    await fireEvent.press(view.getByRole("button", { name: "되돌리기" }))
-    expect(view.getByTestId("lounge-log-6")).toBeTruthy()
+    await fireEvent.press(within(view.getByText("멘마수집가님의 글을 숨겼어요").parent!).getByRole("button", { name: "되돌리기" }))
+    expect(await view.findByText("니보시 쇼유 라멘")).toBeTruthy()
     sheet.mockRestore()
   })
 
-  it("reports a log with a reason, then stops showing it to the reporter", async () => {
+  it("reports a log from its detail and stops showing it to the reporter", async () => {
     const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(0))
-    const { view, repo } = await renderWith(<LoungeScreen />)
-    const card = await view.findByTestId("lounge-log-4")
-
-    await fireEvent.press(within(card).getByLabelText("면발탐정님의 라멘로그 메뉴"))
+    useLocalSearchParams.mockReturnValue({ logId: "4" })
+    const { view, repo } = await renderWith(<LogDetailScreen />)
+    await fireEvent.press(await view.findByLabelText("면발탐정님의 라멘로그 메뉴"))
     expect(view.getByText("라멘로그 신고하기")).toBeTruthy()
     const submit = view.getByRole("button", { name: "신고하기" })
     expect(submit.props.accessibilityState).toEqual(expect.objectContaining({ disabled: true }))
-    expect(view.getByText("신고 사유를 고르면 보낼 수 있어요")).toBeTruthy()
-
     await fireEvent.press(view.getByRole("radio", { name: "스팸·홍보" }))
     await fireEvent.press(view.getByRole("button", { name: "신고하기" }))
-
-    expect(view.getByText("신고를 접수했어요. 검토 후 조치할게요.")).toBeTruthy()
-    expect(view.queryByTestId("lounge-log-4")).toBeNull()
+    expect(view.getByText("신고를 접수했어요")).toBeTruthy()
     expect(track).toHaveBeenCalledWith("content_reported", { kind: "log", reason: "spam" })
     await waitFor(() =>
       expect(repo.save).toHaveBeenLastCalledWith(
@@ -224,12 +272,11 @@ describe("라운지 피드", () => {
     sheet.mockRestore()
   })
 
-  it("sends a guest who picks 신고하기 to login instead of opening the form", async () => {
+  it("sends a guest who picks 신고하기 on a detail to login", async () => {
     const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(0))
-    const { view } = await renderWith(<LoungeScreen />, guestState())
-    const card = await view.findByTestId("lounge-log-4")
-
-    await fireEvent.press(within(card).getByLabelText("면발탐정님의 라멘로그 메뉴"))
+    useLocalSearchParams.mockReturnValue({ logId: "4" })
+    const { view } = await renderWith(<LogDetailScreen />, guestState())
+    await fireEvent.press(await view.findByLabelText("면발탐정님의 라멘로그 메뉴"))
     expect(router.push).toHaveBeenCalledWith("/auth/login")
     expect(view.queryByText("라멘로그 신고하기")).toBeNull()
     sheet.mockRestore()
@@ -242,8 +289,7 @@ describe("라멘로그 상세", () => {
     const { view } = await renderWith(<LogDetailScreen />)
 
     expect(await view.findByText("도미 시오 라멘")).toBeTruthy()
-    expect(view.getByText("맛 평가")).toBeTruthy()
-    expect(view.getByText("아주 맑음")).toBeTruthy()
+    expect(view.getByLabelText(/맛 지문.*육수 농도 아주 맑음/)).toBeTruthy()
     expect(view.getByText("첫 댓글을 남겨 대화를 시작해 보세요.")).toBeTruthy()
 
     const post = view.getByRole("button", { name: "등록" })
@@ -256,6 +302,23 @@ describe("라멘로그 상세", () => {
     expect(view.getByText("댓글 1")).toBeTruthy()
     expect(view.getByLabelText("댓글 입력").props.value).toBe("")
     expect(track).toHaveBeenCalledWith("log_commented")
+  })
+
+  it("shows every taste axis, the photo count, and a shop link on a log detail", async () => {
+    useLocalSearchParams.mockReturnValue({ logId: "6" })
+    const { view } = await renderWith(<LogDetailScreen />)
+
+    expect(await view.findByText("1 / 2")).toBeTruthy()
+    expect(view.getByLabelText(/맛 지문.*만족도.*육수 농도.*면 삶기.*토핑.*재방문/)).toBeTruthy()
+    await fireEvent.press(view.getByRole("button", { name: /매장 정보$/ }))
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/shop/[shopId]", params: { shopId: expect.any(String) } })
+  })
+
+  it("shows the full note on a log detail without clipping", async () => {
+    useLocalSearchParams.mockReturnValue({ logId: "6" })
+    const { view } = await renderWith(<LogDetailScreen />)
+    const note = await view.findByText("멸치 향이 첫 모금부터 확 올라옴. 호불호는 있겠지만 니보시 좋아하면 무조건. 멘마가 두껍고 아삭해서 따로 추가할 만해요.")
+    expect(note.props.numberOfLines).toBeUndefined()
   })
 
   it("shows the counter near the 300-character limit", async () => {

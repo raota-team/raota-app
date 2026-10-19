@@ -1,4 +1,5 @@
 import { Redirect, router } from "expo-router"
+import appConfig from "../../app.json"
 import * as Haptics from "expo-haptics"
 import { ChevronRight } from "lucide-react-native"
 import { useState } from "react"
@@ -16,6 +17,9 @@ import { colors, line, radii, spacing, typography } from "@/src/theme"
  * 설정. 마이의 최근 기록이 스크롤로 계속 늘어나서 계정·약관·로그아웃을 여기로 옮겼다(마이 프로필 오른쪽 위 톱니).
  * 로그인하지 않았으면(로그아웃 직후 포함) 마이로 돌려보낸다.
  */
+const REMINDER_DESCRIPTION = "월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요."
+const BLOCKED_REMINDER_DESCRIPTION = "iOS 설정에서 알림이 꺼져 있어요. 눌러서 설정을 열 수 있어요."
+const EMAIL_FORMAT_ERROR = "이메일 형식이 아니에요. 예: ramen@example.com"
 
 function haptic() {
   if (Platform.OS === "web") return
@@ -66,7 +70,7 @@ export default function SettingsScreen() {
   const saveEmail = async () => {
     const trimmed = newEmail.trim()
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setEmailError("이메일 형식이 아니에요. 예: ramen@example.com")
+      setEmailError(EMAIL_FORMAT_ERROR)
       return
     }
     setBusy(true)
@@ -93,8 +97,8 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <Header backLabel="뒤로가기" onBack={goBack} title="설정" />
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.x8 }]}>
+      <Header align="center" backLabel="뒤로가기" onBack={goBack} title="설정" titleStyle={typography.sectionTitle} />
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.section }]} style={styles.scroll}>
         <Group title="계정">
           <AccountRow
             first
@@ -108,26 +112,35 @@ export default function SettingsScreen() {
           />
           <AccountRow label="선호 스타일" onChange={() => setSheet("style")} value={user.favoriteRamenType || "아직 안 정했어요"} />
         </Group>
-
         {reminders.supported ? (
           <Group title="알림">
             <View style={[styles.row, styles.switchRow]}>
               <View style={styles.shrink}>
-                <AppText variant="body">기록 리마인더</AppText>
-                <AppText lineBreakStrategyIOS="hangul-word" tone="muted" variant="secondary">
-                  {reminders.blocked
-                    ? "iOS 설정에서 알림이 꺼져 있어요. 눌러서 설정을 열 수 있어요."
-                    : "월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요."}
-                </AppText>
+                <AppText variant="bodyStrong">기록 리마인더</AppText>
+                <View style={styles.descriptionSlot}>
+                  <AppText
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                    lineBreakStrategyIOS="hangul-word"
+                    style={styles.hiddenText}
+                    tone="muted"
+                    variant="secondary"
+                  >
+                    {BLOCKED_REMINDER_DESCRIPTION}
+                  </AppText>
+                  <AppText lineBreakStrategyIOS="hangul-word" style={styles.overlaidText} tone="muted" variant="secondary">
+                    {reminders.blocked ? BLOCKED_REMINDER_DESCRIPTION : REMINDER_DESCRIPTION}
+                  </AppText>
+                </View>
               </View>
               <Switch
                 accessibilityHint={reminders.blocked ? "iOS 설정 앱을 엽니다" : undefined}
                 accessibilityLabel="기록 리마인더"
                 disabled={reminders.busy}
-                ios_backgroundColor={colors.border}
+                ios_backgroundColor={colors.secondary}
                 onValueChange={(next) => void toggleReminders(next)}
-                thumbColor={colors.canvas}
-                trackColor={{ false: colors.border, true: colors.brand }}
+                thumbColor={colors.white}
+                trackColor={{ false: colors.secondary, true: colors.selected }}
                 value={reminders.enabled}
               />
             </View>
@@ -144,15 +157,20 @@ export default function SettingsScreen() {
           />
         </Group>
 
-        <Button onPress={() => setDialog("logout")} title="로그아웃" variant="utility" />
-        <View style={styles.withdrawRow}>
-          <Button
-            onPress={() => setDialog("withdraw")}
-            size="small"
-            textStyle={styles.withdrawText}
-            title="회원 탈퇴"
-            variant="ghost"
-          />
+        <View style={styles.spacer} />
+        <View style={styles.bottom}>
+          <Button fullWidth onPress={() => setDialog("logout")} title="로그아웃" variant="secondary" />
+          <View style={styles.withdrawRow}>
+            <Button
+              onPress={() => setDialog("withdraw")}
+              style={styles.withdrawAction}
+              size="small"
+              textStyle={styles.withdrawText}
+              title="회원 탈퇴"
+              variant="ghost"
+            />
+          </View>
+          <AppText capScale style={styles.version} tone="muted" variant="meta">앱 버전 {appConfig.expo.version}</AppText>
         </View>
       </ScrollView>
 
@@ -176,14 +194,18 @@ export default function SettingsScreen() {
                 onPress={() => void saveStyle(style)}
                 style={({ pressed }) => [styles.styleOption, selected && styles.styleSelected, pressed && !selected && styles.pressedWash]}
               >
-                <AppText tone={selected ? "brand" : "ink"} variant="bodyStrong">
+                <AppText style={selected && styles.styleSelectedText} variant="bodyStrong">
                   {style}
                 </AppText>
-                {selected ? (
-                  <AppText capScale tone="brand" variant="meta">
-                    선택됨
-                  </AppText>
-                ) : null}
+                <AppText
+                  accessibilityElementsHidden={!selected}
+                  capScale
+                  importantForAccessibility={selected ? "auto" : "no-hide-descendants"}
+                  style={[styles.styleSelectedText, !selected && styles.hiddenText]}
+                  variant="meta"
+                >
+                  선택됨
+                </AppText>
               </Pressable>
             )
           })}
@@ -196,7 +218,7 @@ export default function SettingsScreen() {
         footer={
           <View style={styles.sheetActions}>
             <Button disabled={busy} fullWidth onPress={() => setSheet(null)} title="취소" variant="outline" />
-            <Button fullWidth loading={busy} onPress={() => void saveEmail()} title="저장" />
+            <Button fullWidth loading={busy} onPress={() => void saveEmail()} title="저장" variant="secondary" />
           </View>
         }
         onClose={() => !busy && setSheet(null)}
@@ -225,11 +247,24 @@ export default function SettingsScreen() {
           textContentType="emailAddress"
           value={newEmail}
         />
-        {emailError ? (
-          <AppText accessibilityLiveRegion="polite" style={styles.errorText} tone="critical" variant="secondary">
-            {emailError}
+        <View style={styles.errorSlot}>
+          <AppText
+            accessibilityElementsHidden
+            capScale
+            importantForAccessibility="no-hide-descendants"
+            lineBreakStrategyIOS="hangul-word"
+            style={styles.hiddenText}
+            tone="sub"
+            variant="secondary"
+          >
+            {EMAIL_FORMAT_ERROR}
           </AppText>
-        ) : null}
+          {emailError ? (
+            <AppText accessibilityLiveRegion="polite" capScale lineBreakStrategyIOS="hangul-word" style={styles.overlaidText} tone="sub" variant="secondary">
+              {emailError}
+            </AppText>
+          ) : null}
+        </View>
       </BottomSheet>
 
       <ConfirmDialog
@@ -269,7 +304,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
       <AppText accessibilityRole="header" style={styles.groupTitle} tone="sub" variant="secondary">
         {title}
       </AppText>
-      <View style={styles.card}>{children}</View>
+      <View>{children}</View>
     </View>
   )
 }
@@ -280,14 +315,14 @@ function AccountRow({ label, value, onChange, first = false }: { label: string; 
   const stacked = fontScale > 1.2
   return (
     <View style={[styles.row, stacked && styles.rowStacked, !first && styles.rowDivider]}>
-      <AppText tone="sub" variant="body">
+      <AppText variant="bodyStrong">
         {label}
       </AppText>
       <View style={[styles.rowTrail, stacked && styles.rowTrailStacked]}>
-        <AppText numberOfLines={stacked ? 2 : 1} style={styles.shrink} variant="bodyStrong">
+        <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} tone="muted" variant="secondary">
           {value}
         </AppText>
-        <Button accessibilityLabel={`${label} 변경`} onPress={onChange} size="small" title="변경" variant="utility" />
+        <Button accessibilityLabel={`${label} 변경`} onPress={onChange} size="small" title="변경" variant="secondary" />
       </View>
     </View>
   )
@@ -301,12 +336,12 @@ function LinkRow({ label, onPress, value, first }: { label: string; onPress: () 
       onPress={onPress}
       style={({ pressed }) => [styles.row, !first && styles.rowDivider, pressed && styles.pressedWash]}
     >
-      <AppText numberOfLines={1} style={styles.shrink} variant="body">
+      <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} variant="bodyStrong">
         {label}
       </AppText>
       <View style={styles.rowTrail}>
         {value ? (
-          <AppText numberOfLines={1} style={styles.shrink} tone="muted" variant="secondary">
+          <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} tone="muted" variant="secondary">
             {value}
           </AppText>
         ) : null}
@@ -317,59 +352,32 @@ function LinkRow({ label, onPress, value, first }: { label: string; onPress: () 
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, gap: spacing.x6 },
+  scroll: { flex: 1 },
+  content: { flexGrow: 1, paddingHorizontal: spacing.gutter, paddingTop: spacing.x3, gap: spacing.x8 },
   shrink: { flexShrink: 1 },
-  groupTitle: { fontWeight: "700", marginBottom: spacing.x2, marginLeft: spacing.x1 },
-  card: {
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    paddingHorizontal: spacing.x4,
-  },
-  row: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.x3,
-    paddingVertical: spacing.x1,
-  },
-  rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
-  rowTrail: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, flexShrink: 1 },
-  rowStacked: { flexDirection: "column", alignItems: "flex-start", gap: spacing.x2, paddingVertical: spacing.x3 },
+  descriptionSlot: { position: "relative" },
+  hiddenText: { opacity: 0 },
+  overlaidText: { position: "absolute", top: 0, left: 0, right: 0 },
+  groupTitle: { fontWeight: "700", marginBottom: spacing.x3 },
+  row: { minHeight: 72, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x3, paddingVertical: spacing.x3 },
+  rowDivider: { borderTopColor: colors.border, borderTopWidth: line.hair },
+  rowTrail: { flexDirection: "row", alignItems: "center", gap: spacing.x2, flexShrink: 1 },
+  rowStacked: { flexDirection: "column", alignItems: "flex-start", gap: spacing.x2, paddingVertical: spacing.x4 },
   rowTrailStacked: { alignSelf: "stretch", justifyContent: "space-between" },
-  pressedWash: { backgroundColor: colors.canvasSoft },
-  switchRow: { alignItems: "center", gap: spacing.x3 },
-  withdrawRow: { alignItems: "center", marginTop: -spacing.x2 },
-  withdrawText: { color: colors.inkSub, fontWeight: "500", textDecorationLine: "underline", ...typography.secondary },
-  styleGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
-  styleOption: {
-    flexBasis: "48%",
-    flexGrow: 1,
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.x3,
-    borderRadius: radii.sm,
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.base,
-  },
-  styleSelected: { borderColor: colors.brand, backgroundColor: colors.brandWeak },
+  pressedWash: { backgroundColor: colors.surfacePressed },
+  switchRow: { minHeight: 72 },
+  spacer: { flexGrow: 1 },
+  bottom: { gap: spacing.x3 },
+  withdrawRow: { alignItems: "center" },
+  withdrawAction: { paddingHorizontal: spacing.x3 },
+  withdrawText: { color: colors.textMuted, fontWeight: "600", ...typography.secondary },
+  version: { textAlign: "center" },
+  styleGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x3 },
+  styleOption: { flexBasis: "48%", flexGrow: 1, minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.x4, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
+  styleSelected: { backgroundColor: colors.selected },
+  styleSelectedText: { color: colors.onSelected },
   sheetActions: { flexDirection: "row", gap: spacing.x2 },
-  input: {
-    minHeight: 48,
-    marginTop: spacing.x1_5,
-    paddingHorizontal: spacing.x3,
-    borderRadius: radii.sm,
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.base,
-    color: colors.ink,
-    ...typography.body,
-  },
-  inputInvalid: { borderColor: colors.critical },
-  errorText: { marginTop: spacing.x1 },
+  input: { minHeight: 48, marginTop: spacing.x3, paddingHorizontal: spacing.x3, borderRadius: radii.sm, backgroundColor: colors.canvas, borderColor: colors.outline, borderWidth: line.base, color: colors.ink, ...typography.body },
+  inputInvalid: { borderColor: colors.ink },
+  errorSlot: { position: "relative", minHeight: spacing.x13, marginTop: spacing.x2 },
 })

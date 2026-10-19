@@ -1,23 +1,24 @@
 import * as Haptics from "expo-haptics"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams, useNavigation } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as ImagePicker from "expo-image-picker"
 import DateTimePicker from "@react-native-community/datetimepicker"
-import { AlertCircle, CalendarDays, ImagePlus, LogIn, X } from "lucide-react-native"
+import { CalendarDays, Camera, ChevronDown, ChevronRight, ChevronUp, LogIn, X } from "lucide-react-native"
 import {
   AccessibilityInfo,
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   TextInput,
   View,
   findNodeHandle,
@@ -52,27 +53,37 @@ import {
 import { useRaota } from "@/src/state/RaotaStore"
 import {
   AppText,
-  Button,
-  Chip,
   ConfirmDialog,
   EmptyState,
   Header,
   LoadingState,
-  ScoreSegment,
   SectionHeader,
   StickyActionBar,
 } from "@/src/components/ui"
-import { colors, line, maxFontScale, pressInto, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
+import { EdgeBackZone } from "@/src/components/EdgeBackZone"
+import { colors, line, maxFontScale, pressFade, radii, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
 /*
- * 라멘 기록하기. 웹 RecordScreen과 같은 순서다.
- * 한 그릇 정보 → 맛 평가(5항목) → 맛 태그(펼침) → 사진 → 메모 → 공개 여부, 하단 고정 저장 바.
- * 저장 버튼은 항상 누를 수 있고, 빠진 항목이 있으면 첫 항목으로 스크롤하며 VoiceOver 포커스를 옮긴다.
+ * 사진과 필수 입력을 먼저 보여 주고, 상세는 요청할 때 펼친다.
+ * 저장 버튼은 항상 누를 수 있고 빠진 항목은 스크롤과 VoiceOver 포커스로 안내한다.
  */
 
 type ScoreAxisKey = Exclude<TasteAxisKey, "revisit">
 type FieldKey = "shop" | "menu" | "ramenType" | "visitedAt" | "note" | TasteAxisKey
 type MissingField = { key: FieldKey; label: string; kind: "text" | "choice" }
+/** Validation reports required fields by domain order; focus follows their position on this screen. */
+const FIELD_POSITION: Record<FieldKey, number> = {
+  shop: 0,
+  menu: 1,
+  satisfaction: 2,
+  brothDensity: 3,
+  noodleFirmness: 4,
+  topping: 5,
+  revisit: 6,
+  ramenType: 7,
+  visitedAt: 8,
+  note: 9,
+}
 
 const SCORE_AXES = TASTE_AXES.filter((axis): axis is (typeof TASTE_AXES)[number] & { key: ScoreAxisKey } => axis.key !== "revisit")
 const REVISIT_AXIS = TASTE_AXES.find((axis) => axis.key === "revisit") ?? {
@@ -81,12 +92,9 @@ const REVISIT_AXIS = TASTE_AXES.find((axis) => axis.key === "revisit") ?? {
   low: "한 번이면 충분",
   high: "자주 갈래요",
 }
-/**
- * 맛 평가 항목의 모양과 한 마디. 만족도·토핑은 좋고 나쁨이라 차오르는 원,
- * 육수 농도·면 삶기는 좋고 나쁨이 아닌 취향의 위치라 선 위의 점으로 고른다
- */
-const AXIS_PRESENTATION: Record<ScoreAxisKey, { kind: "quality" | "spectrum"; hero?: boolean; words: readonly string[] }> = {
-  satisfaction: { kind: "quality", hero: true, words: ["아쉬웠어요", "그저 그랬어요", "괜찮았어요", "맛있었어요", "인생 라멘이에요"] },
+/** 점수를 고른 뒤 상태 칸에 보여 줄 짧은 말. 축의 의미는 그대로 두고 키 모양만 통일한다. */
+const AXIS_PRESENTATION: Record<ScoreAxisKey, { kind: "quality" | "spectrum"; words: readonly string[] }> = {
+  satisfaction: { kind: "quality", words: ["아쉬웠어요", "그저 그랬어요", "괜찮았어요", "맛있었어요", "인생 라멘이에요"] },
   brothDensity: { kind: "spectrum", words: ["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"] },
   noodleFirmness: { kind: "spectrum", words: ["아주 부드럽게", "부드러운 편", "중간", "단단한 편", "아주 단단하게"] },
   topping: { kind: "quality", words: ["아쉬움", "조금 아쉬움", "보통", "좋음", "훌륭함"] },
@@ -94,6 +102,16 @@ const AXIS_PRESENTATION: Record<ScoreAxisKey, { kind: "quality" | "spectrum"; he
 
 /** 낮은 점수부터 높은 점수 순. 양 끝 설명(low · high)과 방향을 맞춘다 */
 const REVISIT_CHOICES = [...REVISIT_OPTIONS].reverse()
+const REVISIT_CELLS = REVISIT_CHOICES.map((label) => ({
+  value: REVISIT_SCORE[label],
+  label,
+  display: label === "자주 감" ? "자주 갈래요" : label === "가끔 생각남" ? "가끔" : "한 번이면 충분",
+}))
+const SCORE_CELLS = [1, 2, 3, 4, 5].map((number) => ({ value: number, label: String(number) }))
+const VISIBILITY_CHOICES = [
+  { label: "나만 보기", value: false },
+  { label: "공개", value: true },
+] as const
 /** 기록 하나에 붙일 수 있는 사진 수. 서버 sort_order 0~2와 맞춘다 */
 const RECORD_PHOTO_MAX = 3
 const EMPTY_TASTE_NOTES: TasteNotes = { broth: [], noodle: [], seasoning: [], topping: [] }
@@ -110,6 +128,7 @@ function formatDateLabel(date: Date) {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAYS[date.getDay()]})`
 }
 
+
 /** 원장 매장의 대표 스타일("미소 라멘"). 없으면 빈 문자열 */
 function styleOf(shop: Shop | null | undefined): string {
   const style = (shop as Partial<ShopCatalogItem> | null | undefined)?.style
@@ -122,13 +141,6 @@ function inferRamenType(style: string): string {
   return RAMEN_TYPES.includes(base) ? base : ""
 }
 
-/** 받침이 없거나 ㄹ 받침이면 "로", 그 밖에는 "으로" */
-function withDirectionParticle(word: string): string {
-  const last = word.charCodeAt(word.length - 1)
-  if (last < 0xac00 || last > 0xd7a3) return `${word}로`
-  const final = (last - 0xac00) % 28
-  return final === 0 || final === 8 ? `${word}로` : `${word}으로`
-}
 
 /** VoiceOver 포커스를 옮긴다. 웹 미리보기에서는 DOM focus로 대신한다 */
 function moveAccessibilityFocus(target: View | null) {
@@ -141,15 +153,117 @@ function moveAccessibilityFocus(target: View | null) {
     const tag = findNodeHandle(target)
     if (tag) AccessibilityInfo.setAccessibilityFocus(tag)
   } catch {
-    // 포커스를 옮기지 못해도 스크롤과 빨간 안내는 남는다.
+    // 포커스를 옮기지 못해도 스크롤과 안내 문구는 남는다.
   }
 }
+
+/** 종류와 맛 태그는 선택 색 알약으로 고른 상태를 보여 준다. */
+function RecordChoice({
+  label,
+  selected,
+  onPress,
+  compact = false,
+  accessibilityLabel = label,
+  role = "button",
+}: {
+  label: string
+  selected: boolean
+  onPress: () => void
+  compact?: boolean
+  accessibilityLabel?: string
+  role?: "button" | "radio"
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={role}
+      accessibilityState={role === "radio" ? { checked: selected } : { selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.choice,
+        compact && styles.tasteChoice,
+        selected && styles.choiceSelected,
+        pressed && !selected && styles.pressed,
+      ]}
+    >
+      <AppText capScale style={[styles.choiceText, selected && styles.onSelectedText]} variant="secondary">
+        {label}
+      </AppText>
+    </Pressable>
+  )
+}
+
+/** 다섯 점수는 제목 옆에 선택 설명을 두고, 한 줄의 독립된 알약으로 고른다. */
+const RecordScore = forwardRef<View, {
+  label: string
+  low: string
+  high: string
+  value: number | null
+  onChange: (value: number) => void
+  words?: readonly string[]
+  options?: readonly { value: number; label: string; display?: string }[]
+  invalid: boolean
+  showEnds?: boolean
+}>(function RecordScore({ label, low, high, value, onChange, words, options, invalid, showEnds }, ref) {
+  const selectedWord = value === null ? null : options?.find((option) => option.value === value)?.display ?? words?.[value - 1]
+  const statusVisible = Boolean(selectedWord || invalid)
+  const cells = options ?? SCORE_CELLS
+  return (
+    <View style={styles.scoreField}>
+      <View style={styles.scoreHeading}>
+        <AppText capScale numberOfLines={1} style={styles.scoreLabel} variant="secondary">{label}</AppText>
+        <AppText
+          accessibilityElementsHidden={!statusVisible}
+          capScale
+          importantForAccessibility={statusVisible ? "auto" : "no-hide-descendants"}
+          numberOfLines={1}
+          style={[styles.scoreStatus, !statusVisible && styles.hiddenHint]}
+          tone={invalid && !selectedWord ? "brand" : "muted"}
+          variant="secondary"
+        >
+          {selectedWord ? `· ${selectedWord}` : "골라주세요"}
+        </AppText>
+      </View>
+      <View accessibilityLabel={label} accessibilityRole="radiogroup" ref={ref} style={styles.scoreCells}>
+        {cells.map((cell) => {
+          const selected = cell.value === value
+          const direction = cell.value <= 2 ? `${low} 쪽` : cell.value >= 4 ? `${high} 쪽` : "보통"
+          return (
+            <Pressable
+              accessibilityLabel={options ? `${label} ${cell.label}, ${cell.value}점` : `${label} ${cell.value}점, ${direction}`}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              key={cell.value}
+              onPress={() => {
+                if (Platform.OS !== "web" && !selected) void Haptics.selectionAsync().catch(() => undefined)
+                onChange(cell.value)
+              }}
+              style={({ pressed }) => [styles.scoreCell, selected && styles.scoreCellSelected, pressed && !selected && styles.pressed]}
+            >
+              <AppText capScale lineBreakStrategyIOS="hangul-word" style={[styles.scoreCellText, options && styles.scoreRevisitText, selected && styles.onSelectedText]} variant="button">
+                {"display" in cell ? cell.display : cell.label}
+              </AppText>
+            </Pressable>
+          )
+        })}
+      </View>
+      {showEnds ? (
+        <View style={styles.scoreEnds}>
+          <AppText capScale tone="muted" variant="meta">{low}</AppText>
+          <AppText capScale tone="muted" variant="meta">{high}</AppText>
+        </View>
+      ) : null}
+    </View>
+  )
+})
 
 export default function NewRecordScreen() {
   const { shopId } = useLocalSearchParams<{ shopId?: string }>()
   const navigation = useNavigation()
   const { state, isHydrated, currentUser, actions } = useRaota()
   const reduceMotion = useReducedMotion()
+  // 날짜 선택기는 hex 문자열만 받는다
+  const palette = usePalette()
   const parsedShopId = Number(shopId)
   const initialShopId = Number.isInteger(parsedShopId) && parsedShopId > 0 ? parsedShopId : null
   const selectedShopId = state.recordDraft?.shopId ?? initialShopId
@@ -167,11 +281,12 @@ export default function NewRecordScreen() {
   const [photos, setPhotos] = useState<string[]>([])
   const [note, setNote] = useState("")
   const [tasteNotes, setTasteNotes] = useState<TasteNotes>(EMPTY_TASTE_NOTES)
-  const [isPublic, setIsPublic] = useState(true)
+  const [isPublic, setIsPublic] = useState(false)
   const [attempted, setAttempted] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [leaveVisible, setLeaveVisible] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const allowLeave = useRef(false)
   const pendingLeave = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null)
@@ -188,7 +303,12 @@ export default function NewRecordScreen() {
 
   const visitedAt = formatDate(visitDate)
   const trimmedMenu = menuName.trim()
-  const selectedTagCount = Object.values(tasteNotes).reduce((sum, list) => sum + list.length, 0)
+  const selectedTagCount = TASTE_FIELDS.reduce((sum, field) => sum + tasteNotes[field.key].length, 0)
+
+  // 불러온 상세 값이 있으면 처음부터 보여 준다. 새 기록의 빈 상세는 접어 둔다.
+  useEffect(() => {
+    if (photos.length > 0 || note.trim().length > 0 || selectedTagCount > 0) setDetailsOpen(true)
+  }, [photos, note, selectedTagCount])
 
   useEffect(() => {
     actions.startRecordDraft(initialShopId)
@@ -238,7 +358,7 @@ export default function NewRecordScreen() {
           return []
       }
     },
-  )
+  ).sort((a, b) => FIELD_POSITION[a.key] - FIELD_POSITION[b.key])
   const isComplete = missing.length === 0
   const isMissing = (key: FieldKey) => attempted && missing.some((item) => item.key === key)
 
@@ -262,7 +382,7 @@ export default function NewRecordScreen() {
     photos.length > 0 ||
     note.length > 0 ||
     selectedTagCount > 0 ||
-    !isPublic
+    isPublic
   const dirtyRef = useRef(isDirty)
   dirtyRef.current = isDirty
 
@@ -476,7 +596,7 @@ export default function NewRecordScreen() {
   if (!currentUser) {
     return (
       <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.screen}>
-        <StatusBar style="dark" />
+        <StatusBar style="auto" />
         <Header backLabel="뒤로가기" onBack={goBack} title="라멘 기록하기" />
         <EmptyState
           actionLabel="로그인하기"
@@ -494,18 +614,8 @@ export default function NewRecordScreen() {
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
-      <StatusBar style="dark" />
-      <Header
-        backLabel="뒤로가기"
-        onBack={goBack}
-        right={
-          <AppText capScale style={styles.bold} tone="sub" variant="meta">
-            {isPublic ? "공개 기록" : "나만 보기"}
-          </AppText>
-        }
-        style={styles.headerPad}
-        title="라멘 기록하기"
-      />
+      <StatusBar style="auto" />
+      <Header align="center" backLabel="뒤로가기" onBack={goBack} style={styles.flowHeader} title="라멘 기록하기" titleStyle={styles.navTitle} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
         <ScrollView
           keyboardDismissMode="interactive"
@@ -515,75 +625,113 @@ export default function NewRecordScreen() {
           style={styles.flex}
         >
           <View collapsable={false} ref={contentRef}>
-            {/* 1. 한 그릇 정보 */}
-            <View style={styles.section}>
-              <SectionHeader meta="필수" metaTone="sub" style={styles.sectionHead} title="한 그릇 정보" />
-
-              <View style={styles.field}>
-                <AppText style={styles.label} variant="bodyStrong">
-                  가게
-                </AppText>
+            <View style={styles.slip}>
+              <View style={styles.introFields}>
                 <Pressable
-                  accessibilityHint="기록할 가게를 다시 골라요"
-                  accessibilityLabel={
-                    shop ? `가게, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}. 변경` : "가게를 골라주세요"
-                  }
+                  accessibilityHint={photos.length >= RECORD_PHOTO_MAX ? "상세 추가에서 사진을 삭제하거나 바꿔요" : "카메라나 사진 보관함에서 가져와요"}
+                  accessibilityLabel={photos.length >= RECORD_PHOTO_MAX ? "사진 3장 첨부됨" : photos.length === 0 ? "사진 추가" : `사진 추가, ${photos.length}장 중 최대 ${RECORD_PHOTO_MAX}장`}
                   accessibilityRole="button"
-                  onPress={() => router.push({ pathname: "/record/select-shop" })}
-                  ref={shopRef}
-                  style={({ pressed }) => [styles.shopField, isMissing("shop") && styles.inputInvalid, pressed && styles.pressed]}
+                  disabled={photos.length >= RECORD_PHOTO_MAX}
+                  onPress={choosePhotoSource}
+                  style={({ pressed }) => [styles.photoHero, pressed && (photos[0] ? pressFade : styles.pressed)]}
                 >
-                  <View style={styles.flexShrink}>
-                    <AppText numberOfLines={1} tone={shop ? "ink" : "muted"} variant="cardTitle">
-                      {shop?.name ?? "가게를 골라주세요"}
-                    </AppText>
-                    {shop?.branch ? (
-                      <AppText numberOfLines={1} tone="muted" variant="secondary">
-                        {shop.branch}
-                      </AppText>
-                    ) : null}
-                  </View>
-                  <AppText capScale style={styles.bold} tone="brand" variant="secondary">
-                    {shop ? "변경" : "선택"}
-                  </AppText>
-                </Pressable>
-              </View>
-
-              <View style={styles.field}>
-                <View style={styles.labelRow}>
-                  <AppText nativeID="record-menu-label" variant="bodyStrong">
-                    먹은 메뉴
-                  </AppText>
-                  {isMissing("menu") ? (
-                    <AppText capScale tone="brand" variant="meta">
-                      채워주세요
-                    </AppText>
+                  {photos[0] ? (
+                    <Image contentFit="cover" source={{ uri: photos[0] }} style={StyleSheet.absoluteFill} />
+                  ) : (
+                    <View style={styles.photoHeroLabel}>
+                      <Camera color={colors.textMuted} size={24} />
+                      <AppText capScale tone="muted" variant="meta">사진 추가</AppText>
+                    </View>
+                  )}
+                  {photos.length ? (
+                    <View style={styles.photoCount}>
+                      <AppText capScale style={styles.photoCountText} variant="meta">{photos.length}/{RECORD_PHOTO_MAX}</AppText>
+                    </View>
                   ) : null}
+                </Pressable>
+                <View style={styles.introInputs}>
+                  <View style={[styles.field, styles.introShopField]}>
+                    <AppText style={styles.label} variant="bodyStrong">가게</AppText>
+                    <Pressable
+                      accessibilityHint="기록할 가게를 다시 골라요"
+                      accessibilityLabel={
+                        shop ? `가게, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}. 변경` : "가게를 골라주세요"
+                      }
+                      accessibilityRole="button"
+                      onPress={() => router.push({ pathname: "/record/select-shop" })}
+                      ref={shopRef}
+                      style={({ pressed }) => [styles.shopField, isMissing("shop") && styles.inputInvalid, pressed && styles.pressed]}
+                    >
+                      <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.flexShrink} tone={shop ? "ink" : "muted"} variant="body">
+                        {shop ? `${shop.name}${shop.branch ? ` · ${shop.branch}` : ""}` : "가게를 골라주세요"}
+                      </AppText>
+                      <ChevronRight color={colors.textMuted} size={18} />
+                    </Pressable>
+                  </View>
+                  <View style={[styles.field, styles.introMenuField]}>
+                    <View style={styles.labelRow}>
+                      <AppText nativeID="record-menu-label" style={styles.fieldLabel} variant="bodyStrong">먹은 메뉴</AppText>
+                      <AppText
+                        accessibilityElementsHidden={!isMissing("menu")}
+                        capScale
+                        importantForAccessibility={isMissing("menu") ? "auto" : "no-hide-descendants"}
+                        style={!isMissing("menu") && styles.hiddenHint}
+                        tone="brand"
+                        variant="meta"
+                      >
+                        채워주세요
+                      </AppText>
+                    </View>
+                    <TextInput
+                      accessibilityLabel="먹은 메뉴"
+                      aria-required
+                      maxFontSizeMultiplier={maxFontScale}
+                      maxLength={40}
+                      onChangeText={setMenuName}
+                      placeholder="예: 특제 쇼유 라멘"
+                      placeholderTextColor={colors.textMuted}
+                      ref={menuRef}
+                      returnKeyType="done"
+                      style={[...inputStyle(isMissing("menu")), styles.menuInput]}
+                      value={menuName}
+                    />
+                  </View>
                 </View>
-                <TextInput
-                  accessibilityLabel="먹은 메뉴"
-                  aria-required
-                  maxFontSizeMultiplier={maxFontScale}
-                  maxLength={40}
-                  onChangeText={setMenuName}
-                  placeholder="예: 특제 쇼유 라멘"
-                  placeholderTextColor={colors.textMuted}
-                  ref={menuRef}
-                  returnKeyType="done"
-                  style={inputStyle(isMissing("menu"))}
-                  value={menuName}
-                />
-                {shopStyle && !trimmedMenu ? (
-                  <Chip
-                    accessibilityHint="먹은 메뉴 칸을 대표 스타일로 채워요"
-                    label={`대표 스타일 ${withDirectionParticle(shopStyle)} 채우기`}
-                    onPress={() => setMenuName(shopStyle)}
-                    style={styles.fillChip}
-                  />
-                ) : null}
               </View>
 
-              <View style={styles.field}>
+              {/* 필수 다섯 축은 같은 알약 점수 입력으로 이어진다. */}
+              <View style={styles.axes}>
+                {SCORE_AXES.map((axis) => (
+                  <RecordScore
+                    high={axis.high}
+                    invalid={attempted && missingAxes.has(axis.key)}
+                    key={axis.key}
+                    label={axis.label}
+                    low={axis.low}
+                    onChange={(value) => setScores((current) => ({ ...current, [axis.key]: value }))}
+                    ref={(node) => {
+                      axisRefs.current[axis.key] = node
+                    }}
+                    showEnds={AXIS_PRESENTATION[axis.key].kind === "spectrum"}
+                    value={scores[axis.key] ?? null}
+                    words={AXIS_PRESENTATION[axis.key].words}
+                  />
+                ))}
+                <RecordScore
+                  high={REVISIT_AXIS.high}
+                  invalid={attempted && missingAxes.has("revisit")}
+                  label={REVISIT_AXIS.label}
+                  low={REVISIT_AXIS.low}
+                  onChange={(value) => {
+                    const option = REVISIT_CHOICES.find((choice) => REVISIT_SCORE[choice] === value)
+                    if (option) setRevisit(option)
+                  }}
+                  options={REVISIT_CELLS}
+                  ref={revisitRef}
+                  value={revisit ? REVISIT_SCORE[revisit] : null}
+                />
+              </View>
+              <View style={[styles.field, styles.requiredField]}>
                 <View
                   accessibilityLabel={isMissing("ramenType") ? "라멘 종류, 골라주세요" : "라멘 종류"}
                   accessible
@@ -591,22 +739,26 @@ export default function NewRecordScreen() {
                   style={styles.labelRow}
                 >
                   <AppText variant="bodyStrong">라멘 종류</AppText>
-                  {isMissing("ramenType") ? (
-                    <AppText capScale tone="brand" variant="meta">
-                      골라주세요
-                    </AppText>
-                  ) : null}
+                  <AppText
+                    accessibilityElementsHidden={!isMissing("ramenType")}
+                    capScale
+                    importantForAccessibility={isMissing("ramenType") ? "auto" : "no-hide-descendants"}
+                    style={!isMissing("ramenType") && styles.hiddenHint}
+                    tone="brand"
+                    variant="meta"
+                  >
+                    골라주세요
+                  </AppText>
                 </View>
                 <View accessibilityLabel="라멘 종류" accessibilityRole="radiogroup" style={styles.chips}>
                   {RAMEN_TYPES.map((type) => {
                     const selected = ramenType === type
                     return (
-                      <Chip
-                        accessibilityRole="radio"
-                        accessibilityState={{ checked: selected }}
+                      <RecordChoice
                         key={type}
                         label={type}
                         onPress={() => setRamenType(type)}
+                        role="radio"
                         selected={selected}
                       />
                     )
@@ -614,7 +766,7 @@ export default function NewRecordScreen() {
                 </View>
               </View>
 
-              <View style={styles.fieldLast}>
+              <View style={styles.dateWrap}>
                 <AppText style={styles.label} variant="bodyStrong">
                   방문일
                 </AppText>
@@ -623,15 +775,14 @@ export default function NewRecordScreen() {
                   accessibilityLabel={`방문일, ${formatDateLabel(visitDate)}`}
                   accessibilityRole="button"
                   accessibilityState={{ expanded: isDatePickerOpen }}
-                  onPress={() => setIsDatePickerOpen((open) => !open)}
+                  onPress={() => {
+                    Keyboard.dismiss()
+                    setIsDatePickerOpen((open) => !open)
+                  }}
                   ref={visitedAtRef}
-                  style={({ pressed }) => [
-                    styles.dateField,
-                    isMissing("visitedAt") && styles.inputInvalid,
-                    pressed && styles.pressed,
-                  ]}
+                  style={({ pressed }) => [styles.dateField, isMissing("visitedAt") && styles.inputInvalid, pressed && styles.pressed]}
                 >
-                  <AppText style={styles.medium} variant="body">
+                  <AppText numberOfLines={1} style={[styles.medium, styles.dateValue]} variant="body">
                     {formatDateLabel(visitDate)}
                     {visitedAt === formatDate(today) ? (
                       <AppText tone="muted" variant="body">
@@ -641,130 +792,45 @@ export default function NewRecordScreen() {
                   </AppText>
                   <CalendarDays color={colors.textMuted} size={18} />
                 </Pressable>
-                {isDatePickerOpen ? (
+                {isDatePickerOpen && Platform.OS !== "ios" ? (
                   <DateTimePicker
-                    accentColor={colors.brand}
-                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    accentColor={palette.ink}
+                    display="default"
                     locale="ko-KR"
                     maximumDate={today}
                     mode="date"
                     onChange={(event, date) => {
-                      if (Platform.OS !== "ios") setIsDatePickerOpen(false)
+                      setIsDatePickerOpen(false)
                       if (event.type === "set" && date) setVisitDate(date)
                     }}
-                    themeVariant="light"
                     value={visitDate}
                   />
                 ) : null}
               </View>
             </View>
 
-            <View style={styles.divider} />
-
-            {/* 2. 5축 평가 */}
-            <View style={styles.section}>
-              <SectionHeader meta="필수" metaTone="sub" title="맛 평가" />
-              <AppText style={styles.sectionLead} tone="sub" variant="secondary">
-                다섯 항목을 매기면 내 취향 리포트에 반영돼요.
+            <Pressable
+              accessibilityHint="맛 태그, 사진, 메모를 펼치거나 접어요"
+              accessibilityLabel="상세 추가"
+              accessibilityRole="button"
+              accessibilityState={{ expanded: detailsOpen }}
+              onPress={() => setDetailsOpen((open) => !open)}
+              style={({ pressed }) => [styles.addDetail, pressed && styles.pressed]}
+            >
+              <AppText variant="bodyStrong">상세 추가</AppText>
+              <AppText capScale style={styles.addDetailSub} tone="sub" variant="secondary">
+                맛 태그 · 사진 · 메모
               </AppText>
-              <View style={styles.axes}>
-                {SCORE_AXES.map((axis, index) => (
-                  <ScoreSegment
-                    high={axis.high}
-                    hero={AXIS_PRESENTATION[axis.key].hero}
-                    index={index + 1}
-                    kind={AXIS_PRESENTATION[axis.key].kind}
-                    invalid={attempted && missingAxes.has(axis.key)}
-                    key={axis.key}
-                    label={axis.label}
-                    low={axis.low}
-                    onChange={(value) => setScores((current) => ({ ...current, [axis.key]: value }))}
-                    ref={(node) => {
-                      axisRefs.current[axis.key] = node
-                    }}
-                    style={AXIS_PRESENTATION[axis.key].hero ? styles.heroAxis : undefined}
-                    value={scores[axis.key] ?? null}
-                    words={AXIS_PRESENTATION[axis.key].words}
-                  />
-                ))}
-
-                <View>
-                  <View
-                    accessibilityLabel={
-                      attempted && missingAxes.has("revisit") ? `${REVISIT_AXIS.label}, 골라주세요` : REVISIT_AXIS.label
-                    }
-                    accessible
-                    ref={revisitRef}
-                    style={styles.scoreHead}
-                  >
-                    <AppText variant="bodyStrong">
-                      <AppText tone="sub" variant="bodyStrong">
-                        {`${SCORE_AXES.length + 1}  `}
-                      </AppText>
-                      {REVISIT_AXIS.label}
-                    </AppText>
-                    <AppText
-                      capScale
-                      tone={revisit ? "ink" : attempted && missingAxes.has("revisit") ? "critical" : "sub"}
-                      variant="meta"
-                    >
-                      {revisit
-                        ? `${REVISIT_SCORE[revisit]}점`
-                        : attempted && missingAxes.has("revisit")
-                          ? "골라주세요"
-                          : "미선택"}
-                    </AppText>
-                  </View>
-                  <View
-                    accessibilityLabel={REVISIT_AXIS.label}
-                    accessibilityRole="radiogroup"
-                    style={[styles.segment, attempted && missingAxes.has("revisit") && styles.segmentInvalid]}
-                  >
-                    {REVISIT_CHOICES.map((option, index) => {
-                      const selected = revisit === option
-                      return (
-                        <Pressable
-                          accessibilityLabel={`${REVISIT_AXIS.label} ${option}, ${REVISIT_SCORE[option]}점`}
-                          accessibilityRole="radio"
-                          accessibilityState={{ checked: selected }}
-                          key={option}
-                          onPress={() => {
-                            if (Platform.OS !== "web" && revisit !== option) void Haptics.selectionAsync().catch(() => undefined)
-                            setRevisit(option)
-                          }}
-                          style={({ pressed }) => [
-                            styles.segmentCell,
-                            index > 0 && styles.segmentDivider,
-                            selected && styles.segmentSelected,
-                            attempted && missingAxes.has("revisit") && styles.revisitInvalid,
-                            pressed && !selected && styles.pressed,
-                          ]}
-                        >
-                          <AppText
-                            capScale
-                            numberOfLines={1}
-                            style={[styles.bold, styles.textCenter]}
-                            tone={selected ? "onDark" : "ink"}
-                            variant="secondary"
-                          >
-                            {option}
-                          </AppText>
-                        </Pressable>
-                      )
-                    })}
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* 3. 맛 태그 (선택). 누르기만 하면 되는 가장 쉬운 참여라 점수 바로 아래에 펼쳐 둔다 */}
+              {/* 열린 항목이 화면 밖에 있어도 화살표로 상태를 알린다. */}
+              {detailsOpen ? <ChevronUp color={colors.ink} size={18} /> : <ChevronDown color={colors.ink} size={18} />}
+            </Pressable>
+            {detailsOpen ? (
+              <View>
             <View style={styles.section}>
               <SectionHeader
                 meta={selectedTagCount > 0 ? `선택 · ${selectedTagCount}개` : "선택"}
+                metaStyle={styles.counterMeta}
                 metaTone="sub"
-                style={styles.sectionHeadTight}
                 title="맛 태그"
               />
               <View style={styles.tagsPanel}>
@@ -773,83 +839,72 @@ export default function NewRecordScreen() {
                     <AppText style={styles.tagLabel} variant="bodyStrong">
                       {field.label}
                     </AppText>
-                    <View accessibilityLabel={field.label} style={styles.chips}>
-                      {field.options.map((option) => (
-                        <Chip
-                          accessibilityLabel={`${field.label} ${option}`}
-                          key={option}
-                          label={option}
-                          onPress={() => toggleTasteNote(field.key, option)}
-                          selected={tasteNotes[field.key].includes(option)}
-                        />
-                      ))}
+                    <View accessibilityLabel={field.label} style={styles.tasteChips}>
+                      {field.options.map((option) => {
+                        const selected = tasteNotes[field.key].includes(option)
+                        return (
+                          <RecordChoice
+                            accessibilityLabel={`${field.label} ${option}`}
+                            compact
+                            key={option}
+                            label={option}
+                            onPress={() => toggleTasteNote(field.key, option)}
+                            selected={selected}
+                          />
+                        )
+                      })}
                     </View>
                   </View>
                 ))}
               </View>
             </View>
 
-            <View style={styles.divider} />
-
-            {/* 4. 사진 (선택) */}
-            <View style={styles.section}>
-              <SectionHeader
-                meta={`선택 · 최대 ${RECORD_PHOTO_MAX}장`}
-                metaTone="sub"
-                style={styles.sectionHeadTight}
-                title="사진"
-              />
-              <ScrollView
-                contentContainerStyle={styles.photoRow}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.photoScroller}
-              >
-                {photos.length < RECORD_PHOTO_MAX ? (
-                  <Pressable
-                    accessibilityHint="카메라나 사진 보관함에서 가져와요"
-                    accessibilityLabel={photos.length === 0 ? "사진 추가" : `사진 추가, ${photos.length}장 중 최대 ${RECORD_PHOTO_MAX}장`}
-                    accessibilityRole="button"
-                    onPress={choosePhotoSource}
-                    style={({ pressed }) => [styles.photoAdd, pressed && styles.pressed]}
-                  >
-                    <ImagePlus color={colors.textMuted} size={24} />
-                    <AppText capScale style={styles.bold} tone="muted" variant="meta">
-                      {photos.length === 0 ? "사진 추가" : `${photos.length}/${RECORD_PHOTO_MAX}`}
-                    </AppText>
-                  </Pressable>
-                ) : null}
-                {photos.map((uri, index) => (
-                  <View key={uri} style={styles.photoTile}>
-                    <Image
-                      accessibilityLabel={`첨부 사진 ${index + 1}`}
-                      contentFit="cover"
-                      source={{ uri }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <Pressable
-                      accessibilityLabel={`사진 ${index + 1} 삭제`}
-                      accessibilityRole="button"
-                      onPress={() => setPhotos((current) => current.filter((item) => item !== uri))}
-                      style={styles.photoRemove}
-                    >
-                      <View style={styles.photoRemoveDot}>
-                        <X color={colors.onDark} size={14} />
-                      </View>
-                    </Pressable>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
+            {/* 사진을 추가하면 펼쳐진 상세에서 각각 확인하고 삭제할 수 있다. */}
+            {photos.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader
+                  meta={`선택 · 최대 ${RECORD_PHOTO_MAX}장`}
+                  metaTone="sub"
+                  title="사진"
+                />
+                <ScrollView
+                  contentContainerStyle={styles.photoRow}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.photoScroller}
+                >
+                  {photos.map((uri, index) => (
+                    <View key={uri} style={styles.photoTile}>
+                      <Image
+                        accessibilityLabel={`첨부 사진 ${index + 1}`}
+                        contentFit="cover"
+                        source={{ uri }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <Pressable
+                        accessibilityLabel={`사진 ${index + 1} 삭제`}
+                        accessibilityRole="button"
+                        onPress={() => setPhotos((current) => current.filter((item) => item !== uri))}
+                        style={styles.photoRemove}
+                      >
+                        <View style={styles.photoRemoveDot}>
+                          <X color={colors.onPhotoPill} size={14} />
+                        </View>
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
 
             <View style={styles.divider} />
 
-            {/* 5. 메모 (선택) */}
+            {/* 메모는 쓰고 싶을 때만 펼쳐서 적는다. */}
             <View style={styles.section}>
               <SectionHeader
                 meta={`선택 · ${note.length}/${RECORD_NOTE_MAX_LENGTH}`}
+                metaStyle={styles.counterMeta}
                 metaTone="sub"
-                style={styles.sectionHeadTight}
                 title="기억해둘 점"
               />
               <TextInput
@@ -867,70 +922,55 @@ export default function NewRecordScreen() {
               />
             </View>
 
-            <View style={styles.divider} />
-
-            {/* 6. 공개 여부 */}
-            <View style={styles.publicRow}>
-              <View style={styles.flexShrink}>
-                <AppText variant="cardTitle">내 기록 공개하기</AppText>
-                <AppText style={styles.tagsSub} tone="sub" variant="secondary">
-                  끄면 피드에 올라가지 않고 나만 볼 수 있어요.
-                </AppText>
               </View>
-              <Switch
-                accessibilityHint="끄면 피드에 올라가지 않고 나만 볼 수 있어요"
-                accessibilityLabel="내 기록 공개하기"
-                ios_backgroundColor={colors.textFaint}
-                onValueChange={setIsPublic}
-                thumbColor={colors.onDark}
-                trackColor={{ false: colors.textFaint, true: colors.brand }}
-                value={isPublic}
-              />
-            </View>
+            ) : null}
             <View style={styles.bottomSpace} />
           </View>
         </ScrollView>
 
         <StickyActionBar
-          hint={saveError ? undefined : hint}
-          hintTone={!isComplete && attempted ? "brand" : "muted"}
+          hint={saveError ? `저장하지 못했어요. ${saveError}` : hint}
+          hintIsError={Boolean(saveError)}
+          hintTone={saveError ? "critical" : !isComplete && attempted ? "brand" : "muted"}
+          reserveHintLines={2}
         >
-          {saveError ? (
-            <View accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.errorRow}>
-              <AlertCircle color={colors.critical} size={20} />
-              <AppText style={styles.flex} variant="secondary">
-                {`저장하지 못했어요. ${saveError}`}
-              </AppText>
-              <Button loading={saving} onPress={() => void save()} size="small" title="다시 시도" />
-            </View>
-          ) : (
-            // 공용 Button은 disabled를 늘 Pressable에 넘겨 accessibilityState.disabled를 덮으므로,
-            // "누를 수 있지만 미완성"을 알리려고 같은 모양의 버튼을 여기서 그린다.
-            <Pressable
-              accessibilityHint={isComplete ? undefined : "누르면 빠진 첫 항목으로 이동해요"}
-              accessibilityLabel={isComplete ? "기록 저장하기" : `기록 저장하기, 남은 필수 ${missing.length}개`}
-              accessibilityRole="button"
-              // 미완성이어도 실제로 눌리는 버튼이다(빠진 항목으로 데려다준다).
-              // disabled를 주면 VoiceOver가 "흐림"으로 읽어 이 길이 화면을 못 보는 사용자에게만 닫힌다
-              accessibilityState={{ busy: saving }}
-              onPress={() => void save()}
-              style={({ pressed }) => [
-                styles.saveButton,
-                !isComplete && !saving && styles.saveButtonIncomplete,
-                pressed && styles.saveButtonPressed,
-              ]}
-            >
-              {saving ? <ActivityIndicator color={colors.onDark} size="small" /> : null}
-              <AppText
-                capScale
-                numberOfLines={1}
-                tone="onDark"
-                variant="bodyStrong"
-              >
-                {saving ? "저장하는 중…" : isComplete ? "기록 저장하기" : `남은 필수 ${missing.length}개 보러 가기`}
-              </AppText>
-            </Pressable>
-          )}
+          <View style={styles.visibilityPair}>
+            {VISIBILITY_CHOICES.map(({ label, value }) => {
+              const selected = isPublic === value
+              return (
+                <Pressable
+                  accessibilityLabel={label}
+                  accessibilityHint={value ? "기록을 공개해 피드에 올려요" : "피드에 올리지 않고 나만 볼 수 있어요"}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  key={label}
+                  onPress={() => {
+                    if (Platform.OS !== "web" && !selected) void Haptics.selectionAsync().catch(() => undefined)
+                    setIsPublic(value)
+                  }}
+                  style={({ pressed }) => [styles.visibilityButton, value ? styles.visibilityPublic : styles.visibilityPrivate, selected && styles.visibilitySelected, pressed && !selected && styles.pressed]}
+                >
+                  <AppText capScale lineBreakStrategyIOS="hangul-word" style={[styles.visibilityText, selected && styles.onSelectedText]} variant="secondary">
+                    {label}
+                  </AppText>
+                </Pressable>
+              )
+            })}
+          </View>
+          {/* 미완성이어도 저장을 누르면 빠진 첫 항목으로 안내한다. */}
+          <Pressable
+            accessibilityHint={isComplete ? undefined : "누르면 빠진 첫 항목으로 이동해요"}
+            accessibilityLabel={saveError ? "다시 시도" : isComplete ? "기록 저장하기" : `기록 저장하기, 남은 필수 ${missing.length}개`}
+            accessibilityRole="button"
+            accessibilityState={{ busy: saving }}
+            onPress={() => void save()}
+            style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
+          >
+            {saving ? <ActivityIndicator color={colors.onDark} size="small" style={styles.saveSpinner} /> : null}
+            <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.saveText} tone="onDark" variant="secondary">
+              {saving ? "저장 중…" : saveError ? "다시 시도" : "저장"}
+            </AppText>
+          </Pressable>
         </StickyActionBar>
       </KeyboardAvoidingView>
 
@@ -947,6 +987,38 @@ export default function NewRecordScreen() {
         title="작성을 그만둘까요?"
         visible={leaveVisible}
       />
+      {Platform.OS === "ios" ? (
+        <Modal animationType="fade" onRequestClose={() => setIsDatePickerOpen(false)} transparent visible={isDatePickerOpen}>
+          <View style={styles.dateModalRoot}>
+            <Pressable
+              accessibilityLabel="달력 닫기"
+              accessibilityRole="button"
+              onPress={() => setIsDatePickerOpen(false)}
+              style={StyleSheet.absoluteFill}
+            />
+            <View accessibilityViewIsModal style={styles.dateModalCard}>
+              <View style={styles.dateModalHeader}>
+                <AppText variant="sectionTitle">방문일</AppText>
+                <Pressable accessibilityLabel="날짜 선택 완료" accessibilityRole="button" onPress={() => setIsDatePickerOpen(false)} style={styles.dateDone}>
+                  <AppText variant="button">완료</AppText>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                accentColor={palette.ink}
+                display="inline"
+                locale="ko-KR"
+                maximumDate={today}
+                mode="date"
+                onChange={(event, date) => {
+                  if (event.type === "set" && date) setVisitDate(date)
+                }}
+                value={visitDate}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+      <EdgeBackZone />
     </SafeAreaView>
   )
 }
@@ -955,52 +1027,76 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
   flexShrink: { flex: 1, minWidth: 0 },
-  bold: { fontWeight: "700" },
+  hiddenHint: { opacity: 0 },
+  flowHeader: { minHeight: 52 },
+  navTitle: { fontSize: 18, lineHeight: 24 },
+  slip: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4 },
+  // 사진 칸은 오른쪽 두 입력칸(가게 · 먹은 메뉴)의 위아래 끝에 맞춰 늘어난다
+  introFields: { flexDirection: "row", alignItems: "stretch", gap: spacing.x3 },
+  introInputs: { flex: 1, minWidth: 0 },
+  photoHero: {
+    width: 104,
+    minHeight: 120,
+    borderRadius: radii.sm,
+    overflow: "hidden",
+    backgroundColor: colors.canvasSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoHeroLabel: { alignItems: "center", gap: spacing.x1 },
+  photoCount: {
+    position: "absolute",
+    bottom: spacing.x2,
+    right: spacing.x2,
+    borderRadius: radii.pill,
+    backgroundColor: colors.photoPill,
+    paddingHorizontal: spacing.x2,
+    paddingVertical: spacing.x1,
+  },
+  photoCountText: { color: colors.onPhotoPill },
   medium: { fontWeight: "500" },
-  textCenter: { textAlign: "center" },
-  headerPad: { paddingRight: spacing.x4 },
-  section: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, paddingBottom: spacing.x6 },
-  sectionHead: { marginBottom: spacing.x4 },
-  sectionHeadTight: { marginBottom: spacing.x3 },
-  sectionLead: { marginTop: spacing.x1, marginBottom: spacing.x5 },
-  // 섹션 사이는 1pt 정보 구분선. 미색 바탕 위에 회색 띠를 깔지 않는다
-  divider: { height: 1, backgroundColor: colors.border },
+  dateValue: { flex: 1, minWidth: 0 },
+  section: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, paddingBottom: spacing.x5 },
+  divider: { height: line.hair, backgroundColor: colors.border },
   field: { marginBottom: spacing.x4 },
-  fieldLast: {},
-  label: { marginBottom: spacing.x1_5 },
+  introShopField: { marginBottom: spacing.x1 },
+  introMenuField: { marginBottom: 0 },
+  requiredField: { marginTop: spacing.x6 },
+  dateWrap: { marginTop: spacing.x6, marginBottom: spacing.x4 },
+  label: { marginBottom: spacing.x1, fontSize: 14, lineHeight: 18 },
   labelRow: {
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "space-between",
-    marginBottom: spacing.x1_5,
+    marginBottom: spacing.x1,
   },
-  // 입력칸: 흰 면 + 2pt 먹선 + 12pt
+  fieldLabel: { fontSize: 14, lineHeight: 18 },
   input: {
     ...typography.body,
-    fontWeight: "500",
-    minHeight: 48,
-    paddingHorizontal: spacing.x3_5,
-    paddingVertical: spacing.x3,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    color: colors.ink,
-  },
-  inputInvalid: { borderColor: colors.brand },
-  noteInput: { minHeight: 96, paddingTop: spacing.x3_5 },
-  fillChip: { alignSelf: "flex-start", marginTop: spacing.x2 },
-  shopField: {
+    fontSize: 16,
     minHeight: 48,
     paddingHorizontal: spacing.x3_5,
     paddingVertical: spacing.x2,
     borderRadius: radii.sm,
     borderWidth: line.base,
     borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.paper,
+    color: colors.ink,
+  },
+  menuInput: { minHeight: 44, height: 44 },
+  inputInvalid: { borderColor: colors.brand },
+  noteInput: { height: 96, paddingTop: spacing.x3_5 },
+  shopField: {
+    minHeight: 48,
+    paddingHorizontal: spacing.x3,
+    borderRadius: radii.sm,
+    borderWidth: line.base,
+    borderColor: colors.outline,
+    backgroundColor: colors.paper,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.x3,
+    justifyContent: "space-between",
+    gap: spacing.x1,
   },
   dateField: {
     minHeight: 48,
@@ -1008,61 +1104,58 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     borderWidth: line.base,
     borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.paper,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.x3,
   },
-  pressed: { backgroundColor: colors.canvasSoft },
+  pressed: { backgroundColor: colors.surfacePressed },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
-  axes: { gap: spacing.x6 },
-  scoreHead: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    marginBottom: spacing.x2,
-  },
-  // 전체 만족도는 크게 따로 세우고 아래 항목들과 선으로 나눈다
-  heroAxis: { paddingBottom: spacing.x6, borderBottomWidth: 1, borderBottomColor: colors.border },
-  // 재방문 의사: 선택지는 세 개의 알약 칩(1.5pt 먹선, 선택은 빨강 면)
-  segment: { flexDirection: "row", gap: spacing.x2 },
-  segmentInvalid: {},
-  segmentCell: {
-    flex: 1,
+  tasteChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
+  choice: {
     minHeight: touchTarget,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: spacing.x1,
-    borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    paddingHorizontal: spacing.x4,
   },
-  segmentDivider: {},
-  revisitInvalid: { borderColor: colors.brand },
-  segmentSelected: { backgroundColor: colors.brand, borderColor: colors.outline },
+  choiceSelected: { backgroundColor: colors.selected },
+  onSelectedText: { color: colors.onSelected },
+  choiceText: { ...typography.button, textAlign: "center" },
+  tasteChoice: { paddingHorizontal: spacing.x3 },
+  axes: { marginTop: spacing.section },
+  scoreField: { marginBottom: spacing.x2 },
+  scoreHeading: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1, marginBottom: spacing.x1 },
+  scoreLabel: { fontSize: 14, lineHeight: 18, fontWeight: "600" },
+  scoreStatus: { flexShrink: 1, fontSize: 14, lineHeight: 18 },
+  scoreCells: { flexDirection: "row", gap: spacing.x1_5 },
+  scoreCell: { flex: 1, minWidth: 0, minHeight: touchTarget, paddingVertical: spacing.x1, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, alignItems: "center", justifyContent: "center" },
+  scoreCellSelected: { backgroundColor: colors.selected },
+  scoreCellText: { fontSize: 15, lineHeight: 19, fontWeight: "700", textAlign: "center" },
+  scoreRevisitText: { fontSize: 13, lineHeight: 17 },
+  scoreEnds: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.x1 },
+  addDetail: {
+    minHeight: 48,
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.x6,
+    paddingHorizontal: spacing.x3_5,
+    borderRadius: radii.sm,
+    backgroundColor: colors.canvasSoft,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.x2,
+  },
+  addDetailSub: { flex: 1, textAlign: "right" },
   photoScroller: { marginHorizontal: -spacing.gutter },
   photoRow: { paddingHorizontal: spacing.gutter, gap: spacing.x2 },
-  // 점선 상자를 쓰지 않는다. 흰 면 + 2pt 먹선 실선 상자
-  photoAdd: {
-    width: 96,
-    height: 96,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.x1,
-  },
   photoTile: {
     width: 96,
     height: 96,
     borderRadius: radii.sm,
     overflow: "hidden",
-    borderWidth: line.base,
-    borderColor: colors.outline,
     backgroundColor: colors.canvasSoft,
   },
   photoRemove: {
@@ -1075,44 +1168,48 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     padding: spacing.x1_5,
   },
-  // 사진 위 삭제 표시는 작은 먹색 사각
   photoRemoveDot: {
     width: 24,
     height: 24,
-    borderRadius: radii.xs,
-    backgroundColor: colors.ink,
+    borderRadius: radii.pill,
+    backgroundColor: colors.photoPill,
     alignItems: "center",
     justifyContent: "center",
   },
-  tagsSub: { marginTop: spacing.x0_5 },
   tagsPanel: { gap: spacing.x4 },
   tagLabel: { marginBottom: spacing.x2 },
-  publicRow: {
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.x4,
-    flexDirection: "row",
+  counterMeta: { minWidth: 132, textAlign: "right", fontVariant: ["tabular-nums"] },
+  bottomSpace: { height: spacing.x8 },
+  visibilityPair: { flex: 1.25, minWidth: 0, flexDirection: "row", gap: spacing.x2 },
+  visibilityButton: {
+    minWidth: 0,
+    minHeight: 44,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
     alignItems: "center",
-    gap: spacing.x3,
+    justifyContent: "center",
+    paddingHorizontal: spacing.x1,
   },
-  bottomSpace: { height: spacing.x4 },
-  errorRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.x3 },
-  // 공용 Button과 같은 모양의 빨강 키: 12pt 사각 + 2pt 먹선 + 번지지 않는 그림자
+  visibilityPrivate: { flex: 1.6 },
+  visibilityPublic: { flex: 1 },
+  visibilitySelected: { backgroundColor: colors.selected },
+  visibilityText: { fontWeight: "700", flexShrink: 1, textAlign: "center" },
+  dateModalRoot: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.gutter, backgroundColor: colors.overlay },
+  dateModalCard: { alignSelf: "center", width: "100%", maxWidth: 430, borderRadius: radii.lg, backgroundColor: colors.canvas, padding: spacing.x4 },
+  dateModalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  dateDone: { minWidth: touchTarget, minHeight: touchTarget, alignItems: "center", justifyContent: "center" },
   saveButton: {
-    flex: 1,
+    flex: 1.65,
     minHeight: 52,
     borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
     backgroundColor: colors.brand,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.x2,
-    paddingHorizontal: spacing.x6,
-    ...shadows.hardS,
+    paddingHorizontal: spacing.x1,
   },
-  // 아직 못 저장하지만 누르면 빠진 항목으로 데려다준다. 빨강 면으로 목적지를 보이게 두고 그림자만 뺀다
-  saveButtonIncomplete: { shadowOpacity: 0 },
-  // 누르면 그림자 속으로 들어간다
-  saveButtonPressed: pressInto(2),
+  saveSpinner: { position: "absolute", left: spacing.x2 },
+  saveButtonPressed: { backgroundColor: colors.brandPressed },
+  saveText: { flexShrink: 1, textAlign: "center", fontSize: 16, fontWeight: "700" },
 })

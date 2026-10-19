@@ -1,6 +1,6 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native"
 import type { ReactElement } from "react"
-import { Alert } from "react-native"
+import { Alert, StyleSheet } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import { createInitialPersistedState } from "@/src/data/fixtures"
@@ -9,6 +9,8 @@ import { RaotaProvider } from "@/src/state/RaotaStore"
 import LoginScreen from "@/app/(flows)/auth/login"
 import OnboardingScreen from "@/app/(flows)/auth/onboarding"
 import NewRecordScreen from "@/app/(flows)/record/new"
+import { RamenTypeTag, ScoreSegment, SoupDot } from "@/src/components/ui"
+import { TasteFingerprint } from "@/src/components/TasteFingerprint"
 import SelectShopScreen from "@/app/(flows)/record/select-shop"
 
 jest.mock("expo-router", () => {
@@ -80,20 +82,13 @@ async function renderWithStore(
   repository = repositoryWith(),
 ) {
   return render(
-    <RaotaProvider repository={repository}>{element}</RaotaProvider>,
-  )
-}
-
-/** 기록 화면은 하단 고정 바가 safe area를 읽으므로 기기 값을 넣어 렌더한다 */
-async function renderRecordFlow(element: ReactElement) {
-  return renderWithStore(
     <SafeAreaProvider
       initialMetrics={{
         frame: { x: 0, y: 0, width: 390, height: 844 },
         insets: { top: 47, left: 0, right: 0, bottom: 34 },
       }}
     >
-      {element}
+      <RaotaProvider repository={repository}>{element}</RaotaProvider>
     </SafeAreaProvider>,
   )
 }
@@ -161,16 +156,124 @@ describe("authentication and onboarding screens", () => {
   })
 })
 
+describe("shared taste marks", () => {
+  it("renders plain ramen type labels and leaves standalone soup keys decorative", async () => {
+    const view = await render(
+      <>
+        <RamenTypeTag type="쇼유 라멘" />
+        <RamenTypeTag inList type="시오" />
+        <RamenTypeTag onImage type="미소" />
+        <SoupDot type="돈코츠" />
+      </>,
+    )
+
+    expect(view.getByLabelText("라멘 종류 쇼유").children).toHaveLength(1)
+    expect(view.getByLabelText("라멘 종류 시오").children).toHaveLength(1)
+    expect(view.getByLabelText("라멘 종류 미소").children).toHaveLength(1)
+    expect(view.queryByLabelText("돈코츠")).toBeNull()
+  })
+
+  it("announces the taste fingerprint as one readable set of axes", async () => {
+    const view = await render(
+      <TasteFingerprint
+        meta="회원 23명의 기록"
+        rows={[
+          { key: "satisfaction", label: "만족도", value: 4.3, text: "4.3" },
+          { key: "brothDensity", label: "육수 농도", value: 4, text: "진한 편" },
+        ]}
+      />,
+    )
+
+    expect(view.getByLabelText("맛 지문. 회원 23명의 기록. 만족도 4.3, 육수 농도 진한 편")).toBeTruthy()
+  })
+})
+
 describe("record screens", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+  })
+
+  it("keeps five radio choices for both score kinds, with hero feedback and invalid guidance", async () => {
+    const onChange = jest.fn()
+    const view = await render(
+      <ScoreSegment
+        hero
+        high="진함"
+        invalid
+        kind="quality"
+        label="육수 농도"
+        low="맑음"
+        onChange={onChange}
+        value={null}
+        words={["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"]}
+      />,
+    )
+
+    expect(view.getAllByRole("radio")).toHaveLength(5)
+    expect(view.getByText("골라주세요")).toBeTruthy()
+    expect(view.getByText("맑음")).toBeTruthy()
+    expect(view.getByText("진함")).toBeTruthy()
+    await fireEvent.press(view.getByRole("radio", { name: /^육수 농도 4점/ }))
+    expect(onChange).toHaveBeenCalledWith(4)
+
+    await view.rerender(
+      <ScoreSegment
+        high="진함"
+        kind="spectrum"
+        label="육수 농도"
+        low="맑음"
+        onChange={onChange}
+        value={4}
+        words={["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"]}
+      />,
+    )
+    expect(view.getByText("진한 편")).toBeTruthy()
+    expect(view.getByRole("radio", { name: /^육수 농도 4점/ }).props.accessibilityState.checked).toBe(true)
+  })
+
+  it("shows the selected shop, editable menu, visit date and folded optional details", async () => {
+    const view = await renderWithStore(<NewRecordScreen />)
+
+    expect(await view.findByText("멘야준 · 망원 본점")).toBeTruthy()
+    await fireEvent.changeText(view.getByLabelText("먹은 메뉴"), "특제 쇼유 라멘")
+    expect(view.getByLabelText("먹은 메뉴").props.value).toBe("특제 쇼유 라멘")
+    expect(view.getByRole("button", { name: /^방문일, / })).toBeTruthy()
+    expect(view.getAllByRole("radio", { name: /^재방문 의사/ })).toHaveLength(3)
+    expect(view.queryByText("맛 태그")).toBeNull()
+    expect(view.getByRole("button", { name: "사진 추가" })).toBeTruthy()
+    expect(view.queryByLabelText("기억해둘 점")).toBeNull()
+
+    const details = view.getByRole("button", { name: "상세 추가" })
+    expect(details.props.accessibilityState.expanded).toBe(false)
+    await fireEvent.press(details)
+
+    expect(view.getByText("맛 태그")).toBeTruthy()
+    expect(view.getByRole("button", { name: "사진 추가" })).toBeTruthy()
+    expect(view.getByLabelText("기억해둘 점")).toBeTruthy()
+    expect(details.props.accessibilityState.expanded).toBe(true)
+  })
+
+  it("offers a private default and an explicit public choice beside Save", async () => {
+    const view = await renderWithStore(<NewRecordScreen />)
+    const privateButton = await view.findByRole("button", { name: "나만 보기" })
+    const publicButton = view.getByRole("button", { name: "공개" })
+
+    expect(privateButton.props.accessibilityState.selected).toBe(true)
+    expect(publicButton.props.accessibilityState.selected).toBe(false)
+    expect(view.queryByRole("switch", { name: "내 기록 공개하기" })).toBeNull()
+    expect(view.queryByText("공개 기록")).toBeNull()
+
+    await fireEvent.press(publicButton)
+    expect(publicButton.props.accessibilityState.selected).toBe(true)
+    await fireEvent.press(privateButton)
+    expect(privateButton.props.accessibilityState.selected).toBe(true)
   })
 
   it("keeps an incomplete ramen record on screen and names what is missing", async () => {
     const { router } = jest.requireMock("expo-router") as {
       router: { replace: jest.Mock }
     }
-    const view = await renderRecordFlow(<NewRecordScreen />)
+    const view = await renderWithStore(<NewRecordScreen />)
 
     // 멘야준(쇼유 라멘)은 라멘 종류가 미리 골라져 있고 방문일은 오늘이다.
     expect(
@@ -195,7 +298,8 @@ describe("record screens", () => {
     const { router } = jest.requireMock("expo-router") as {
       router: { replace: jest.Mock }
     }
-    const view = await renderRecordFlow(<NewRecordScreen />)
+    const repository = repositoryWith()
+    const view = await renderWithStore(<NewRecordScreen />, repository)
 
     await fireEvent.changeText(
       await view.findByLabelText("먹은 메뉴"),
@@ -220,6 +324,13 @@ describe("record screens", () => {
         params: { logId: expect.any(String) },
       }),
     )
+    await waitFor(() =>
+      expect(repository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          logs: expect.arrayContaining([expect.objectContaining({ menuName: "특제 쇼유 라멘", isPublic: false })]),
+        }),
+      ),
+    )
   })
 
   it("asks before leaving a record that has input", async () => {
@@ -235,7 +346,7 @@ describe("record screens", () => {
       }),
       dispatch,
     })
-    const view = await renderRecordFlow(<NewRecordScreen />)
+    const view = await renderWithStore(<NewRecordScreen />)
 
     await fireEvent.changeText(await view.findByLabelText("먹은 메뉴"), "시오")
     const preventDefault = jest.fn()
@@ -254,7 +365,7 @@ describe("record screens", () => {
     const { router } = jest.requireMock("expo-router") as {
       router: { replace: jest.Mock }
     }
-    const view = await renderRecordFlow(<SelectShopScreen />)
+    const view = await renderWithStore(<SelectShopScreen />)
 
     await fireEvent.press(await view.findByRole("tab", { name: "찜한 가게 4곳" }))
     await fireEvent.press(view.getByRole("button", { name: /^오레노라멘/ }))
@@ -266,7 +377,7 @@ describe("record screens", () => {
   })
 
   it("shows an empty state when a shop search has no match", async () => {
-    const view = await renderRecordFlow(<SelectShopScreen />)
+    const view = await renderWithStore(<SelectShopScreen />)
 
     await fireEvent.press(await view.findByRole("tab", { name: "검색" }))
     await fireEvent.changeText(view.getByLabelText("가게 검색"), "없는가게")

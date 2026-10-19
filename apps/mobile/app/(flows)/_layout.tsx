@@ -2,6 +2,7 @@ import { Stack, router, usePathname, useSegments } from "expo-router"
 import { useEffect } from "react"
 
 import { useRaota } from "@/src/state/RaotaStore"
+import { colors } from "@/src/theme"
 
 /*
  * 스택으로 여는 집중 작업(로그인·가입, 기록, 취향 리포트, 약관)의 틀.
@@ -28,7 +29,7 @@ export default function FlowLayout() {
   }, [blocked, pathname])
 
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
+    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.canvas } }}>
       <Stack.Screen
         name="record/select-shop"
         options={{

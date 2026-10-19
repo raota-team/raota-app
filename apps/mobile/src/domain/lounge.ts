@@ -16,7 +16,7 @@ export type LoungeSort = "latest" | "likes"
 
 export const LOUNGE_SORTS: Array<{ value: LoungeSort; label: string }> = [
   { value: "latest", label: "최신순" },
-  { value: "likes", label: "공감순" },
+  { value: "likes", label: "인기순" },
 ]
 
 export const LOUNGE_ALL_TYPES = "전체"
@@ -70,7 +70,7 @@ export function isLogVisibleTo(log: RamenLog, viewer: LoungeViewer): boolean {
 
 /**
  * 라운지 피드: 공개 라멘로그만(내 비공개 기록도 빼서 남이 보는 피드와 같게), 숨긴 사람·신고한 글 제외.
- * 최신순은 실제 작성 시각, 공감순은 공감 수(같으면 최신).
+ * 최신순은 실제 작성 시각, 인기순은 공감 수(같으면 최신).
  */
 export function selectLoungeLogs(
   logs: readonly RamenLog[],

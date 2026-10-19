@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "raota",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.raota.app",
@@ -69,11 +69,25 @@
         {
           "image": "./assets/images/logo.png",
           "resizeMode": "contain",
-          "backgroundColor": "#FFF8EA"
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "image": "./assets/images/logo.png",
+            "backgroundColor": "#121211"
+          }
         }
       ],
       "expo-secure-store",
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Pretendard-Regular.otf",
+            "./assets/fonts/Pretendard-Medium.otf",
+            "./assets/fonts/Pretendard-SemiBold.otf",
+            "./assets/fonts/Pretendard-Bold.otf"
+          ]
+        }
+      ],
       "expo-image",
       "expo-web-browser",
       "./plugins/withIosSceneLifecycle"

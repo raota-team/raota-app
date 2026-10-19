@@ -7,7 +7,6 @@ import { createInitialPersistedState } from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
 import PolicySheet from "@/src/components/PolicySheet"
-import RecordFab from "@/src/components/RecordFab"
 import { RaotaTabBar } from "@/app/native/_layout"
 import LoginScreen from "@/app/(flows)/auth/login"
 import OnboardingScreen from "@/app/(flows)/auth/onboarding"
@@ -97,27 +96,30 @@ beforeEach(() => {
   useLocalSearchParams.mockReturnValue({})
 })
 
-describe("MVP tab bar", () => {
-  function tabProps(activeIndex = 0) {
-    const names = ["index", "map", "lounge", "news", "my"]
-    const titles: Record<string, string> = { index: "홈", map: "지도", lounge: "라운지", news: "라멘속보", my: "마이" }
-    const routes = names.map((name) => ({ key: `${name}-key`, name, params: undefined }))
-    const descriptors = Object.fromEntries(routes.map((route) => [route.key, { options: { title: titles[route.name] } }]))
-    const navigation = { emit: jest.fn(() => ({ defaultPrevented: false })), navigate: jest.fn() }
-    const props = {
-      state: { index: activeIndex, routes },
-      descriptors,
-      navigation,
-      insets: { top: 0, right: 0, bottom: 34, left: 0 },
-    } as unknown as Parameters<typeof RaotaTabBar>[0]
-    return { props, navigation }
-  }
+function tabProps(activeIndex = 0) {
+  const names = ["index", "map", "lounge", "news", "my"]
+  const titles: Record<string, string> = { index: "홈", map: "지도", lounge: "라운지", news: "라멘속보", my: "마이" }
+  const routes = names.map((name) => ({ key: `${name}-key`, name, params: undefined }))
+  const descriptors = Object.fromEntries(routes.map((route) => [route.key, { options: { title: titles[route.name] } }]))
+  const navigation = { emit: jest.fn(() => ({ defaultPrevented: false })), navigate: jest.fn() }
+  const props = {
+    state: { index: activeIndex, routes },
+    descriptors,
+    navigation,
+    insets: { top: 0, right: 0, bottom: 34, left: 0 },
+  } as unknown as Parameters<typeof RaotaTabBar>[0]
+  return { props, navigation }
+}
 
-  it("shows only 홈 · 지도 · 라운지 · 마이 and marks the active tab", async () => {
+describe("MVP tab bar", () => {
+
+  it("shows four routes plus the record action, without exposing 라멘속보", async () => {
     const { props } = tabProps(0)
-    const view = await render(<RaotaTabBar {...props} />)
+    const view = await renderApp(<RaotaTabBar {...props} />)
 
     expect(view.getAllByRole("tab").map((tab) => tab.props.accessibilityLabel)).toEqual(["홈 탭", "지도 탭", "라운지 탭", "마이 탭"])
+    expect(view.getByRole("button", { name: "라멘 기록하기" })).toBeTruthy()
+    expect(view.queryByText("기록")).toBeNull()
     expect(view.getByText("라운지")).toBeTruthy()
     expect(view.queryByText("라멘속보")).toBeNull()
     expect(view.getByRole("tab", { name: "홈 탭" }).props.accessibilityState).toEqual({ selected: true })
@@ -125,89 +127,72 @@ describe("MVP tab bar", () => {
 
   it("navigates when another tab is pressed", async () => {
     const { props, navigation } = tabProps(0)
-    const view = await render(<RaotaTabBar {...props} />)
+    const view = await renderApp(<RaotaTabBar {...props} />)
 
     await fireEvent.press(view.getByRole("tab", { name: "지도 탭" }))
     expect(navigation.navigate).toHaveBeenCalledWith("map", undefined)
   })
 })
 
-describe("RecordFab", () => {
-  async function layout(view: Awaited<ReturnType<typeof renderApp>>) {
-    const container = view.getByTestId("record-fab").parent?.parent
-    if (!container) throw new Error("container not found")
-    await act(async () => {
-      fireEvent(container, "layout", { nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 700 } } })
-    })
-  }
+describe("record tab action", () => {
 
-  it("sends a guest to login instead of opening the menu", async () => {
-    const view = await renderApp(<RecordFab />, guestState())
+  it("sends a guest to login without opening a record menu", async () => {
+    const { props, navigation } = tabProps()
+    const view = await renderApp(<RaotaTabBar {...props} />, guestState())
 
     await fireEvent.press(view.getByRole("button", { name: "라멘 기록하기" }))
     expect(router.push).toHaveBeenCalledWith("/auth/login")
     expect(view.queryByRole("button", { name: "주변 라멘집 기록하기" })).toBeNull()
+    expect(navigation.navigate).not.toHaveBeenCalled()
   })
 
-  it("opens three record methods and routes each to the shop picker", async () => {
-    const view = await renderApp(<RecordFab />)
-    await layout(view)
+  it.each([
+    ["주변 라멘집 기록하기", "nearby"],
+    ["찜한 가게에서 기록하기", "saved"],
+    ["직접 검색해서 기록하기", "search"],
+  ])("opens the three methods and routes %s to the shop picker", async (label, mode) => {
+    const { props, navigation } = tabProps()
+    const view = await renderApp(<RaotaTabBar {...props} />)
 
     await fireEvent.press(view.getByRole("button", { name: "라멘 기록하기" }))
-    const toggle = view.getByRole("button", { name: "기록 메뉴 닫기" })
-    expect(toggle.props.accessibilityState).toEqual(expect.objectContaining({ expanded: true }))
-    expect(view.getByRole("button", { name: "주변 라멘집 기록하기" })).toBeTruthy()
-    expect(view.getByRole("button", { name: "직접 검색해서 기록하기" })).toBeTruthy()
-
-    await fireEvent.press(view.getByRole("button", { name: "찜한 가게에서 기록하기" }))
-    expect(track).toHaveBeenCalledWith("record_started", { mode: "saved", source: "fab" })
+    expect(view.getByRole("button", { name: "라멘 기록하기" }).props.accessibilityState).toEqual({ expanded: true })
+    for (const name of ["주변 라멘집 기록하기", "찜한 가게에서 기록하기", "직접 검색해서 기록하기"]) {
+      expect(await view.findByRole("button", { name })).toBeTruthy()
+    }
+    await fireEvent.press(view.getByRole("button", { name: label }))
+    expect(track).toHaveBeenCalledWith("record_started", { mode, source: "tab" })
     expect(router.push).toHaveBeenCalledWith({
       pathname: "/record/select-shop",
-      params: { mode: "saved", source: "fab" },
+      params: { mode, source: "tab" },
     })
-    expect(view.queryByRole("button", { name: "주변 라멘집 기록하기" })).toBeNull()
+    expect(navigation.navigate).not.toHaveBeenCalled()
   })
 
-  it("closes the menu from the backdrop and when the screen loses focus", async () => {
-    const view = await renderApp(<RecordFab />)
-    await layout(view)
+  it("closes the menu on backdrop press and when the tab navigator loses focus", async () => {
+    const { props } = tabProps()
+    const view = await renderApp(<RaotaTabBar {...props} />)
 
     await fireEvent.press(view.getByRole("button", { name: "라멘 기록하기" }))
-    await fireEvent.press(view.getByTestId("record-fab-backdrop"))
-    expect(view.queryByRole("button", { name: "주변 라멘집 기록하기" })).toBeNull()
+    await fireEvent.press(await view.findByRole("button", { name: "기록 방법 선택 닫기" }))
+    await waitFor(() => expect(view.queryByRole("button", { name: "주변 라멘집 기록하기" })).toBeNull())
 
     await fireEvent.press(view.getByRole("button", { name: "라멘 기록하기" }))
     const cleanup = mockFocus.effect?.()
     await act(async () => {
       if (typeof cleanup === "function") cleanup()
     })
-    expect(view.queryByRole("button", { name: "주변 라멘집 기록하기" })).toBeNull()
+    await waitFor(() => expect(view.queryByRole("button", { name: "주변 라멘집 기록하기" })).toBeNull())
   })
 
-  it("offers a VoiceOver action that moves the button back to its home spot", async () => {
-    const view = await renderApp(<RecordFab />)
-    await layout(view)
-    const fab = view.getByRole("button", { name: "라멘 기록하기" })
-
-    expect(fab.props.accessibilityActions).toEqual(
-      expect.arrayContaining([{ name: "moveToDefault", label: "기본 위치로 옮기기" }]),
-    )
-    await act(async () => {
-      fab.props.onAccessibilityAction({ nativeEvent: { actionName: "activate" } })
-    })
-    expect(view.getByRole("button", { name: "주변 라멘집 기록하기" })).toBeTruthy()
-  })
-})
-
-describe("RecordFab dev reminder test (Expo Go)", () => {
-  it("long-press opens the dev action sheet and schedules a 5-second test reminder", async () => {
+  it("opens the dev reminder action sheet on long press", async () => {
     const notifications = jest.requireMock("expo-notifications") as {
       getPermissionsAsync: jest.Mock
       scheduleNotificationAsync: jest.Mock
     }
     notifications.getPermissionsAsync.mockResolvedValue({ status: "granted", granted: true, canAskAgain: true })
     const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(1))
-    const view = await renderApp(<RecordFab />)
+    const { props } = tabProps()
+    const view = await renderApp(<RaotaTabBar {...props} />)
 
     await act(async () => {
       fireEvent(view.getByRole("button", { name: "라멘 기록하기" }), "longPress")
@@ -303,7 +288,7 @@ describe("login", () => {
     useLocalSearchParams.mockReturnValue({ mode: "signup" })
     const view = await renderApp(<LoginScreen />, guestState())
 
-    expect(view.getByRole("header", { name: "회원가입" })).toBeTruthy()
+    expect(view.getByRole("header", { name: "좋았던 한 그릇, 잊지 않도록" })).toBeTruthy()
     expect(view.queryByRole("button", { name: "데모 계정으로 체험" })).toBeNull()
     await fireEvent.press(view.getByRole("button", { name: "Google로 계속하기" }))
 
@@ -313,10 +298,13 @@ describe("login", () => {
     expect(view.getByTestId("who").props.children).toBe("local-google")
   })
 
-  it("switches between login and sign-up from the header link", async () => {
+  it("keeps the prototype photo-first login without an app-only navigation header", async () => {
     const view = await renderApp(<LoginScreen />, guestState())
-    await fireEvent.press(view.getByRole("button", { name: "회원가입" }))
-    expect(router.setParams).toHaveBeenCalledWith({ mode: "signup" })
+    expect(view.getByRole("header", { name: "좋았던 한 그릇, 잊지 않도록" })).toBeTruthy()
+    expect(view.queryByRole("button", { name: "회원가입" })).toBeNull()
+    expect(view.getByRole("button", { name: "로그인 없이 둘러보기" })).toBeTruthy()
+    expect(view.getByRole("link", { name: "이용약관" })).toBeTruthy()
+    expect(view.getByRole("link", { name: "개인정보처리방침" })).toBeTruthy()
   })
 
   it("browses as a real guest, not the demo account", async () => {
@@ -375,7 +363,7 @@ describe("onboarding", () => {
     const view = await renderApp(<OnboardingScreen />, freshState())
 
     await fireEvent.changeText(view.getByLabelText("닉네임"), "면탐험가")
-    await fireEvent.press(view.getByRole("button", { name: "쇼유 (간장)" }))
+    await fireEvent.press(view.getByRole("button", { name: "쇼유" }))
     await fireEvent.press(view.getByRole("checkbox", { name: "필수, 서비스 이용약관 동의" }))
     await fireEvent.press(view.getByRole("checkbox", { name: "필수, 개인정보 수집 및 이용 동의" }))
     await fireEvent.press(view.getByRole("button", { name: "회원가입 완료" }))

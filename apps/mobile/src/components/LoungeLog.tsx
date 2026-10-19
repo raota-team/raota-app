@@ -1,8 +1,8 @@
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { router } from "expo-router"
-import { EyeOff, Flag, Heart, Images, MessageCircle, MoreHorizontal, Store } from "lucide-react-native"
-import { memo, useCallback, useState, type ReactNode } from "react"
+import { ChevronLeft, EyeOff, Flag, Heart, Images, MoreHorizontal } from "lucide-react-native"
+import { memo, useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import {
   ActionSheetIOS,
   Platform,
@@ -16,28 +16,38 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native"
+import Animated, {
+  Easing,
+  FadeInUp,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated"
 
-import type { ContentReportReason, RamenLog } from "@raota/shared"
+import { TASTE_AXES, scoresFromLog, type ContentReportReason, type RamenLog } from "@raota/shared"
 import { track } from "../analytics"
 import {
   REPORT_REASONS,
   compactTasteSummary,
-  formatRelativeTime,
   formatVisitDate,
   gradeTitleOf,
   photosOf,
   tasteSummaryOf,
-  tasteTagsOf,
 } from "../domain/lounge"
 import { useRaota } from "../state/RaotaStore"
-import { colors, line, pressInto, radii, shadows, spacing, touchTarget } from "../theme"
+import { colors, line, pressFade, radii, spacing, touchTarget } from "../theme"
 import { ResilientUriImage } from "./ResilientUriImage"
-import { AppText, BottomSheet, Button, IconButton, RamenTypeTag, Sticker, Tag, Toast } from "./ui"
+import { TasteFingerprint } from "./TasteFingerprint"
+import { PhotoViewer } from "./PhotoViewer"
+import { AppText, BottomSheet, Button, IconButton, Sticker, Tag, Toast } from "./ui"
+
+const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1)
 
 /*
- * 라운지 라멘로그의 공용 부품. 피드(app/native/lounge)와 상세(app/(flows)/log/[logId])가 같이 쓴다.
- * 순서는 웹 LoungeScreen과 같고(작성자 → 사진 → 메뉴 · 메모 · 태그 → 공감 · 댓글),
- * 겉모습은 네오 브루탈리즘 라이트다: 흰 카드 + 2pt 먹선, 사진은 카드 폭 가득 + 위아래 2pt 선, 공감·댓글은 알약 키.
+ * 공개 라멘로그는 사진과 짧은 한 줄을 먼저 보여 준다. 상세에서 기록 전체와 신고·숨기기,
+ * 공감·댓글을 그대로 이어서 사용할 수 있다.
  */
 
 export function openShopDetail(shopId: number) {
@@ -52,13 +62,9 @@ function shopLabel(shop: RamenLog["shop"]) {
   return shop.branch ? `${shop.name} ${shop.branch}` : shop.name
 }
 
-// ---------------------------------------------------------------------------
-// 작성자
-// ---------------------------------------------------------------------------
-
-/** 사진 또는 이름 첫 글자. 장식이라 VoiceOver는 건너뛴다. 원이 아니라 사각(36pt 이상 12pt, 작은 것은 썸네일과 같은 8pt) */
+/** 사진 또는 이름 첫 글자. 장식이라 VoiceOver는 건너뛴다. */
 export function Avatar({ name, uri, size = 36, tone = "dark" }: { name: string; uri?: string | null; size?: number; tone?: "dark" | "soft" }) {
-  const frame = { width: size, height: size, borderRadius: size >= 36 ? radii.sm : radii.md }
+  const frame = { width: size, height: size, borderRadius: radii.pill }
   if (uri) {
     return <Image accessibilityIgnoresInvertColors accessible={false} contentFit="cover" source={{ uri }} style={[frame, styles.avatarImage]} />
   }
@@ -75,52 +81,18 @@ export function Avatar({ name, uri, size = 36, tone = "dark" }: { name: string; 
   )
 }
 
-interface LogAuthorRowProps {
-  log: RamenLog
-  own: boolean
-  /** 남의 기록일 때만 준다. 내 기록에는 신고·숨기기 메뉴가 없다 */
-  onMore?: () => void
-}
-
-/** 아바타 · 닉네임 · 등급, 아래 줄은 가게 이름(누르면 매장 정보). 인스타그램의 위치 줄처럼 읽힌다 */
-export function LogAuthorRow({ log, own, onMore }: LogAuthorRowProps) {
+/** 상세 사진 아래의 작성자와 방문 시점. */
+export function LogAuthorRow({ log }: { log: RamenLog }) {
   const grade = gradeTitleOf(log.author.level)
   return (
     <View style={styles.authorRow}>
-      <Avatar name={log.author.name} uri={log.author.avatar} />
+      <Avatar name={log.author.name} uri={log.author.avatar} tone="soft" />
       <View style={styles.authorText}>
-        <View style={styles.nameLine}>
-          <AppText numberOfLines={1} style={styles.shrink} variant="bodyStrong">
-            {log.author.name}
-          </AppText>
-          {grade ? (
-            <AppText capScale numberOfLines={1} style={styles.shrinkMore} tone="muted" variant="meta">
-              {grade}
-            </AppText>
-          ) : null}
-          {own ? <Tag label="내 기록" /> : null}
-        </View>
-        <Pressable
-          accessibilityHint="매장 정보로 이동해요"
-          accessibilityLabel={`${shopLabel(log.shop)} 매장 정보`}
-          accessibilityRole="button"
-          hitSlop={{ top: 6, bottom: 6 }}
-          onPress={() => openShopDetail(log.shop.id)}
-          style={({ pressed }) => [styles.shopLink, pressed && styles.pressedWash]}
-        >
-          <Store color={colors.textMuted} size={14} strokeWidth={2} />
-          <AppText capScale numberOfLines={1} style={[styles.shrink, styles.bold]} tone="sub" variant="secondary">
-            {shopLabel(log.shop)}
-          </AppText>
-        </Pressable>
+        <AppText lineBreakStrategyIOS="hangul-word" variant="bodyStrong">{log.author.name}</AppText>
+        <AppText capScale numberOfLines={1} tone="muted" variant="meta">
+          {[grade, formatVisitDate(log.visitedAt)].filter(Boolean).join(" · ")}
+        </AppText>
       </View>
-      {onMore ? (
-        <IconButton
-          accessibilityLabel={`${log.author.name}님의 라멘로그 메뉴`}
-          icon={<MoreHorizontal color={colors.inkSub} size={20} />}
-          onPress={onMore}
-        />
-      ) : null}
     </View>
   )
 }
@@ -129,8 +101,49 @@ export function LogAuthorRow({ log, own, onMore }: LogAuthorRowProps) {
 // 공감 · 댓글
 // ---------------------------------------------------------------------------
 
-/** 공감 알약 키(흰 면 + 2pt 먹선 + 번지지 않는 그림자). 공감한 상태는 빨강 하트 */
+/** 공감 수는 누를 수 있는 한 줄로 남기고, 좋아요만 빨간 하트로 표시한다. */
 export function LikeButton({ liked, count, onPress }: { liked: boolean; count: number; onPress: () => void }) {
+  const reducedMotion = useReducedMotion()
+  const previous = useRef({ liked, count })
+  const [numbers, setNumbers] = useState({ from: count, to: count, direction: 1 })
+  const heartScale = useSharedValue(1)
+  const roll = useSharedValue(1)
+
+  useLayoutEffect(() => {
+    const before = previous.current
+    previous.current = { liked, count }
+    if (reducedMotion) {
+      heartScale.value = 1
+      roll.value = 1
+    } else if (liked !== before.liked) {
+      heartScale.value = 1
+      if (liked) {
+        heartScale.value = withSequence(
+          withTiming(1.3, { duration: 147, easing: EASE_OUT }),
+          withTiming(0.92, { duration: 126, easing: EASE_OUT }),
+          withTiming(1, { duration: 147, easing: EASE_OUT }),
+        )
+      }
+    }
+    if (count === before.count) return
+    // 숫자는 고정 칸 안에서만 교체해 옆 요소가 밀리지 않게 한다.
+    roll.value = reducedMotion ? 1 : 0
+    setNumbers({ from: before.count, to: count, direction: liked !== before.liked ? (liked ? 1 : -1) : count > before.count ? 1 : -1 })
+    if (reducedMotion) return
+    const frame = requestAnimationFrame(() => {
+      roll.value = withTiming(1, { duration: 350, easing: EASE_OUT })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [count, heartScale, liked, reducedMotion, roll])
+
+  const heartStyle = useAnimatedStyle(() => ({ transform: [{ scale: heartScale.value }] }))
+  const outgoingStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -numbers.direction * 26 * roll.value }],
+  }))
+  const incomingStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: numbers.direction * 26 * (1 - roll.value) }],
+  }))
+
   return (
     <Pressable
       accessibilityLabel={`공감 ${count}개`}
@@ -140,30 +153,25 @@ export function LikeButton({ liked, count, onPress }: { liked: boolean; count: n
       onPress={onPress}
       style={({ pressed }) => [styles.pill, pressed && styles.pillPressed]}
     >
-      <Heart color={liked ? colors.brand : colors.ink} fill={liked ? colors.brand : "none"} size={16} strokeWidth={2} />
-      <AppText capScale style={[styles.bold, styles.tabular]} tone={liked ? "brand" : "ink"} variant="secondary">
-        {count}
-      </AppText>
+      <Animated.View style={heartStyle}>
+        <Heart color={liked ? colors.brand : colors.ink} fill={liked ? colors.brand : "none"} size={16} strokeWidth={2} />
+      </Animated.View>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.likeCountWindow}>
+        <Animated.View style={[styles.likeNumberLine, outgoingStyle]}>
+          <AppText adjustsFontSizeToFit capScale minimumFontScale={0.7} numberOfLines={1} style={[styles.bold, styles.tabular, styles.likeCount]} tone={liked ? "brand" : "ink"} variant="secondary">
+            {numbers.from}
+          </AppText>
+        </Animated.View>
+        <Animated.View style={[styles.likeNumberLine, incomingStyle]}>
+          <AppText adjustsFontSizeToFit capScale minimumFontScale={0.7} numberOfLines={1} style={[styles.bold, styles.tabular, styles.likeCount]} tone={liked ? "brand" : "ink"} variant="secondary">
+            {numbers.to}
+          </AppText>
+        </Animated.View>
+      </View>
     </Pressable>
   )
 }
 
-export function CommentCountButton({ count, onPress }: { count: number; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityHint="댓글을 보고 남길 수 있어요"
-      accessibilityLabel={`댓글 ${count}개`}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.pill, pressed && styles.pillPressed]}
-    >
-      <MessageCircle color={colors.ink} size={16} strokeWidth={2} />
-      <AppText capScale style={[styles.bold, styles.tabular]} tone="ink" variant="secondary">
-        {count}
-      </AppText>
-    </Pressable>
-  )
-}
 
 /** 공감 누르기: 비회원은 로그인으로, 공감할 때만 가벼운 햅틱 */
 export function useLikeLog() {
@@ -189,56 +197,34 @@ export function useLikeLog() {
 // 맛 평가 · 태그 · 메모
 // ---------------------------------------------------------------------------
 
-export function TasteTags({ tags, max, style }: { tags: string[]; max?: number; style?: StyleProp<ViewStyle> }) {
+export function TasteTags({ tags, style }: { tags: string[]; style?: StyleProp<ViewStyle> }) {
   if (tags.length === 0) return null
-  const shown = max ? tags.slice(0, max) : tags
-  const rest = tags.length - shown.length
   return (
-    <View accessibilityLabel={`맛 태그: ${tags.join(", ")}`} accessible style={[styles.tags, style]}>
-      {shown.map((tag) => (
-        <Tag key={tag} label={`#${tag}`} />
-      ))}
-      {rest > 0 ? <Tag label={`+${rest}`} /> : null}
-    </View>
+    <ScrollView accessibilityLabel={`맛 태그: ${tags.join(", ")}`} accessible contentContainerStyle={styles.tags} horizontal showsHorizontalScrollIndicator={false} style={style}>
+      {tags.map((tag) => <Tag key={tag} label={`#${tag}`} />)}
+    </ScrollView>
   )
 }
 
-/** 상세의 맛 평가 다섯 줄: 이름 · 한 마디(좋고 나쁨 항목은 점수도). 정보 영역이라 1pt 구분선만 쓴다 */
-export function TasteSummaryList({ log }: { log: RamenLog }) {
-  const rows = tasteSummaryOf(log)
-  if (rows.length === 0) return null
-  return (
-    <View>
-      <AppText accessibilityRole="header" style={styles.summaryTitle} variant="bodyStrong">
-        맛 평가
-      </AppText>
-      {rows.map((row) => (
-        <View
-          accessibilityLabel={row.score && row.key !== "revisit" ? `${row.label} 5점 중 ${row.score}점, ${row.word}` : `${row.label}, ${row.word}`}
-          accessible
-          key={row.key}
-          style={styles.summaryRow}
-        >
-          <AppText capScale tone="sub" variant="secondary">
-            {row.label}
-          </AppText>
-          <AppText capScale style={styles.summaryWord} variant="secondary">
-            {row.word}
-            {row.score && row.key !== "revisit" ? (
-              <AppText style={styles.tabular} tone="sub" variant="secondary">{`  ${row.score}/5`}</AppText>
-            ) : null}
-          </AppText>
-        </View>
-      ))}
-    </View>
-  )
+/** 기록의 다섯 평가를 맛 지문으로 표시한다. 꼭짓점에는 점수 대신 그 점수의 말("진한 편")을 둔다 */
+export function LogTasteFingerprint({ log }: { log: RamenLog }) {
+  const scores = scoresFromLog(log)
+  if (!scores) return null
+  const words = tasteSummaryOf(log)
+  const rows = TASTE_AXES.map(({ key, label }, index) => ({
+    key,
+    label: key === "satisfaction" ? "만족도" : key === "revisit" ? "재방문" : label,
+    value: scores[key],
+    text: words[index].word,
+  }))
+  return <TasteFingerprint meta={`${log.author.name}의 기록`} rows={rows} style={styles.fingerprint} />
 }
 
-/** 메모는 꾸미지 않은 본문으로 둔다(굵은 세로줄 인용 장식을 쓰지 않는다) */
+/** 메모는 기록 본문으로 이어 놓는다. */
 export function LogNote({ note, numberOfLines }: { note: string; numberOfLines?: number }) {
   if (!note.trim()) return null
   return (
-    <AppText numberOfLines={numberOfLines} variant="body">
+    <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={numberOfLines} style={styles.detailNote} variant="body">
       {note}
     </AppText>
   )
@@ -250,88 +236,69 @@ export function LogNote({ note, numberOfLines }: { note: string; numberOfLines?:
 
 export interface LoungeLogCardProps {
   log: RamenLog
-  own: boolean
-  onLike: (log: RamenLog) => void
-  onMore: (log: RamenLog) => void
+  tall: boolean
+  batchIndex?: number
 }
 
-/**
- * 피드의 라멘로그 한 장. 본문(사진 · 메뉴 · 맛 평가 · 메모 · 태그)은 하나의 Pressable로 상세에 간다.
- * 가게 이름, 공감, 댓글, 메뉴(…)는 본문 밖의 따로 누르는 버튼이다(행 안에 행을 넣지 않는다).
- */
-export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onMore }: LoungeLogCardProps) {
+/** 공개 기록은 사진(또는 인용문)과 한 줄·작성자만 먼저 보여 준다. 공감·댓글·신고는 상세에 있다. */
+export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, batchIndex = 0 }: LoungeLogCardProps) {
+  const reducedMotion = useReducedMotion()
   const photos = photosOf(log)
   const summary = compactTasteSummary(log)
-  const tags = tasteTagsOf(log)
-  const commentCount = log.comments?.length ?? log.commentCount ?? 0
-  const visit = formatVisitDate(log.visitedAt)
   const bodyLabel = [
     `${log.author.name}님의 ${log.menuName}`,
-    `${log.ramenType}, ${visit} 방문`,
+    `${log.ramenType}, ${formatVisitDate(log.visitedAt)} 방문`,
     summary?.label,
     log.note,
-  ]
-    .filter(Boolean)
-    .join(". ")
+  ].filter(Boolean).join(". ")
 
   return (
-    <View style={styles.card} testID={`lounge-log-${log.id}`}>
-      <LogAuthorRow log={log} onMore={own ? undefined : () => onMore(log)} own={own} />
-
+    <Animated.View
+      entering={reducedMotion
+        ? undefined
+        : FadeInUp.duration(450)
+            .delay(Math.min(Math.max(batchIndex, 0) * 50, 400))
+            .easing(EASE_OUT)
+            .withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })}
+    >
       <Pressable
         accessibilityHint="라멘로그와 댓글을 봐요"
         accessibilityLabel={bodyLabel}
         accessibilityRole="button"
         onPress={() => openLogDetail(log.id)}
-        style={({ pressed }) => pressed && styles.pressedWash}
+        style={({ pressed }) => [styles.pin, pressed && pressFade]}
+        testID={`lounge-log-${log.id}`}
       >
         {photos.length > 0 ? (
-          <View style={styles.feedPhoto}>
+          <View style={[styles.feedPhoto, { height: tall ? 250 : 180 }]}>
             <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={photos[0]} />
+            <View style={styles.typePill}>
+              <AppText capScale style={styles.onPhotoText} variant="meta">{log.ramenType}</AppText>
+            </View>
             {photos.length > 1 ? (
               <View style={styles.photoCount}>
-                <Sticker
-                  icon={<Images color={colors.onDark} size={12} strokeWidth={2.2} />}
-                  label={String(photos.length)}
-                  tone="ink"
-                />
+                <Sticker icon={<Images color={colors.onPhotoPill} size={12} strokeWidth={2.2} />} label={String(photos.length)} onImage />
               </View>
             ) : null}
           </View>
-        ) : null}
-
-        <View style={styles.cardText}>
-          <View style={styles.titleBlock}>
-            <View style={styles.titleRow}>
-              <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.flex} variant="cardTitle">
-                {log.menuName}
-              </AppText>
-              <RamenTypeTag type={log.ramenType} />
-            </View>
-            <AppText capScale numberOfLines={1} tone="muted" variant="meta">
-              {`${visit} 방문`}
+        ) : (
+          <View style={styles.noteTile}>
+            <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={5} style={styles.noteTileText} variant="bodyStrong">
+              {log.note.trim() || log.menuName}
             </AppText>
           </View>
-
-          {summary ? (
-            <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.summaryLine} tone="sub" variant="secondary">
-              {summary.text}
-            </AppText>
-          ) : null}
-
-          <LogNote note={log.note} numberOfLines={3} />
-          <TasteTags max={3} tags={tags} />
+        )}
+        <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.pinNote} variant="bodyStrong">
+          {photos.length > 0 ? log.note.trim() || log.menuName : log.menuName}
+        </AppText>
+        <View style={styles.pinAuthor}>
+          <Avatar name={log.author.name} size={22} tone="soft" uri={log.author.avatar} />
+          <AppText numberOfLines={1} style={styles.shrink} tone="muted" variant="meta">
+            {`${log.author.name} · ${shopLabel(log.shop)}`}
+          </AppText>
         </View>
       </Pressable>
-
-      <View style={styles.footer}>
-        <LikeButton count={log.likes} liked={log.isLiked} onPress={() => onLike(log)} />
-        <CommentCountButton count={commentCount} onPress={() => openLogDetail(log.id)} />
-        <AppText capScale numberOfLines={1} style={styles.time} tone="muted" variant="meta">
-          {`${formatRelativeTime(log.createdAt)} 작성`}
-        </AppText>
-      </View>
-    </View>
+    </Animated.View>
   )
 })
 
@@ -339,12 +306,19 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, own, onLike, onM
 // 상세의 사진 넘기기
 // ---------------------------------------------------------------------------
 
-export function LogPhotoPager({ photos, menuName }: { photos: string[]; menuName: string }) {
+export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; menuName: string; onBack: () => void }) {
   const { width } = useWindowDimensions()
-  // 사진을 두른 2pt 선 안쪽이 한 장의 폭이다(선을 빼지 않으면 넘기는 위치가 어긋난다)
-  const pageWidth = width - spacing.gutter * 2 - line.base * 2
+  const pageWidth = width - 16
   const [index, setIndex] = useState(0)
-  if (photos.length === 0) return null
+  const [viewing, setViewing] = useState<{ index: number; origin: { x: number; y: number; width: number; height: number } | null } | null>(null)
+  const photoRefs = useRef<Array<View | null>>([])
+  if (photos.length === 0) {
+    return (
+      <View style={styles.noPhotoHeader}>
+        <IconButton accessibilityLabel="뒤로가기" icon={<ChevronLeft color={colors.ink} size={24} />} onPress={onBack} />
+      </View>
+    )
+  }
   const onEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const next = Math.round(event.nativeEvent.contentOffset.x / Math.max(1, pageWidth))
     setIndex(Math.min(photos.length - 1, Math.max(0, next)))
@@ -359,18 +333,43 @@ export function LogPhotoPager({ photos, menuName }: { photos: string[]; menuName
         showsHorizontalScrollIndicator={false}
       >
         {photos.map((uri, photoIndex) => (
-          <ResilientUriImage
-            accessibilityLabel={`${menuName} 사진 ${photoIndex + 1}`}
+          <Pressable
+            accessibilityHint="사진을 크게 봐요"
+            accessibilityRole="imagebutton"
+            collapsable={false}
             key={`${uri}-${photoIndex}`}
-            style={{ width: pageWidth, aspectRatio: 4 / 3 }}
-            uri={uri}
-          />
+            onPress={() => {
+              const photo = photoRefs.current[photoIndex]
+              if (!photo) {
+                setViewing({ index: photoIndex, origin: null })
+                return
+              }
+              photo.measureInWindow((x, y, width, height) => {
+                setViewing({ index: photoIndex, origin: width > 0 && height > 0 ? { x, y, width, height } : null })
+              })
+            }}
+            ref={(node) => { photoRefs.current[photoIndex] = node }}
+            // 커지는 사진이 원래 자리에 겹쳐 두 장으로 보이지 않게, 크게 보는 동안 원래 사진은 비운다
+            style={viewing?.index === photoIndex && viewing.origin ? styles.hiddenSource : undefined}
+          >
+            <ResilientUriImage
+              accessibilityLabel={`${menuName} 사진 ${photoIndex + 1}`}
+              style={{ width: pageWidth, height: 200 }}
+              uri={uri}
+            />
+          </Pressable>
         ))}
       </ScrollView>
+      <Pressable accessibilityLabel="뒤로가기" accessibilityRole="button" onPress={onBack} style={styles.pagerBack}>
+        <ChevronLeft color={colors.onPhotoPill} size={24} />
+      </Pressable>
       {photos.length > 1 ? (
-        <View accessibilityLiveRegion="polite" style={styles.photoCount}>
-          <Sticker label={`${index + 1} / ${photos.length}`} tone="ink" />
+        <View accessibilityLiveRegion="polite" style={styles.pagerCount}>
+          <Sticker label={`${index + 1} / ${photos.length}`} onImage />
         </View>
+      ) : null}
+      {viewing !== null ? (
+        <PhotoViewer index={viewing.index} label={`${menuName} 사진`} onClose={() => setViewing(null)} origin={viewing.origin} photos={photos} />
       ) : null}
     </View>
   )
@@ -510,11 +509,16 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
         description="검토 후 운영 정책에 따라 조치해요. 신고한 글은 더 이상 보이지 않아요."
         footer={
           <View style={styles.reportFooter}>
-            {!reason ? (
-              <AppText capScale tone="muted" variant="meta">
-                신고 사유를 고르면 보낼 수 있어요
-              </AppText>
-            ) : null}
+            <AppText
+              accessibilityElementsHidden={Boolean(reason)}
+              capScale
+              importantForAccessibility={reason ? "no-hide-descendants" : "auto"}
+              style={reason ? styles.invisible : undefined}
+              tone="muted"
+              variant="meta"
+            >
+              신고 사유를 고르면 보낼 수 있어요
+            </AppText>
             <Button disabled={!reason} fullWidth onPress={submitReport} title="신고하기" />
           </View>
         }
@@ -535,7 +539,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
                 style={({ pressed }) => [styles.reasonRow, pressed && styles.pressedWash]}
               >
                 <View style={[styles.radio, checked && styles.radioChecked]}>{checked ? <View style={styles.radioDot} /> : null}</View>
-                <AppText style={checked ? styles.bold : undefined} variant="body">
+                <AppText style={styles.bold} variant="body">
                   {item.label}
                 </AppText>
               </Pressable>
@@ -584,93 +588,74 @@ function MenuRow({ icon, label, description, onPress }: { icon: ReactNode; label
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   bold: { fontWeight: "700" },
+  onPhotoText: { fontWeight: "700", color: colors.onPhotoPill },
   tabular: { fontVariant: ["tabular-nums"] },
+  invisible: { opacity: 0 },
   shrink: { flexShrink: 1 },
-  shrinkMore: { flexShrink: 2 },
-  // 흰 카드 위의 행·칩은 canvasSoft 배경으로 누른다(불투명도를 따로 만들지 않는다)
-  pressedWash: { backgroundColor: colors.canvasSoft },
+  pressedWash: { backgroundColor: colors.surfacePressed },
 
   avatar: { alignItems: "center", justifyContent: "center" },
   avatarDark: { backgroundColor: colors.ink },
-  // 옅은 면은 미색 바탕에서 묻히므로 1.5pt 선으로 테두리를 잡는다
-  avatarSoft: { backgroundColor: colors.canvasSoft, borderWidth: line.thin, borderColor: colors.outline },
+  avatarSoft: { backgroundColor: colors.canvasSoft },
   avatarImage: { backgroundColor: colors.canvasSoft },
 
-  authorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.x2_5,
-    paddingLeft: spacing.x3_5,
-    paddingRight: spacing.x2,
-    paddingVertical: spacing.x2_5,
-  },
-  authorText: { flex: 1, minWidth: 0 },
-  nameLine: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, minWidth: 0 },
-  shopLink: { flexDirection: "row", alignItems: "center", gap: spacing.x1, minHeight: 32, alignSelf: "flex-start", maxWidth: "100%" },
+  authorRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 9 },
+  authorText: { flex: 1, minWidth: 0, gap: spacing.x1 },
 
-  // 흰 카드 + 2pt 먹선. 그림자는 없다
-  card: {
-    backgroundColor: colors.canvas,
-    borderRadius: radii.sm,
-    borderColor: colors.outline,
-    borderWidth: line.base,
-    paddingBottom: spacing.x3,
-  },
-  // 사진은 카드 폭 가득. 위아래 2pt 먹선이 글씨 영역과 나눈다
+  pin: { gap: 6 },
   feedPhoto: {
     width: "100%",
-    aspectRatio: 16 / 10,
-    borderTopWidth: line.base,
-    borderBottomWidth: line.base,
-    borderColor: colors.outline,
+    borderRadius: radii.sm,
     overflow: "hidden",
     backgroundColor: colors.canvasSoft,
   },
-  photoCount: { position: "absolute", top: spacing.x2_5, right: spacing.x2_5 },
-  cardText: { paddingHorizontal: spacing.x3_5, paddingTop: spacing.x3, gap: spacing.x2_5 },
-  titleBlock: { gap: spacing.x0_5 },
-  titleRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.x2 },
-  summaryLine: { fontWeight: "600" },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1 },
-  footer: { flexDirection: "row", alignItems: "center", gap: spacing.x2_5, paddingHorizontal: spacing.x3_5, paddingTop: spacing.x3 },
-  time: { flex: 1, textAlign: "right" },
-  // 공감·댓글은 누를 수 있는 키라서 번지지 않는 그림자가 붙는다
+  typePill: {
+    position: "absolute",
+    left: 8,
+    bottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: colors.photoPill,
+    borderRadius: radii.pill,
+  },
+  photoCount: { position: "absolute", right: spacing.x2, bottom: spacing.x2 },
+  noteTile: { backgroundColor: colors.canvasSoft, borderRadius: radii.sm, padding: 14 },
+  // 격자에서 글이 빽빽해 보이지 않게 핀 글씨는 한 단계 작게, 줄 수는 짧게 둔다
+  noteTileText: { fontWeight: "600", fontSize: 13, lineHeight: 19 },
+  pinNote: { fontSize: 13, lineHeight: 18, fontWeight: "600", paddingHorizontal: 4 },
+  pinAuthor: { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 0, paddingHorizontal: 4 },
+  tags: { flexDirection: "row", gap: spacing.x2, paddingHorizontal: spacing.gutter },
+  fingerprint: { marginHorizontal: spacing.gutter, marginTop: spacing.x4 },
+  detailNote: { marginHorizontal: spacing.gutter, marginTop: spacing.x4, color: colors.inkSub },
   pill: {
     minHeight: touchTarget,
-    minWidth: 64,
+    width: 64,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.x1_5,
-    paddingHorizontal: spacing.x3_5,
+    gap: 4,
+    paddingHorizontal: 4,
     borderRadius: radii.pill,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    ...shadows.hardS,
   },
-  pillPressed: pressInto(2),
+  pillPressed: { backgroundColor: colors.surfacePressed },
+  likeCount: { width: spacing.x8, textAlign: "center" },
+  likeCountWindow: { width: spacing.x8, height: 26, overflow: "hidden" },
+  likeNumberLine: { position: "absolute", left: 0, right: 0, top: 0, height: 26, justifyContent: "center" },
 
-  summaryTitle: { marginBottom: spacing.x1 },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: spacing.x3,
-    paddingVertical: spacing.x2,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  summaryWord: { fontWeight: "700", flexShrink: 1, textAlign: "right" },
-
+  noPhotoHeader: { marginHorizontal: 8, minHeight: touchTarget },
+  hiddenSource: { opacity: 0 },
   pager: {
-    marginHorizontal: spacing.gutter,
-    borderRadius: radii.sm,
-    borderColor: colors.outline,
-    borderWidth: line.base,
+    marginHorizontal: 8,
+    borderRadius: radii.lg,
     overflow: "hidden",
     backgroundColor: colors.canvasSoft,
   },
+  pagerBack: { position: "absolute", top: 12, left: 12, width: touchTarget, height: touchTarget, borderRadius: radii.pill, backgroundColor: colors.photoPill, alignItems: "center", justifyContent: "center" },
+  pagerCount: { position: "absolute", right: 12, bottom: 12 },
+
 
   menuRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, minHeight: 56, paddingVertical: spacing.x2, borderRadius: radii.sm },
   reasonRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, minHeight: touchTarget + 4, borderRadius: radii.sm },
@@ -683,7 +668,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  radioChecked: { borderColor: colors.brand },
-  radioDot: { width: 10, height: 10, borderRadius: radii.pill, backgroundColor: colors.brand },
+  radioChecked: { borderColor: colors.ink },
+  radioDot: { width: 10, height: 10, borderRadius: radii.pill, backgroundColor: colors.ink },
   reportFooter: { gap: spacing.x2 },
 })

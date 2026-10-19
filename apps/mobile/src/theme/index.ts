@@ -1,79 +1,142 @@
-import { Platform, type TextStyle, type ViewStyle } from "react-native"
+import { DynamicColorIOS, Platform, useColorScheme, type ColorValue, type TextStyle, type ViewStyle } from "react-native"
+import type { TasteAxisKey } from "@raota/shared"
 
 /**
- * RAOTA의 네이티브 의미 토큰. 값은 apps/mobile/DESIGN.md를 따른다.
- * 겉모습은 "네오 브루탈리즘 라이트"(미색 바탕, 흰 카드, 2pt 먹선, 누를 수 있는 것에만 번지지 않는 그림자)이고 앱이 기준이다.
- * 화면 순서와 문구는 루트 웹 프로토타입과 같다.
- * "이전 이름" 표시가 붙은 키는 옛 화면 호환용이다. 새 화면은 쓰지 않는다.
+ * RAOTA의 네이티브 의미 토큰. 값과 역할은 apps/mobile/DESIGN.md(핀터레스트 DESIGN.md를 옮긴 것)를 따른다.
+ * 사진이 주인공인 평평한 화면: 흰 바탕, 따뜻한 회색 면, 검정 글씨, 16·32pt 모서리와 알약, 그림자 없음.
+ * 빨강은 화면의 주요 행동 하나와 완식 도장에만 쓴다. 뜻을 싣는 색은 국물 색과 맛 지문 축 색뿐이다(docs/RAOTA_COLORS.md).
+ *
+ * 다크 모드: iOS에서는 DynamicColorIOS라 시스템 설정을 따라 저절로 바뀐다. 웹·안드로이드는 밝은 값만 쓴다.
+ * 색을 문자열로 다뤄야 하는 곳(투명도 합성, 그라데이션 끝색)은 usePalette()로 지금 모드의 hex를 받는다.
  */
-export const colors = {
+const light = {
   brand: "#E60000",
   brandPressed: "#CC0000",
   brandWeak: "#FFF0F0",
-  ink: "#16181A",
-  inkSub: "#4A4D52",
-  /** 흰 면 위 5.1:1. 보조 글씨와 입력 안내 글씨 */
-  textMuted: "#6B6E73",
+  /** 제목, 고른 칩·탭의 면 */
+  ink: "#000000",
+  /** ink 면 위의 글씨 */
+  onInk: "#FFFFFF",
+  /** 본문 */
+  inkSub: "#33332E",
+  /** 보조 글씨. 흰 면 6.1:1, canvasSoft 5.7:1 */
+  textMuted: "#62625B",
   /** 구분 점, 비활성 장식 전용. 읽어야 하는 글씨에는 쓰지 않는다 */
-  textFaint: "#BEBEBE",
-  /** 화면 바탕(미색). 카드와 버튼의 면은 canvas(흰색)를 쓴다 */
-  paper: "#FFF8EA",
+  textFaint: "#C8C8C1",
+  /** 화면 바탕 */
+  paper: "#FFFFFF",
   canvas: "#FFFFFF",
-  canvasSoft: "#F2F2F2",
-  surfaceInput: "#F7F7F7",
-  surfacePressed: "#EAEAEA",
-  /** 목록의 줄 사이, 표 안쪽 같은 정보 구분선(1pt). 부품의 테두리에는 outline을 쓴다 */
-  border: "#E2E2E2",
-  /** 카드, 버튼, 사진, 입력칸, 칩, 태그의 테두리. ink와 같은 값 */
-  outline: "#16181A",
-  /** 표시용 노랑. 라멘 종류 태그와 표시 스티커("오늘의 픽", "AI가 요약했어요", 추천 1위 숫자)에만 쓴다 */
-  yolk: "#FFC93C",
+  /** 따뜻한 회색 면(surface-card): 카드, 사진 자리, 검색창, 칩, 아이콘 버튼 */
+  canvasSoft: "#F6F6F3",
+  surfaceInput: "#F6F6F3",
+  /** 회색·흰 면이 눌렸을 때 */
+  surfacePressed: "#E5E5E0",
+  /** 보조 버튼의 면(secondary-bg)과 눌림 */
+  secondary: "#E5E5E0",
+  secondaryPressed: "#C8C8C1",
+  /** 목록 구분선(hairline) */
+  border: "#DADAD3",
+  /** 입력칸 테두리 전용(ash). 카드와 버튼에는 테두리를 두르지 않는다 */
+  outline: "#91918C",
+  /** 빨강·사진 위 글씨. 모드와 상관없이 흰색 */
   onDark: "#FFFFFF",
-  /** 차콜 위 보조 글씨. 회색 hex 대신 쓴다 */
   onDarkMuted: "rgba(255, 255, 255, 0.7)",
-  /** 어두운 면 안의 줄 구분선(흰색 18%) */
   onDarkLine: "rgba(255, 255, 255, 0.18)",
-  /**
-   * 화면 안 큰 구획의 어두운 면(마이 프로필, 추천 라멘집, 가게 상세 정보, 기록 완료 밴드).
-   * 라멘집 간판의 진녹색이다. 검정 면은 어느 앱이나 쓰지만 이 색은 이 앱의 것이다.
-   * 흰 글씨 11.6:1, 노랑 스티커 7.5:1로 안전하다. 다만 빨강은 2.4:1이라 이 면 위에 두지 않는다.
-   * 글씨와 2pt 테두리는 계속 ink를 쓴다 — 이 색은 면 전용이다.
-   */
-  deep: "#00422E",
-  positive: "#2E7D32",
-  positiveWeak: "#EBF8F0",
+  /** 읽기 전용 태그의 옅은 면 */
+  inkWash: "rgba(0, 0, 0, 0.06)",
+  /** 토스트처럼 드물게 쓰는 어두운 면 */
+  deep: "#262622",
+  positive: "#103C25",
+  positiveWeak: "#C7F0DA",
   warning: "#A15C00",
   warningWeak: "#FFF7D6",
-  critical: "#D92228",
+  critical: "#9E0A0A",
   criticalWeak: "#FFF0F0",
-  informative: "#3860BE",
-  informativeWeak: "#EEF3FF",
+  informative: "#435EE5",
+  informativeWeak: "#EEF1FD",
+  /** 키보드 초점 고리 */
+  focus: "#435EE5",
   overlay: "rgba(0, 0, 0, 0.5)",
   transparent: "transparent",
   white: "#FFFFFF",
   black: "#000000",
+  /** 국물 색 점·칸·막대의 1pt 테두리 */
+  soupEdge: "rgba(0, 0, 0, 0.12)",
+  /** 고른 칩·탭·평가 칸의 면과 그 위 글씨. 밝은 모드는 검정, 다크 모드는 눈부신 흰 면 대신 밝은 회색 */
+  selected: "#000000",
+  onSelected: "#FFFFFF",
+  /** 사진 위에 얹는 알약(종류, 오늘의 픽, 사진 장수 등) */
+  photoPill: "#FFFFFF",
+  onPhotoPill: "#000000",
+  /** 영업 중 표시 점. 상태는 초록으로 모드와 상관없이 알아보게 한다 */
+  open: "#1F9D55",
+}
 
-  /** 이전 이름: canvas */
-  background: "#FFFFFF",
-  /** 이전 이름: canvasSoft */
-  backgroundBasement: "#F2F2F2",
-  /** 이전 이름: canvas */
-  surface: "#FFFFFF",
-  /** 이전 이름: surfaceInput */
-  surfaceMuted: "#F7F7F7",
-  /** 이전 이름: canvasSoft */
-  brandSubtle: "#F2F2F2",
-  /** 이전 이름: ink */
-  text: "#16181A",
-  /** 이전 이름: inkSub */
-  textSubtle: "#4A4D52",
-  /** 이전 이름: onDark */
-  textInverted: "#FFFFFF",
-  /** 이전 이름: textMuted (예전 #8A8A8A는 대비 미달) */
-  placeholder: "#6B6E73",
-  /** 이전 이름: textFaint */
-  borderStrong: "#BEBEBE",
-} as const
+type PaletteKey = keyof typeof light
+export type Palette = Record<PaletteKey, string>
+
+/** 다크 모드. 같은 따뜻한 회색 계열을 어둡게 뒤집었다. 보조 글씨 바탕 대비 8.3:1, 회색 면 6.9:1 */
+const dark: Palette = {
+  brand: "#E60000",
+  brandPressed: "#CC0000",
+  brandWeak: "#3A1414",
+  ink: "#FFFFFF",
+  onInk: "#000000",
+  inkSub: "#E5E5E0",
+  textMuted: "#A8A8A0",
+  textFaint: "#55554F",
+  paper: "#121211",
+  canvas: "#121211",
+  canvasSoft: "#22221F",
+  surfaceInput: "#22221F",
+  surfacePressed: "#33332F",
+  secondary: "#33332F",
+  secondaryPressed: "#4A4A44",
+  border: "#33332F",
+  outline: "#7A7A73",
+  onDark: "#FFFFFF",
+  onDarkMuted: "rgba(255, 255, 255, 0.7)",
+  onDarkLine: "rgba(255, 255, 255, 0.18)",
+  inkWash: "rgba(255, 255, 255, 0.08)",
+  deep: "#3A3A35",
+  positive: "#7FD39A",
+  positiveWeak: "#16301B",
+  warning: "#E0A040",
+  warningWeak: "#3A2C10",
+  critical: "#FF6B6B",
+  criticalWeak: "#3A1416",
+  informative: "#7B93F2",
+  informativeWeak: "#1C2340",
+  focus: "#7B93F2",
+  overlay: "rgba(0, 0, 0, 0.6)",
+  transparent: "transparent",
+  white: "#FFFFFF",
+  black: "#000000",
+  soupEdge: "rgba(255, 255, 255, 0.18)",
+  selected: "#5C5C55",
+  onSelected: "#FFFFFF",
+  photoPill: "rgba(18, 18, 17, 0.88)",
+  onPhotoPill: "#FFFFFF",
+  open: "#3DD68C",
+}
+
+export const palettes: Readonly<Record<"light" | "dark", Palette>> = { light, dark }
+
+const adaptive = <K extends string>(lightValues: Record<K, string>, darkValues: Record<K, string>) =>
+  Object.fromEntries(
+    (Object.keys(lightValues) as K[]).map((key) => [
+      key,
+      Platform.OS === "ios" ? DynamicColorIOS({ light: lightValues[key], dark: darkValues[key] }) : lightValues[key],
+    ]),
+  ) as Record<K, ColorValue>
+
+export const colors = adaptive(light, dark)
+
+/** 색을 문자열로 다뤄야 할 때 지금 모드의 hex 묶음. 웹·안드로이드는 늘 밝은 값 */
+export function usePalette(): Palette {
+  const scheme = useColorScheme()
+  return Platform.OS === "ios" && scheme === "dark" ? dark : light
+}
 
 export const spacing = {
   x0_5: 2,
@@ -96,149 +159,143 @@ export const spacing = {
   x13: 52,
   x14: 56,
   x16: 64,
-  /** 화면 좌우 여백. 웹의 px-5와 같다 */
-  gutter: 20,
+  /** 화면 좌우 여백 */
+  gutter: 16,
+  /** 사진 격자(메이슨리) 칸 사이 */
+  grid: 8,
+  /** 큰 구획 사이. 40pt는 너무 벌어진다는 피드백으로 32pt로 맞췄다 */
+  section: 32,
   component: 12,
   screenBottom: 56,
 } as const
 
-/** 6·8·12·16pt와 알약만 쓴다. 새 컴포넌트에 중간 반경을 만들지 않는다. */
+/** 16·32pt와 알약 세 가지가 전부다(rounded.md · lg · full). */
 export const radii = {
   none: 0,
-  /** 스티커, 라멘 종류 태그, 태그, 유틸리티 버튼 */
-  xs: 6,
-  /** 카드, 버튼, 사진, 입력칸, 아이콘 버튼, 아바타 */
-  sm: 12,
-  /** 48pt 이하 썸네일, 지도 핀 */
-  md: 8,
-  /** 바텀시트 윗모서리, 가운데 확인창 */
-  lg: 12,
-  /** 작성 버튼(FAB)과 AI 큐레이터 배너 두 곳뿐 */
-  xl: 16,
-  /** 필터 칩, 공감·댓글 버튼 */
+  /** 드문 작은 면(rounded.sm) */
+  xs: 8,
+  /** 버튼, 입력칸, 카드, 사진, 썸네일 — 기본 반경(rounded.md) */
+  sm: 16,
+  md: 16,
+  /** 큰 카드, 큰 사진, 바텀시트, 확인창(rounded.lg) */
+  lg: 32,
+  xl: 32,
+  /** 칩, 검색창, 아이콘 버튼, 아바타, 사진 위 알약(rounded.full) */
   pill: 999,
 } as const
 
-/** 선 굵기. 3pt 이상은 쓰지 않는다. 정보 구분선은 1pt(colors.border) */
+/** 선은 1pt 하나다. 목록 구분선(border)과 입력칸 테두리(outline)에만 쓴다 */
 export const line = {
-  /** 목록의 줄 사이, 표 안쪽, 차트 눈금 같은 정보 구분선 (색은 border) */
   hair: 1,
-  /** 칩, 태그, 스티커, 미터 칸 */
-  thin: 1.5,
-  /** 카드, 버튼, 사진, 입력칸, 탭 바 */
-  base: 2,
+  thin: 1,
+  base: 1,
 } as const
 
+/**
+ * Pin Sans 대신 Pretendard. 글자 폭과 x높이가 비슷하고 한글이 함께 들어 있다.
+ * iOS는 app.json의 expo-font 플러그인으로 네 굵기(400·500·600·700)를 앱에 넣어 "Pretendard" 한 이름에서 fontWeight로 고른다.
+ */
 export const fonts = {
-  // 플랫폼 시스템 서체. iOS는 SF Pro와 Apple SD Gothic Neo로 그려져 웹과 글자 모양이 같다.
   body: Platform.select({
-    ios: "System",
+    ios: "Pretendard",
     android: "sans-serif",
-    web: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo", sans-serif',
-    default: "System",
-  }),
-  display: Platform.select({
-    ios: "System",
-    android: "sans-serif",
-    web: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Apple SD Gothic Neo", sans-serif',
-    default: "System",
+    web: 'Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif',
+    default: "Pretendard",
   }),
 } as const
 
-const text = (fontSize: number, lineHeight: number, fontWeight: TextStyle["fontWeight"], family = fonts.body): TextStyle => ({
-  fontFamily: family,
+const text = (fontSize: number, lineHeight: number, fontWeight: TextStyle["fontWeight"], letterSpacing = 0): TextStyle => ({
+  fontFamily: fonts.body,
   fontSize,
   lineHeight,
   fontWeight,
+  letterSpacing,
 })
 
-/** DESIGN.md의 글씨 크기 표. 12pt가 하한이다. */
+/** 글씨 크기 표(DESIGN.md typography). 12pt가 하한이고, 굵기는 700까지다. */
 export const typography = {
-  /** 기록 완료의 "N번째 그릇" 숫자 한 곳 */
-  counter: { ...text(56, 56, "900", fonts.display), letterSpacing: -2, fontVariant: ["tabular-nums"] },
-  /** 플로우 도입 문장, 취향 정체성 제목, 가입 완료 */
-  headline: { ...text(28, 35, "900", fonts.display), letterSpacing: -0.6 },
-  /** 스택 헤더와 탭 루트 제목 */
-  screenTitle: text(22, 29, "900"),
-  /** 섹션 제목, 시트·확인창 제목 */
-  sectionTitle: text(20, 27, "900"),
-  /** 가게 이름, 기록 제목, 목록의 첫 줄 */
-  cardTitle: text(16, 22, "800"),
-  /** 메모, 설명, 폼 입력 */
-  body: text(14, 22, "400"),
-  /** 버튼 문구, 강조 본문 */
-  bodyStrong: text(14, 22, "700"),
-  /** 보조 설명, 칩 문구 */
-  secondary: text(13, 19, "500"),
-  /** 날짜, 거리, 개수, 탭 라벨, 배지 */
-  meta: text(12, 17, "600"),
-
-  /** 이전 이름: headline */
-  display: text(28, 35, "900", fonts.display),
-  /** 이전 이름: screenTitle */
-  title: text(22, 29, "900"),
-  /** 이전 이름: bodyStrong */
-  label: text(14, 22, "700"),
-  /** 이전 이름: secondary */
-  caption: text(13, 19, "400"),
-  /** 이전 이름: secondary 굵게 */
-  captionStrong: text(13, 19, "700"),
-  /** 이전 이름: meta */
-  small: text(12, 17, "400"),
+  /** display-lg를 줄인 값. 기록 완료의 "N번째 그릇" 한 곳 */
+  counter: { ...text(34, 40, "700", -1.2), fontVariant: ["tabular-nums"] },
+  /** heading-xl: 탭 화면 제목, 플로우 질문, 취향 정체성, 프로필 이름 */
+  headline: text(28, 34, "700", -1.2),
+  /** heading-lg: 가게 이름 같은 화면 안의 가장 큰 제목, 시트·확인창 제목 */
+  screenTitle: text(22, 28, "600"),
+  /** 스택 헤더의 화면 이름 */
+  navTitle: text(17, 22, "600"),
+  /** heading-md: 섹션 제목, 카드 제목 */
+  sectionTitle: text(18, 24, "600"),
+  /** body-strong: 목록 첫 줄(가게 이름, 기록 제목) */
+  cardTitle: text(16, 22, "600"),
+  /** body-md: 설명, 메모, 폼 입력 */
+  body: text(16, 22, "400"),
+  /** body-strong */
+  bodyStrong: text(16, 22, "600"),
+  /** button-md: 버튼과 칩 문구 */
+  button: text(14, 18, "700"),
+  /** body-sm: 보조 설명, 핀 아래 메타 */
+  secondary: text(14, 20, "400"),
+  /** caption-md: 날짜, 거리, 개수, 탭 라벨, 사진 위 알약 */
+  meta: text(12, 18, "500"),
 } satisfies Record<string, TextStyle>
 
-const hard = (offset: number): ViewStyle => ({
-  shadowColor: colors.ink,
-  shadowOffset: { width: offset, height: offset },
-  shadowOpacity: 1,
-  shadowRadius: 0,
-  // Android는 elevation으로 번지지 않는 그림자를 만들 수 없다. 그림자 없이 테두리만 보인다(후속 과제).
-  elevation: 0,
-})
-
 /**
- * 번지지 않는 그림자는 "누를 수 있다"는 표시다. 카드, 사진, 타일, 검색창, 칩에는 쓰지 않는다.
- * 누르는 동안에는 그림자만큼 오른쪽 아래로 옮기고 pressedInto를 입힌다(ui의 Button·IconButton이 처리한다).
+ * 면은 그림자로 띄우지 않는다. 깊이는 사진이 만든다.
+ * 유일한 그림자는 화면 위에 뜨는 층(바텀시트, 확인창, 지도 위 떠 있는 카드)의 16pt 주변광이다.
  */
 export const shadows = {
   none: {} as ViewStyle,
-  /** 버튼, 아이콘 버튼, 활성 탭, 지도의 선택된 핀 */
-  hardS: hard(2),
-  /** 작성 버튼(FAB), AI 큐레이터 배너 */
-  hardM: hard(3),
-  /** 눌린 상태: 그림자가 사라진다 */
-  pressedInto: { shadowOpacity: 0 } satisfies ViewStyle,
-  /** 이전 이름: 떠 있는 요소. 지금은 hardM과 같다 */
-  floating: hard(3),
-  /** 이전 이름: 카드 그림자는 없다 */
-  card: {} as ViewStyle,
+  modal: {
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    elevation: 8,
+  } satisfies ViewStyle,
 } as const
 
-/** 눌렀을 때 그림자 속으로 들어가는 이동 */
 /**
- * 사진이나 먹색 면이 깔려 있어 배경을 바꿔도 티가 나지 않는 것의 누름.
- * 화면마다 다른 불투명도를 만들지 않는다. 그림자가 있는 키는 pressInto를 쓴다.
+ * 맛 지문 축 색. 웜톤인 국물 색과 반대인 쿨톤 파랑 한 계열이다.
+ * 밝기를 비슷하게 맞춰 진하기(많고 적음)로 읽히지 않게 했다. 다크 모드는 어두운 막대 위에서 보이도록 한 단계 밝다.
+ * 순서와 기준은 docs/RAOTA_COLORS.md의 "맛 지문 축 색".
  */
+const tasteAxisLight: Record<TasteAxisKey, string> = { satisfaction: "#2A63D4", brothDensity: "#1784B0", noodleFirmness: "#5A55D2", topping: "#167A86", revisit: "#3A4FA8" }
+const tasteAxisDark: Record<TasteAxisKey, string> = { satisfaction: "#6E95F0", brothDensity: "#4FB0D6", noodleFirmness: "#8C88EE", topping: "#45A9B5", revisit: "#7A8BE0" }
+export const tasteAxis = adaptive<TasteAxisKey>(tasteAxisLight, tasteAxisDark)
+
+/** SVG처럼 색을 문자열로 받아야 하는 곳에서 쓰는 지금 모드의 맛 지문 축 색 */
+export function useTasteAxisPalette(): Record<TasteAxisKey, string> {
+  const scheme = useColorScheme()
+  return Platform.OS === "ios" && scheme === "dark" ? tasteAxisDark : tasteAxisLight
+}
+
 /**
- * 국물이 진해지는 한 계열. "많고 적음"을 말하는 자리에만 쓴다
- * (기록량 히트맵, 종류별·월별 분포). 값이 클수록 진한 쪽.
- *
- * 빨강은 행동과 선택 전용이라 수량에 쓰지 않는다. 라멘 종류마다 다른 색을 주는 방법도
- * 생각했지만, 국물 색은 전부 따뜻한 갈색 계열이라 색약에서 서로 구분되지 않는다
- * (dataviz 검증에서 ΔE 미달). 그래서 한 계열의 농도로 간다.
- * 색만으로 값을 말하지 않도록 옆에 숫자와 이름을 함께 둔다.
+ * 국물이 진해지는 한 계열. "많고 적음"을 말하는 자리에만 쓴다. 값이 클수록 진한 쪽.
+ * 빨강은 행동과 선택 전용이라 수량에 쓰지 않는다. 종류를 구분하는 색은 아래 soup이다.
  */
 export const broth = ["#D6A24A", "#B87C22", "#8E5A15", "#5E340A"] as const
 
-/** 이에케 월별 분포 막대는 다른 종류와 구별되는 간장빛 국물 톤을 쓴다. */
-export const brothIeke = "#70410E"
+/**
+ * 라멘 종류마다의 실제 국물 색. "어떤 종류인가"를 말하는 자리에만 쓰고, broth(많고 적음)와 섞지 않는다.
+ * 국물 색은 모드와 상관없이 같다. 규칙과 추가 방법은 docs/RAOTA_COLORS.md의 "국물 색".
+ *
+ * 바탕에 테두리 없이 놓으면 밝은 국물이 묻히므로 점·칸·막대에는 늘 colors.soupEdge 1pt 테두리를 두른다.
+ * 따뜻한 갈색끼리라 색약에서 헷갈릴 수 있어 이름과 숫자를 함께 둔다. 색만으로 종류를 말하지 않는다.
+ * 색이 정해지지 않은 종류(탄탄멘, 마제소바, 아부라소바, 기타)는 soupNeutral로 칠한다.
+ * 이에케는 돈코츠와 구별되는 간장빛 국물 톤을 쓴다.
+ */
+export const soup: Readonly<Record<string, string>> = {
+  돈코츠: "#E3CFA4",
+  이에케: "#70410E",
+  쇼유: "#A8662C",
+  시오: "#E9C24F",
+  미소: "#D4733A",
+  츠케멘: "#5A3A22",
+}
+export const soupNeutral = "#CFCAC0"
+export const soupColorOf = (type: string) => soup[type.replace(/\s*라멘$/, "").trim()] ?? soupNeutral
 
+/** 사진이나 색 면처럼 배경을 바꿔도 티가 나지 않는 것의 누름. 회색·흰 면은 surfacePressed로 바꾼다 */
 export const pressFade: ViewStyle = { opacity: 0.8 }
-
-export const pressInto = (offset: 2 | 3 = 2): ViewStyle => ({
-  transform: [{ translateX: offset }, { translateY: offset }],
-  shadowOpacity: 0,
-})
 
 export const touchTarget = 44
 
@@ -253,6 +310,7 @@ export const theme = {
   fonts,
   typography,
   shadows,
+  tasteAxis,
   touchTarget,
   maxFontScale,
 } as const

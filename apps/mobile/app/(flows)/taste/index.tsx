@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
-import { ArrowRight, Check, PenLine, RotateCw, Share2 } from "lucide-react-native"
+import { ArrowRight, RotateCw, Share2 } from "lucide-react-native"
 import { AccessibilityInfo, Platform, Pressable, ScrollView, Share, StyleSheet, View, findNodeHandle, useWindowDimensions } from "react-native"
 import Animated, {
   Easing,
@@ -10,47 +10,54 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withDelay,
   withTiming,
   type SharedValue,
 } from "react-native-reanimated"
 import { SafeAreaView } from "react-native-safe-area-context"
-import Svg, { Circle, Path, Polygon, Text as SvgText } from "react-native-svg"
+import Svg, { ClipPath, Defs, Ellipse, Path, Rect } from "react-native-svg"
 
 import {
   MENU_CATEGORY_NAMES,
-  TASTE_AXES,
+  menuCategoryOf,
   metricsFromProfile,
   seoulToday,
   typeCountsOf,
+  type DemoBowl,
   type MenuCategoryName,
   type MetricItem,
   type Shop,
-  type TasteAxisKey,
   type TasteIdentity,
   type TasteProfile,
 } from "@raota/shared"
 import { track } from "@/src/analytics"
-import { AppText, BottomSheet, Button, Header, LoadingState, RamenTypeTag, Sticker, Tag, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, Header, IconButton, LoadingState, SoupDot, Toast } from "@/src/components/ui"
 import {
   useActivityLevel,
   useBowlCount,
   useMyBowls,
-  useMyLogs,
   useShops,
   useTasteIdentity,
   useTasteProfile,
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { broth, colors, line, radii, spacing } from "@/src/theme"
+import { colors, line, radii, soupColorOf, spacing, tasteAxis, typography } from "@/src/theme"
 
-/*
- * 취향 종합 리포트. 웹 TasteDetailScreen과 같은 구성이다.
- * 정체성 카드 → 5축 레이더(실제 평균) → 축별 막대 → 종류별 분포 → 자주 간 라멘집 → 다음 한 그릇.
- * params.analyze === "1"이면 짧은 정리 연출(웹 TasteReportLoading)을 먼저 보여준다. Reduce Motion이면 생략한다.
+/* 취향 종합 리포트: 감정서 → 종류별 분포 → 자주 간 라멘집 → 다음 한 그릇. */
+
+/**
+ * 그릇 채우기 연출의 박자(ms). 사용자가 "그릇이 차오른다 → 종류끼리 모인다 → 결과"를
+ * 하나씩 따라 읽을 수 있을 만큼 천천히 둔다. 결과는 도장이 찍힌 뒤 RESULT_HOLD만큼 보여 주고 넘어간다.
  */
-
-const LOADING_DURATION = 2400
+const FILL_START = 200
+const FILL_STEP = 50
+const FILL_DURATION = 400
+const SORT_AT = 2800
+const SORT_DURATION = 900
+const LEGEND_AT = 3700
+const LOADING_DURATION = 4000
+const RESULT_HOLD = 1200
 
 /** 매장 원장의 대표 스타일. 공유 Shop 타입에는 없어서 값이 있을 때만 읽는다 */
 export function shopStyleOf(shop: Shop): string | undefined {
@@ -92,227 +99,58 @@ function spectrumWordOf(key: SpectrumAxisKey, score: number) {
 }
 
 // ---------------------------------------------------------------------------
-// 종합 리포트 표지 (웹 TasteReportCover). 마이에서도 같은 카드를 쓴다
+// 종합 리포트의 결론. 표시하는 두 축은 TASTE_AXES의 육수 → 면 순서를 따른다.
 // ---------------------------------------------------------------------------
 
-export interface TasteReportCoverProps {
+function TasteReportCover({ recordCount, identity, profile, updatedLabel }: {
   recordCount: number
   identity: TasteIdentity
   profile: TasteProfile
-  onOpen?: () => void
-  onAnalyze?: () => void
-  /** 0그릇일 때 첫 기록으로 안내 */
-  onStart?: () => void
-}
-
-export function TasteReportCover({ recordCount, identity, profile, onOpen, onAnalyze, onStart }: TasteReportCoverProps) {
-  const empty = recordCount === 0
+  updatedLabel: string
+}) {
   const metrics = metricsFromProfile(profile).filter(isSpectrumMetric)
   return (
     <View style={styles.card}>
       <View style={styles.coverHead}>
-        <View style={styles.coverHeadLabels}>
-          <Sticker label="종합 리포트" tone="ink" />
-          <AppText capScale style={styles.tabular} tone="muted" variant="meta">
-            전체 {recordCount}그릇 기준
-          </AppText>
-        </View>
-        <Image
-          accessibilityLabel="라오타"
-          accessible
-          contentFit="contain"
-          source={require("@/assets/images/logo.png")}
-          style={styles.coverLogo}
-        />
+        <AppText capScale style={styles.coverBadge} variant="meta">종합 리포트</AppText>
+        <AppText capScale numberOfLines={2} style={[styles.tabular, styles.coverDate]} tone="muted" variant="meta">{updatedLabel}</AppText>
       </View>
-      <View style={styles.coverBody}>
-        <AppText accessibilityRole="header" variant="headline">
-          {identity.title}
-        </AppText>
-        <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
-          {empty ? identity.description : identity.evidence}
-        </AppText>
-      </View>
+      <AppText accessibilityRole="header" style={styles.coverTitle} variant="headline">{identity.title}</AppText>
+      <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
+        {identity.leader ? `누적 ${identity.total}그릇 중 ${identity.leader.name} ${identity.leader.count}그릇` : identity.description}
+      </AppText>
       {identity.tags.length > 0 ? (
         <View accessibilityLabel={`취향 특징: ${identity.tags.join(", ")}`} accessible style={styles.tagRow}>
           {identity.tags.map((tag) => (
-            <Tag key={tag} label={`#${tag}`} />
+            <AppText key={tag} style={styles.coverTag} variant="secondary">#{tag}</AppText>
           ))}
         </View>
       ) : null}
-      {!empty ? (
-        <View style={styles.coverAxes}>
-          {/* 두 항목 모두 취향의 위치라 차오르는 미터를 쓰지 않는다. 위치를 말하는 한 마디가 앞이고 평균 점수는 옆에 작게 둔다 */}
-          {metrics.map((metric) => {
-            const word = spectrumWordOf(metric.key, metric.score)
-            return (
-              <View
-                accessibilityLabel={`${metric.label} ${word}, 평균 ${metric.score.toFixed(1)}점, 5점 만점`}
-                accessible
-                key={metric.key}
-                style={styles.flex}
-              >
-                <AppText capScale tone="muted" variant="meta">
-                  {metric.label}
-                </AppText>
-                <View style={styles.coverAxisValue}>
-                  <AppText style={styles.flex} variant="bodyStrong">
-                    {word}
-                  </AppText>
-                  <AppText capScale style={styles.tabular} tone="muted" variant="meta">
-                    {metric.score.toFixed(1)}
-                  </AppText>
+      {recordCount > 0 ? (
+        <View
+          accessibilityLabel={`맛 지문. ${metrics.map((metric) => `${metric.label} ${spectrumWordOf(metric.key, metric.score)} ${metric.score.toFixed(1)}`).join(", ")}`}
+          accessibilityRole="text"
+          accessible
+          style={styles.coverFingerprint}
+        >
+          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {metrics.map((metric) => (
+              <View key={metric.key} style={styles.fingerprintRow}>
+                <AppText style={styles.fingerprintLabel} variant="secondary">{metric.label}</AppText>
+                <View style={styles.fingerprintTrack}>
+                  <View style={[styles.fingerprintKnob, {
+                    left: `${(Math.max(1, Math.min(5, metric.score)) - 1) * 25}%`,
+                    backgroundColor: tasteAxis[metric.key],
+                  }]} />
                 </View>
+                <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.fingerprintValue} tone="muted" variant="meta">
+                  {spectrumWordOf(metric.key, metric.score)} <AppText style={styles.heavy} variant="meta">{metric.score.toFixed(1)}</AppText>
+                </AppText>
               </View>
-            )
-          })}
+            ))}
+          </View>
         </View>
       ) : null}
-      {!empty && (onOpen || onAnalyze) ? (
-        <View style={styles.coverActions}>
-          {onOpen ? (
-            <Button
-              fullWidth
-              onPress={onOpen}
-              rightIcon={<ArrowRight color={colors.onDark} size={16} />}
-              style={styles.noFlex}
-              title="종합 리포트 보기"
-            />
-          ) : null}
-          {onAnalyze ? (
-            <Button
-              leftIcon={<RotateCw color={colors.ink} size={15} />}
-              onPress={onAnalyze}
-              size="small"
-              textStyle={styles.inkText}
-              title="최근 기록으로 다시 정리"
-              variant="ghost"
-            />
-          ) : null}
-        </View>
-      ) : null}
-      {empty && onStart ? (
-        <View style={styles.coverActions}>
-          <Button
-            fullWidth
-            leftIcon={<PenLine color={colors.onDark} size={16} />}
-            onPress={onStart}
-            style={styles.noFlex}
-            title="첫 그릇 기록하기"
-          />
-        </View>
-      ) : null}
-    </View>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// 5축 레이더
-// ---------------------------------------------------------------------------
-
-const RADAR_SIZE = 250
-const RADAR_CENTER = 125
-const RADAR_RADIUS = 80
-/** 데이터 도형의 면 투명도. 안쪽 눈금이 도형 너머로 비칠 만큼만 덮는다 */
-const RADAR_FILL_OPACITY = 0.35
-/**
- * 중간 눈금 하나의 위치. 도형의 크기가 "얼마나"를 말하려면 비교 기준이 한 줄은 있어야 한다.
- * 나머지 눈금과 축선은 복원하지 않는다 — 선이 늘수록 데이터 도형이 다시 묻힌다.
- */
-const RADAR_GRID = 0.6
-/**
- * SVG 글씨는 Dynamic Type을 따르지 않는다 — react-native-svg에는 allowFontScaling이 없고
- * 글씨 크기가 사용자 좌표 단위다. 그래서 배율을 직접 곱한다. 판 밖으로 넘치지 않게 1.3배까지만
- * (앱이 한 줄 라벨에 쓰는 maxFontSizeMultiplier와 같은 상한). 값은 아래 축 목록이 스케일되는 글씨로 한 번 더 말한다.
- */
-const CHART_TEXT_MAX_SCALE = 1.3
-const chartTextScale = (fontScale: number) => Math.min(Math.max(fontScale, 1), CHART_TEXT_MAX_SCALE)
-const RADAR_LABELS = [
-  { x: 125, y: 14 },
-  { x: 220, y: 92 },
-  { x: 184, y: 216 },
-  { x: 66, y: 216 },
-  { x: 30, y: 92 },
-]
-
-function radarPoint(index: number, value: number, center = RADAR_CENTER, radius = RADAR_RADIUS) {
-  const angle = ((Math.PI * 2) / 5) * index - Math.PI / 2
-  return { x: center + radius * value * Math.cos(angle), y: center + radius * value * Math.sin(angle) }
-}
-
-const pointsOf = (values: number[], center?: number, radius?: number) =>
-  values
-    .map((value, index) => {
-      const p = radarPoint(index, value, center, radius)
-      return `${p.x},${p.y}`
-    })
-    .join(" ")
-
-function RadarChart({ metrics }: { metrics: MetricItem[] }) {
-  const { fontScale } = useWindowDimensions()
-  const textScale = chartTextScale(fontScale)
-  const summary = metrics.map((metric) => `${metric.label} ${metric.score.toFixed(1)}점`).join(", ")
-  return (
-    <View accessibilityLabel={`항목별 맛 평가 그래프. ${summary}`} accessibilityRole="image" accessible style={styles.radarWrap}>
-      {/* 좁은 화면에서도 잘리지 않게 폭은 카드에 맞추고 모양은 viewBox가 지킨다 */}
-      <Svg height={RADAR_SIZE} viewBox={`-12 0 ${RADAR_SIZE + 24} ${RADAR_SIZE}`} width="100%">
-        {/* 바로 앞 로딩 레이더와 같은 재료를 쓴다: 바깥 2pt 먹선 오각형 하나와 그 안의 1pt 중간 눈금 하나.
-            축선과 나머지 눈금은 두지 않는다 — 선이 늘수록 정작 데이터 도형이 묻힌다 */}
-        <Polygon
-          fill={colors.canvas}
-          points={pointsOf([1, 1, 1, 1, 1])}
-          stroke={colors.outline}
-          strokeLinejoin="round"
-          strokeWidth={line.base}
-        />
-        {/* 중간 눈금. 값은 축 이름 옆 숫자가 말하고, 이 선은 도형의 크기를 견줄 기준을 준다 */}
-        <Polygon
-          fill="none"
-          points={pointsOf(Array(5).fill(RADAR_GRID))}
-          stroke={colors.border}
-          strokeLinejoin="round"
-          strokeWidth={line.hair}
-        />
-        {/* 데이터 도형은 수량을 말하므로 빨강이 아니라 국물 색이다. 면이 반투명이라 안쪽 눈금이 도형 너머로 비친다 */}
-        <Polygon
-          fill={broth[0]}
-          fillOpacity={RADAR_FILL_OPACITY}
-          points={pointsOf(metrics.map((metric) => metric.myVal))}
-          stroke={colors.ink}
-          strokeLinejoin="round"
-          strokeWidth={line.base}
-        />
-        {metrics.map((metric, index) => {
-          const p = radarPoint(index, metric.myVal)
-          return <Circle cx={p.x} cy={p.y} fill={colors.ink} key={metric.key} r={3.5} stroke={colors.canvas} strokeWidth={1.5} />
-        })}
-        {metrics.map((metric, index) => (
-          <SvgText
-            fill={colors.inkSub}
-            fontSize={12 * textScale}
-            fontWeight="800"
-            key={`${metric.key}-label`}
-            textAnchor="middle"
-            x={RADAR_LABELS[index].x}
-            y={RADAR_LABELS[index].y - 3}
-          >
-            {metric.label}
-          </SvgText>
-        ))}
-        {metrics.map((metric, index) => (
-          <SvgText
-            fill={colors.ink}
-            fontSize={13 * textScale}
-            fontWeight="800"
-            key={`${metric.key}-score`}
-            textAnchor="middle"
-            x={RADAR_LABELS[index].x}
-            y={RADAR_LABELS[index].y + 13}
-          >
-            {metric.score.toFixed(1)}
-          </SvgText>
-        ))}
-      </Svg>
     </View>
   )
 }
@@ -320,12 +158,6 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
 // ---------------------------------------------------------------------------
 // 정리 연출 (웹 TasteReportLoading)
 // ---------------------------------------------------------------------------
-
-/**
- * 좋고 나쁨이 아니라 "취향의 위치"를 말하는 축. 차오르지 않고 선 위의 한 점으로 보여 준다.
- * DESIGN.md "맛 평가" 절의 구분을 기록 화면·리포트가 같이 따른다.
- */
-const POSITION_AXES = new Set<TasteAxisKey>(["brothDensity", "noodleFirmness"])
 
 /** VoiceOver 포커스를 특정 View로 옮긴다. 실패해도 흐름을 막지 않는다 */
 function focusOn(ref: React.RefObject<View | null>) {
@@ -340,126 +172,198 @@ function focusOn(ref: React.RefObject<View | null>) {
 
 const STATUS_MESSAGES = [
   "라멘 기록을 모으고 있어요",
-  "국물과 면 취향을 살펴보고 있어요",
-  "나의 누적 취향을 정리하고 있어요",
+  "그릇마다 국물을 채우고 있어요",
+  "종류별로 모으고 있어요",
   "나의 라멘 취향이 정리됐어요",
 ]
-const LOADING_SIZE = 260
-const LOADING_CENTER = 130
-const LOADING_RADIUS = 76
-/** 오각형이 자라기 시작하는 크기. 0에서 시작하면 첫 순간이 빈 판으로 보인다 */
-const LOADING_START_SCALE = 0.3
-/** 지금 보고 있는 축을 짚는 노랑 블록의 한 변 */
-const AXIS_MARK = 18
-/** 단계가 바뀔 때 축 표시가 한 번 커졌다 제자리로 돌아오는 시간 */
-const AXIS_PULSE_DURATION = 520
-/** 꼭짓점 점의 반지름. 결과 레이더와 같은 값 */
-const LOADING_DOT_RADIUS = 3.5
-/**
- * 축 이름과 점수를 놓는 자리. 점수는 늘 판 바깥쪽에 붙인다 —
- * 위·옆 세 축은 이름 위, 아래 두 축은 이름 아래. 그래야 꼭짓점의 노랑 표시와 겹치지 않는다.
- */
-const LOADING_LABELS = [
-  { x: 130, y: 40, scoreY: 26 },
-  { x: 222, y: 90, scoreY: 76 },
-  { x: 184, y: 216, scoreY: 230 },
-  { x: 76, y: 216, scoreY: 230 },
-  { x: 38, y: 90, scoreY: 76 },
-]
-/** 단계마다 짚는 축의 순서. 마지막에는 다섯 축을 한 번에 보여 준다 */
-const AXIS_ORDER = [0, 1, 3, 2, 4]
+const MAX_LOADING_BOWLS = 42
+const BOWL_COLUMNS = 7
+const BOWL_ROW_HEIGHT = 34
+const BOWL_PATH = "M3 9H33C33 18.5 26.3 26 18 26C9.7 26 3 18.5 3 9Z"
+const AnimatedRect = Animated.createAnimatedComponent(Rect)
+const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse)
+
+type LoadingBowl = { type: string; order: number; sorted: number }
+type BowlLegend = { type: string; count: number; icons: number; first: number }
 
 /**
- * react-native-svg의 Polygon은 points를 스스로 d로 바꿔 네이티브에 넘긴다.
- * 그래서 움직이는 도형은 Polygon이 아니라 Path의 d를 직접 갱신한다.
+ * 화면에는 최대 42개만 그리되, 그 이상일 때는 최대 잔여 방식으로 종류별 몫을 배분한다.
+ * 배분된 종류 안에서는 날짜순 원장에서 골고루 뽑아 채우는 순서를 그대로 지킨다.
  */
-const AnimatedPath = Animated.createAnimatedComponent(Path)
-const AnimatedCircle = Animated.createAnimatedComponent(Circle)
-
-/**
- * 다섯 꼭짓점을 잇는 오각형 path. UI 스레드에서도 불리므로 worklet이다.
- * View에 scale을 걸면 2pt 먹선까지 같이 얇아지므로 크기는 꼭짓점 값 자체에 곱한다.
- */
-function radarPathOf(values: number[], grow: number, center: number, radius: number) {
-  "worklet"
-  let path = ""
-  for (let index = 0; index < values.length; index += 1) {
-    const angle = ((Math.PI * 2) / 5) * index - Math.PI / 2
-    const r = radius * values[index] * grow
-    path += `${index === 0 ? "M" : "L"}${center + r * Math.cos(angle)},${center + r * Math.sin(angle)}`
+function loadingBowlsOf(bowls: DemoBowl[]) {
+  const records = [...bowls].reverse() // useMyBowls는 최신순; 이 연출은 오래 먹은 그릇부터 채운다
+  const counts = new Map<string, BowlLegend>()
+  records.forEach((bowl, index) => {
+    const type = menuCategoryOf(bowl.type)
+    const entry = counts.get(type)
+    if (entry) entry.count += 1
+    else counts.set(type, { type, count: 1, icons: 0, first: index })
+  })
+  const legend = [...counts.values()].sort((a, b) => b.count - a.count || a.first - b.first)
+  const limit = Math.min(MAX_LOADING_BOWLS, records.length)
+  let allocated = 0
+  for (const item of legend) {
+    item.icons = Math.floor((item.count * limit) / records.length)
+    allocated += item.icons
   }
-  return `${path}Z`
+  // 몫이 같은 종류는 실제 그릇 수, 원장 첫 등장 순으로 결정한다
+  const byRemainder = [...legend].sort(
+    (a, b) =>
+      ((b.count * limit) % records.length) - ((a.count * limit) % records.length) ||
+      b.count - a.count ||
+      a.first - b.first,
+  )
+  for (let index = 0; index < limit - allocated; index += 1) byRemainder[index].icons += 1
+
+  const starts = new Map<string, number>()
+  let slot = 0
+  for (const item of legend) {
+    starts.set(item.type, slot)
+    slot += item.icons
+  }
+  const seen = new Map<string, number>()
+  const placed = new Map<string, number>()
+  const icons: LoadingBowl[] = []
+  for (const bowl of records) {
+    const type = menuCategoryOf(bowl.type)
+    const item = counts.get(type)!
+    const nth = seen.get(type) ?? 0
+    seen.set(type, nth + 1)
+    // 시간순 표본에서 고르게 뽑아, 42칸일 때도 한 종류가 통째로 사라지지 않게 한다
+    if (Math.floor(((nth + 1) * item.icons) / item.count) === Math.floor((nth * item.icons) / item.count)) continue
+    const rank = placed.get(type) ?? 0
+    placed.set(type, rank + 1)
+    icons.push({ type, order: icons.length, sorted: starts.get(type)! + rank })
+  }
+  return { icons, legend }
 }
 
-/** 꼭짓점 점. 오각형과 같은 박자로 바깥으로 나간다 */
-function RadarDot({ grow, index, value }: { grow: SharedValue<number>; index: number; value: number }) {
-  const start = radarPoint(index, value * LOADING_START_SCALE, LOADING_CENTER, LOADING_RADIUS)
-  const dotProps = useAnimatedProps(() => {
-    const angle = ((Math.PI * 2) / 5) * index - Math.PI / 2
-    const r = LOADING_RADIUS * value * grow.value
-    return { cx: LOADING_CENTER + r * Math.cos(angle), cy: LOADING_CENTER + r * Math.sin(angle) }
-  })
+function LoadingBowlIcon({
+  bowl,
+  columnWidth,
+  reducedMotion,
+  sorted,
+}: {
+  bowl: LoadingBowl
+  columnWidth: number
+  reducedMotion: boolean
+  sorted: SharedValue<number>
+}) {
+  const fill = useSharedValue(reducedMotion ? 1 : 0)
+  useEffect(() => {
+    fill.value = reducedMotion
+      ? 1
+      : withDelay(FILL_START + bowl.order * FILL_STEP, withTiming(1, { duration: FILL_DURATION, easing: Easing.out(Easing.quad) }))
+  }, [bowl.order, fill, reducedMotion])
+  const soupProps = useAnimatedProps(() => ({ y: 26 - 17 * fill.value, height: 17 * fill.value }))
+  const surfaceProps = useAnimatedProps(() => ({ ry: 3.5 * fill.value, opacity: fill.value }))
+  const moveStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: ((bowl.sorted % BOWL_COLUMNS) - (bowl.order % BOWL_COLUMNS)) * columnWidth * sorted.value },
+      {
+        translateY:
+          (Math.floor(bowl.sorted / BOWL_COLUMNS) - Math.floor(bowl.order / BOWL_COLUMNS)) *
+          BOWL_ROW_HEIGHT *
+          sorted.value,
+      },
+    ],
+  }))
   return (
-    <AnimatedCircle
-      animatedProps={dotProps}
-      cx={start.x}
-      cy={start.y}
-      fill={colors.ink}
-      r={LOADING_DOT_RADIUS}
-      stroke={colors.canvas}
-      strokeWidth={line.thin}
-    />
+    <Animated.View
+      style={[
+        styles.bowlSlot,
+        { left: (bowl.order % BOWL_COLUMNS) * columnWidth, top: Math.floor(bowl.order / BOWL_COLUMNS) * BOWL_ROW_HEIGHT + 3, width: columnWidth },
+        moveStyle,
+      ]}
+      testID={`report-bowl-${bowl.order}`}
+    >
+      <Svg height={30} viewBox="0 0 36 29" width={38}>
+        <Defs>
+          <ClipPath id={`report-bowl-clip-${bowl.order}`}>
+            <Path d={BOWL_PATH} />
+          </ClipPath>
+        </Defs>
+        <Path d={BOWL_PATH} fill={colors.canvas} />
+        <AnimatedRect
+          animatedProps={soupProps}
+          clipPath={`url(#report-bowl-clip-${bowl.order})`}
+          fill={soupColorOf(bowl.type)}
+          height={reducedMotion ? 17 : 0}
+          width={36}
+          x={0}
+          y={reducedMotion ? 9 : 26}
+        />
+        <AnimatedEllipse
+          animatedProps={surfaceProps}
+          cx={18}
+          cy={9}
+          fill={soupColorOf(bowl.type)}
+          opacity={reducedMotion ? 1 : 0}
+          rx={14}
+          ry={reducedMotion ? 3.5 : 0}
+          stroke={colors.soupEdge}
+          strokeWidth={line.base}
+          testID={`report-bowl-soup-${bowl.order}`}
+        />
+        <Path d={BOWL_PATH} fill="none" stroke={colors.soupEdge} strokeLinejoin="round" strokeWidth={line.base} />
+        <Path d="M12 27.5h12" fill="none" stroke={colors.soupEdge} strokeLinecap="round" strokeWidth={line.base} />
+      </Svg>
+    </Animated.View>
   )
 }
 
-/**
- * 지금 보고 있는 축을 짚는 노랑 블록. 단계가 바뀔 때마다 한 번 커졌다 제자리로 돌아온다.
- * 레이더 판은 260pt이고 SVG 좌표와 1:1이라 같은 자리에 겹쳐 놓을 수 있다.
- */
-function AxisMark({ axis, reducedMotion }: { axis: number; reducedMotion: boolean }) {
-  const tip = radarPoint(axis, 1, LOADING_CENTER, LOADING_RADIUS)
-  const pulse = useSharedValue(reducedMotion ? 1 : 0)
-
-  useEffect(() => {
-    // Reduce Motion이면 움직임 없이 제자리에 그대로 선다
-    if (reducedMotion) return
-    pulse.value = withTiming(1, { duration: AXIS_PULSE_DURATION, easing: Easing.linear })
-  }, [pulse, reducedMotion])
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    opacity: Math.min(1, pulse.value * 4),
-    transform: [{ scale: 1 + 0.26 * Math.sin(Math.PI * pulse.value) }],
-  }))
-
-  return <Animated.View style={[styles.axisMark, { left: tip.x - AXIS_MARK / 2, top: tip.y - AXIS_MARK / 2 }, pulseStyle]} />
-}
-
 function TasteReportLoading({
-  recordCount,
-  metrics,
+  bowls,
+  identity,
+  membershipNo,
   onBack,
   onComplete,
 }: {
-  recordCount: number
-  metrics: MetricItem[]
+  bowls: DemoBowl[]
+  identity: TasteIdentity
+  membershipNo: string
   onBack: () => void
   onComplete: () => void
 }) {
   const reducedMotion = useReducedMotion()
-  const { fontScale } = useWindowDimensions()
-  const textScale = chartTextScale(fontScale)
-  const [stage, setStage] = useState(0)
+  const { width } = useWindowDimensions()
+  const { icons, legend } = useMemo(() => loadingBowlsOf(bowls), [bowls])
+  const [columnWidth, setColumnWidth] = useState(Math.min(302, Math.max(0, width - spacing.x4 * 4 - line.base * 2)) / BOWL_COLUMNS)
+  const [stage, setStage] = useState(reducedMotion ? 3 : 0)
+  const [showLegend, setShowLegend] = useState(reducedMotion)
   const complete = stage === 3
   const titleRef = useRef<View>(null)
+  const loadingScrollRef = useRef<ScrollView>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
+  const sorted = useSharedValue(reducedMotion ? 1 : 0)
+  const reveal = useSharedValue(reducedMotion ? 1 : 0)
+  const resultReveal = useSharedValue(reducedMotion ? 1 : 0)
 
   useEffect(() => {
+    if (reducedMotion) {
+      sorted.value = 1
+      reveal.value = 1
+      resultReveal.value = 1
+      setStage(3)
+      setShowLegend(true)
+      const focus = setTimeout(() => focusOn(titleRef), 250)
+      // 움직임이 없으니 완성된 감정서를 읽을 시간만 준다(연출 길이만큼 기다리게 하지 않는다)
+      const timer = setTimeout(() => onCompleteRef.current(), RESULT_HOLD + 1000)
+      return () => {
+        clearTimeout(focus)
+        clearTimeout(timer)
+      }
+    }
+    sorted.value = withDelay(SORT_AT, withTiming(1, { duration: SORT_DURATION, easing: Easing.inOut(Easing.cubic) }))
+    reveal.value = withDelay(LEGEND_AT, withTiming(1, { duration: 240, easing: Easing.out(Easing.quad) }))
+    resultReveal.value = withDelay(LOADING_DURATION, withTiming(1, { duration: 260, easing: Easing.out(Easing.quad) }))
     const timers = [
-      setTimeout(() => setStage(1), LOADING_DURATION / 3),
-      setTimeout(() => setStage(2), (LOADING_DURATION * 2) / 3),
+      setTimeout(() => setStage(1), 900),
+      setTimeout(() => setStage(2), SORT_AT),
+      setTimeout(() => setShowLegend(true), LEGEND_AT),
       setTimeout(() => setStage(3), LOADING_DURATION),
-      setTimeout(() => onCompleteRef.current(), LOADING_DURATION + 500),
+      setTimeout(() => onCompleteRef.current(), LOADING_DURATION + RESULT_HOLD),
     ]
     // 포커스를 제목으로 옮기지 않으면 VoiceOver가 이전 화면에 머문 채 리포트로 교체된다
     const focus = setTimeout(() => focusOn(titleRef), 250)
@@ -467,7 +371,9 @@ function TasteReportLoading({
       timers.forEach(clearTimeout)
       clearTimeout(focus)
     }
-  }, [])
+    // 시간표는 한 번만 시작한다. 실제 shared value는 안정적이며 단계 렌더 때 타이머를 다시 잡지 않는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reducedMotion])
 
   /**
    * iOS에는 accessibilityLiveRegion이 없다(안드로이드 전용 prop이라 무시된다).
@@ -475,117 +381,106 @@ function TasteReportLoading({
    */
   useEffect(() => {
     if (stage === 0) return
-    AccessibilityInfo.announceForAccessibility(STATUS_MESSAGES[stage])
-  }, [stage])
-
-  // 판을 확대하면 2pt 먹선까지 같이 얇아진다. 그래서 크기는 꼭짓점 값에 곱하고, 그 값을 끊지 않고 이어서 키운다
-  const values = useMemo(() => metrics.map((metric) => metric.myVal), [metrics])
-  const grow = useSharedValue(reducedMotion ? 1 : LOADING_START_SCALE)
-
-  useEffect(() => {
-    // Reduce Motion이면 움직임 없이 즉시 최종 크기
-    if (reducedMotion) {
-      grow.value = 1
-      return
+    // 움직임을 줄일 때는 이미 완성된 감정서를 읽는다. 제목 포커스가 먼저 간 뒤 최종 상태를 알린다
+    if (reducedMotion && stage === 3) {
+      const timer = setTimeout(() => AccessibilityInfo.announceForAccessibility(STATUS_MESSAGES[stage]), 400)
+      return () => clearTimeout(timer)
     }
-    grow.value = withTiming(1, { duration: LOADING_DURATION, easing: Easing.out(Easing.quad) })
-  }, [grow, reducedMotion])
+    AccessibilityInfo.announceForAccessibility(STATUS_MESSAGES[stage])
+  }, [reducedMotion, stage])
+  // The result now owns its space before it appears, so content size does not change at completion.
+  useEffect(() => {
+    if (!complete) return
+    const frame = requestAnimationFrame(() => loadingScrollRef.current?.scrollToEnd({ animated: false }))
+    return () => cancelAnimationFrame(frame)
+  }, [complete])
 
-  const shapeProps = useAnimatedProps(() => ({ d: radarPathOf(values, grow.value, LOADING_CENTER, LOADING_RADIUS) }))
-  const startPath = radarPathOf(values, reducedMotion ? 1 : LOADING_START_SCALE, LOADING_CENTER, LOADING_RADIUS)
 
-  // 단계가 바뀔 때마다 한 축을 짚고, 짚은 축의 점수를 하나씩 드러낸다. 다 차면 다섯 축이 한 번에 보인다
-  const activeAxis = complete ? -1 : AXIS_ORDER[stage]
-  const shownAxes = AXIS_ORDER.slice(0, complete ? AXIS_ORDER.length : stage + 1)
+  const legendStyle = useAnimatedStyle(() => ({ opacity: reveal.value, transform: [{ translateY: 4 * (1 - reveal.value) }] }))
+  const resultStyle = useAnimatedStyle(() => ({ opacity: resultReveal.value }))
+  const count = bowls.length
+  const sampleRatio = count > MAX_LOADING_BOWLS
+    ? (count / MAX_LOADING_BOWLS).toFixed(2).replace(/0+$/, "").replace(/\.$/, "")
+    : null
 
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.root}>
-      <StatusBar style="dark" />
-      <Header onBack={onBack} title="종합 취향 리포트" />
-      <ScrollView contentContainerStyle={styles.loadingBody}>
+      <StatusBar style="auto" />
+      <Header align="center" onBack={onBack} title="종합 취향 리포트" titleStyle={typography.sectionTitle} />
+      <ScrollView
+        contentContainerStyle={styles.loadingBody}
+        onContentSizeChange={() => {
+          // 낮은 화면에서도 마지막 감정 결과가 다음 화면으로 넘어가기 전에 보이게 한다
+          if (complete) loadingScrollRef.current?.scrollToEnd({ animated: false })
+        }}
+        ref={loadingScrollRef}
+        showsVerticalScrollIndicator={false}
+      >
         <View accessible accessibilityRole="header" ref={titleRef}>
           <AppText style={styles.center} variant="headline">
             {"나의 라멘 취향을\n정리하고 있어요"}
           </AppText>
         </View>
-        <AppText style={[styles.center, styles.gapTop3]} tone="sub" variant="body">
-          기록한 {recordCount}그릇을 바탕으로 분석해요
+        <AppText style={[styles.center, styles.gapTop2]} tone="sub" variant="secondary">
+          기록한 {count}그릇을 바탕으로 분석해요
         </AppText>
-        <View
-          accessibilityElementsHidden
-          accessible={false}
-          importantForAccessibility="no-hide-descendants"
-          style={styles.loadingRadar}
-        >
-          <Svg height={LOADING_SIZE} width={LOADING_SIZE}>
-            {/* 결과 레이더와 같은 재료: 바깥 2pt 먹선 오각형과 그 안의 1pt 중간 눈금 하나 */}
-            <Polygon
-              fill={colors.canvas}
-              points={pointsOf([1, 1, 1, 1, 1], LOADING_CENTER, LOADING_RADIUS)}
-              stroke={colors.outline}
-              strokeLinejoin="round"
-              strokeWidth={line.base}
-            />
-            <Polygon
-              fill="none"
-              points={pointsOf(Array(5).fill(RADAR_GRID), LOADING_CENTER, LOADING_RADIUS)}
-              stroke={colors.border}
-              strokeLinejoin="round"
-              strokeWidth={line.hair}
-            />
-            {/* 결과 레이더와 같은 재료(반투명 국물 색 면 + 2pt 먹선). 꼭짓점 값만 자라고 먹선 굵기는 그대로다.
-                도형의 선은 부품 테두리가 아니라 값이 그린 선이라 결과 레이더와 같은 ink를 쓴다 */}
-            <AnimatedPath
-              animatedProps={shapeProps}
-              d={startPath}
-              fill={broth[0]}
-              fillOpacity={RADAR_FILL_OPACITY}
-              stroke={colors.ink}
-              strokeLinejoin="round"
-              strokeWidth={line.base}
-            />
-            {metrics.map((metric, index) => (
-              <RadarDot grow={grow} index={index} key={`${metric.key}-dot`} value={metric.myVal} />
+        <View style={styles.loadingSheet}>
+          <View style={styles.loadingSheetHead}>
+            <AppText variant="cardTitle">라멘 취향 감정서</AppText>
+            <AppText capScale style={styles.loadingSheetNumber} tone="muted" variant="meta">
+              No. {membershipNo.replace(/^#/, "")}
+            </AppText>
+          </View>
+          <View
+            accessible
+            accessibilityLabel={
+              complete
+                ? `${count}그릇을 종류별로 모았어요. ${legend.map((item) => `${item.type} ${item.count}그릇`).join(", ")}`
+                : `기록 순서대로 ${icons.length}개 그릇의 국물을 채우고 있어요`
+            }
+            accessibilityRole="image"
+            onLayout={(event) => setColumnWidth(event.nativeEvent.layout.width / BOWL_COLUMNS)}
+            style={[styles.bowlGrid, { height: Math.max(1, Math.ceil(icons.length / BOWL_COLUMNS)) * BOWL_ROW_HEIGHT + spacing.x2 }]}
+            testID="report-bowl-grid"
+          >
+            {icons.map((bowl) => (
+              <LoadingBowlIcon bowl={bowl} columnWidth={columnWidth} key={bowl.order} reducedMotion={reducedMotion} sorted={sorted} />
             ))}
-            {metrics.map((metric, index) => (
-              <SvgText
-                fill={index === activeAxis ? colors.ink : colors.inkSub}
-                fontSize={12 * textScale}
-                fontWeight="800"
-                key={metric.key}
-                textAnchor="middle"
-                x={LOADING_LABELS[index].x}
-                y={LOADING_LABELS[index].y}
-              >
-                {metric.label}
-              </SvgText>
-            ))}
-            {/* 지금까지 살펴본 축의 점수. 결과 레이더와 같은 13pt 800 먹색 숫자다 */}
-            {shownAxes.map((index) => (
-              <SvgText
-                fill={colors.ink}
-                fontSize={13 * textScale}
-                fontWeight="800"
-                key={`${metrics[index]?.key ?? index}-score`}
-                textAnchor="middle"
-                x={LOADING_LABELS[index].x}
-                y={LOADING_LABELS[index].scoreY}
-              >
-                {(metrics[index]?.score ?? 0).toFixed(1)}
-              </SvgText>
-            ))}
-          </Svg>
-          {/* 지금 보고 있는 축은 노랑 블록으로 짚는다. 단계가 바뀔 때마다 새로 붙으면서 한 번 커졌다 돌아온다 */}
-          {activeAxis >= 0 ? <AxisMark axis={activeAxis} key={activeAxis} reducedMotion={reducedMotion} /> : null}
-          {complete ? (
-            <View style={styles.loadingSticker}>
-              <Sticker icon={<Check color={colors.ink} size={12} />} label="정리 끝" style={styles.centerSelf} />
-            </View>
+          </View>
+          <View style={styles.loadingLegendSlot}>
+            {showLegend ? (
+              <Animated.View style={[styles.loadingLegend, legendStyle]} testID="report-bowl-legend">
+                {legend.map((item) => (
+                  <View accessibilityLabel={`${item.type} ${item.count}그릇`} accessible key={item.type} style={styles.loadingLegendItem}>
+                    <View style={styles.loadingLegendName}>
+                      <SoupDot type={item.type} size={10} />
+                      <AppText capScale variant="meta">{item.type}</AppText>
+                    </View>
+                    <AppText capScale style={styles.loadingLegendCount} variant="sectionTitle">{item.count}</AppText>
+                  </View>
+                ))}
+              </Animated.View>
+            ) : null}
+          </View>
+          {sampleRatio ? (
+            <AppText accessibilityElementsHidden={!showLegend} capScale style={[styles.loadingScaleNote, !showLegend && styles.invisible]} tone="muted" variant="meta">
+              그릇 1개 ≈ {sampleRatio}그릇 · 전체 {count}그릇
+            </AppText>
           ) : null}
+          <View style={styles.loadingResultSlot}>
+            {complete ? (
+              <Animated.View style={[styles.loadingResult, resultStyle]} testID="report-bowl-result">
+                <AppText variant="screenTitle">{identity.title}</AppText>
+                <AppText tone="sub" variant="secondary">
+                  {count}그릇 중 {legend[0].type} {legend[0].count}그릇
+                </AppText>
+              </Animated.View>
+            ) : null}
+          </View>
         </View>
         <View accessibilityLiveRegion="polite" accessibilityRole="text" style={styles.loadingStatus}>
-          {complete ? <Check color={colors.brand} size={16} /> : <View style={styles.dot} />}
-          <AppText tone="sub" variant="body">
+          <View style={[styles.dot, complete && styles.dotComplete]} />
+          <AppText style={styles.loadingStatusText} tone="sub" variant="secondary">
             {STATUS_MESSAGES[stage]}
           </AppText>
         </View>
@@ -596,7 +491,7 @@ function TasteReportLoading({
           rightIcon={<ArrowRight color={colors.inkSub} size={16} />}
           size="small"
           textStyle={styles.subText}
-          title="결과 바로 보기"
+          title="리포트 바로 보기"
           variant="ghost"
         />
       </View>
@@ -619,7 +514,6 @@ function seoulTime(now = new Date()) {
 
 export default function TasteReportScreen() {
   const { analyze } = useLocalSearchParams<{ analyze?: string }>()
-  const reduceMotion = useReducedMotion()
   const { height: windowHeight } = useWindowDimensions()
   const { currentUser } = useRaota()
   const { data: recordCount, isLoading } = useBowlCount()
@@ -627,7 +521,6 @@ export default function TasteReportScreen() {
   const { data: identity } = useTasteIdentity()
   const { data: bowls } = useMyBowls()
   const { data: visits } = useVisitedShops()
-  const { data: myLogs } = useMyLogs()
   const { data: shops } = useShops()
   const { data: level } = useActivityLevel()
 
@@ -635,17 +528,9 @@ export default function TasteReportScreen() {
   const metrics = useMemo(() => metricsFromProfile(profile), [profile])
   const typeCounts = useMemo(() => typeCountsOf(bowls), [bowls])
   const typeTotal = MENU_CATEGORY_NAMES.reduce((sum, name) => sum + typeCounts[name], 0)
-  /** 서로 다른 그릇 수를 많은 쪽부터. 종류 다섯에 국물은 네 단계라 같은 수는 같은 단계로 묶인다 */
-  const typeRanks = useMemo(
-    () => [...new Set(MENU_CATEGORY_NAMES.map((name) => typeCounts[name]))].sort((a, b) => b - a),
-    [typeCounts],
-  )
   const topShops = visits.slice(0, 3)
-  // 앱 설치 전 원장이 있는 계정만 "앱에서 남긴 기록이 더해졌다"고 알린다
-  const appCount = myLogs.length
-  const hasBaseLedger = recordCount > appCount
 
-  const [generating, setGenerating] = useState(analyze === "1" && recordCount > 0 && !reduceMotion)
+  const [generating, setGenerating] = useState(analyze === "1" && recordCount > 0)
   const [generatedAt, setGeneratedAt] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [shareFallback, setShareFallback] = useState(false)
@@ -658,6 +543,11 @@ export default function TasteReportScreen() {
     track("report_viewed", { kind: "overall", bowls: recordCount })
   }, [generating, isLoading, recordCount])
 
+  // 저장소를 읽기 전 기본 데모 원장 대신 실제 사용자 그릇을 확인하고 연출을 시작한다
+  useEffect(() => {
+    if (!isLoading && generating && bowls.length === 0) setGenerating(false)
+  }, [bowls.length, generating, isLoading])
+
   const shopByName = (name: string) => shops.find((shop) => shop.name === name)
 
   // 다음 한 그릇: 가장 적게 먹은 종류(기타 제외)를 파는 원장 매장. 안 가 본 곳을 먼저 고른다
@@ -668,10 +558,12 @@ export default function TasteReportScreen() {
       const candidates = shops.filter((shop) => categoryOfStyle(shopStyleOf(shop)) === category)
       if (!candidates.length) continue
       const unvisited = candidates.find((shop) => !visits.some((visit) => visit.name === shop.name))
-      return { category, count: typeCounts[category], shop: unvisited ?? candidates[0] }
+      const primary = unvisited ?? candidates[0]
+      return { category, count: typeCounts[category], shop: primary }
     }
     return null
   }, [shops, typeCounts, typeTotal, visits])
+  const suggestedReview = suggestion?.shop.reviews.find((review) => review.text.trim().length > 0)
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/native/my"))
 
@@ -684,8 +576,7 @@ export default function TasteReportScreen() {
 
   const restart = () => {
     setToast(null)
-    if (reduceMotion) finishGeneration()
-    else setGenerating(true)
+    setGenerating(true)
   }
 
   const shareText = [
@@ -708,46 +599,39 @@ export default function TasteReportScreen() {
     }
   }
 
-  if (generating) {
-    return <TasteReportLoading metrics={metrics} onBack={goBack} onComplete={finishGeneration} recordCount={recordCount} />
+  if (generating && !isLoading && bowls.length > 0) {
+    return <TasteReportLoading bowls={bowls} identity={identity} membershipNo={currentUser?.membershipNo ?? "RT"} onBack={goBack} onComplete={finishGeneration} />
   }
 
   return (
-    <SafeAreaView edges={["top", "left", "right"]} style={styles.root}>
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["top", "bottom", "left", "right"]} style={styles.root}>
+      <StatusBar style="auto" />
       <Header
+        align="center"
         onBack={goBack}
         right={
           recordCount > 0 ? (
-            <Button
+            <IconButton
               accessibilityLabel="취향 리포트 공유"
-              leftIcon={<Share2 color={colors.ink} size={16} />}
+              icon={<Share2 color={colors.ink} size={20} />}
               onPress={handleShare}
-              size="small"
-              title="공유"
-              variant="outline"
             />
           ) : undefined
         }
         title="취향 종합 리포트"
+        titleStyle={typography.sectionTitle}
       />
       {isLoading ? (
         <LoadingState fullScreen label="취향을 불러오는 중…" />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} ref={scrollRef} showsVerticalScrollIndicator={false}>
           <View style={styles.top}>
-            {hasBaseLedger && appCount > 0 ? (
-              <View accessibilityRole="text" style={styles.notice}>
-                <Check color={colors.brand} size={16} />
-                <AppText style={styles.flex} variant="secondary">
-                  앱에서 남긴 기록 {appCount}그릇이 아래 수치에 더해졌어요.
-                </AppText>
-              </View>
-            ) : null}
-            <TasteReportCover identity={identity} profile={profile} recordCount={recordCount} />
-            <AppText capScale style={styles.gapTop2} tone="sub" variant="meta">
-              {generatedAt ? `${seoulToday()} ${generatedAt}에 다시 정리함` : `${seoulToday()} 기준`}
-            </AppText>
+            <TasteReportCover
+              identity={identity}
+              profile={profile}
+              recordCount={recordCount}
+              updatedLabel={generatedAt ? `${seoulToday().replace(/-/g, ".")} ${generatedAt}에 다시 정리함` : `${seoulToday().replace(/-/g, ".")} 기준`}
+            />
           </View>
 
           {recordCount === 0 ? (
@@ -755,58 +639,17 @@ export default function TasteReportScreen() {
               <AppText accessibilityRole="header" style={styles.center} variant="screenTitle">
                 아직 보여드릴 취향이 없어요
               </AppText>
-              <AppText style={[styles.center, styles.gapTop2]} tone="sub" variant="body">
-                {"첫 그릇을 기록하면\n맛 평가와 종류별 분포가 여기에 쌓여요."}
+              <AppText lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.sectionContent]} tone="sub" variant="body">
+                {"첫 그릇을 기록하면\n취향과 종류별 분포가 여기에 쌓여요."}
               </AppText>
               <Button
                 onPress={() => router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })}
-                style={styles.gapTop5}
+                style={styles.gapTop3}
                 title="첫 그릇 기록하기"
               />
             </View>
           ) : (
             <>
-              <View style={styles.section}>
-                <AppText accessibilityRole="header" variant="sectionTitle">
-                  항목별 맛 평가
-                </AppText>
-                <AppText style={styles.gapTop1} tone="sub" variant="secondary">
-                  기록마다 매긴 맛 평가의 평균이에요. 바깥쪽일수록 5점에 가까워요.
-                </AppText>
-                <RadarChart metrics={metrics} />
-                <View style={styles.axisList}>
-                  {metrics.map((metric, index) => {
-                    const lean = metric.score >= 3 ? TASTE_AXES[index].high : TASTE_AXES[index].low
-                    return (
-                      <View
-                        accessibilityLabel={`${metric.label} 평균 ${metric.score.toFixed(1)}점, ${lean}`}
-                        accessible
-                        key={metric.key}
-                        style={[styles.axisRow, index > 0 && styles.rowDivider]}
-                      >
-                        <AppText style={styles.axisLabel} variant="bodyStrong">
-                          {metric.label}
-                        </AppText>
-                        <View style={styles.track}>
-                          {POSITION_AXES.has(metric.key) ? (
-                            // 취향의 위치는 좋고 나쁨이 아니라서 차오르지 않는다. 선 위의 한 점으로 어디쯤인지만 말한다
-                            <View style={[styles.trackMark, { left: `${metric.myVal * 100}%` }]} />
-                          ) : (
-                            <View style={[styles.trackFill, { width: `${metric.myVal * 100}%` }]} />
-                          )}
-                        </View>
-                        <AppText style={[styles.axisScore, styles.tabular]} variant="bodyStrong">
-                          {metric.score.toFixed(1)}
-                        </AppText>
-                        <AppText capScale style={styles.axisLean} tone="muted" variant="meta">
-                          {lean}
-                        </AppText>
-                      </View>
-                    )
-                  })}
-                </View>
-              </View>
-
               <View style={styles.section}>
                 <View style={styles.rowBetween}>
                   <AppText accessibilityRole="header" variant="sectionTitle">
@@ -820,19 +663,13 @@ export default function TasteReportScreen() {
                   {MENU_CATEGORY_NAMES.map((name) => {
                     const count = typeCounts[name]
                     const pct = typeTotal ? Math.round((count / typeTotal) * 100) : 0
-                    // 많이 먹은 종류일수록 국물이 진하다. 같은 그릇 수는 같은 색이어야 해서 순위는 촘촘히 센다
-                    // (그냥 정렬하면 4그릇 둘이 다른 진하기가 되어 색이 수량을 거짓으로 말한다).
-                    // 트랙이 흰 면이라 네 번째 이후도 broth[0]까지만 옅어진다(border는 빈 칸으로 읽힌다).
-                    const rank = typeRanks.indexOf(count)
-                    const fill = broth[broth.length - 1 - Math.min(rank < 0 ? broth.length - 1 : rank, broth.length - 1)]
                     return (
                       <View accessibilityLabel={`${name} ${count}그릇, ${pct}%`} accessible key={name} style={styles.typeRow}>
                         <View style={styles.typeName}>
-                          {/* 여러 줄이 이어지는 목록이라 종류는 굵은 먹색 글씨로 쓴다(노랑 스티커는 줄무늬가 된다) */}
-                          <RamenTypeTag inList type={name} />
+                          <AppText capScale variant="bodyStrong">{name}</AppText>
                         </View>
-                        <View style={[styles.track, styles.trackThick]}>
-                          <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: fill }]} />
+                        <View style={styles.track}>
+                          <View style={[styles.trackFill, { width: `${pct}%`, backgroundColor: soupColorOf(name) }]} />
                         </View>
                         <AppText capScale style={[styles.typeValue, styles.tabular]} tone="sub" variant="secondary">
                           <AppText capScale variant="secondary" style={styles.heavy}>
@@ -848,13 +685,11 @@ export default function TasteReportScreen() {
 
               {topShops.length > 0 ? (
                 <View style={styles.section}>
-                  <AppText accessibilityRole="header" variant="sectionTitle">
-                    자주 간 라멘집
-                  </AppText>
-                  <AppText style={styles.gapTop1} tone="sub" variant="secondary">
-                    전체 {typeTotal}그릇 중 가장 많이 기록한 세 곳이에요.
-                  </AppText>
-                  <View style={styles.gapTop2}>
+                  <View style={styles.rowBetween}>
+                    <AppText accessibilityRole="header" variant="sectionTitle">자주 간 라멘집</AppText>
+                    <AppText capScale tone="muted" variant="meta">가장 많이 기록한 세 곳</AppText>
+                  </View>
+                  <View style={styles.sectionContent}>
                     {topShops.map((visit, index) => {
                       const shop = shopByName(visit.name)
                       return (
@@ -866,14 +701,9 @@ export default function TasteReportScreen() {
                           onPress={() => openShop(shop)}
                           style={({ pressed }) => [styles.listRow, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
                         >
-                          {/* 순위는 사진 위에 얹지 않고 줄 맨 앞에 둔다. 노랑은 1위 하나뿐이고 2·3위는 굵은 먹색 숫자다(홈 추천 순위와 같은 규칙) */}
-                          {index === 0 ? (
-                            <Sticker label="1" style={styles.rankBadge} />
-                          ) : (
-                            <AppText capScale style={styles.rankNumber} variant="cardTitle">
-                              {index + 1}
-                            </AppText>
-                          )}
+                          <AppText capScale style={[styles.rankNumber, index === 0 && styles.rankSelected]} variant="meta">
+                            {index + 1}
+                          </AppText>
                           <View style={styles.thumb}>
                             {visit.photo ? (
                               <Image contentFit="cover" source={{ uri: visit.photo }} style={styles.thumbImage} transition={150} />
@@ -884,11 +714,11 @@ export default function TasteReportScreen() {
                             )}
                           </View>
                           <View style={styles.flex}>
-                            <AppText numberOfLines={1} variant="cardTitle">
+                            <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} variant="cardTitle">
                               {visit.name}
                               {visit.branch ? <AppText tone="sub" variant="secondary">{` ${visit.branch}`}</AppText> : null}
                             </AppText>
-                            <AppText numberOfLines={1} tone="sub" variant="secondary">
+                            <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.gapTop1} tone="sub" variant="secondary">
                               {visit.topMenu} · 마지막 {visit.lastVisited.slice(5).replace("-", ".")}
                             </AppText>
                           </View>
@@ -907,46 +737,79 @@ export default function TasteReportScreen() {
                   <AppText accessibilityRole="header" variant="sectionTitle">
                     다음에 맛볼 한 그릇
                   </AppText>
-                  <AppText style={styles.gapTop1} tone="sub" variant="secondary">
+                  <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
                     {suggestion.count === 0
                       ? `${suggestion.category}는 아직 기록이 없어요.`
                       : `${suggestion.category}는 ${suggestion.count}그릇으로 가장 적었어요.`}{" "}
                     이 종류로 폭을 넓혀보세요.
                   </AppText>
-                  <Pressable
-                    accessibilityLabel={`${suggestion.shop.name}${suggestion.shop.branch ? ` ${suggestion.shop.branch}` : ""} 매장 보기`}
-                    accessibilityRole="button"
-                    onPress={() => openShop(suggestion.shop)}
-                    style={({ pressed }) => [styles.listRow, styles.gapTop1, pressed && styles.pressedWash]}
-                  >
-                    <View style={styles.thumb}>
-                      {suggestion.shop.photos[0] ? (
-                        <Image contentFit="cover" source={{ uri: suggestion.shop.photos[0] }} style={styles.thumbImage} transition={150} />
-                      ) : null}
-                    </View>
-                    <View style={styles.flex}>
-                      <AppText numberOfLines={1} variant="cardTitle">
-                        {suggestion.shop.name}
-                        {suggestion.shop.branch ? (
-                          <AppText tone="sub" variant="secondary">{` ${suggestion.shop.branch}`}</AppText>
-                        ) : null}
+                  <View style={styles.pinRow}>
+                    <Pressable
+                      accessibilityLabel={`${suggestion.shop.name}${suggestion.shop.branch ? ` ${suggestion.shop.branch}` : ""} 매장 보기`}
+                      accessibilityRole="button"
+                      onPress={() => openShop(suggestion.shop)}
+                      style={({ pressed }) => [styles.pin, pressed && styles.pinPressed]}
+                    >
+                      <View style={[styles.pinImage, styles.pinTall]}>
+                        {suggestion.shop.photos[0] ? (
+                          <Image contentFit="cover" source={{ uri: suggestion.shop.photos[0] }} style={styles.thumbImage} transition={150} />
+                        ) : (
+                          <AppText style={styles.pinFallback} variant="cardTitle">{suggestion.shop.name.slice(0, 1)}</AppText>
+                        )}
+                        <View style={styles.pinType}>
+                          <AppText capScale style={styles.pinOnImageText} variant="meta">{suggestion.category}</AppText>
+                        </View>
+                      </View>
+                      <AppText numberOfLines={2} style={styles.pinTitle} variant="cardTitle">
+                        {suggestion.shop.name}{suggestion.shop.branch ? ` ${suggestion.shop.branch}` : ""}
                       </AppText>
-                      <AppText numberOfLines={1} tone="sub" variant="secondary">
+                      <AppText numberOfLines={2} style={styles.pinMeta} tone="muted" variant="secondary">
                         {[shopStyleOf(suggestion.shop), shopSpecOf(suggestion.shop)].filter(Boolean).join(" · ")}
                       </AppText>
-                    </View>
-                  </Pressable>
+                    </Pressable>
+                    {suggestedReview ? (
+                      <Pressable
+                        accessibilityLabel={`${suggestedReview.author}의 ${suggestion.shop.name} 후기, 매장 보기`}
+                        accessibilityRole="button"
+                        onPress={() => openShop(suggestion.shop)}
+                        style={({ pressed }) => [styles.pin, pressed && styles.pinPressed]}
+                      >
+                        <View style={[styles.pinImage, styles.pinShort]}>
+                          {suggestion.shop.photos[0] ? (
+                            <Image contentFit="cover" source={{ uri: suggestion.shop.photos[1] ?? suggestion.shop.photos[0] }} style={styles.thumbImage} transition={150} />
+                          ) : (
+                            <AppText style={styles.pinFallback} variant="cardTitle">{suggestion.shop.name.slice(0, 1)}</AppText>
+                          )}
+                          <View style={styles.pinRating}>
+                            <AppText capScale style={styles.pinOnImageText} variant="meta">별점 {suggestedReview.rating}</AppText>
+                          </View>
+                        </View>
+                        <AppText numberOfLines={2} style={styles.pinTitle} variant="cardTitle">{suggestedReview.text}</AppText>
+                        <View style={styles.pinAuthor}>
+                          {suggestedReview.author ? (
+                            <View style={styles.pinAuthorAvatar}>
+                              <AppText capScale style={styles.pinAuthorInitial} variant="meta">{suggestedReview.author.slice(0, 1)}</AppText>
+                            </View>
+                          ) : null}
+                          <AppText capScale numberOfLines={1} style={styles.pinAuthorName} variant="meta">
+                            {suggestedReview.author ? `${suggestedReview.author} · ` : ""}{suggestion.shop.name}
+                          </AppText>
+                        </View>
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </View>
               ) : null}
 
               <View style={[styles.block, styles.bottom]}>
                 <Button
-                  leftIcon={<RotateCw color={colors.onDark} size={16} />}
+                  fullWidth
+                  leftIcon={<RotateCw color={colors.ink} size={16} />}
                   onPress={restart}
                   title="최근 기록으로 다시 정리"
                   variant="secondary"
                 />
-                <AppText style={[styles.center, styles.gapTop2]} tone="sub" variant="secondary">
+                <AppText lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.gapTop3]} tone="sub" variant="meta">
                   새 기록을 남기면 이 화면의 수치는 이미 더해져 있어요. 다시 정리하면 처음부터 다시 훑어봐요.
                 </AppText>
               </View>
@@ -965,7 +828,7 @@ export default function TasteReportScreen() {
         visible={shareFallback}
       >
         <ScrollView contentContainerStyle={styles.fallbackContent} style={[styles.fallbackBox, { maxHeight: windowHeight * 0.34 }]}>
-          <AppText selectable variant="secondary">
+          <AppText lineBreakStrategyIOS="hangul-word" selectable variant="secondary">
             {shareText}
           </AppText>
         </ScrollView>
@@ -980,144 +843,84 @@ export default function TasteReportScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
-  noFlex: { flex: 0 },
   center: { textAlign: "center" },
-  heavy: { fontWeight: "800", color: colors.ink },
-  inkText: { color: colors.ink },
-  subText: { color: colors.inkSub, fontWeight: "500" },
+  heavy: { fontWeight: "700", color: colors.ink },
+  subText: { color: colors.inkSub, fontWeight: "600" },
   tabular: { fontVariant: ["tabular-nums"] },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2 },
   gapTop1: { marginTop: spacing.x1 },
   gapTop2: { marginTop: spacing.x2 },
   gapTop3: { marginTop: spacing.x3 },
   gapTop5: { marginTop: spacing.x5 },
-  pressedWash: { backgroundColor: colors.canvasSoft },
+  invisible: { opacity: 0 },
+  pressedWash: { backgroundColor: colors.surfacePressed },
   scroll: { paddingBottom: spacing.x8 },
-  top: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x1 },
-  // 정보 묶음은 미색 바탕 위의 흰 카드다. 카드 안쪽 줄만 1pt border으로 나눈다
-  section: {
-    marginHorizontal: spacing.gutter,
-    marginTop: spacing.x4,
-    padding: spacing.x4,
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-  },
-  /** 카드로 묶지 않는 영역(빈 상태, 하단 보조 행동) */
+  top: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4 },
+  section: { marginHorizontal: spacing.gutter, marginTop: spacing.section },
+  sectionContent: { marginTop: spacing.x3 },
   block: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.x5 },
   emptySection: { paddingVertical: spacing.x10, alignItems: "stretch" },
-  bottom: { paddingBottom: spacing.x8 },
-  notice: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.x2,
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.base,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.x3,
-    paddingVertical: spacing.x2_5,
-    marginBottom: spacing.x4,
-  },
-  card: {
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    padding: spacing.x4,
-  },
-  coverHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.x3,
-    paddingBottom: spacing.x3,
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-  },
-  coverHeadLabels: { flex: 1, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x2 },
-  coverLogo: { width: 32, height: 32 },
-  coverBody: { paddingTop: spacing.x4 },
+  bottom: { marginTop: spacing.x5, paddingBottom: spacing.x8 },
+  card: { backgroundColor: colors.canvasSoft, borderRadius: radii.lg, padding: spacing.x5 },
+  coverHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2, minHeight: (typography.meta.lineHeight ?? 18) * 2 },
+  coverDate: { flex: 1, minWidth: 0, textAlign: "right" },
+  coverBadge: { paddingHorizontal: spacing.x3, paddingVertical: spacing.x1_5, borderRadius: radii.pill, overflow: "hidden", backgroundColor: colors.selected, color: colors.onSelected, fontWeight: "700" },
+  coverTitle: { marginTop: spacing.x4 },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
-  coverAxes: {
-    flexDirection: "row",
-    gap: spacing.x4,
-    marginTop: spacing.x4,
-    paddingTop: spacing.x3,
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-  },
-  // 위치를 말하는 한 마디와 평균 점수가 한 줄에 선다
-  coverAxisValue: { flexDirection: "row", alignItems: "baseline", gap: spacing.x1, marginTop: spacing.x1 },
-  coverActions: { marginTop: spacing.x4, gap: spacing.x1 },
-  radarWrap: { alignItems: "center", paddingVertical: spacing.x2 },
-  axisList: { borderTopColor: colors.border, borderTopWidth: 1 },
-  // 카드 안에서도 막대가 충분히 보이도록 고정 칸과 사이 간격을 조금 줄였다
-  axisRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2_5, paddingVertical: spacing.x2_5 },
-  rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
-  axisLabel: { width: 80 },
-  axisScore: { width: 30, textAlign: "right" },
-  axisLean: { width: 64, textAlign: "right" },
-  track: { flex: 1, height: 6, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, overflow: "hidden" },
-  // 차오르지 않는 축의 표시. 선 위에서 위치만 짚는다
-  trackMark: { position: "absolute", top: 0, bottom: 0, width: 14, marginLeft: -7, borderRadius: radii.pill, backgroundColor: colors.ink },
-  // 흰 면 + 1.5pt 먹선으로 두른 칸. 월별 취향 변화(아카이브)의 막대와 같은 모양이다
-  trackThick: { height: 12, backgroundColor: colors.canvas, borderWidth: line.thin, borderColor: colors.outline },
-  // 막대는 수량을 말하므로 빨강이 아니라 먹색이다. 빨강은 누르는 곳과 선택된 것에만 남긴다
-  trackFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.ink },
-  typeList: { marginTop: spacing.x4, gap: spacing.x3 },
-  typeRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3 },
-  typeName: { width: 60 },
-  typeValue: { width: 92, textAlign: "right" },
-  listRow: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.x3,
-    paddingVertical: spacing.x3,
-  },
-  thumb: {
-    width: 48,
-    height: 48,
-    borderRadius: radii.md,
-    backgroundColor: colors.canvasSoft,
-    borderColor: colors.outline,
-    borderWidth: line.base,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  coverTag: { backgroundColor: colors.paper, borderRadius: radii.pill, overflow: "hidden", paddingHorizontal: spacing.x3, paddingVertical: spacing.x1_5, fontWeight: "700", fontSize: 13, lineHeight: 18 },
+  coverFingerprint: { marginTop: spacing.x3 },
+  fingerprintRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2_5, minHeight: 28 },
+  fingerprintLabel: { width: 60, flexShrink: 1, fontWeight: "700", color: colors.ink, fontSize: 13, lineHeight: 18 },
+  fingerprintTrack: { flex: 1, minWidth: 48, height: 8, borderRadius: radii.pill, backgroundColor: colors.secondary, justifyContent: "center" },
+  fingerprintKnob: { position: "absolute", width: 18, height: 18, marginLeft: -9, borderRadius: radii.pill },
+  fingerprintValue: { minWidth: 92, maxWidth: "42%", flexShrink: 0, textAlign: "right", fontSize: 12, lineHeight: 18 },
+  rowDivider: { borderTopColor: colors.border, borderTopWidth: line.hair },
+  track: { flex: 1, height: 12, borderRadius: radii.pill, backgroundColor: colors.secondary, overflow: "hidden" },
+  trackFill: { height: "100%", borderRadius: radii.pill, borderWidth: line.base, borderColor: colors.soupEdge },
+  typeList: { marginTop: spacing.x3, gap: spacing.x3 },
+  typeRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2_5 },
+  typeName: { width: 50 },
+  typeValue: { width: 96, textAlign: "right", fontSize: 13 },
+  listRow: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x3 },
+  thumb: { width: 48, height: 48, borderRadius: radii.sm, backgroundColor: colors.canvasSoft, overflow: "hidden", alignItems: "center", justifyContent: "center" },
   thumbImage: { width: "100%", height: "100%" },
-  // 1·2·3의 글자 폭이 달라도 썸네일 줄이 맞도록 최소 폭을 준다
-  rankBadge: { alignSelf: "center", minWidth: 28, justifyContent: "center" },
-  // 2·3위 숫자. 1위 스티커와 같은 28pt 칸이라 썸네일이 한 줄로 선다
-  rankNumber: { width: 28, textAlign: "center", fontVariant: ["tabular-nums"] },
-  fallbackBox: {
-    backgroundColor: colors.canvas,
-    borderColor: colors.outline,
-    borderWidth: line.base,
-    borderRadius: radii.sm,
-  },
+  rankNumber: { width: 28, height: 28, overflow: "hidden", textAlign: "center", textAlignVertical: "center", lineHeight: 28, borderRadius: radii.pill, backgroundColor: colors.canvasSoft, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  rankSelected: { backgroundColor: colors.selected, color: colors.onSelected },
+  pinRow: { marginTop: spacing.x3, flexDirection: "row", gap: spacing.x2 },
+  pin: { flex: 1, minWidth: 0 },
+  pinPressed: { opacity: 0.8 },
+  pinImage: { position: "relative", overflow: "hidden", backgroundColor: colors.canvasSoft, borderRadius: radii.sm },
+  pinTall: { height: 230 },
+  pinShort: { height: 180 },
+  pinFallback: { alignSelf: "center", marginTop: spacing.x10 },
+  pinType: { position: "absolute", left: spacing.x2, bottom: spacing.x2, backgroundColor: colors.photoPill, borderRadius: radii.pill, paddingHorizontal: spacing.x2, paddingVertical: spacing.x1 },
+  pinRating: { position: "absolute", left: spacing.x2, top: spacing.x2, backgroundColor: colors.photoPill, borderRadius: radii.pill, paddingHorizontal: spacing.x2, paddingVertical: spacing.x1 },
+  pinOnImageText: { color: colors.onPhotoPill, fontWeight: "700" },
+  pinTitle: { marginTop: spacing.x2 },
+  pinMeta: { marginTop: spacing.x1, fontSize: 12, lineHeight: 18 },
+  pinAuthor: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, paddingHorizontal: spacing.x1, marginTop: spacing.x1 },
+  pinAuthorAvatar: { width: 22, height: 22, alignItems: "center", justifyContent: "center", borderRadius: radii.pill, backgroundColor: colors.secondary },
+  pinAuthorInitial: { color: colors.ink, fontWeight: "700" },
+  pinAuthorName: { flex: 1, color: colors.inkSub, fontWeight: "600" },
+  fallbackBox: { backgroundColor: colors.canvasSoft, borderRadius: radii.sm },
   fallbackContent: { padding: spacing.x3 },
-  loadingBody: { flexGrow: 1, justifyContent: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
-  loadingRadar: { width: LOADING_SIZE, height: LOADING_SIZE, alignSelf: "center", marginVertical: spacing.x6 },
-  // 다 정리한 순간에만 붙는 노랑 스티커. 오각형 아래 빈자리에 놓는다
-  // 아래 두 축의 점수 아래에 걸쳐 놓는다. 점수 줄이 생기면서 판 안쪽으로는 자리가 없다
-  loadingSticker: { position: "absolute", left: 0, right: 0, bottom: -spacing.x2, alignItems: "center" },
-  // 지금 보고 있는 축을 짚는 노랑 블록. 스티커와 같은 1.5pt 먹선 + 6pt 모서리
-  axisMark: {
-    position: "absolute",
-    width: AXIS_MARK,
-    height: AXIS_MARK,
-    borderRadius: radii.xs,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.yolk,
-  },
-  // Sticker는 기본이 flex-start라 가운데로 놓으려면 직접 덮어써야 한다
-  centerSelf: { alignSelf: "center" },
-  loadingStatus: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.x2, minHeight: 24 },
-  dot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
+  loadingBody: { flexGrow: 1, alignItems: "center", paddingHorizontal: spacing.gutter, paddingTop: spacing.x6, paddingBottom: spacing.x10 },
+  loadingSheet: { alignSelf: "center", width: "100%", maxWidth: 358, backgroundColor: colors.canvasSoft, borderRadius: radii.lg, padding: spacing.x5, marginTop: spacing.section },
+  loadingSheetHead: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: spacing.x1 },
+  loadingSheetNumber: { fontVariant: ["tabular-nums"] },
+  bowlGrid: { alignSelf: "center", width: "100%", maxWidth: 302, position: "relative", marginTop: spacing.x4 },
+  bowlSlot: { position: "absolute", height: 29, alignItems: "center" },
+  loadingLegendSlot: { minHeight: spacing.x4_5 + (typography.meta.lineHeight ?? 18) + spacing.x1_5 + (typography.sectionTitle.lineHeight ?? 24) },
+  loadingLegend: { flexDirection: "row", justifyContent: "space-between", gap: spacing.x1, marginTop: spacing.x4_5 },
+  loadingLegendItem: { flex: 1, gap: spacing.x1_5 },
+  loadingLegendName: { flexDirection: "row", alignItems: "center", gap: spacing.x1 },
+  loadingLegendCount: { paddingLeft: spacing.x3_5, fontVariant: ["tabular-nums"] },
+  loadingScaleNote: { textAlign: "center", marginTop: spacing.x2 },
+  loadingResultSlot: { minHeight: spacing.section + (typography.screenTitle.lineHeight ?? 28) * 2 + spacing.x1 + (typography.secondary.lineHeight ?? 20) },
+  loadingResult: { gap: spacing.x1, marginTop: spacing.section },
+  loadingStatus: { width: "100%", maxWidth: 300, flexDirection: "row", alignSelf: "center", alignItems: "center", gap: spacing.x2, minHeight: 24, marginTop: spacing.section },
+  loadingStatusText: { fontWeight: "600" },
+  dot: { width: 8, height: 8, borderRadius: radii.pill, backgroundColor: colors.textMuted },
+  dotComplete: { backgroundColor: colors.ink },
   loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingBottom: spacing.x4, paddingTop: spacing.x2 },
 })

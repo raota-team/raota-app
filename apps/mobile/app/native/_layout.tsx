@@ -1,19 +1,21 @@
-import { Tabs } from "expo-router"
-import { Home, MapPin, MessagesSquare, UserRound, type LucideIcon } from "lucide-react-native"
-import { useEffect, useState, type ComponentProps } from "react"
+import * as Haptics from "expo-haptics"
+import { Tabs, router, useFocusEffect } from "expo-router"
+import { Home, MapPin, MessagesSquare, Plus, UserRound, type LucideIcon } from "lucide-react-native"
+import { useCallback, useEffect, useState, type ComponentProps } from "react"
 import { Keyboard, Platform, Pressable, StyleSheet, View } from "react-native"
 
+import {
+  RecordMenu,
+  RECORD_BUTTON_HEIGHT,
+  RECORD_BUTTON_WIDTH,
+  RECORD_HOME_INDICATOR_OVERLAP,
+  RECORD_TAB_BAR_HEIGHT,
+  openReminderTestMenu,
+} from "@/src/components/RecordMenu"
 import { AppText } from "@/src/components/ui"
-import { colors, line, radii, spacing } from "@/src/theme"
-
-/*
- * MVP 탭: 홈 · 지도 · 라운지 · 마이 네 개. 라운지는 다른 사람들의 공개 라멘로그(공감 · 댓글 · 신고 · 숨기기)만 두고,
- * 커뮤니티 게시판과 라멘속보는 앱 MVP 범위 밖이다.
- * 탭 바는 TAB_ICONS에 있는 라우트만 그리고, 순서는 아래 Tabs.Screen 순서를 따른다. 이 폴더에 다른 화면 파일이 남아 있어도 탭으로 보이지 않는다.
- * 모양(네오 브루탈리즘 라이트): 흰 면, 위 2pt 먹선, 높이 52 + 하단 inset(홈 인디케이터 쪽 8pt는 겹쳐 쓴다),
- * 아이콘 20pt, 라벨 12pt. 활성 탭은 빨강 12pt 블록 + 2pt 먹선. 키보드가 열리면 숨긴다.
- * 높이는 시스템 탭 바(49 + 34)와 비슷하게 유지한다. 블록을 넣는다고 막대를 키우지 않는다.
- */
+import { useMonthlyReports } from "@/src/data"
+import { useRaota } from "@/src/state/RaotaStore"
+import { colors, line, pressFade, radii, spacing } from "@/src/theme"
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>["tabBar"]>>[0]
 
@@ -23,15 +25,6 @@ const TAB_ICONS: Record<string, LucideIcon> = {
   lounge: MessagesSquare,
   my: UserRound,
 }
-
-const VISIBLE_TABS = Object.keys(TAB_ICONS)
-
-const TAB_BAR_HEIGHT = 52
-/**
- * 홈 인디케이터가 있는 기기에서 inset(34pt)을 그대로 더하면 라벨 아래가 휑해 보인다.
- * 인디케이터 위쪽 여유 8pt는 탭 바가 겹쳐 써서 시스템 탭 바(49 + 34)와 비슷한 높이로 맞춘다
- */
-const HOME_INDICATOR_OVERLAP = 8
 
 function useKeyboardVisible() {
   const [visible, setVisible] = useState(false)
@@ -51,49 +44,84 @@ function useKeyboardVisible() {
 
 export function RaotaTabBar({ state, descriptors, navigation, insets }: TabBarProps) {
   const keyboardVisible = useKeyboardVisible()
+  const { currentUser } = useRaota()
+  const { data: monthly } = useMonthlyReports()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const activeKey = state.routes[state.index]?.key
+
+  useFocusEffect(useCallback(() => () => setMenuOpen(false), []))
+  useEffect(() => setMenuOpen(false), [activeKey])
+
+  const onRecordPress = () => {
+    if (!currentUser) {
+      router.push("/auth/login")
+      return
+    }
+    if (!menuOpen && Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined)
+    setMenuOpen((open) => !open)
+  }
+
+  const renderTab = (routeName: keyof typeof TAB_ICONS) => {
+    const route = state.routes.find((candidate) => candidate.name === routeName)
+    if (!route) return null
+    const { options } = descriptors[route.key]
+    const focused = activeKey === route.key
+    const label = typeof options.title === "string" ? options.title : route.name
+    const Icon = TAB_ICONS[routeName]
+    const color = focused ? colors.ink : colors.textMuted
+
+    const onPress = () => {
+      setMenuOpen(false)
+      const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true })
+      if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params)
+    }
+
+    return (
+      <Pressable
+        accessibilityLabel={`${label} 탭`}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: focused }}
+        key={route.key}
+        onLongPress={() => navigation.emit({ type: "tabLongPress", target: route.key })}
+        onPress={onPress}
+        style={({ pressed }) => [styles.tab, pressed && pressFade]}
+        testID={`tab-${route.name}`}
+      >
+        <View style={styles.iconArea}>
+          <Icon color={color} size={23} strokeWidth={focused ? 2.6 : 2} />
+        </View>
+        <AppText capScale numberOfLines={1} style={[styles.label, { color }]} variant="meta">{label}</AppText>
+      </Pressable>
+    )
+  }
+
   if (keyboardVisible) return null
 
-  const routes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name))
-
   return (
-    <View accessibilityLabel="주요 메뉴" style={[styles.bar, { paddingBottom: Math.max(0, insets.bottom - HOME_INDICATOR_OVERLAP) }]}>
+    <View accessibilityLabel="주요 메뉴" style={[styles.bar, { paddingBottom: Math.max(0, insets.bottom - RECORD_HOME_INDICATOR_OVERLAP) }]}>
       <View accessibilityRole="tablist" style={styles.row}>
-        {routes.map((route) => {
-          const { options } = descriptors[route.key]
-          const focused = state.routes[state.index]?.key === route.key
-          const label = typeof options.title === "string" ? options.title : route.name
-          const Icon = TAB_ICONS[route.name]
-          const color = focused ? colors.onDark : colors.ink
-
-          const onPress = () => {
-            const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true })
-            if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params)
-          }
-          const onLongPress = () => navigation.emit({ type: "tabLongPress", target: route.key })
-
-          return (
-            <Pressable
-              accessibilityLabel={`${label} 탭`}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: focused }}
-              key={route.key}
-              onLongPress={onLongPress}
-              onPress={onPress}
-              style={styles.tab}
-              testID={`tab-${route.name}`}
-            >
-              {({ pressed }) => (
-                <View style={[styles.block, focused && styles.blockActive, pressed && !focused && styles.blockPressed]}>
-                  <Icon color={color} size={20} strokeWidth={focused ? 2.5 : 2.2} />
-                  <AppText capScale numberOfLines={1} style={[styles.label, { color }]} variant="meta">
-                    {label}
-                  </AppText>
-                </View>
-              )}
-            </Pressable>
-          )
-        })}
+        {renderTab("index")}
+        {renderTab("map")}
+        <Pressable
+          accessibilityHint={currentUser ? undefined : "로그인하면 기록할 수 있어요"}
+          accessibilityLabel="라멘 기록하기"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: menuOpen }}
+          onLongPress={__DEV__ ? () => openReminderTestMenu(monthly.current?.recordCount ?? 0) : undefined}
+          onPress={onRecordPress}
+          style={styles.tab}
+          testID="tab-record"
+        >
+          {({ pressed }) => (
+            <View style={[styles.recordIcon, pressed && pressFade]}>
+              <Plus color={colors.white} size={24} strokeWidth={2.5} />
+            </View>
+          )}
+        </Pressable>
+        {renderTab("lounge")}
+        {renderTab("my")}
       </View>
+      <RecordMenu onClose={() => setMenuOpen(false)} visible={menuOpen} />
     </View>
   )
 }
@@ -110,31 +138,23 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  bar: {
-    backgroundColor: colors.canvas,
-    borderTopColor: colors.outline,
-    borderTopWidth: line.base,
-  },
+  bar: { backgroundColor: colors.paper, borderTopColor: colors.border, borderTopWidth: line.base },
   row: {
     flexDirection: "row",
     alignItems: "stretch",
-    height: TAB_BAR_HEIGHT,
-    paddingHorizontal: spacing.x3,
-    paddingVertical: spacing.x1,
-    gap: spacing.x2,
+    height: RECORD_TAB_BAR_HEIGHT,
+    paddingHorizontal: spacing.x2,
+    paddingTop: spacing.x1,
   },
-  tab: { flex: 1 },
-  block: {
-    flex: 1,
+  tab: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.x0_5 },
+  iconArea: { height: 36, alignItems: "center", justifyContent: "center" },
+  recordIcon: {
+    width: RECORD_BUTTON_WIDTH,
+    height: RECORD_BUTTON_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    gap: 1,
+    backgroundColor: colors.brand,
     borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.transparent,
   },
-  // 그림자는 "키"라는 표시다. 선택은 빨강 면으로만 나타낸다(그림자를 쓰면 갈 곳이 평평해진다)
-  blockActive: { backgroundColor: colors.brand, borderColor: colors.outline },
-  blockPressed: { backgroundColor: colors.canvasSoft },
-  label: { fontWeight: "800", letterSpacing: -0.15, lineHeight: 14 },
+  label: { fontWeight: "600", textAlign: "center" },
 })

@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { act, fireEvent, render, waitFor, within } from "@testing-library/react-native"
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native"
 import { useState, type ReactElement } from "react"
-import { Pressable } from "react-native"
+import { Pressable, StyleSheet } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import type { CreateRamenLogInput } from "@raota/shared"
@@ -52,7 +52,7 @@ function repository(state = createInitialPersistedState()): RaotaRepository {
   }
 }
 
-/** 데모 계정(42그릇)에 5축 점수가 있는 기록을 하나 더한다. 육수 농도 3.9 평균에 5점 → 3.90 → 3.93 */
+/** 데모 계정의 42그릇 평균을 기준으로 재방문 점수가 가장 크게 벗어나는 기록 */
 const logInput: CreateRamenLogInput = {
   shopId: 1,
   menuName: "특제 쇼유 라멘",
@@ -60,13 +60,13 @@ const logInput: CreateRamenLogInput = {
   visitedAt: "2026-09-18",
   note: "",
   tasteNotes: { broth: [], noodle: [], seasoning: [], topping: [] },
-  scores: { satisfaction: 4, brothDensity: 5, noodleFirmness: 4, topping: 3, revisit: 5 },
+  scores: { satisfaction: 4, brothDensity: 5, noodleFirmness: 4, topping: 4, revisit: 5 },
   revisit: "자주 감",
   isPublic: false,
 }
 
 /** 기록을 만든 뒤 그 logId로 완료 화면을 띄운다(작성 화면의 router.replace와 같은 순서) */
-function CreateThenComplete() {
+function CreateThenComplete({ input = logInput }: { input?: CreateRamenLogInput }) {
   const { actions } = useRaota()
   const [ready, setReady] = useState(false)
   if (ready) return <RecordCompleteScreen />
@@ -75,7 +75,7 @@ function CreateThenComplete() {
       accessibilityLabel="기록 생성"
       accessibilityRole="button"
       onPress={async () => {
-        const log = await actions.createLog(logInput)
+        const log = await actions.createLog(input)
         mockParams.logId = String(log.id)
         setReady(true)
       }}
@@ -88,18 +88,18 @@ const safeArea = {
   insets: { top: 47, right: 0, bottom: 34, left: 0 },
 }
 
-function renderScreen(element: ReactElement) {
+function renderScreen(element: ReactElement, state = createInitialPersistedState()) {
   return render(
     <SafeAreaProvider initialMetrics={safeArea}>
-      <RaotaProvider repository={repository()}>{element}</RaotaProvider>
+      <RaotaProvider repository={repository(state)}>{element}</RaotaProvider>
     </SafeAreaProvider>,
   )
 }
 
-async function renderCreatedLog() {
-  const view = await renderScreen(<CreateThenComplete />)
+async function renderCreatedLog(input = logInput, state = createInitialPersistedState()) {
+  const view = await renderScreen(<CreateThenComplete input={input} />, state)
   await fireEvent.press(view.getByRole("button", { name: "기록 생성" }))
-  await view.findByTestId("taste-delta")
+  await view.findByText("기록이 저장됐어요")
   return view
 }
 
@@ -108,41 +108,68 @@ beforeEach(() => {
 })
 
 describe("record complete screen", () => {
-  it("shows the 43rd bowl, its ticket, and an honest one-line summary", async () => {
+  it("shows a five-axis ticket and the largest honest difference for the 43rd bowl", async () => {
     const view = await renderCreatedLog()
 
     expect(view.getByLabelText("43번째 그릇")).toBeTruthy()
-    expect(view.getByText("티켓 2026-0918-43")).toBeTruthy()
-    expect(view.getByText("특제 쇼유 라멘")).toBeTruthy()
-    expect(view.getByText(/2026\.09\.18/)).toBeTruthy()
-    expect(view.getByLabelText("사진 없음")).toBeTruthy()
-    expect(
-      view.getByText("멘야준의 쇼유 한 그릇. 이번 그릇은 육수 농도 5점이 가장 높았고, 재방문 의사는 ‘자주 감’으로 남겼어요."),
-    ).toBeTruthy()
+    expect(view.getByText("기록이 저장됐어요")).toBeTruthy()
+    expect(view.getByText("멘야준 · 특제 쇼유 라멘")).toBeTruthy()
+    expect(view.getByText("· 2026.09.18 · No. 0043")).toBeTruthy()
+    expect(view.getByLabelText("전체 만족도 4점")).toBeTruthy()
+    expect(view.getByLabelText("육수 농도 5점")).toBeTruthy()
+    expect(view.getByLabelText("면 삶기 4점")).toBeTruthy()
+    expect(view.getByLabelText("토핑 4점")).toBeTruthy()
+    expect(view.getByLabelText("재방문 자주 감")).toBeTruthy()
+    expect(view.queryByText("나만 보기")).toBeNull()
+    expect(view.getByText("RAOTA 식권 · 한 그릇")).toBeTruthy()
+    expect(view.getByLabelText("완식 도장, 26.09.18")).toBeTruthy()
+    expect(view.getByText("평소보다 재방문 의사를 높게 남긴 그릇이에요.")).toBeTruthy()
+    expect(StyleSheet.flatten(view.getByTestId("record-complete-meta").props.style).flexWrap).toBe("wrap")
+    expect(view.getByText("자주").props.numberOfLines).toBeUndefined()
+    expect(StyleSheet.flatten(view.getByText("평소보다 재방문 의사를 높게 남긴 그릇이에요.").props.style).marginTop).toBe(16)
+    expect(view.queryByText("내 취향 변화")).toBeNull()
   })
 
-  it("shows the five-axis change with an arrow and a two-decimal delta", async () => {
-    const view = await renderCreatedLog()
-    const section = view.getByTestId("taste-delta")
+  it("shows the log photo on the ticket when one was saved", async () => {
+    const view = await renderCreatedLog({ ...logInput, imageUrl: "https://example.com/ramen.jpg", photos: ["https://example.com/ramen.jpg"] })
 
-    expect(within(section).getByText("42그릇 → 43그릇 평균")).toBeTruthy()
-    // 육수 농도: 42그릇 평균 3.9에 5점 → 반올림 전 3.9256 → "3.90 → 3.93", +0.03
-    const broth = within(section).getByLabelText("육수 농도 이번 그릇 5점, 평균 3.90 → 3.93, +0.03")
-    expect(within(broth).getByText(/3\.90 →/)).toBeTruthy()
-    expect(within(broth).getByText("+0.03")).toBeTruthy()
-    // 면 삶기: 평균 4.0에 4점 → 변화 없음
-    expect(within(section).getByText("변화 없음")).toBeTruthy()
-    expect(within(section).getAllByText(/→/).length).toBeGreaterThanOrEqual(5)
-    expect(within(section).getAllByText(/^(?:[+-]\d\.\d{2}|변화 없음)$/)).toHaveLength(5)
+    expect(view.getByLabelText("특제 쇼유 라멘 사진")).toBeTruthy()
+    expect(view.queryByText("RAOTA 식권 · 한 그릇")).toBeNull()
   })
 
-  it("hides the change section when the log has no five-axis scores", async () => {
-    // 데모 계정의 기존 기록(id 1)은 점수 없이 남은 옛 기록이다
+  it("puts the saved memo before a derived score summary", async () => {
+    const view = await renderCreatedLog({ ...logInput, note: "  국물 향이 오래 남았어요.  ", isPublic: true })
+
+    expect(view.getByText("국물 향이 오래 남았어요.")).toBeTruthy()
+    expect(view.queryByText("평소보다 재방문 의사를 높게 남긴 그릇이에요.")).toBeNull()
+    expect(view.queryByText("공개")).toBeNull()
+  })
+
+  it("describes the broth direction when broth differs most from previous bowls", async () => {
+    const view = await renderCreatedLog({ ...logInput, revisit: "가끔 생각남" })
+
+    expect(view.getByLabelText("재방문 가끔 생각남")).toBeTruthy()
+    expect(view.getByText("평소보다 육수를 진하게 느낀 그릇이에요.")).toBeTruthy()
+  })
+
+  it("describes the first scored bowl without claiming a previous average", async () => {
+    const state = createInitialPersistedState()
+    state.user = { ...state.user!, id: "user-new", visitedCount: 0 }
+    state.logs = []
+    const view = await renderCreatedLog(logInput, state)
+
+    expect(view.getByLabelText("1번째 그릇")).toBeTruthy()
+    expect(view.getByText("첫 기록이에요.")).toBeTruthy()
+  })
+
+  it("shows the saved note for a legacy log without scores", async () => {
+    const state = createInitialPersistedState()
+    state.logs[0].scores = undefined
     mockParams.logId = "1"
-    const view = await renderScreen(<RecordCompleteScreen />)
+    const view = await renderScreen(<RecordCompleteScreen />, state)
 
-    expect(await view.findByText("특제 쇼유 라멘")).toBeTruthy()
-    expect(view.queryByTestId("taste-delta")).toBeNull()
+    expect(await view.findByText("멘야준 · 특제 쇼유 라멘")).toBeTruthy()
+    expect(view.getByText(state.logs[0].note)).toBeTruthy()
     expect(view.queryByText("내 취향 변화")).toBeNull()
   })
 
@@ -154,19 +181,16 @@ describe("record complete screen", () => {
     expect(view.getByRole("button", { name: "홈으로" })).toBeTruthy()
   })
 
-  it("shows both CTAs immediately and routes them with replace", async () => {
+  it("routes both fixed actions", async () => {
     const { router } = jest.requireMock("expo-router") as { router: { replace: jest.Mock } }
+    router.replace.mockClear()
     const view = await renderCreatedLog()
 
-    const taste = view.getByRole("button", { name: "취향 리포트 보기" })
-    const home = view.getByRole("button", { name: "홈으로" })
-    expect(taste).toBeTruthy()
-    expect(home).toBeTruthy()
-
-    await fireEvent.press(taste)
-    expect(router.replace).toHaveBeenCalledWith("/taste")
-    await fireEvent.press(home)
-    expect(router.replace).toHaveBeenCalledWith("/native")
+    await fireEvent.press(view.getByRole("button", { name: "취향 리포트 보기" }))
+    expect(router.replace).toHaveBeenLastCalledWith("/taste")
+    await fireEvent.press(view.getByRole("button", { name: "홈으로" }))
+    expect(router.replace).toHaveBeenCalledTimes(2)
+    expect(router.replace).toHaveBeenLastCalledWith("/native")
   })
 })
 

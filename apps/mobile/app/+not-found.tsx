@@ -11,7 +11,6 @@ export default function NotFoundScreen() {
         options={{
           title: "페이지 없음",
           headerShown: true,
-          // 스택 헤더는 화면 바탕과 이어지는 미색 면
           headerStyle: { backgroundColor: colors.paper },
           headerTintColor: colors.ink,
         }}
@@ -34,7 +33,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x7,
     backgroundColor: colors.paper,
   },
-  code: { ...typography.counter, color: colors.brand },
+  code: { ...typography.counter, color: colors.ink },
   title: { ...typography.headline, marginTop: spacing.x2, color: colors.ink, textAlign: "center" },
   description: { ...typography.body, marginTop: spacing.x2, color: colors.inkSub },
   link: { marginTop: spacing.x7 },

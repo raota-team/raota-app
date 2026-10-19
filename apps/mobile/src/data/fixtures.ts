@@ -20,7 +20,7 @@ const RAMEN_PHOTO_3 =
 
 /**
  * 매장 원장은 웹과 같은 packages/shared의 SHOP_CATALOG를 쓴다.
- * 확인되지 않은 전화·링크·리뷰·영업시간은 원장에서 비어 있고, 화면은 빈 상태를 보여준다.
+ * 지금은 서버가 없어 확인된 원장(SHOP_LEDGER)에 화면 확인용 더미 상세가 덧입혀져 있다(shops.ts 주석 참고).
  */
 export const SHOPS: Shop[] = SHOP_CATALOG
 

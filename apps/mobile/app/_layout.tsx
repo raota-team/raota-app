@@ -11,7 +11,7 @@ import { track } from "@/src/analytics"
 import { Toast } from "@/src/components/ui"
 import { cancelRecordReminders, configureReminderPresentation, deepLinkToPath } from "@/src/notifications"
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
-import { colors, fonts } from "@/src/theme"
+import { colors, spacing, typography } from "@/src/theme"
 
 ;(globalThis as typeof globalThis & { Buffer?: typeof Buffer }).Buffer ??=
   Buffer
@@ -84,7 +84,7 @@ export default function RootLayout() {
   useAppOpenTracking()
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.paper }}>
+    <View style={styles.root}>
       <RaotaProvider>
         <HydratedNavigation />
       </RaotaProvider>
@@ -108,11 +108,11 @@ function HydratedNavigation() {
         accessibilityLabel="RAOTA 데이터 불러오는 중"
         style={styles.loading}
       >
-        <StatusBar style="dark" />
+        <StatusBar style="auto" />
         <Text style={styles.wordmark}>
           RAOTA<Text style={styles.dot}>.</Text>
         </Text>
-        <ActivityIndicator color={colors.brand} size="small" />
+        <ActivityIndicator color={colors.ink} size="small" />
       </View>
     )
   }
@@ -129,12 +129,12 @@ function HydratedNavigation() {
 
   return (
     <View style={styles.navigationRoot}>
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       <ReminderDeepLinks />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: colors.paper },
+          contentStyle: { backgroundColor: colors.canvas },
           animation: "slide_from_right",
           gestureEnabled: true,
         }}
@@ -157,20 +157,16 @@ function HydratedNavigation() {
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.canvas },
   navigationRoot: { flex: 1 },
   storageToast: { bottom: 92, zIndex: 100 },
   loading: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 18,
-    backgroundColor: colors.paper,
+    gap: spacing.x4,
+    backgroundColor: colors.canvas,
   },
-  wordmark: {
-    color: colors.ink,
-    fontFamily: fonts.display,
-    fontSize: 36,
-    fontWeight: "900",
-  },
+  wordmark: { ...typography.headline, color: colors.ink },
   dot: { color: colors.brand },
 })

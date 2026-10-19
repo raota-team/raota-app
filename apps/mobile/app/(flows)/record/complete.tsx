@@ -1,20 +1,22 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
+import { SearchX } from "lucide-react-native"
 import { Image } from "expo-image"
-import { Check, ImageOff, SearchX } from "lucide-react-native"
 import { ScrollView, StyleSheet, View } from "react-native"
 import Animated, {
   Easing,
+  interpolate,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withDelay,
+  withSequence,
   withTiming,
 } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { MONTHLY_REPORT_TARGET, TASTE_AXES, scoresFromLog, type RamenLog, type TasteProfile, type TasteScores } from "@raota/shared"
+import { MONTHLY_REPORT_TARGET, TASTE_AXES, scoresFromLog, type RamenLog, type TasteAxisKey, type TasteProfile, type TasteScores } from "@raota/shared"
 import { useBowlCount, useLog, useMonthlyReports, useTasteProfile } from "@/src/data"
 import {
   AppText,
@@ -22,23 +24,28 @@ import {
   ConfirmDialog,
   EmptyState,
   LoadingState,
-  RamenTypeTag,
-  SectionHeader,
   StickyActionBar,
-  Tag,
+  TicketCut,
 } from "@/src/components/ui"
 import { useRecordReminderPrompt } from "@/src/notifications"
 import { colors, line, radii, spacing } from "@/src/theme"
 
 /*
- * 기록 완료. 웹 RecordCompleteScreen과 같은 구성이다.
- * 인장 → "N번째 그릇" → 이번 그릇 티켓 → 내 취향 변화(5축) → 이번 그릇 한 줄 → 하단 고정 CTA.
- * 작성 화면으로 되돌아가지 않는 것은 record/new가 replace로 이 화면에 오기 때문이고(스택에 남지 않는다),
- * 그래서 스와이프 뒤로가기를 따로 막지 않는다. 제스처의 목적지는 "홈으로"와 같다.
+ * 저장한 기록을 사진과 다섯 평가가 있는 식권으로 보여 준다.
+ * 작성 화면은 replace로 이 화면에 오므로 뒤로 스와이프해도 작성 중이던 기록으로 돌아가지 않는다.
  */
 
-const STAMP_DURATION = 250
-const REVEAL_DURATION = 200
+const STAMP_DURATION = 620
+/** 화면이 밀려 들어오는 동안 찍히면 아무도 못 본다. iOS 스택 전환(약 350ms)이 끝난 뒤에 찍는다 */
+const STAMP_DELAY = 420
+const STAMP_SIZE = 92
+const scoreLabels = {
+  satisfaction: "만족도",
+  brothDensity: "육수",
+  noodleFirmness: "면",
+  topping: "토핑",
+  revisit: "재방문",
+} as const
 
 /** 'YYYY-MM-DD' 또는 'YYYY. MM. DD' → 연·월·일. 형식이 다르면 null */
 function dateParts(value: string): { year: string; month: string; day: string } | null {
@@ -52,28 +59,44 @@ function formatVisitDate(value: string): string {
   return parts ? `${parts.year}.${parts.month}.${parts.day}` : value
 }
 
-/** 방문일과 누적 그릇 수로 티켓 번호를 만든다. 예: 2026-0918-43 */
-function ticketNumber(visitedAt: string, count: number): string {
-  const parts = dateParts(visitedAt)
-  return parts ? `${parts.year}-${parts.month}${parts.day}-${count}` : `${count}`
+function formatStampDate(value: string): string {
+  const parts = dateParts(value)
+  return parts ? `${parts.year.slice(-2)}.${parts.month}.${parts.day}` : formatVisitDate(value)
 }
 
-const formatDelta = (delta: number) => (delta > 0 ? `+${delta.toFixed(2)}` : delta.toFixed(2))
 
-/** 이번 그릇에서 가장 높은 축(재방문 제외). 동점이면 앞 순서를 고른다 */
-function topAxisOf(scores: TasteScores) {
-  return TASTE_AXES.filter((axis) => axis.key !== "revisit").reduce((best, axis) =>
-    scores[axis.key] > scores[best.key] ? axis : best,
-  )
-}
+/** 메모가 없을 때만, 이번 점수와 이전 평균의 가장 큰 차이를 사실 그대로 말한다 */
+function bowlComment(log: RamenLog, scores: TasteScores | null, before: TasteProfile | null): string {
+  const note = log.note.trim()
+  if (note) return note
+  if (!scores || !before) return "이 그릇도 기록으로 남겼어요."
+  if (before.count === 0) return "첫 기록이에요."
 
-/** 기록에서 파생한 정직한 한 문장. 웹 RecordCompleteScreen의 comment와 같다 */
-function bowlComment(log: RamenLog, recordCount: number): string {
-  const scores = scoresFromLog(log)
-  const bowl = `${log.shop.name}의 ${log.ramenType} 한 그릇`
-  if (!scores) return `${bowl}이 ${recordCount}번째 기록으로 남았어요.`
-  const top = topAxisOf(scores)
-  return `${bowl}. 이번 그릇은 ${top.label} ${scores[top.key]}점이 가장 높았고, 재방문 의사는 ‘${log.revisit}’으로 남겼어요.`
+  const average = before.exact ?? before.scores
+  let largestAxis: TasteAxisKey = "satisfaction"
+  let largestDifference = 0
+  for (const axis of TASTE_AXES) {
+    const difference = Math.abs(scores[axis.key] - average[axis.key])
+    if (difference > largestDifference) {
+      largestAxis = axis.key
+      largestDifference = difference
+    }
+  }
+  if (largestDifference === 0) return "평소와 비슷한 점수로 남긴 그릇이에요."
+
+  const higher = scores[largestAxis] > average[largestAxis]
+  switch (largestAxis) {
+    case "satisfaction":
+      return `평소보다 전체 만족도를 ${higher ? "높게" : "낮게"} 남긴 그릇이에요.`
+    case "brothDensity":
+      return `평소보다 육수를 ${higher ? "진하게" : "맑게"} 느낀 그릇이에요.`
+    case "noodleFirmness":
+      return `평소보다 면을 ${higher ? "단단하게" : "부드럽게"} 느낀 그릇이에요.`
+    case "topping":
+      return `평소보다 토핑 점수를 ${higher ? "높게" : "낮게"} 남긴 그릇이에요.`
+    case "revisit":
+      return `평소보다 재방문 의사를 ${higher ? "높게" : "낮게"} 남긴 그릇이에요.`
+  }
 }
 
 export default function RecordCompleteScreen() {
@@ -89,39 +112,33 @@ export default function RecordCompleteScreen() {
   const reduceMotion = useReducedMotion()
 
   const scores = useMemo(() => (log ? scoresFromLog(log) : null), [log])
-  const comment = useMemo(() => (log ? bowlComment(log, bowlCount) : null), [bowlCount, log])
+  const comment = useMemo(() => (log ? bowlComment(log, scores, taste.before) : null), [log, scores, taste.before])
+  const stampedLogId = log?.id
 
-  // 카운트업: 직전 숫자에서 시작해 짧게 올라간다. Reduce Motion이면 바로 최종 숫자
-  const [counted, setCounted] = useState(reduceMotion)
-  useEffect(() => {
-    if (reduceMotion) {
-      setCounted(true)
-      return
-    }
-    const timer = setTimeout(() => setCounted(true), STAMP_DURATION)
-    return () => clearTimeout(timer)
-  }, [reduceMotion])
-
-  // 인장이 찍히는 연출과 본문 등장
+  // 저장된 그릇이 나타날 때 도장을 한 번만 누른다. 동작 줄이기에서는 찍힌 상태부터 보여준다
   const stamp = useSharedValue(reduceMotion ? 1 : 0)
-  const reveal = useSharedValue(reduceMotion ? 1 : 0)
   useEffect(() => {
+    if (stampedLogId == null) return
     if (reduceMotion) {
       stamp.value = 1
-      reveal.value = 1
       return
     }
-    stamp.value = withTiming(1, { duration: STAMP_DURATION, easing: Easing.out(Easing.cubic) })
-    reveal.value = withDelay(STAMP_DURATION, withTiming(1, { duration: REVEAL_DURATION, easing: Easing.out(Easing.quad) }))
-  }, [reduceMotion, reveal, stamp])
+    stamp.value = 0
+    stamp.value = withDelay(
+      STAMP_DELAY,
+      withSequence(
+        withTiming(0.55, { duration: STAMP_DURATION * 0.55, easing: Easing.out(Easing.cubic) }),
+        withTiming(1, { duration: STAMP_DURATION * 0.45, easing: Easing.out(Easing.quad) }),
+      ),
+    )
+  }, [stampedLogId, reduceMotion, stamp])
 
   const stampStyle = useAnimatedStyle(() => ({
-    opacity: stamp.value,
-    transform: [{ scale: 1.6 - 0.6 * stamp.value }],
-  }))
-  const revealStyle = useAnimatedStyle(() => ({
-    opacity: reveal.value,
-    transform: [{ translateY: 8 * (1 - reveal.value) }],
+    opacity: interpolate(stamp.value, [0, 0.55, 1], [0, 1, 1]),
+    transform: [
+      { rotate: `${interpolate(stamp.value, [0, 0.55, 1], [-24, -10, -10])}deg` },
+      { scale: interpolate(stamp.value, [0, 0.55, 1], [1.9, 0.94, 1]) },
+    ],
   }))
 
   const goHome = () => router.replace("/native")
@@ -130,7 +147,7 @@ export default function RecordCompleteScreen() {
   if (!log) {
     return (
       <View style={styles.root}>
-        <StatusBar style="dark" />
+        <StatusBar style="auto" />
         <View style={[styles.stateArea, { paddingTop: insets.top }]}>
           {isLoading ? (
             <LoadingState label="기록을 불러오는 중…" />
@@ -148,97 +165,97 @@ export default function RecordCompleteScreen() {
     )
   }
 
-  const shownCount = counted ? bowlCount : Math.max(bowlCount - 1, 0)
-  const shopLine = [log.shop.name, log.shop.branch].filter(Boolean).join(" · ")
+  const stampedAt = formatStampDate(log.visitedAt)
+  const photo = log.photos?.[0] || log.imageUrl
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style="auto" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         style={styles.flex}
       >
-        {/* 위로 당겨도(바운스) 흰 면 대신 차콜이 이어지게 한다 */}
-        <View pointerEvents="none" style={styles.overscrollCap} />
-        {/* 상단 인장 배너 */}
-        <View style={[styles.banner, { paddingTop: insets.top + spacing.x6 }]}>
-          <Animated.View accessible={false} style={[styles.stamp, stampStyle]}>
-            <Check color={colors.onDark} size={28} strokeWidth={3} />
-          </Animated.View>
-          <AppText style={styles.bold} tone="onDarkMuted" variant="secondary">
-            기록이 저장됐어요
+        <View style={[styles.intro, { paddingTop: insets.top + spacing.x6 }]}>
+          <AppText tone="sub" variant="bodyStrong">기록이 저장됐어요</AppText>
+          <AppText accessibilityLabel={`${bowlCount}번째 그릇`} accessibilityRole="header" style={styles.counter} variant="counter">
+            {bowlCount}번째 그릇
           </AppText>
-          <View accessibilityLabel={`${bowlCount}번째 그릇`} accessibilityRole="header" accessible style={styles.counterRow}>
-            <AppText tone="onDark" variant="counter">
-              {shownCount}
-            </AppText>
-            <AppText style={styles.bold} tone="onDarkMuted" variant="sectionTitle">
-              번째 그릇
-            </AppText>
-          </View>
         </View>
 
-        <Animated.View style={[styles.body, revealStyle]}>
-          {/* 이번 그릇 티켓 */}
-          {/* 안쪽 글씨(티켓 번호·메뉴·가게·날짜)가 스스로 읽힌다. 묶음 라벨을 주면 그 내용이 가려진다 */}
+        <View style={styles.body}>
           <View style={styles.ticket}>
-            <View style={styles.ticketHead}>
-              <AppText capScale tone="muted" variant="meta">
-                티켓 {ticketNumber(log.visitedAt, bowlCount)}
-              </AppText>
-              <AppText capScale variant="meta">
-                {log.isPublic ? "공개 기록" : "나만 보기"}
-              </AppText>
-            </View>
-            <View style={styles.ticketBody}>
-              <View style={styles.photo}>
-                {log.imageUrl ? (
-                  <Image
-                    accessibilityLabel={log.menuName}
-                    accessible
-                    contentFit="cover"
-                    source={{ uri: log.imageUrl }}
-                    style={styles.photoImage}
-                    transition={150}
-                  />
-                ) : (
-                  <ImageOff accessibilityLabel="사진 없음" color={colors.textMuted} size={20} />
-                )}
-              </View>
-              <View style={styles.flex}>
-                <View style={styles.tagRow}>
-                  <RamenTypeTag type={log.ramenType} />
-                  <Tag label={log.revisit} />
+            <View style={styles.ticketHeader}>
+              {photo ? (
+                <Image accessibilityLabel={`${log.menuName} 사진`} contentFit="cover" source={{ uri: photo }} style={styles.ticketPhoto} />
+              ) : (
+                <View style={styles.ticketPhotoFallback}>
+                  <AppText tone="muted" variant="meta">RAOTA 식권 · 한 그릇</AppText>
                 </View>
-                <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.menu} variant="cardTitle">
-                  {log.menuName}
-                </AppText>
-                {/* 좁은 폭(320)에서도 방문일이 잘리지 않게 두 줄까지 허용한다 */}
-                <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} tone="muted" variant="secondary">
-                  {shopLine} · {formatVisitDate(log.visitedAt)}
+              )}
+              <Animated.View
+                accessibilityLabel={`완식 도장, ${stampedAt}`}
+                accessibilityRole="image"
+                accessible
+                pointerEvents="none"
+                style={[styles.stamp, stampStyle]}
+              >
+                <View pointerEvents="none" style={styles.stampFill} />
+                <View style={styles.stampInner}>
+                  <AppText style={styles.stampTitle} tone="brand" variant="sectionTitle">완식</AppText>
+                  <AppText capScale maxFontSizeMultiplier={1} style={styles.stampDate} tone="brand" variant="meta">
+                    {stampedAt}
+                  </AppText>
+                </View>
+              </Animated.View>
+            </View>
+            <View style={styles.ticketMain}>
+              <AppText lineBreakStrategyIOS="hangul-word" style={styles.menu} variant="cardTitle">
+                {log.shop.name} · {log.menuName}
+              </AppText>
+              <View style={styles.shopMeta} testID="record-complete-meta">
+                <AppText accessible accessibilityLabel={`라멘 종류 ${log.ramenType}`} accessibilityRole="text" capScale tone="muted" variant="meta">{log.ramenType}</AppText>
+                <AppText accessibilityLabel={`${formatVisitDate(log.visitedAt)} 방문, ${bowlCount}번째 그릇`} capScale style={styles.shopMetaText} tone="muted" variant="meta">
+                  {`· ${formatVisitDate(log.visitedAt)} · No. ${String(bowlCount).padStart(4, "0")}`}
                 </AppText>
               </View>
             </View>
+            <TicketCut />
+            {scores ? (
+              <View style={styles.scoreRow}>
+                {TASTE_AXES.map((axis) => {
+                  const value = axis.key === "revisit" ? log.revisit : scores[axis.key]
+                  return (
+                    <View
+                      accessibilityLabel={`${axis.key === "revisit" ? "재방문" : axis.label} ${axis.key === "revisit" ? value : `${value}점`}`}
+                      accessible
+                      key={axis.key}
+                      style={styles.scoreColumn}
+                    >
+                      <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.scoreValue} variant="cardTitle">
+                        {axis.key === "revisit" ? (scores.revisit === 5 ? "자주" : scores.revisit === 3 ? "가끔" : "한 번") : value}
+                      </AppText>
+                      <AppText capScale lineBreakStrategyIOS="hangul-word" tone="muted" variant="meta">{scoreLabels[axis.key]}</AppText>
+                    </View>
+                  )
+                })}
+              </View>
+            ) : null}
           </View>
-
-          {/* 내 취향 변화 */}
-          {scores && taste.before && taste.delta ? (
-            <TasteDeltaSection after={taste.profile} before={taste.before} delta={taste.delta} scores={scores} />
-          ) : null}
-
-          {/* 이번 그릇 한 줄 */}
-          {comment ? (
-            <View accessibilityLabel={`이번 그릇 정리. ${comment}`} accessibilityRole="summary" accessible style={styles.comment}>
-              <AppText lineBreakStrategyIOS="hangul-word" variant="body">
-                {comment}
-              </AppText>
-            </View>
-          ) : null}
-        </Animated.View>
+          <AppText
+            accessibilityLabel={`이번 그릇 정리. ${comment}`}
+            accessibilityRole="summary"
+            lineBreakStrategyIOS="hangul-word"
+            style={styles.comment}
+            tone="sub"
+            variant="secondary"
+          >
+            {comment}
+          </AppText>
+        </View>
       </ScrollView>
 
-      {/* 상태바 글씨는 흰색 고정이다. 배너는 스크롤과 함께 밀려 올라가므로 뒤를 진녹으로 덮어 둔다 */}
+      {/* 상태 표시줄 뒤도 화면 바탕과 같은 색으로 잇는다. */}
       <View pointerEvents="none" style={[styles.statusCap, { height: insets.top }]} />
 
       <ConfirmDialog
@@ -253,87 +270,12 @@ export default function RecordCompleteScreen() {
       />
 
       {/* 하단 고정 CTA. 처음부터 보인다 */}
-      <StickyActionBar>
+      <StickyActionBar style={styles.footer}>
         <View style={styles.actions}>
-          <Button onPress={goTaste} size="medium" title="취향 리포트 보기" variant="primary" />
-          <Button onPress={goHome} size="small" title="홈으로" variant="outline" />
+          <Button onPress={goTaste} size="large" textStyle={styles.actionText} title="취향 리포트 보기" variant="primary" />
+          <Button onPress={goHome} size="large" textStyle={styles.actionText} title="홈으로" variant="ghost" />
         </View>
       </StickyActionBar>
-    </View>
-  )
-}
-
-interface TasteDeltaSectionProps {
-  scores: TasteScores
-  before: TasteProfile
-  after: TasteProfile
-  delta: TasteScores
-}
-
-function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionProps) {
-  const isFirstBowl = before.count === 0
-  const beforeExact = before.exact ?? before.scores
-  const afterExact = after.exact ?? after.scores
-  const nothingMoved = !isFirstBowl && TASTE_AXES.every((axis) => delta[axis.key] === 0)
-
-  // 축마다 라벨을 합성해 둔 행이 읽힌다(아래 deltaRow). 묶음 라벨을 주면 그 행들이 가려진다
-  return (
-    <View style={styles.deltaSection} testID="taste-delta">
-      <SectionHeader
-        meta={isFirstBowl ? "첫 그릇" : `${before.count}그릇 → ${after.count}그릇 평균`}
-        metaTone="sub"
-        style={styles.deltaHead}
-        title="내 취향 변화"
-      />
-      {TASTE_AXES.map((axis, index) => {
-        const change = delta[axis.key]
-        const beforeValue = beforeExact[axis.key]
-        const afterValue = afterExact[axis.key]
-        const changeLabel = isFirstBowl ? "첫 기록" : change === 0 ? "변화 없음" : formatDelta(change)
-        const averageLabel = isFirstBowl ? afterValue.toFixed(1) : `${beforeValue.toFixed(2)} → ${afterValue.toFixed(2)}`
-        return (
-          <View
-            accessibilityLabel={`${axis.label} 이번 그릇 ${scores[axis.key]}점, 평균 ${averageLabel}, ${changeLabel}`}
-            accessible
-            key={axis.key}
-            style={[styles.deltaRow, index > 0 && styles.deltaRowDivider]}
-          >
-            <View style={styles.flex}>
-              <AppText variant="bodyStrong">{axis.label}</AppText>
-              <AppText tone="sub" variant="meta">
-                이번 그릇 {scores[axis.key]}점
-              </AppText>
-            </View>
-            <View style={styles.deltaValues}>
-              {isFirstBowl ? (
-                <AppText style={styles.tabular} variant="bodyStrong">
-                  {afterValue.toFixed(1)}
-                </AppText>
-              ) : (
-                <AppText style={styles.tabular} variant="bodyStrong">
-                  <AppText style={styles.tabular} tone="sub" variant="body">
-                    {beforeValue.toFixed(2)} →{" "}
-                  </AppText>
-                  {afterValue.toFixed(2)}
-                </AppText>
-              )}
-              <AppText
-                capScale
-                style={[styles.tabular, styles.bold]}
-                tone={isFirstBowl || change === 0 ? "sub" : "ink"}
-                variant="meta"
-              >
-                {changeLabel}
-              </AppText>
-            </View>
-          </View>
-        )
-      })}
-      {nothingMoved ? (
-        <AppText style={styles.deltaNote} tone="sub" variant="meta">
-          평소 평균과 같은 점수를 줘서 {before.count}그릇 평균이 그대로예요.
-        </AppText>
-      ) : null}
     </View>
   )
 }
@@ -341,98 +283,65 @@ function TasteDeltaSection({ scores, before, after, delta }: TasteDeltaSectionPr
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
-  bold: { fontWeight: "700" },
-  tabular: { fontVariant: ["tabular-nums"], textAlign: "right" },
   stateArea: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.gutter },
-  scrollContent: { paddingBottom: spacing.x6 },
-  overscrollCap: { position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: colors.deep },
-  statusCap: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: colors.deep },
-  banner: {
-    backgroundColor: colors.deep,
+  scrollContent: { paddingBottom: spacing.x8 },
+  statusCap: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: colors.paper },
+  intro: { alignItems: "center", paddingHorizontal: spacing.gutter, paddingBottom: spacing.section },
+  counter: { marginTop: spacing.x1, textAlign: "center" },
+  body: { paddingHorizontal: spacing.x5 },
+  ticket: { borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
+  ticketHeader: { height: 190 },
+  ticketPhoto: { width: "100%", height: "100%", borderTopLeftRadius: radii.sm, borderTopRightRadius: radii.sm },
+  ticketPhotoFallback: {
+    height: "100%",
     alignItems: "center",
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: spacing.x7,
+    justifyContent: "center",
+    borderTopLeftRadius: radii.sm,
+    borderTopRightRadius: radii.sm,
+    backgroundColor: colors.canvasSoft,
   },
-  // 진녹 면 위라 흰 도장이다. 빨강은 이 면에서 2.40:1이고 DESIGN.md가 금지한다(흰색 11.55:1)
+  ticketMain: { paddingHorizontal: spacing.x4, paddingTop: spacing.x4, paddingBottom: spacing.x4 },
+  menu: { fontWeight: "700" },
+  shopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
+  shopMetaText: { minWidth: 0 },
   stamp: {
-    width: 56,
-    height: 56,
+    position: "absolute",
+    right: spacing.x2_5,
+    top: spacing.x2,
+    width: STAMP_SIZE,
+    height: STAMP_SIZE,
+    borderRadius: radii.pill,
+    borderWidth: 3,
+    borderColor: colors.brand,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stampFill: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: radii.pill,
+    backgroundColor: colors.white,
+    opacity: 0.86,
+  },
+  stampInner: {
+    width: STAMP_SIZE - spacing.x2_5,
+    height: STAMP_SIZE - spacing.x2_5,
     borderRadius: radii.pill,
     borderWidth: line.base,
-    borderColor: colors.onDark,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.x3,
-  },
-  counterRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "center",
-    gap: spacing.x2,
-    marginTop: spacing.x1,
-  },
-  body: {
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.x4,
-    gap: spacing.x4,
-  },
-  // 티켓: 흰 카드 + 2pt 먹선. 절취선은 점선 대신 1pt 실선 구분선
-  ticket: {
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    borderRadius: radii.sm,
-    overflow: "hidden",
-    backgroundColor: colors.canvas,
-  },
-  ticketHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.x4,
-    paddingVertical: spacing.x2_5,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  ticketBody: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.x3_5,
-    padding: spacing.x4,
-  },
-  photo: {
-    width: 64,
-    height: 64,
-    borderRadius: radii.sm,
-    overflow: "hidden",
-    backgroundColor: colors.canvasSoft,
-    borderWidth: line.base,
-    borderColor: colors.outline,
+    borderColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
-  photoImage: { width: "100%", height: "100%" },
-  tagRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x1_5 },
-  menu: { marginTop: spacing.x1 },
-  deltaSection: { gap: 0 },
-  deltaHead: { paddingBottom: spacing.x2, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.x1 },
-  deltaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.x3,
-    paddingVertical: spacing.x2_5,
-  },
-  deltaRowDivider: { borderTopWidth: 1, borderTopColor: colors.border },
-  deltaValues: { alignItems: "flex-end", flexShrink: 0 },
-  deltaNote: { paddingTop: spacing.x2 },
-  // 회색 면 대신 흰 카드 + 2pt 먹선
-  comment: {
-    backgroundColor: colors.canvas,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    paddingHorizontal: spacing.x4,
-    paddingVertical: spacing.x3_5,
-  },
+  stampTitle: { fontSize: 25, lineHeight: 28, fontWeight: "700", letterSpacing: 0.5 },
+  stampDate: { fontVariant: ["tabular-nums"] },
+  scoreRow: { flexDirection: "row", paddingHorizontal: spacing.x3, paddingTop: spacing.x4, paddingBottom: spacing.x4 },
+  scoreColumn: { flex: 1, minWidth: 0, alignItems: "center", gap: spacing.x0_5 },
+  scoreValue: { fontWeight: "700", fontVariant: ["tabular-nums"], fontSize: 20, lineHeight: 24 },
+  comment: { marginTop: spacing.x4, textAlign: "center", fontSize: 14, lineHeight: 20 },
+  footer: { borderTopWidth: 0 },
   actions: { flex: 1, gap: spacing.x2 },
+  actionText: { fontSize: 16, lineHeight: 20 },
 })

@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 import { LEGAL_DOCUMENTS } from "@raota/shared"
 
 import { LegalBlockView } from "./LegalBlocks"
-import { spacing } from "../theme"
+import { colors, line, spacing } from "../theme"
 import { AppText, BottomSheet, Button } from "./ui"
 
 export type PolicyType = "terms" | "privacy"
@@ -50,8 +50,8 @@ export default function PolicySheet({ type, onClose, title, footer }: PolicyShee
           <AppText tone="muted" variant="meta">
             시행일 {policy.effectiveDate}
           </AppText>
-          {policy.sections.map((section) => (
-            <View key={section.heading} style={styles.section}>
+          {policy.sections.map((section, index) => (
+            <View key={section.heading} style={[styles.section, index > 0 && styles.sectionDivider]}>
               <AppText accessibilityRole="header" variant="bodyStrong">
                 {section.heading}
               </AppText>
@@ -67,6 +67,7 @@ export default function PolicySheet({ type, onClose, title, footer }: PolicyShee
 }
 
 const styles = StyleSheet.create({
-  body: { gap: spacing.x5, paddingBottom: spacing.x1 },
-  section: { gap: spacing.x1_5 },
+  body: { gap: spacing.x5, paddingBottom: spacing.x1, backgroundColor: colors.paper },
+  section: { gap: spacing.x2 },
+  sectionDivider: { borderTopWidth: line.hair, borderTopColor: colors.border, paddingTop: spacing.x5 },
 })

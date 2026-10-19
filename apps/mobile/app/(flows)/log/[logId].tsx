@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router"
 import { LogIn, MoreHorizontal, Soup } from "lucide-react-native"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { FlatList, Keyboard, Platform, StyleSheet, TextInput, View, type ListRenderItem } from "react-native"
+import { FlatList, Keyboard, Platform, Pressable, StyleSheet, TextInput, View, type ListRenderItem } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import type { RamenLog, RamenLogComment } from "@raota/shared"
@@ -12,20 +12,20 @@ import {
   LogAuthorRow,
   LogNote,
   LogPhotoPager,
-  TasteSummaryList,
+  LogTasteFingerprint,
   TasteTags,
+  openShopDetail,
   useLikeLog,
   useLoungeModeration,
   type ModerationTarget,
 } from "@/src/components/LoungeLog"
-import { AppText, Button, EmptyState, Header, IconButton, LoadingState, RamenTypeTag, Screen } from "@/src/components/ui"
+import { EdgeBackZone } from "@/src/components/EdgeBackZone"
+import { AppText, Button, EmptyState, Header, IconButton, LoadingState, Screen } from "@/src/components/ui"
 import { useLoungeLog } from "@/src/data/hooks"
 import {
   COMMENT_COUNTER_FROM,
   COMMENT_MAX_LENGTH,
   formatRelativeTime,
-  formatVisitDate,
-  gradeTitleOf,
   photosOf,
   tasteTagsOf,
 } from "@/src/domain/lounge"
@@ -64,28 +64,16 @@ function useKeyboardVisible() {
 }
 
 function CommentRow({ comment, own, onMore }: { comment: RamenLogComment; own: boolean; onMore: (comment: RamenLogComment) => void }) {
-  const grade = gradeTitleOf(comment.author.level)
   return (
     <View style={styles.commentRow} testID={`comment-${comment.id}`}>
-      <Avatar name={comment.author.name} size={28} tone="soft" uri={comment.author.avatar} />
+      <Avatar name={comment.author.name} size={30} tone="soft" uri={comment.author.avatar} />
       <View style={styles.commentBody}>
         <View style={styles.commentMeta}>
-          <AppText numberOfLines={1} style={[styles.bold, styles.shrink]} variant="secondary">
-            {comment.author.name}
-          </AppText>
-          {grade ? (
-            <AppText capScale numberOfLines={1} style={styles.shrinkMore} tone="sub" variant="meta">
-              {grade}
-            </AppText>
-          ) : null}
-          <AppText capScale tone="sub" variant="meta">
-            {formatRelativeTime(comment.createdAt)}
-          </AppText>
+          <AppText numberOfLines={1} style={[styles.bold, styles.shrink]} variant="secondary">{comment.author.name}</AppText>
+          <AppText capScale tone="sub" variant="meta">{formatRelativeTime(comment.createdAt)}</AppText>
         </View>
-        <AppText variant="body">
-          {comment.parentAuthorName ? (
-            <AppText style={styles.bold} tone="sub" variant="body">{`@${comment.parentAuthorName} `}</AppText>
-          ) : null}
+        <AppText lineBreakStrategyIOS="hangul-word" style={styles.commentText} variant="body">
+          {comment.parentAuthorName ? <AppText style={styles.bold} tone="sub" variant="body">{`@${comment.parentAuthorName} `}</AppText> : null}
           {comment.content}
         </AppText>
       </View>
@@ -119,7 +107,7 @@ function CommentComposer({ logId, onPosted }: { logId: number; onPosted: () => v
           leftIcon={<LogIn color={colors.ink} size={18} />}
           onPress={() => router.push("/auth/login")}
           title="로그인하고 댓글 남기기"
-          variant="outline"
+          variant="secondary"
         />
       </View>
     )
@@ -151,16 +139,41 @@ function CommentComposer({ logId, onPosted }: { logId: number; onPosted: () => v
 
   return (
     <View style={[styles.composer, { paddingBottom: bottom }]}>
-      {hint || nearLimit ? (
-        <View style={styles.composerHint}>
-          <AppText accessibilityLiveRegion="polite" capScale style={styles.flex} tone={failed || atLimit ? "critical" : "muted"} variant="meta">
-            {hint ?? ""}
+      <View style={styles.composerHint}>
+        <View style={styles.composerHintCopy}>
+          <AppText
+            accessibilityElementsHidden
+            capScale
+            importantForAccessibility="no-hide-descendants"
+            lineBreakStrategyIOS="hangul-word"
+            style={styles.hiddenHint}
+            tone="muted"
+            variant="meta"
+          >
+            댓글을 등록하지 못했어요. 다시 시도해 주세요.
+          </AppText>
+          {hint ? (
+            <AppText
+              accessibilityLiveRegion="polite"
+              capScale
+              lineBreakStrategyIOS="hangul-word"
+              style={styles.currentHint}
+              tone={failed || atLimit ? "critical" : "muted"}
+              variant="meta"
+            >
+              {hint}
+            </AppText>
+          ) : null}
+        </View>
+        <View style={styles.counterSlot}>
+          <AppText accessibilityElementsHidden capScale importantForAccessibility="no-hide-descendants" style={[styles.tabular, styles.hiddenHint]} tone="muted" variant="meta">
+            {`${COMMENT_MAX_LENGTH}/${COMMENT_MAX_LENGTH}`}
           </AppText>
           {nearLimit ? (
             <AppText
               accessibilityLabel={`${COMMENT_MAX_LENGTH}자 중 ${text.length}자`}
               capScale
-              style={styles.tabular}
+              style={[styles.tabular, styles.currentCounter]}
               tone={atLimit ? "critical" : "muted"}
               variant="meta"
             >
@@ -168,13 +181,14 @@ function CommentComposer({ logId, onPosted }: { logId: number; onPosted: () => v
             </AppText>
           ) : null}
         </View>
-      ) : null}
+      </View>
       <View style={styles.composerRow}>
         <TextInput
           accessibilityHint={`${COMMENT_MAX_LENGTH}자까지 쓸 수 있어요`}
           accessibilityLabel="댓글 입력"
           maxLength={COMMENT_MAX_LENGTH}
           multiline
+          scrollEnabled
           onBlur={() => setFocused(false)}
           onChangeText={(value) => {
             setText(value)
@@ -192,6 +206,7 @@ function CommentComposer({ logId, onPosted }: { logId: number; onPosted: () => v
           onPress={submit}
           size="small"
           title="등록"
+          variant={trimmed ? "primary" : "secondary"}
         />
       </View>
     </View>
@@ -284,14 +299,13 @@ export default function LogDetailScreen() {
   return (
     // contentContainerStyle flex: 1 — 목록 높이를 화면 안으로 묶어야 하단 댓글 바가 화면 밖으로 밀리지 않는다
     <Screen contentContainerStyle={styles.flex} keyboardAvoiding>
-      <Header backLabel="뒤로가기" onBack={goBack} title="라멘로그" />
       <FlatList
         ListEmptyComponent={
-          <AppText style={styles.noComments} tone="sub" variant="secondary">
+          <AppText lineBreakStrategyIOS="hangul-word" style={styles.noComments} tone="sub" variant="secondary">
             첫 댓글을 남겨 대화를 시작해 보세요.
           </AppText>
         }
-        ListHeaderComponent={<LogDetailHeader commentCount={comments.length} log={log} onLike={() => like(log)} onMore={own ? undefined : openLogMenu} own={own} />}
+        ListHeaderComponent={<LogDetailHeader commentCount={comments.length} log={log} onLike={() => like(log)} onMore={own ? undefined : openLogMenu} />}
         contentContainerStyle={styles.listContent}
         data={comments}
         keyExtractor={(comment) => String(comment.id)}
@@ -304,54 +318,61 @@ export default function LogDetailScreen() {
       />
       <CommentComposer logId={log.id} onPosted={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)} />
       {moderationElement}
+      <EdgeBackZone />
     </Screen>
   )
 }
 
 function LogDetailHeader({
   log,
-  own,
   commentCount,
   onLike,
   onMore,
 }: {
   log: RamenLog
-  own: boolean
   commentCount: number
   onLike: () => void
   onMore?: () => void
 }) {
+  const shopName = log.shop.branch ? `${log.shop.name} ${log.shop.branch}` : log.shop.name
+  const tags = tasteTagsOf(log)
   return (
     <View>
-      <LogAuthorRow log={log} onMore={onMore} own={own} />
-      <View style={styles.photos}>
-        <LogPhotoPager menuName={log.menuName} photos={photosOf(log)} />
-      </View>
+      <LogPhotoPager menuName={log.menuName} onBack={goBack} photos={photosOf(log)} />
       <View style={styles.detailBody}>
-        <View style={styles.titleBlock}>
-          <View style={styles.titleRow}>
-            <AppText accessibilityRole="header" style={styles.flex} variant="sectionTitle">
-              {log.menuName}
-            </AppText>
-            <RamenTypeTag type={log.ramenType} />
-          </View>
-          <AppText capScale tone="sub" variant="meta">
-            {`${formatVisitDate(log.visitedAt)} 방문`}
-          </AppText>
-        </View>
-        <TasteSummaryList log={log} />
-        <LogNote note={log.note} />
-        <TasteTags tags={tasteTagsOf(log)} />
-        <View style={styles.actions}>
+        <View style={styles.authorActions}>
+          <LogAuthorRow log={log} />
+          {onMore ? (
+            <IconButton
+              accessibilityLabel={`${log.author.name}님의 라멘로그 메뉴`}
+              icon={<MoreHorizontal color={colors.inkSub} size={20} />}
+              onPress={onMore}
+            />
+          ) : null}
           <LikeButton count={log.likes} liked={log.isLiked} onPress={onLike} />
-          <AppText capScale numberOfLines={1} style={styles.time} tone="sub" variant="meta">
-            {`${formatRelativeTime(log.createdAt)} 작성`}
-          </AppText>
         </View>
+        <View style={styles.titleBlock}>
+          <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" variant="sectionTitle">{log.menuName}</AppText>
+          <View style={styles.typeLine}>
+            <AppText capScale tone="sub" variant="secondary">{`${log.ramenType} ·`}</AppText>
+            <Pressable
+              accessibilityHint="매장 정보로 이동해요"
+              accessibilityLabel={`${shopName} 매장 정보`}
+              accessibilityRole="button"
+              hitSlop={{ top: 10, bottom: 10 }}
+              onPress={() => openShopDetail(log.shop.id)}
+              style={({ pressed }) => [styles.shopLink, pressed && styles.shopLinkPressed]}
+            >
+              <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">{shopName}</AppText>
+            </Pressable>
+          </View>
+        </View>
+        <LogTasteFingerprint log={log} />
+        <LogNote note={log.note} />
+        <TasteTags style={log.note.trim() ? styles.detailTagsAfterNote : styles.detailTags} tags={tags} />
       </View>
-      <View style={styles.band} />
       <View style={styles.commentsHead}>
-        <AppText accessibilityRole="header" variant="bodyStrong">
+        <AppText accessibilityRole="header" style={styles.tabular} variant="bodyStrong">
           {`댓글 ${commentCount}`}
         </AppText>
         <AppText capScale tone="sub" variant="meta">
@@ -367,63 +388,58 @@ const styles = StyleSheet.create({
   bold: { fontWeight: "700" },
   tabular: { fontVariant: ["tabular-nums"] },
   shrink: { flexShrink: 1 },
-  shrinkMore: { flexShrink: 2 },
 
-  listContent: { paddingBottom: spacing.x6 },
-  photos: { marginTop: spacing.x2 },
-  detailBody: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, gap: spacing.x4 },
-  titleBlock: { gap: spacing.x1 },
-  titleRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.x2 },
-  actions: { flexDirection: "row", alignItems: "center", gap: spacing.x2, paddingBottom: spacing.x4 },
-  time: { flex: 1, textAlign: "right" },
-  // 기록과 댓글 사이 여백. 회색 띠 대신 아래 제목 줄의 1pt 구분선으로 나눈다
-  band: { height: spacing.x2 },
+  listContent: { paddingBottom: spacing.section },
+  detailBody: { paddingTop: spacing.x4 },
+  authorActions: { flexDirection: "row", alignItems: "center", gap: spacing.x1, paddingHorizontal: spacing.gutter },
+  titleBlock: { paddingHorizontal: spacing.gutter, marginTop: spacing.x4 },
+  typeLine: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, minWidth: 0, marginTop: spacing.x1, minHeight: 24 },
+  shopLink: { justifyContent: "center", flexShrink: 1, minWidth: 0 },
+  shopLinkPressed: { backgroundColor: colors.surfacePressed },
+  detailTags: { marginTop: spacing.section },
+  detailTagsAfterNote: { marginTop: spacing.x3 },
   commentsHead: {
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "space-between",
+    marginTop: spacing.section,
     paddingHorizontal: spacing.gutter,
     paddingTop: spacing.x4,
-    paddingBottom: spacing.x2,
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
+    borderTopColor: colors.border,
+    borderTopWidth: line.base,
   },
-  noComments: { textAlign: "center", paddingVertical: spacing.x8, paddingHorizontal: spacing.gutter },
+  noComments: { textAlign: "center", paddingTop: spacing.x4, paddingBottom: spacing.x6, paddingHorizontal: spacing.gutter },
 
-  commentRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.x2_5,
-    paddingLeft: spacing.gutter,
-    paddingRight: spacing.x2,
-    paddingVertical: spacing.x3,
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-  },
-  commentBody: { flex: 1, minWidth: 0, gap: spacing.x0_5, paddingTop: spacing.x0_5 },
-  commentMeta: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, minWidth: 0 },
-  commentMore: { marginTop: -spacing.x2 },
+  commentRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x2, paddingHorizontal: spacing.gutter, paddingVertical: spacing.x3_5 },
+  commentBody: { flex: 1, minWidth: 0, gap: spacing.x1, paddingTop: spacing.x0_5 },
+  commentMeta: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minWidth: 0 },
+  commentText: { fontSize: 14, lineHeight: 20 },
+  commentMore: { marginTop: -7 },
 
-  // 하단 고정 바: 흰 면 + 위쪽 2pt 먹선
+  // 댓글을 입력하는 동안에도 등록 버튼과 키보드 위 여백을 유지한다.
   composer: {
-    paddingTop: spacing.x2_5,
+    paddingTop: spacing.x3_5,
     paddingHorizontal: spacing.gutter,
     gap: spacing.x1_5,
     backgroundColor: colors.canvas,
-    borderTopColor: colors.outline,
+    borderTopColor: colors.border,
     borderTopWidth: line.base,
   },
   composerHint: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
+  composerHintCopy: { flex: 1, minWidth: 0, position: "relative" },
+  hiddenHint: { opacity: 0 },
+  currentHint: { position: "absolute", top: 0, left: 0, right: 0 },
+  counterSlot: { position: "relative" },
+  currentCounter: { position: "absolute", top: 0, right: 0 },
   composerRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.x2 },
   input: {
-    ...typography.body,
+    ...typography.secondary,
     flex: 1,
-    minHeight: touchTarget,
-    maxHeight: 112,
-    paddingHorizontal: spacing.x3,
+    height: touchTarget,
+    paddingHorizontal: spacing.x4,
     paddingTop: spacing.x2_5,
     paddingBottom: spacing.x2_5,
-    borderRadius: radii.sm,
+    borderRadius: radii.pill,
     borderColor: colors.outline,
     borderWidth: line.base,
     backgroundColor: colors.canvas,

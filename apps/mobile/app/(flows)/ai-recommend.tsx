@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics"
 import { router } from "expo-router"
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Minus, PenLine, RotateCcw, Sparkles } from "lucide-react-native"
+import { ArrowRight, ChevronRight } from "lucide-react-native"
 import { useEffect, useMemo, useRef, useState } from "react"
 import {
   AccessibilityInfo,
@@ -13,18 +13,17 @@ import {
   findNodeHandle,
   useWindowDimensions,
 } from "react-native"
-import { Image } from "expo-image"
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
+import Animated, { Easing, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
 
 import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, Button, Header, IconButton, RamenTypeTag, Screen, Sticker, StickyActionBar, Tag } from "@/src/components/ui"
+import { AppText, Button, Header, Screen, SoupDot, StickyActionBar, TicketCut } from "@/src/components/ui"
 import { useShops } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { matchesShopRamenType } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, maxFontScale, radii, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
 type CuratorShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec">>
 type Step = 1 | 2 | 3 | 4 | "loading" | "result"
@@ -65,8 +64,17 @@ const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
   },
 }
 
-const LOADING_MESSAGES = ["선택한 취향을 확인하고 있어요", "어울리는 라멘집을 찾고 있어요", "오늘의 추천을 정리하고 있어요", "오늘의 한 그릇을 골랐어요"]
-const LOADING_DURATION = 1800
+const LOADING_MESSAGES = ["선택한 조건을 확인하고 있어요", "어울리는 라멘집을 찾고 있어요", "오늘의 추천을 정리하고 있어요", "오늘의 추천이 준비됐어요"]
+/**
+ * 조건 칩을 하나씩 밝히고 식권 윗부분을 먼저 보인 다음 전체를 올린다.
+ * 결과 화면으로는 완성된 식권을 RESULT_HOLD만큼 보여 준 뒤 넘어간다.
+ */
+const KEY_START = 300
+const KEY_INTERVAL = 500
+const STUB_SLIDE = 600
+const STUB_HOLD = 900
+const TICKET_SETTLE = 900
+const RESULT_HOLD = 2000
 const PROMPT_MAX_LENGTH = 200
 
 interface Inputs {
@@ -95,6 +103,171 @@ interface Curation {
  */
 const DEFAULT_INPUTS: Inputs = { soupId: "", moodId: "", priorityId: "", prompt: "" }
 
+/** 고른 조건은 실제 네 단계와 같은 이름으로 표시한다. */
+function chosenConditions(inputs: Inputs) {
+  return [
+    { label: "국물", value: SOUP_OPTIONS.find((option) => option.id === inputs.soupId)?.label ?? "—" },
+    { label: "상황", value: MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label ?? "—" },
+    { label: "중요", value: PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label ?? "—" },
+    { label: "추가", value: inputs.prompt.trim() || "—" },
+  ]
+}
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+const CHOICE_EASE = Easing.bezier(0.22, 1, 0.36, 1)
+const SETTLE_EASE = Easing.bezier(0.34, 1.56, 0.64, 1)
+
+/** 조건의 선택 색과 눌림 크기만 바꿔 격자 크기는 그대로 둔다. */
+function useChoiceMotion(selected: boolean) {
+  const palette = usePalette()
+  const reducedMotion = useReducedMotion()
+  const selection = useSharedValue(selected ? 1 : 0)
+  const scale = useSharedValue(1)
+
+  useEffect(() => {
+    selection.value = reducedMotion ? (selected ? 1 : 0) : withTiming(selected ? 1 : 0, { duration: 200, easing: CHOICE_EASE })
+    if (reducedMotion) scale.value = 1
+  }, [selected, reducedMotion, selection, scale])
+
+  const containerStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(selection.value, [0, 1], [palette.canvasSoft, palette.selected]),
+    transform: [{ scale: scale.value }],
+  }), [palette])
+  const textStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(selection.value, [0, 1], [palette.ink, palette.onSelected]),
+  }), [palette])
+  const subStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(selection.value, [0, 1], [palette.textMuted, palette.onSelected]),
+    opacity: 1 - 0.28 * selection.value,
+  }), [palette])
+
+  const pressIn = () => {
+    if (!reducedMotion) scale.value = withTiming(0.97, { duration: 120 })
+  }
+  const pressOut = () => {
+    scale.value = reducedMotion ? 1 : withTiming(1, { duration: 180, easing: CHOICE_EASE })
+  }
+
+  return { containerStyle, textStyle, subStyle, pressIn, pressOut }
+}
+
+function ChosenConditionCell({ label, value }: { label: string; value: string }) {
+  const filled = value !== "—"
+  const palette = usePalette()
+  const reducedMotion = useReducedMotion()
+  const wasFilled = useRef(filled)
+  const selection = useSharedValue(filled ? 1 : 0)
+  const settle = useSharedValue(1)
+  const reveal = useSharedValue(1)
+
+  useEffect(() => {
+    selection.value = reducedMotion ? (filled ? 1 : 0) : withTiming(filled ? 1 : 0, { duration: 200, easing: CHOICE_EASE })
+    if (!reducedMotion && filled && !wasFilled.current) {
+      settle.value = 0.94
+      settle.value = withTiming(1, { duration: 350, easing: SETTLE_EASE })
+      reveal.value = 0
+      reveal.value = withTiming(1, { duration: 300, easing: CHOICE_EASE })
+    } else if (reducedMotion || !filled) {
+      settle.value = 1
+      reveal.value = 1
+    }
+    wasFilled.current = filled
+  }, [filled, reducedMotion, selection, settle, reveal])
+
+  const cellStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(selection.value, [0, 1], [palette.canvasSoft, palette.selected]),
+    transform: [{ scale: settle.value }],
+  }), [palette])
+  const labelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(selection.value, [0, 1], [palette.textMuted, palette.onSelected]),
+  }), [palette])
+  const valueStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(selection.value, [0, 1], [palette.textMuted, palette.onSelected]),
+    opacity: reveal.value,
+    transform: [{ translateY: (1 - reveal.value) * 8 }],
+  }), [palette])
+
+  return (
+    <Animated.View style={[styles.chosenChip, cellStyle]} testID={`ai-condition-${label}`}>
+      <Animated.Text maxFontSizeMultiplier={maxFontScale} style={[typography.meta, styles.chosenLabel, labelStyle]}>
+        {label}
+      </Animated.Text>
+      <Animated.Text
+        lineBreakStrategyIOS="hangul-word"
+        maxFontSizeMultiplier={maxFontScale}
+        numberOfLines={2}
+        style={[typography.meta, styles.chosenValue, valueStyle]}
+      >
+        {value}
+      </Animated.Text>
+    </Animated.View>
+  )
+}
+
+function QuickPromptTile({ text, added, onPress }: { text: string; added: boolean; onPress: () => void }) {
+  const motion = useChoiceMotion(added)
+  return (
+    <AnimatedPressable
+      accessibilityLabel={added ? `${text}, 추가됨` : `${text} 추가`}
+      accessibilityRole="button"
+      accessibilityState={{ selected: added, disabled: added }}
+      disabled={added}
+      onPress={() => {
+        motion.pressOut()
+        onPress()
+      }}
+      onPressIn={motion.pressIn}
+      onPressOut={motion.pressOut}
+      style={[styles.quickChip, motion.containerStyle]}
+    >
+      <Animated.Text maxFontSizeMultiplier={maxFontScale} style={[typography.secondary, styles.quickText, motion.textStyle]}>
+        {text}
+      </Animated.Text>
+    </AnimatedPressable>
+  )
+}
+
+function ChoiceTile({
+  label,
+  sub,
+  soupType,
+  selected,
+  onPress,
+}: {
+  label: string
+  sub?: string
+  soupType?: string
+  selected: boolean
+  onPress: () => void
+}) {
+  const motion = useChoiceMotion(selected)
+  return (
+    <AnimatedPressable
+      accessibilityLabel={sub ? `${label}, ${sub}` : label}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      onPress={onPress}
+      onPressIn={motion.pressIn}
+      onPressOut={motion.pressOut}
+      style={[styles.optionTile, motion.containerStyle]}
+    >
+      {soupType ? <SoupDot size={42} type={soupType} /> : null}
+      <Animated.Text lineBreakStrategyIOS="hangul-word" style={[typography.cardTitle, styles.optionName, motion.textStyle]}>
+        {label}
+      </Animated.Text>
+      {sub ? (
+        <Animated.Text
+          lineBreakStrategyIOS="hangul-word"
+          maxFontSizeMultiplier={maxFontScale}
+          style={[typography.meta, styles.optionSub, motion.subStyle]}
+        >
+          {sub}
+        </Animated.Text>
+      ) : null}
+    </AnimatedPressable>
+  )
+}
+
 const shopText = (shop: CuratorShop) => [shop.style, shop.spec, shop.description, ...shop.tags].filter(Boolean).join(" ")
 const hasAnyKey = (shop: CuratorShop, keys: string[]) => keys.some((key) => shopText(shop).includes(key))
 const byPopularity = (a: CuratorShop, b: CuratorShop) =>
@@ -103,7 +276,7 @@ const byPopularity = (a: CuratorShop, b: CuratorShop) =>
 /**
  * 선택한 조건을 원장과 실제로 대조해 후보를 좁히고(웹 AIRecommendScreen과 같은 규칙),
  * 남은 후보 안에서 src/domain/ai-recommendation 랭킹으로 한 곳을 고른다.
- * 대조할 정보가 없는 조건은 applied=false("참고만")로 남긴다. 랭킹이 실패하거나 후보가 없으면 인기·거리순으로 대신한다.
+ * 대조할 정보가 없는 조건은 applied=false("참고했어요")로 남긴다. 랭킹이 실패하거나 후보가 없으면 인기·거리순으로 대신한다.
  * 서버 추천(#46)이 붙으면 이 함수만 바꾼다.
  */
 function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
@@ -129,7 +302,7 @@ function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
   })) {
     conditions.push({ label: `${soup.label} 계보`, applied: true, note: `${soup.label} 계보 ${pool.length}곳 중에서 골랐어요` })
   } else {
-    conditions.push({ label: `${soup.label} 계보`, applied: false, note: `${soup.label} 전문점이 아직 없어 전체 라멘집에서 골랐어요` })
+    conditions.push({ label: `${soup.label} 계보`, applied: false, note: "전체 라멘집으로 넓혀서 골라 봤어요" })
   }
 
   const mood = MOOD_OPTIONS.find((option) => option.id === inputs.moodId) ?? MOOD_OPTIONS[0]
@@ -139,16 +312,16 @@ function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
     conditions.push({
       label: mood.label,
       applied: true,
-      note: opened ? "지금 영업 중이고 가까운 곳을 우선했어요" : "영업 중인 곳이 없어 가까운 곳을 우선했어요",
+      note: opened ? "지금 영업 중이고 가까운 곳을 우선했어요" : "가까운 곳부터 우선했어요",
     })
   } else if (mood.id === "waiting") {
     if (narrow((shop) => shop.reviewCount > 0 || shop.rating > 0)) {
       conditions.push({ label: mood.label, applied: true, note: "라멘로그와 평점이 쌓인 곳을 우선했어요" })
     } else {
-      conditions.push({ label: mood.label, applied: false, note: "라멘로그 수 정보가 아직 없어 참고만 했어요" })
+      conditions.push({ label: mood.label, applied: false, note: "라멘로그가 더 쌓이면 이 조건도 꼼꼼히 맞춰 드릴게요" })
     }
   } else {
-    conditions.push({ label: mood.label, applied: false, note: "매장 분위기 정보는 아직 없어 참고만 했어요" })
+    conditions.push({ label: mood.label, applied: false, note: "매장 분위기 정보가 채워지면 더 꼭 맞게 골라 드릴게요" })
   }
 
   const priority = PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)
@@ -156,7 +329,7 @@ function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
     if (narrow((shop) => hasAnyKey(shop, priority.keys))) {
       conditions.push({ label: priority.label, applied: true, note: "가게 특징과 태그에 이 요소가 있는 곳을 우선했어요" })
     } else {
-      conditions.push({ label: priority.label, applied: false, note: "이 요소가 적힌 가게가 없어 참고만 했어요" })
+      conditions.push({ label: priority.label, applied: false, note: "이 특징이 적힌 가게가 늘면 더 정확히 골라 드릴게요" })
     }
   }
 
@@ -170,7 +343,7 @@ function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
     conditions.push(
       applied.length
         ? { label: `직접 입력: ${prompt}`, applied: true, note: `${applied.join(", ")} 조건을 매장 정보와 대조했어요` }
-        : { label: `직접 입력: ${prompt}`, applied: false, note: "아직 매장 정보와 대조하지 못해 참고만 했어요" },
+        : { label: `직접 입력: ${prompt}`, applied: false, note: "적어 주신 조건은 매장 정보가 채워지는 대로 맞춰 드릴게요" },
     )
   }
 
@@ -211,14 +384,21 @@ export default function AIRecommendScreen() {
   const { currentUser } = useRaota()
   const shopsQuery = useShops()
   const reducedMotion = useReducedMotion()
-  const { width } = useWindowDimensions()
-  /** SE 폭에서는 하단 버튼의 장식 아이콘을 빼 문구를 자르지 않는다 */
+  const { width, fontScale } = useWindowDimensions()
+  const ctaSize = useMemo(() => ({ minHeight: Math.max(56, 2 * (typography.button.lineHeight ?? 18) * Math.min(fontScale, maxFontScale) + 2 * spacing.x2) }), [fontScale])
   const compact = width < 360
   const [inputs, setInputs] = useState<Inputs>(DEFAULT_INPUTS)
+  const selectedConditions = useMemo(() => chosenConditions(inputs), [inputs])
   const [step, setStep] = useState<Step>(1)
   const [curation, setCuration] = useState<Curation | null>(null)
+  // 로컬 계산이 먼저 끝나도 식권 연출은 준비 완료 신호를 따로 기다린다.
+  const resultReady = useMemo(() => Promise.resolve(curation), [curation])
   const scrollRef = useRef<ScrollView>(null)
   const headingRef = useRef<View>(null)
+  const [issueDate] = useState(() => {
+    const now = new Date()
+    return `${String(now.getFullYear()).slice(-2)}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}`
+  })
 
   const loggedIn = Boolean(currentUser?.isLoggedIn)
   const nickname = loggedIn ? currentUser?.nickname : null
@@ -263,12 +443,11 @@ export default function AIRecommendScreen() {
   if (step === "loading" && curation) {
     return (
       <CurationLoading
-        conditions={curation.conditions.map((condition) => ({
-          label: condition.label.replace(/^직접 입력: /, ""),
-          applied: condition.applied,
-        }))}
+        conditions={selectedConditions.filter(({ value }) => value !== "—")}
         onBack={() => setStep(4)}
         onComplete={() => setStep("result")}
+        resultReady={resultReady}
+        shop={curation.shop}
       />
     )
   }
@@ -289,6 +468,7 @@ export default function AIRecommendScreen() {
   return (
     <Screen contentContainerStyle={styles.flex} keyboardAvoiding>
       <Header
+        align="center"
         backLabel={numericStep && numericStep > 1 ? "이전 단계로" : "뒤로가기"}
         // 단계 안에서는 헤더 셰브론도 "이전"과 같이 한 단계만 올라간다.
         // 플로우를 통째로 빠져나가면 고른 답이 전부 사라진다
@@ -306,7 +486,9 @@ export default function AIRecommendScreen() {
             </AppText>
           ) : null
         }
+        style={styles.flowHeader}
         title="AI 라멘 큐레이터"
+        titleStyle={styles.navTitle}
       />
 
       <ScrollView
@@ -322,72 +504,61 @@ export default function AIRecommendScreen() {
             <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${(numericStep / 4) * 100}%` }]} />
             </View>
-            <View accessible accessibilityRole="header" ref={headingRef}>
-              <AppText variant="screenTitle">{STEP_TITLES[numericStep].title}</AppText>
+            <AppText style={styles.chosenTitle} tone="sub" variant="meta">고른 조건</AppText>
+            <View
+              accessible
+              accessibilityLabel={`고른 조건. ${selectedConditions.map(({ label, value }) => `${label} ${value}`).join(", ")}`}
+              style={styles.chosenRow}
+            >
+              {selectedConditions.map(({ label, value }) => (
+                <ChosenConditionCell key={label} label={label} value={value} />
+              ))}
             </View>
-            <AppText style={styles.help} tone="sub" variant="secondary">
+            <View accessible accessibilityRole="header" ref={headingRef}>
+              <AppText lineBreakStrategyIOS="hangul-word" variant="headline">{STEP_TITLES[numericStep].title}</AppText>
+            </View>
+            <AppText lineBreakStrategyIOS="hangul-word" style={styles.help} tone="sub" variant="secondary">
               {STEP_TITLES[numericStep].help}
             </AppText>
 
             {numericStep === 1 ? (
-              <View accessibilityLabel="국물 베이스" accessibilityRole="radiogroup" style={styles.grid}>
-                {SOUP_OPTIONS.map((soup) => {
-                  const active = inputs.soupId === soup.id
-                  return (
-                    <Pressable
-                      accessibilityLabel={`${soup.label}, ${soup.sub}`}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: active }}
-                      key={soup.id}
-                      onPress={() => setInput("soupId", soup.id)}
-                      style={({ pressed }) => [styles.option, styles.gridOption, active && styles.optionActive, pressed && !active && styles.pressedWash]}
-                    >
-                      <View style={styles.flexShrink}>
-                        <AppText tone={active ? "onDark" : "ink"} variant="cardTitle">
-                          {soup.label}
-                        </AppText>
-                        <AppText capScale style={styles.optionSub} tone={active ? "onDark" : "muted"} variant="meta">
-                          {soup.sub}
-                        </AppText>
-                      </View>
-                      {active ? <Check color={colors.onDark} size={16} /> : null}
-                    </Pressable>
-                  )
-                })}
+              <View accessibilityLabel="국물 베이스" accessibilityRole="radiogroup" style={styles.optionGrid}>
+                {SOUP_OPTIONS.map((soup) => (
+                  <ChoiceTile
+                    key={soup.id}
+                    label={soup.label}
+                    soupType={soup.label}
+                    onPress={() => setInput("soupId", soup.id)}
+                    selected={inputs.soupId === soup.id}
+                    sub={soup.sub}
+                  />
+                ))}
               </View>
             ) : null}
 
             {numericStep === 2 || numericStep === 3 ? (
-              <View accessibilityLabel={numericStep === 2 ? "식사 상황" : "가장 중요한 요소"} accessibilityRole="radiogroup" style={styles.stack}>
-                {(numericStep === 2 ? MOOD_OPTIONS : PRIORITY_OPTIONS).map((option) => {
-                  const active = numericStep === 2 ? inputs.moodId === option.id : inputs.priorityId === option.id
-                  return (
-                    <Pressable
-                      accessibilityLabel={option.label}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: active }}
-                      key={option.id}
-                      onPress={() => setInput(numericStep === 2 ? "moodId" : "priorityId", option.id)}
-                      style={({ pressed }) => [styles.option, styles.rowOption, active && styles.optionActive, pressed && !active && styles.pressedWash]}
-                    >
-                      <AppText style={styles.flexShrink} tone={active ? "onDark" : "ink"} variant="cardTitle">
-                        {option.label}
-                      </AppText>
-                      {active ? <Check color={colors.onDark} size={16} /> : <ChevronRight color={colors.textMuted} size={16} />}
-                    </Pressable>
-                  )
-                })}
+              <View accessibilityLabel={numericStep === 2 ? "식사 상황" : "가장 중요한 요소"} accessibilityRole="radiogroup" style={styles.optionGrid}>
+                {(numericStep === 2 ? MOOD_OPTIONS : PRIORITY_OPTIONS).map((option) => (
+                  <ChoiceTile
+                    key={option.id}
+                    label={option.label}
+                    onPress={() => setInput(numericStep === 2 ? "moodId" : "priorityId", option.id)}
+                    selected={numericStep === 2 ? inputs.moodId === option.id : inputs.priorityId === option.id}
+                  />
+                ))}
               </View>
             ) : null}
 
             {numericStep === 4 ? (
               <View style={styles.promptWrap}>
+                <AppText style={styles.promptLabel} variant="secondary">추가 조건</AppText>
                 <TextInput
                   accessibilityHint="선택 사항이에요"
                   accessibilityLabel="더 바라는 점"
                   maxFontSizeMultiplier={maxFontScale}
                   maxLength={PROMPT_MAX_LENGTH}
                   multiline
+                  scrollEnabled
                   onChangeText={(text) => setInput("prompt", text)}
                   placeholder="예: 차슈가 부드럽고 국물이 덜 짠 곳"
                   placeholderTextColor={colors.textMuted}
@@ -395,28 +566,18 @@ export default function AIRecommendScreen() {
                   textAlignVertical="top"
                   value={inputs.prompt}
                 />
-                <AppText style={styles.quickTitle} tone="sub" variant="secondary">
+                <AppText style={styles.quickTitle} tone="sub" variant="sectionTitle">
                   자주 찾는 조건
                 </AppText>
                 <View style={styles.quickRow}>
-                  {QUICK_PROMPTS.map((text) => {
-                    const added = inputs.prompt.includes(text)
-                    return (
-                      <Pressable
-                        accessibilityLabel={added ? `${text}, 추가됨` : `${text} 추가`}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: added, disabled: added }}
-                        disabled={added}
-                        key={text}
-                        onPress={() => setInput("prompt", inputs.prompt ? `${inputs.prompt}, ${text}` : text)}
-                        style={({ pressed }) => [styles.quickChip, added && styles.quickChipAdded, pressed && !added && styles.pressedWash]}
-                      >
-                        <AppText capScale style={styles.bold} tone={added ? "onDark" : "ink"} variant="secondary">
-                          {added ? text : `+ ${text}`}
-                        </AppText>
-                      </Pressable>
-                    )
-                  })}
+                  {QUICK_PROMPTS.map((text) => (
+                    <QuickPromptTile
+                      added={inputs.prompt.includes(text)}
+                      key={text}
+                      onPress={() => setInput("prompt", inputs.prompt ? `${inputs.prompt}, ${text}` : text)}
+                      text={text}
+                    />
+                  ))}
                 </View>
               </View>
             ) : null}
@@ -426,9 +587,9 @@ export default function AIRecommendScreen() {
         {step === "result" && !result ? (
           <View>
             <View accessible accessibilityRole="header" ref={headingRef}>
-              <AppText variant="screenTitle">추천할 라멘집을 찾지 못했어요</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" variant="screenTitle">추천할 라멘집을 찾지 못했어요</AppText>
             </View>
-            <AppText style={styles.help} tone="sub" variant="secondary">
+            <AppText lineBreakStrategyIOS="hangul-word" style={styles.help} tone="sub" variant="secondary">
               매장 정보를 불러오지 못했어요. 잠시 뒤 다시 추천받아 주세요.
             </AppText>
             <RestartButton onPress={restart} />
@@ -438,75 +599,63 @@ export default function AIRecommendScreen() {
         {result ? (
           <View>
             <View accessible accessibilityRole="header" ref={headingRef}>
-              <AppText variant="screenTitle">{nickname ? `오늘 ${nickname}님을 위한 라멘집` : "오늘의 추천"}</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultTitle} variant="screenTitle">{nickname ? `오늘 ${nickname}님을 위한 라멘집` : "오늘의 추천"}</AppText>
             </View>
 
             <View style={styles.resultCard}>
-              <ResilientUriImage accessibilityLabel={`${result.shop.name} 대표 사진`} style={styles.resultPhoto} uri={result.shop.photos[0]} />
-              <View style={styles.resultBody}>
+              <View style={styles.resultPhotoWrap}>
+                <ResilientUriImage accessibilityLabel={`${result.shop.name} 대표 사진`} style={styles.resultPhoto} transition={0} uri={result.shop.photos[0]} />
                 {resultType ? (
-                  <RamenTypeTag type={resultType} />
-                ) : result.shop.style ? (
-                  <AppText style={styles.bold} tone="muted" variant="secondary">
-                    {result.shop.style}
-                  </AppText>
+                  <View accessible accessibilityLabel={`라멘 종류 ${resultType.replace(/\s*라멘$/, "")}`} accessibilityRole="text" style={styles.resultPhotoTag}>
+                    <AppText capScale style={styles.resultPhotoTagText} variant="meta">{resultType.replace(/\s*라멘$/, "")}</AppText>
+                  </View>
                 ) : null}
-                <AppText style={styles.resultName} variant="screenTitle">
+              </View>
+              <View style={styles.resultBody}>
+                <AppText tone="muted" variant="meta">RAOTA 식권 · 오늘의 한 그릇</AppText>
+                <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultName} variant="sectionTitle">
                   {result.shop.name}
                   {result.shop.branch ? (
-                    <AppText style={styles.bold} tone="muted" variant="cardTitle">
-                      {` · ${result.shop.branch}`}
-                    </AppText>
+                    <AppText tone="muted" variant="cardTitle">{` · ${result.shop.branch}`}</AppText>
                   ) : null}
                 </AppText>
-                {result.shop.spec ? (
-                  <AppText style={styles.resultSpec} variant="body">
-                    {result.shop.spec}
+                {result.shop.spec || result.shop.distanceM > 0 ? (
+                  <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultSpec} tone="sub" variant="secondary">
+                    {[result.shop.spec, result.shop.distanceM > 0 ? result.shop.distanceM >= 1000 ? `${(result.shop.distanceM / 1000).toFixed(1)}km` : `${result.shop.distanceM}m` : null].filter(Boolean).join(" · ")}
                   </AppText>
                 ) : null}
-                {result.shop.description ? (
-                  <View style={styles.quote}>
-                    <AppText variant="body">{result.shop.description}</AppText>
-                  </View>
-                ) : null}
-                {result.shop.tags.length ? (
-                  <View accessible accessibilityLabel={`특징: ${result.shop.tags.join(", ")}`} style={styles.tags}>
-                    {result.shop.tags.map((tag) => (
-                      <Tag key={tag} label={tag} />
-                    ))}
-                  </View>
-                ) : null}
+              </View>
+              <TicketCut />
+              <View style={styles.resultFoot}>
+                <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultDescription} tone="sub" variant="meta">
+                  {result.shop.description}
+                </AppText>
+                <AppText capScale style={styles.resultDate} tone="muted" variant="meta">{issueDate} · 1매</AppText>
               </View>
             </View>
 
             {result.conditions.length ? (
               <View style={styles.conditions}>
-                <AppText accessibilityRole="header" style={styles.conditionsTitle} variant="cardTitle">
+                <AppText accessibilityRole="header" style={styles.conditionsTitle} variant="sectionTitle">
                   추천에 쓴 조건
                 </AppText>
                 {result.fallback ? (
-                  <AppText style={styles.fallbackNote} tone="sub" variant="secondary">
-                    조건에 맞는 곳을 찾지 못해 라멘로그가 많고 가까운 곳으로 골랐어요.
+                  <AppText lineBreakStrategyIOS="hangul-word" style={styles.fallbackNote} tone="sub" variant="secondary">
+                    라멘로그가 많이 쌓인 가까운 곳 중에서 골라 봤어요.
                   </AppText>
                 ) : null}
-                {result.conditions.map((condition, index) => (
+                {result.conditions.map((condition) => (
                   <View
                     accessible
-                    accessibilityLabel={`${condition.label}, ${condition.applied ? "반영" : "참고만"}. ${condition.note}`}
+                    accessibilityLabel={`${condition.label}, ${condition.applied ? "반영했어요" : "참고했어요"}. ${condition.note}`}
                     key={condition.label}
-                    style={[styles.condition, index > 0 && styles.conditionDivider]}
+                    style={styles.condition}
                   >
-                    <View style={[styles.conditionIcon, condition.applied ? styles.conditionIconApplied : styles.conditionIconRef]}>
-                      {condition.applied ? <Check color={colors.onDark} size={12} /> : <Minus color={colors.textMuted} size={12} />}
-                    </View>
                     <View style={styles.flexShrink}>
-                      <View style={styles.conditionHead}>
-                        <AppText style={styles.flexShrink} variant="bodyStrong">
-                          {condition.label}
-                        </AppText>
-                        <Tag label={condition.applied ? "반영" : "참고만"} />
-                      </View>
-                      <AppText style={styles.conditionNote} tone="sub" variant="secondary">
+                      <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionLabel} variant="bodyStrong">
+                        {condition.label}
+                      </AppText>
+                      <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionNote} tone="sub" variant="secondary">
                         {condition.note}
                       </AppText>
                     </View>
@@ -521,36 +670,34 @@ export default function AIRecommendScreen() {
       </ScrollView>
 
       {numericStep ? (
-        <StickyActionBar style={styles.stickyBar}>
+        <StickyActionBar>
           {numericStep > 1 ? (
-            <Button fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="outline" />
+            <Button fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="secondary" />
           ) : null}
           <Button
             accessibilityHint={stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
             disabled={!stepAnswered}
-            leftIcon={numericStep === 4 ? <Sparkles color={colors.onDark} size={16} /> : undefined}
             onPress={() => (numericStep === 4 ? startAnalysis() : setStep((numericStep + 1) as Step))}
             rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
-            style={styles.primaryCta}
-            title={numericStep === 4 ? "AI 맞춤 추천받기" : "다음"}
+            style={[styles.primaryCta, ctaSize]}
+            title={numericStep === 4 ? "AI 맞춤 추천받기" : stepAnswered ? "다음" : numericStep === 1 ? "국물을 골라주세요" : numericStep === 2 ? "상황을 골라주세요" : "중요한 요소를 골라주세요"}
           />
         </StickyActionBar>
       ) : result ? (
-        <StickyActionBar style={styles.stickyBar}>
+        <StickyActionBar>
           <Button
             accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
             fullWidth
-            leftIcon={compact ? undefined : <PenLine color={colors.ink} size={16} />}
             onPress={() => recordShop(result.shop)}
-            style={styles.stickyButton}
+            style={[styles.stickyButton, ctaSize]}
             title="이 가게 기록하기"
-            variant="outline"
+            variant="secondary"
           />
           <Button
             fullWidth
             onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: String(result.shop.id) } })}
             rightIcon={compact ? undefined : <ChevronRight color={colors.onDark} size={16} />}
-            style={styles.stickyButton}
+            style={[styles.stickyButton, ctaSize]}
             title="매장 상세 보기"
           />
         </StickyActionBar>
@@ -567,210 +714,213 @@ function RestartButton({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       style={({ pressed }) => [styles.restart, pressed && styles.pressedWash]}
     >
-      <RotateCcw color={colors.ink} size={16} />
-      <AppText variant="bodyStrong">다시 추천받기</AppText>
+      <AppText style={styles.restartText} variant="bodyStrong">다시 추천받기</AppText>
     </Pressable>
   )
 }
 
-/** 한 줄이 체크되는 시간 */
-const CHECK_DURATION = 240
-/** 다 체크된 뒤 붙는 스티커가 톡 튀어나오는 시간 */
-const STICKER_POP_DURATION = 260
-/** 첫 줄이 체크되기까지 */
-const CHECK_START = 400
-
-/** 식권에 적히는 한 줄. 결과 화면의 "반영 / 참고만"과 같은 값을 쓴다 */
+/** 실제로 고른 조건만 순서대로 켜지고, 추천 결과는 슬롯에서 나온 식권에 적힌다. */
 interface TicketCondition {
   label: string
-  applied: boolean
+  value: string
 }
 
 /**
- * 식권의 한 줄. 원장과 실제로 대조된 조건만 네모 칸이 먹색으로 차고 흰 체크가 들어온다.
- * 대조할 정보가 없던 조건("참고만")은 빈 칸에 흐린 빼기표로 남는다 — 결과 화면에서 강등될 줄을
- * 로딩에서 체크해 두면, 반영되지 않은 조건을 반영됐다고 말하는 셈이 된다.
+ * 준비 신호와 연출은 독립적이다. 식권 윗부분을 보여 준 뒤에도 응답이 늦으면
+ * 그대로 기다리고, 준비가 끝났을 때만 식권 전체를 올린다.
  */
-function TicketRow({ applied, done, reducedMotion, text }: { applied: boolean; done: boolean; reducedMotion: boolean; text: string }) {
-  const mark = useSharedValue(done ? 1 : 0)
-
-  useEffect(() => {
-    if (reducedMotion) {
-      mark.value = done ? 1 : 0
-      return
-    }
-    mark.value = withTiming(done ? 1 : 0, { duration: CHECK_DURATION, easing: Easing.out(Easing.cubic) })
-  }, [done, mark, reducedMotion])
-
-  const boxStyle = useAnimatedStyle(() => ({ backgroundColor: mark.value > 0.5 && applied ? colors.ink : colors.canvas }))
-  const markStyle = useAnimatedStyle(() => ({
-    opacity: mark.value,
-    transform: [{ scale: 0.7 + mark.value * 0.3 }],
-  }))
-
-  return (
-    <View
-      accessible
-      accessibilityLabel={`${text}, ${done ? (applied ? "반영" : "참고만") : "확인 중"}`}
-      accessibilityRole="text"
-      style={styles.ticketRow}
-    >
-      <Animated.View style={[styles.checkBox, boxStyle]}>
-        <Animated.View style={markStyle}>
-          {applied ? (
-            <Check color={colors.onDark} size={12} strokeWidth={3} />
-          ) : (
-            <Minus color={colors.textMuted} size={12} strokeWidth={3} />
-          )}
-        </Animated.View>
-      </Animated.View>
-      <AppText numberOfLines={1} style={styles.flexShrink} tone={done ? "ink" : "muted"} variant="secondary">
-        {text}
-      </AppText>
-    </View>
-  )
-}
-
-/** 다 체크된 순간 식권에 붙는 "찾았어요" 스티커 */
-function TicketSticker({ reducedMotion }: { reducedMotion: boolean }) {
-  const pop = useSharedValue(reducedMotion ? 1 : 0)
-
-  useEffect(() => {
-    if (reducedMotion) return
-    pop.value = withTiming(1, { duration: STICKER_POP_DURATION, easing: Easing.out(Easing.back(2)) })
-  }, [pop, reducedMotion])
-
-  const popStyle = useAnimatedStyle(() => ({
-    opacity: Math.min(1, pop.value * 2),
-    transform: [{ scale: 0.9 + pop.value * 0.1 }],
-  }))
-
-  return (
-    <Animated.View pointerEvents="none" style={[styles.ticketSticker, popStyle]}>
-      <Sticker icon={<Check color={colors.ink} size={12} />} label="찾았어요" style={styles.stickerRight} />
-    </Animated.View>
-  )
-}
-
-/**
- * 라멘집 식권 한 장. 고른 조건이 한 줄씩 적혀 있고 하나씩 체크된다.
- * 무엇이 끝났는지 화면에 남기 때문에 "지금 무엇을 해주고 있나"가 사라지지 않는다.
- * 조건이 실제로 반영됐는지 참고만 했는지는 결과 화면이 말한다 — 로딩은 체크만 한다.
- */
-function CurationLoading({ conditions, onBack, onComplete }: { conditions: TicketCondition[]; onBack: () => void; onComplete: () => void }) {
+function CurationLoading({
+  conditions,
+  onBack,
+  onComplete,
+  resultReady,
+  shop,
+}: {
+  conditions: TicketCondition[]
+  onBack: () => void
+  onComplete: () => void
+  resultReady: Promise<Curation | null>
+  shop: CuratorShop
+}) {
   const { width: screenWidth } = useWindowDimensions()
   const reducedMotion = useReducedMotion()
-  const [stage, setStage] = useState(0)
-  const [checked, setChecked] = useState(0)
+  const [pressed, setPressed] = useState(reducedMotion ? conditions.length : 0)
+  const [phase, setPhase] = useState<"printing" | "stub" | "out" | "error">(reducedMotion ? "out" : "printing")
+  const failed = phase === "error"
+  const [ready, setReady] = useState(false)
+  const [stubWaited, setStubWaited] = useState(false)
+  const [ticketHeight, setTicketHeight] = useState(0)
+  const [stubHeight, setStubHeight] = useState(0)
+  const [issueDate] = useState(() => {
+    const now = new Date()
+    return `${String(now.getFullYear()).slice(-2)}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(now.getDate()).padStart(2, "0")}`
+  })
   const titleRef = useRef<View>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
-  const complete = stage === 3
-  const ticketWidth = Math.min(280, screenWidth - spacing.gutter * 2 - spacing.x6)
-
-  const rows = useMemo<TicketCondition[]>(
-    () => (conditions.length ? conditions : [{ label: "전체 라멘집에서 고르기", applied: true }]),
-    [conditions],
-  )
+  const ticketWidth = Math.min(290, screenWidth - spacing.x8)
+  const ticketShift = useSharedValue(0)
 
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setStage(1), LOADING_DURATION / 3),
-      setTimeout(() => setStage(2), (LOADING_DURATION * 2) / 3),
-      setTimeout(() => setStage(3), LOADING_DURATION),
-      setTimeout(() => onCompleteRef.current(), LOADING_DURATION + 650),
-    ]
+    let mounted = true
+    void resultReady.then(
+      () => { if (mounted) setReady(true) },
+      () => { if (mounted) setPhase("error") },
+    )
+    return () => { mounted = false }
+  }, [resultReady])
+
+  useEffect(() => {
     const focus = setTimeout(() => focusOn(titleRef), 250)
+    if (reducedMotion || failed) return () => clearTimeout(focus)
+    const timers = conditions.map((_, index) => setTimeout(() => setPressed(index + 1), KEY_START + index * KEY_INTERVAL))
+    timers.push(setTimeout(() => setPhase((current) => current === "error" ? current : "stub"), KEY_START + conditions.length * KEY_INTERVAL))
     return () => {
-      timers.forEach(clearTimeout)
       clearTimeout(focus)
+      timers.forEach(clearTimeout)
     }
-  }, [])
+  }, [conditions.length, reducedMotion, failed])
 
-  // 줄은 로딩이 끝나기 전에 전부 체크된다. Reduce Motion이면 처음부터 다 체크된 상태
   useEffect(() => {
+    if (phase !== "stub") return
+    // 응답이 이미 준비됐어도 식권 윗부분을 STUB_HOLD 동안 보여 준다.
+    const timer = setTimeout(() => setStubWaited(true), STUB_HOLD)
+    return () => clearTimeout(timer)
+  }, [phase])
+
+  useEffect(() => {
+    if (phase === "stub" && stubWaited && ready) setPhase("out")
+  }, [phase, ready, stubWaited])
+
+  useEffect(() => {
+    if (!ticketHeight || !stubHeight) return
     if (reducedMotion) {
-      setChecked(rows.length)
-      return
+      ticketShift.value = 0
+    } else if (phase === "out") {
+      ticketShift.value = withTiming(0, { duration: TICKET_SETTLE, easing: Easing.out(Easing.cubic) })
+    } else if (phase === "stub") {
+      ticketShift.value = withTiming(ticketHeight - stubHeight, { duration: STUB_SLIDE, easing: Easing.out(Easing.cubic) })
+    } else {
+      ticketShift.value = ticketHeight + spacing.x3
     }
-    const step = (LOADING_DURATION - CHECK_START - 500) / rows.length
-    const timers = rows.map((_, index) => setTimeout(() => setChecked(index + 1), CHECK_START + index * step))
-    return () => timers.forEach(clearTimeout)
-  }, [reducedMotion, rows])
+  }, [phase, reducedMotion, stubHeight, ticketHeight, ticketShift])
 
-  const message = useMemo(() => LOADING_MESSAGES[stage], [stage])
+  const ticketStyle = useAnimatedStyle(() => ({
+    opacity: ticketHeight && stubHeight ? 1 : 0,
+    transform: [{ translateY: ticketShift.value }],
+  }))
 
-  /**
-   * iOS에는 accessibilityLiveRegion이 없다(안드로이드 전용 prop이라 무시된다).
-   * 단계가 바뀔 때마다 직접 읽어 준다. 첫 문구는 250ms 뒤 제목 포커스와 겹치므로 건너뛴다.
-   */
+  const message = phase === "error"
+    ? "추천을 가져오지 못했어요. 고른 조건은 그대로예요"
+    : phase === "out"
+      ? LOADING_MESSAGES[3]
+      : phase === "stub"
+        ? LOADING_MESSAGES[2]
+        : pressed >= 2
+          ? LOADING_MESSAGES[1]
+          : LOADING_MESSAGES[0]
+
+  /** iOS에서는 제목 포커스와 겹치지 않도록 첫 문구를 빼고 직접 읽어 준다. */
   useEffect(() => {
-    if (stage === 0) return
-    AccessibilityInfo.announceForAccessibility(message)
-  }, [message, stage])
+    if (message !== LOADING_MESSAGES[0]) AccessibilityInfo.announceForAccessibility(message)
+  }, [message])
+
+  useEffect(() => {
+    if (phase !== "out" || !ready) return
+    const timer = setTimeout(() => onCompleteRef.current(), reducedMotion ? 0 : RESULT_HOLD)
+    return () => clearTimeout(timer)
+  }, [phase, ready, reducedMotion])
+
+  const place = shop.distanceM > 0
+    ? shop.distanceM >= 1000 ? `${(shop.distanceM / 1000).toFixed(1)}km` : `${shop.distanceM}m`
+    : shop.address.trim().split(/\s+/).slice(0, 2).join(" ")
 
   return (
     <Screen contentContainerStyle={styles.flex}>
-      <View style={styles.loadingHeader}>
-        <IconButton accessibilityLabel="추천 조건으로 돌아가기" icon={<ChevronLeft color={colors.ink} size={22} />} onPress={onBack} />
-        <AppText variant="cardTitle">AI 라멘 추천</AppText>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <View style={styles.loadingBody}>
-        <View accessible accessibilityRole="header" ref={titleRef}>
-          <AppText style={styles.center} variant="headline">
-            {"오늘의 한 그릇을\n찾고 있어요"}
+      <Header align="center" backLabel="추천 조건으로 돌아가기" onBack={onBack} style={styles.flowHeader} title="AI 라멘 큐레이터" titleStyle={styles.navTitle} />
+      <ScrollView
+        contentContainerStyle={[styles.loadingBody, !ticketHeight || !stubHeight ? styles.invisible : undefined]}
+        showsVerticalScrollIndicator={false}
+        style={styles.flex}
+      >
+        <View accessible accessibilityLabel={phase === "out" ? "오늘의 한 그릇을 찾았어요" : "조건에 맞는 한 그릇을 찾는 중"} accessibilityRole="header" ref={titleRef}>
+          <AppText accessibilityElementsHidden importantForAccessibility="no-hide-descendants" lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.invisible]} variant="headline">
+            {"조건에 맞는 한 그릇을\n찾는 중"}
+          </AppText>
+          <AppText lineBreakStrategyIOS="hangul-word" style={styles.loadingTitleVisible} variant="headline">
+            {phase === "out" ? "오늘의 한 그릇을 찾았어요" : "조건에 맞는 한 그릇을\n찾는 중"}
           </AppText>
         </View>
+        <AppText style={styles.loadingSub} tone="muted" variant="secondary">
+          {phase === "out" ? "고른 조건으로 오늘의 라멘을 찾았어요." : "내 취향으로 오늘의 라멘을 고르고 있어요."}
+        </AppText>
 
-        {/* 고른 조건이 적힌 식권 한 장. 반영되는 대로 한 줄씩 체크된다 */}
-        <View style={styles.visual}>
-          <View style={[styles.ticket, { width: ticketWidth }]}>
-            <View style={styles.ticketHead}>
-              <Image
-                accessibilityIgnoresInvertColors
-                contentFit="contain"
-                source={require("@/assets/images/logo.png")}
-                style={styles.ticketLogo}
-              />
-              <AppText style={styles.ticketLabel} tone="sub" variant="meta">
-                {complete ? "큐레이팅 완료" : "큐레이팅 중…"}
+        <View style={styles.loadingChips}>
+          {conditions.map(({ label, value }, index) => {
+            const lit = index < pressed
+            return (
+              <View
+                accessible
+                accessibilityLabel={`${label}, ${value}, ${lit ? "확인했어요" : "확인 중"}`}
+                accessibilityRole="text"
+                key={label}
+                style={[styles.loadingChip, lit && styles.loadingChipOn]}
+              >
+                <AppText capScale lineBreakStrategyIOS="hangul-word" style={[typography.button, styles.loadingChipText, lit && styles.onSelectedText]} variant="secondary">{value}</AppText>
+              </View>
+            )
+          })}
+        </View>
+
+        {/* 슬롯은 잘린 창 위에 두고, 식권은 실제 높이를 재서 윗부분부터 올린다. */}
+        <View style={[styles.ticketFeed, { width: ticketWidth, height: ticketHeight ? ticketHeight + line.base : 224 }]}>
+          <Animated.View
+            onLayout={({ nativeEvent }) => {
+              const height = Math.ceil(nativeEvent.layout.height)
+              if (!ticketHeight) ticketShift.value = reducedMotion || phase === "out" ? 0 : height + spacing.x3
+              setTicketHeight(height)
+            }}
+            accessibilityElementsHidden={phase !== "out"}
+            importantForAccessibility={phase === "out" ? "auto" : "no-hide-descendants"}
+            style={[styles.ticket, ticketStyle]}
+          >
+            <View onLayout={({ nativeEvent }) => setStubHeight(Math.ceil(nativeEvent.layout.height))} style={styles.ticketHead}>
+              <AppText variant="bodyStrong">RAOTA 식권</AppText>
+              <AppText capScale tone="muted" variant="meta">{issueDate} · 1매</AppText>
+            </View>
+            <View style={styles.ticketMain}>
+              <AppText tone="muted" variant="meta">오늘의 한 그릇</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketName} variant="headline">{shop.name}</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketPlace} tone="sub" variant="secondary">
+                {[shop.style, place].filter(Boolean).join(" · ")}
               </AppText>
             </View>
-            <View style={styles.ticketRule} />
-            {rows.map((row, index) => (
-              <TicketRow
-                applied={row.applied}
-                done={index < checked}
-                key={`${row.label}-${index}`}
-                reducedMotion={reducedMotion}
-                text={row.label}
-              />
-            ))}
+            <TicketCut />
+            <AppText style={styles.ticketFoot} tone="muted" variant="meta">고른 취향이 한 장의 식권이 되었어요</AppText>
+          </Animated.View>
+          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.ticketSlot} />
+        </View>
+
+        <View style={styles.loadingActions}>
+          <View accessibilityLiveRegion="polite" style={styles.statusLine}>
+            <AppText accessibilityRole="text" lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="secondary">
+              {message}
+            </AppText>
           </View>
-          {complete ? <TicketSticker reducedMotion={reducedMotion} /> : null}
+          {phase === "error" ? (
+            <Button onPress={onBack} size="small" title="추천 조건으로 돌아가기" variant="ghost" />
+          ) : ready ? (
+            // 결과 준비 전에는 건너뛰기를 내놓지 않는다.
+            <Button
+              onPress={onComplete}
+              rightIcon={<ArrowRight color={colors.ink} size={16} />}
+              size="small"
+              title="추천 바로 보기"
+              variant="ghost"
+            />
+          ) : null}
         </View>
-
-        <View accessibilityLiveRegion="polite" style={styles.statusLine}>
-          <View style={styles.statusDot} />
-          <AppText accessibilityRole="text" tone="sub" variant="secondary">
-            {message}
-          </AppText>
-        </View>
-      </View>
-
-      {/* 결과는 이미 손에 있다. 연출을 기다릴 이유가 없는 사람에게 문을 열어 둔다(취향 리포트 로딩과 같은 계약) */}
-      <View style={styles.loadingFooter}>
-        <Button
-          onPress={onComplete}
-          rightIcon={<ArrowRight color={colors.inkSub} size={16} />}
-          size="small"
-          textStyle={styles.subText}
-          title="추천 바로 보기"
-          variant="ghost"
-        />
-      </View>
+      </ScrollView>
     </Screen>
   )
 }
@@ -778,111 +928,120 @@ function CurationLoading({ conditions, onBack, onComplete }: { conditions: Ticke
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1, minWidth: 0 },
-  bold: { fontWeight: "700" },
+  onSelectedText: { color: colors.onSelected },
   center: { textAlign: "center" },
-  pressedWash: { backgroundColor: colors.canvasSoft },
+  pressedWash: { backgroundColor: colors.surfacePressed },
+  invisible: { opacity: 0 },
   stepCount: { fontVariant: ["tabular-nums"], paddingRight: spacing.x3 },
+  flowHeader: { minHeight: 52 },
+  navTitle: { fontSize: 18, lineHeight: 24 },
 
-  body: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, paddingBottom: spacing.x6 },
-  // 진행 막대: 1.5pt 먹선으로 두른 흰 알약 안을 빨강으로 채운다. 선이 보이도록 4pt보다 두껍게 잡았다
+  body: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x10 },
   progressTrack: {
-    height: 10,
+    height: 4,
     borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.secondary,
     overflow: "hidden",
-    marginBottom: spacing.x5,
+    marginBottom: spacing.x4,
   },
-  progressFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.brand },
-  help: { marginTop: spacing.x1_5 },
-
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2, marginTop: spacing.x5 },
-  stack: { gap: spacing.x2, marginTop: spacing.x5 },
-  // 선택 칸: 흰 면 + 2pt 먹선 + 12pt, 고른 칸은 빨강 면 + 흰 글씨. 그림자는 없다
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.x2,
+  progressFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.ink },
+  chosenTitle: { fontWeight: "700", marginBottom: spacing.x3 },
+  // 네 칸을 한 줄에 두고 높이를 두 줄 값 기준으로 고정한다. 조건을 고를 때 칸이 커지거나 줄이 늘어 아래 질문이 밀리지 않는다
+  chosenRow: { flexDirection: "row", gap: spacing.x1_5, marginBottom: spacing.section },
+  chosenChip: {
+    flex: 1,
+    minWidth: 0,
+    height: 68,
+    paddingHorizontal: spacing.x2,
+    paddingVertical: spacing.x2,
     borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
+    overflow: "hidden",
   },
-  gridOption: { flexBasis: "47%", flexGrow: 1, minHeight: 64, paddingHorizontal: spacing.x3_5, paddingVertical: spacing.x3 },
-  rowOption: { minHeight: 56, paddingHorizontal: spacing.x4, paddingVertical: spacing.x3 },
-  optionActive: { borderColor: colors.outline, backgroundColor: colors.brand },
+  chosenLabel: { fontWeight: "500", lineHeight: 15 },
+  chosenValue: { fontWeight: "700", marginTop: spacing.x1, lineHeight: 15 },
+  promptLabel: { fontWeight: "700", marginBottom: spacing.x3 },
+  help: { marginTop: spacing.x1_5, color: colors.textMuted },
+
+  optionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: spacing.x2,
+    rowGap: spacing.x4,
+    marginTop: spacing.x3,
+  },
+  optionTile: {
+    flexBasis: "47%",
+    flexGrow: 1,
+    minHeight: 118,
+    padding: spacing.x4,
+    borderRadius: radii.sm,
+    backgroundColor: colors.canvasSoft,
+    justifyContent: "center",
+    alignItems: "flex-start",
+  },
+  optionName: { marginTop: spacing.x2 },
   optionSub: { marginTop: spacing.x0_5 },
 
-  promptWrap: { marginTop: spacing.x5 },
+  promptWrap: { marginTop: spacing.x3 },
   promptInput: {
     ...typography.body,
+    fontSize: 16,
+    height: 96,
     minHeight: 96,
-    padding: spacing.x3_5,
-    paddingTop: spacing.x3_5,
+    padding: spacing.x4,
     borderRadius: radii.sm,
     borderWidth: line.base,
     borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.paper,
     color: colors.ink,
   },
-  quickTitle: { fontWeight: "700", marginTop: spacing.x4, marginBottom: spacing.x2 },
-  quickRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
+  quickTitle: { marginTop: spacing.section, marginBottom: spacing.x3, fontSize: 16, lineHeight: 22 },
+  quickRow: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.x2, rowGap: spacing.x3 },
   quickChip: {
     minHeight: touchTarget,
     justifyContent: "center",
-    paddingHorizontal: spacing.x3_5,
+    paddingHorizontal: spacing.x3,
     borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.canvasSoft,
   },
-  quickChipAdded: { borderColor: colors.outline, backgroundColor: colors.brand },
+  quickText: { ...typography.button, fontSize: 13 },
 
   primaryCta: { flex: 2 },
-  stickyBar: { paddingHorizontal: spacing.x4 },
+  resultTitle: { fontSize: 21, lineHeight: 27 },
   stickyButton: { paddingHorizontal: spacing.x3 },
 
-  // 결과 카드: 흰 면 + 2pt 먹선. 사진과 글씨 영역은 2pt 먹선으로 나눈다
-  resultCard: {
-    marginTop: spacing.x4,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    borderRadius: radii.sm,
-    backgroundColor: colors.canvas,
+  resultCard: { marginTop: spacing.x4, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
+  resultPhotoWrap: {
+    height: 154,
     overflow: "hidden",
+    borderTopLeftRadius: radii.sm,
+    borderTopRightRadius: radii.sm,
   },
-  resultPhoto: { width: "100%", aspectRatio: 16 / 10 },
-  resultBody: { padding: spacing.x4, borderTopWidth: line.base, borderTopColor: colors.outline },
-  resultName: { marginTop: spacing.x2 },
-  resultSpec: { marginTop: spacing.x1_5 },
-  // 가게 소개는 꾸미지 않은 본문으로 둔다(세로줄 장식 없음)
-  quote: { marginTop: spacing.x3 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
-
-  conditions: { marginTop: spacing.x5 },
-  conditionsTitle: { paddingBottom: spacing.x2, borderBottomWidth: 1, borderBottomColor: colors.border },
-  fallbackNote: { marginTop: spacing.x3 },
-  condition: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3, paddingVertical: spacing.x3 },
-  conditionDivider: { borderTopWidth: 1, borderTopColor: colors.border },
-  // 조건 이름과 "반영 / 참고만" 태그. 좁은 폭에서는 줄바꿈한다
-  conditionHead: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.x2 },
-  // 작은 표시 칸은 1.5pt 먹선. 옅은 면만으로는 미색 바탕에서 보이지 않는다
-  conditionIcon: {
-    width: 20,
-    height: 20,
-    marginTop: spacing.x0_5,
+  resultPhoto: { width: "100%", height: "100%" },
+  resultPhotoTag: {
+    position: "absolute",
+    bottom: spacing.x3,
+    left: spacing.x3,
     borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: spacing.x3,
+    paddingVertical: spacing.x2,
+    backgroundColor: colors.photoPill,
   },
-  conditionIconApplied: { backgroundColor: colors.ink },
-  conditionIconRef: { backgroundColor: colors.canvas },
-  conditionNote: { marginTop: spacing.x0_5 },
-  // 그림자 없는 키라 누름은 canvasSoft 배경. 글씨 위치는 그대로 두고 음수 여백으로 누름 면만 넓힌다
+  resultPhotoTagText: { color: colors.onPhotoPill },
+  resultBody: { paddingHorizontal: spacing.x4, paddingVertical: spacing.x4 },
+  resultName: { marginTop: spacing.x1 },
+  resultSpec: { marginTop: spacing.x1 },
+  resultFoot: { gap: spacing.x2, paddingHorizontal: spacing.x4, paddingVertical: spacing.x4 },
+  resultDescription: { fontSize: 12, lineHeight: 17 },
+  resultDate: { alignSelf: "flex-end" },
+
+  conditions: { marginTop: spacing.section },
+  conditionsTitle: { marginBottom: spacing.x3, fontSize: 17, lineHeight: 22 },
+  fallbackNote: { marginBottom: spacing.x3 },
+  condition: { minHeight: 49, justifyContent: "center", paddingVertical: spacing.x3, borderBottomWidth: line.hair, borderBottomColor: colors.border },
+  conditionLabel: { fontSize: 13, lineHeight: 17 },
+  conditionNote: { marginTop: spacing.x1, fontSize: 12, lineHeight: 17 },
   restart: {
     flexDirection: "row",
     alignItems: "center",
@@ -890,45 +1049,65 @@ const styles = StyleSheet.create({
     minHeight: touchTarget,
     alignSelf: "flex-start",
     marginTop: spacing.x3,
-    marginHorizontal: -spacing.x2,
-    paddingHorizontal: spacing.x2,
-    borderRadius: radii.sm,
+    paddingHorizontal: 0,
   },
+  restartText: { fontSize: 14, textDecorationLine: "underline" },
 
-  loadingHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.x4, paddingVertical: spacing.x2 },
-  headerSpacer: { width: touchTarget },
-  loadingBody: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: spacing.x6, paddingVertical: spacing.x4 },
-  loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingBottom: spacing.x4, paddingTop: spacing.x2 },
-  subText: { color: colors.inkSub, fontWeight: "500" },
-  visual: { alignSelf: "center", marginVertical: spacing.x6 },
-  // 식권 한 장: 흰 면 + 2pt 먹선. 누를 수 없으니 그림자는 없다
-  ticket: {
-    paddingHorizontal: spacing.x4,
-    paddingVertical: spacing.x4,
-    borderRadius: radii.xs,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-  },
-  ticketHead: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
-  ticketLogo: { width: 20, height: 20 },
-  ticketLabel: { letterSpacing: 1 },
-  ticketRule: { height: 1, backgroundColor: colors.border, marginTop: spacing.x3, marginBottom: spacing.x1 },
-  ticketRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x2 },
-  // 체크 칸: 1.5pt 먹선 + 6pt. 테두리는 가만히 있고 면과 체크만 들어온다
-  checkBox: {
-    width: 20,
-    height: 20,
+  loadingBody: {
+    flexGrow: 1,
+    justifyContent: "flex-start",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radii.xs,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
+    paddingHorizontal: spacing.x4,
+    paddingTop: spacing.x6,
+    paddingBottom: spacing.x10,
   },
-  // 다 체크된 순간에만 붙는 노랑 스티커. 식권 오른쪽 아래 모서리에 걸친다
-  ticketSticker: { position: "absolute", right: 0, bottom: -13 },
-  // Sticker는 기본이 alignSelf: flex-start라 오른쪽으로 보내려면 직접 덮어써야 한다
-  stickerRight: { alignSelf: "flex-end" },
-  statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minHeight: 24 },
-  statusDot: { width: 4, height: 4, borderRadius: radii.pill, backgroundColor: colors.brand },
+  loadingTitleVisible: { position: "absolute", top: 0, left: 0, right: 0, textAlign: "center" },
+  loadingSub: { textAlign: "center", marginTop: spacing.x1_5 },
+  loadingChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    columnGap: spacing.x2,
+    rowGap: spacing.x3,
+    marginTop: spacing.section,
+    maxWidth: 344,
+  },
+  loadingChip: {
+    minHeight: 40,
+    justifyContent: "center",
+    paddingHorizontal: spacing.x3_5,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
+  },
+  loadingChipOn: { backgroundColor: colors.selected },
+  loadingChipText: { flexShrink: 1 },
+  ticketFeed: {
+    overflow: "hidden",
+    marginTop: spacing.section,
+    paddingBottom: line.base,
+  },
+  ticketSlot: {
+    position: "absolute",
+    bottom: 0,
+    left: spacing.x1,
+    right: spacing.x1,
+    height: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.ink,
+  },
+  ticket: { width: "100%", borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
+  ticketHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.x5,
+    paddingTop: spacing.x5,
+    paddingBottom: spacing.x4,
+  },
+  ticketMain: { paddingHorizontal: spacing.x5, paddingBottom: spacing.x5 },
+  ticketName: { marginTop: spacing.x1, fontSize: 28, lineHeight: 34 },
+  ticketPlace: { marginTop: spacing.x1 },
+  ticketFoot: { paddingHorizontal: spacing.x5, paddingTop: spacing.x5, paddingBottom: spacing.x5 },
+  loadingActions: { alignItems: "center", gap: spacing.x1, marginTop: spacing.section },
+  statusLine: { minHeight: touchTarget, justifyContent: "center" },
 })

@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar"
 import * as Haptics from "expo-haptics"
 import * as ImagePicker from "expo-image-picker"
 import { Image } from "expo-image"
-import { Camera, Check, ChevronRight, MapPin, Soup, Sparkles, UserRound, X, type LucideIcon } from "lucide-react-native"
+import { Check, ChevronRight, MapPin, Soup, Sparkles, UserRound, X, type LucideIcon } from "lucide-react-native"
 import {
   AccessibilityInfo,
   Alert,
@@ -23,39 +23,25 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { MONTHLY_REPORT_TARGET, RAMEN_TYPES, type UserProfile } from "@raota/shared"
 import { track } from "@/src/analytics"
 import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
-import { AppText, Button, Chip, ConfirmDialog, Header } from "@/src/components/ui"
+import { AppText, Button, Chip, ConfirmDialog, Header, StickyActionBar } from "@/src/components/ui"
 import { ONBOARDING_PROMPT_DELAY, useRecordReminderPrompt } from "@/src/notifications"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, pressFade, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
- * 회원가입(온보딩). 웹 RegisterScreen과 같은 구성이다.
- * 프로필 사진(선택) → 닉네임(필수, 2~12자) → 선호 스타일(선택) → 한줄 소개(선택) → 약관 동의 → 가입 완료 안내.
+ * 회원가입: 닉네임 → 선호 스타일 → 약관 → 선택 입력(소개·사진).
  * 약관 "보기"는 PolicySheet로 열고, "확인하고 동의"를 누르면 그 항목이 체크된다.
  */
 
 const NICKNAME_MIN = 2
 const NICKNAME_MAX = 12
 const BIO_MAX = 60
+const NICKNAME_REQUIRED_ERROR = `닉네임을 입력해 주세요. ${NICKNAME_MIN}~${NICKNAME_MAX}자로 쓸 수 있어요.`
+const AGREEMENT_REQUIRED_ERROR = "필수 약관 두 가지에 동의해야 가입할 수 있어요."
+const PROFILE_SAVE_ERROR = "프로필을 저장하지 못했어요. 잠시 후 다시 시도해 주세요."
 
-/**
- * 선호 스타일은 favoriteRamenType 한 필드에 담기고 설정 화면에서도 같은 필드를 고친다.
- * 그쪽이 RAMEN_TYPES를 쓰므로 여기도 같은 목록을 쓴다. 목록이 갈리면 가입 때 고른 값이
- * 설정의 선택지에 없어 아무것도 안 골라진 것처럼 보인다.
- */
-const STYLE_HINTS: Record<string, string> = {
-  쇼유: "간장",
-  돈코츠: "돼지뼈",
-  이에케: "돈코츠쇼유",
-  시오: "소금",
-  미소: "된장",
-}
-const RAMEN_STYLE_OPTIONS = RAMEN_TYPES.map((key) => ({
-  key,
-  name: STYLE_HINTS[key] ? `${key} (${STYLE_HINTS[key]})` : key,
-}))
-
-const QUICK_BIO_TAGS = ["진한 국물파", "자가제면 탐험가", "라멘 성지순례 중", "꼬들면 애호가"]
+/** 설정 화면과 같은 종류를 저장한다. 칩에는 짧은 이름만 쓴다. */
+const RAMEN_STYLE_OPTIONS = RAMEN_TYPES
 
 const ONBOARDING_FEATURES: Array<{ Icon: LucideIcon; title: string; desc: string }> = [
   { Icon: MapPin, title: "내 주변 라멘집 찾기", desc: "지도에서 영업 여부와 라스트오더를 확인하고 바로 찾아가요." },
@@ -65,7 +51,7 @@ const ONBOARDING_FEATURES: Array<{ Icon: LucideIcon; title: string; desc: string
 
 function nicknameErrorOf(value: string): string | null {
   const length = value.trim().length
-  if (length === 0) return `닉네임을 입력해 주세요. ${NICKNAME_MIN}~${NICKNAME_MAX}자로 쓸 수 있어요.`
+  if (length === 0) return NICKNAME_REQUIRED_ERROR
   if (length < NICKNAME_MIN) return `닉네임이 너무 짧아요. ${NICKNAME_MIN - length}자만 더 적어 주세요.`
   if (length > NICKNAME_MAX) return `닉네임은 ${NICKNAME_MAX}자까지예요. 지금 ${length}자예요.`
   return null
@@ -75,7 +61,7 @@ function success() {
   if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined)
 }
 
-/** 체크박스 행. 보이는 상자는 20pt, 행 전체가 44pt 터치 영역 */
+/** 동의 행 전체를 44pt 터치 영역으로 만들고 상태를 원형 체크에 표시한다 */
 function CheckRow({
   checked,
   onChange,
@@ -98,19 +84,33 @@ function CheckRow({
       style={({ pressed }) => [styles.checkRow, pressed && styles.pressedWash]}
     >
       <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
-        {checked ? <Check color={colors.onDark} size={14} strokeWidth={3} /> : null}
+        {checked ? <Check color={colors.onSelected} size={14} strokeWidth={3} /> : null}
       </View>
-      <AppText style={[styles.flexShrink, strong && styles.checkStrong]} tone={strong ? "ink" : "sub"} variant={strong ? "cardTitle" : "body"}>
+      <AppText style={[styles.checkLabel, strong && styles.checkStrong]} tone={strong ? "ink" : "sub"} variant={strong ? "cardTitle" : "secondary"}>
         {children}
       </AppText>
     </Pressable>
   )
 }
+function CharacterCount({ value, max, prefix = "" }: { value: number; max: number; prefix?: string }) {
+  return (
+    <View style={styles.counterSlot}>
+      <AppText accessibilityElementsHidden capScale importantForAccessibility="no-hide-descendants" style={[styles.tabular, styles.hiddenFeedback]} tone="sub" variant="meta">
+        {`${prefix}${max}/${max}`}
+      </AppText>
+      <AppText capScale style={[styles.tabular, styles.counterValue]} tone="sub" variant="meta">
+        {`${prefix}${value}/${max}`}
+      </AppText>
+    </View>
+  )
+}
+
 
 export default function OnboardingScreen() {
   const { state, currentUser, actions } = useRaota()
   const [avatar, setAvatar] = useState<string | null>(currentUser?.avatar ?? null)
   const [nickname, setNickname] = useState("")
+  const [showMoreStyles, setShowMoreStyles] = useState(false)
   const [favorite, setFavorite] = useState<string | null>(null)
   const [bio, setBio] = useState("")
   const [agreeTerms, setAgreeTerms] = useState(false)
@@ -134,7 +134,7 @@ export default function OnboardingScreen() {
 
   const nicknameError = nicknameErrorOf(nickname)
   const showNicknameError = Boolean(nicknameError) && (attempted || nickname.length > 0)
-  const agreementError = attempted && (!agreeTerms || !agreePrivacy) ? "필수 약관 두 가지에 동의해야 가입할 수 있어요." : null
+  const agreementError = attempted && (!agreeTerms || !agreePrivacy) ? AGREEMENT_REQUIRED_ERROR : null
   const allAgreed = agreeTerms && agreePrivacy && agreeMarketing
 
   const toggleAll = (next: boolean) => {
@@ -200,7 +200,7 @@ export default function OnboardingScreen() {
       success()
       setRegistered(profile)
     } catch {
-      setSaveError("프로필을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.")
+      setSaveError(PROFILE_SAVE_ERROR)
     } finally {
       setSaving(false)
     }
@@ -223,9 +223,9 @@ export default function OnboardingScreen() {
   // ------------------------------------------------------------------
   if (registered) {
     return (
-      // 하단 inset은 흰 행동 바가 직접 먹는다(바 아래로 미색이 비치지 않게 루트에서는 빼둔다)
+      // 완료 뒤에도 바와 홈 인디케이터의 여백은 같은 흰 면으로 이어진다
       <SafeAreaView edges={["top"]} style={styles.root}>
-        <StatusBar style="dark" />
+        <StatusBar style="auto" />
         <ScrollView contentContainerStyle={styles.doneContent} showsVerticalScrollIndicator={false}>
           <View style={styles.doneHead}>
             <View style={styles.doneAvatar}>
@@ -235,7 +235,7 @@ export default function OnboardingScreen() {
                 <UserRound color={colors.textMuted} size={36} />
               )}
             </View>
-            <AppText accessibilityRole="header" style={styles.center} variant="headline">
+            <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.center} variant="headline">
               {registered.nickname}님, 반가워요
             </AppText>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="body">
@@ -246,11 +246,11 @@ export default function OnboardingScreen() {
             {ONBOARDING_FEATURES.map(({ Icon, title, desc }, index) => (
               <View accessible key={title} style={[styles.feature, index > 0 && styles.featureDivider]}>
                 <View style={styles.featureIcon}>
-                  <Icon color={colors.brand} size={20} />
+                  <Icon color={colors.ink} size={20} />
                 </View>
                 <View style={styles.flexShrink}>
                   <AppText variant="cardTitle">{title}</AppText>
-                  <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
+                  <AppText lineBreakStrategyIOS="hangul-word" style={styles.featureDescription} tone="sub" variant="secondary">
                     {desc}
                   </AppText>
                 </View>
@@ -269,7 +269,7 @@ export default function OnboardingScreen() {
           visible={reminder.visible}
         />
 
-        <SafeAreaView edges={["bottom"]} style={styles.doneFooter}>
+        <StickyActionBar>
           <Button
             fullWidth
             onPress={() => router.replace("/native")}
@@ -277,7 +277,7 @@ export default function OnboardingScreen() {
             size="large"
             title="라오타 시작하기"
           />
-        </SafeAreaView>
+        </StickyActionBar>
       </SafeAreaView>
     )
   }
@@ -286,27 +286,9 @@ export default function OnboardingScreen() {
   // 가입 폼
   // ------------------------------------------------------------------
   return (
-    <SafeAreaView edges={["top", "bottom"]} style={styles.root}>
-      <StatusBar style="dark" />
-      <Header
-        backLabel="뒤로가기"
-        onBack={leave}
-        right={
-          currentUser ? null : (
-            <Pressable
-              accessibilityLabel="로그인"
-              accessibilityRole="button"
-              onPress={() => router.replace("/auth/login")}
-              style={({ pressed }) => [styles.headerLink, pressed && styles.pressedWash]}
-            >
-              <AppText capScale tone="brand" variant="bodyStrong">
-                로그인
-              </AppText>
-            </Pressable>
-          )
-        }
-        title="회원가입"
-      />
+    <SafeAreaView edges={["top"]} style={styles.root}>
+      <StatusBar style="auto" />
+      <Header backLabel="뒤로가기" onBack={leave} title="회원가입" />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.content}
@@ -316,64 +298,19 @@ export default function OnboardingScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.intro}>
-            <AppText accessibilityRole="header" variant="headline">
-              반가워요!{"\n"}
-              <AppText tone="brand" variant="headline">
-                기본 정보
-              </AppText>
-              를 알려주세요
+            <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.introTitle} variant="headline">
+              반가워요!{"\n"}기본 정보를 알려주세요
             </AppText>
-            <AppText tone="sub" variant="body">
+            <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="body">
               라오타에서 쓸 닉네임과 취향을 정해요.
-            </AppText>
-          </View>
-
-          {/* 프로필 사진(선택) */}
-          <View style={styles.avatarBlock}>
-            <View>
-              <Pressable
-                accessibilityHint="사진 보관함에서 골라요"
-                accessibilityLabel="프로필 사진 선택"
-                accessibilityRole="button"
-                onPress={() => void pickAvatar()}
-                style={({ pressed }) => [styles.avatar, pressed && pressFade]}
-              >
-                {avatar ? (
-                  <Image accessibilityLabel="고른 프로필 사진" contentFit="cover" source={{ uri: avatar }} style={styles.fill} />
-                ) : (
-                  <UserRound color={colors.textMuted} size={40} />
-                )}
-              </Pressable>
-              <View pointerEvents="none" style={styles.cameraBadge}>
-                <Camera color={colors.onDark} size={14} />
-              </View>
-              {avatar ? (
-                <Pressable
-                  accessibilityLabel="고른 사진 지우기"
-                  accessibilityRole="button"
-                  onPress={() => setAvatar(null)}
-                  style={styles.avatarClear}
-                >
-                  <View style={styles.avatarClearDot}>
-                    <X color={colors.ink} size={16} />
-                  </View>
-                </Pressable>
-              ) : null}
-            </View>
-            <AppText style={styles.bold} tone="sub" variant="secondary">
-              프로필 사진 (선택)
             </AppText>
           </View>
 
           {/* 닉네임 */}
           <View onLayout={(event) => (nicknameBlockY.current = event.nativeEvent.layout.y)} style={styles.field}>
             <View style={styles.fieldHead}>
-              <AppText nativeID="nickname-label" variant="bodyStrong">
-                닉네임 <AppText tone="brand" variant="bodyStrong">*</AppText>
-              </AppText>
-              <AppText capScale style={styles.tabular} tone="sub" variant="secondary">
-                {nickname.length}/{NICKNAME_MAX}
-              </AppText>
+              <AppText nativeID="nickname-label" variant="button">닉네임</AppText>
+              <CharacterCount max={NICKNAME_MAX} prefix="· " value={nickname.length} />
             </View>
             <TextInput
               accessibilityHint={showNicknameError && nicknameError ? nicknameError : `한글, 영문, 숫자 ${NICKNAME_MIN}~${NICKNAME_MAX}자`}
@@ -391,71 +328,53 @@ export default function OnboardingScreen() {
               textContentType="nickname"
               value={nickname}
             />
-            {showNicknameError ? (
-              <AppText accessibilityLiveRegion="polite" style={styles.fieldNote} tone="critical" variant="secondary">
-                {nicknameError}
+            <View style={styles.noteSlot}>
+              <AppText
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                lineBreakStrategyIOS="hangul-word"
+                style={styles.hiddenFeedback}
+                tone="sub"
+                variant="secondary"
+              >
+                {NICKNAME_REQUIRED_ERROR}
               </AppText>
-            ) : (
-              <AppText style={styles.fieldNote} tone="sub" variant="secondary">
-                한글, 영문, 숫자 {NICKNAME_MIN}~{NICKNAME_MAX}자
+              <AppText
+                accessibilityLiveRegion={showNicknameError ? "polite" : undefined}
+                lineBreakStrategyIOS="hangul-word"
+                style={styles.noteValue}
+                tone={showNicknameError ? "critical" : "sub"}
+                variant="secondary"
+              >
+                {showNicknameError ? nicknameError : `한글, 영문, 숫자 ${NICKNAME_MIN}~${NICKNAME_MAX}자`}
               </AppText>
-            )}
+            </View>
           </View>
 
           {/* 선호 스타일(선택) */}
           <View accessibilityLabel="선호 라멘 스타일" style={styles.field}>
-            <AppText variant="bodyStrong">선호 라멘 스타일 (선택)</AppText>
+            <AppText style={styles.styleTitle} variant="sectionTitle">선호 라멘 스타일 <AppText tone="muted" variant="meta">선택</AppText></AppText>
+            <AppText tone="muted" variant="secondary">가장 끌리는 한 그릇을 골라주세요.</AppText>
             <View style={styles.chips}>
-              {RAMEN_STYLE_OPTIONS.map((style) => (
+              {RAMEN_STYLE_OPTIONS.slice(0, showMoreStyles ? undefined : 6).map((style) => (
                 <Chip
-                  key={style.key}
-                  label={style.name}
-                  onPress={() => setFavorite((previous) => (previous === style.key ? null : style.key))}
-                  selected={favorite === style.key}
+                  key={style}
+                  label={style}
+                  onPress={() => setFavorite((previous) => (previous === style ? null : style))}
+                  selected={favorite === style}
+                  style={styles.styleChip}
+                  hitSlop={{ top: 2, bottom: 2 }}
                 />
               ))}
             </View>
-          </View>
-
-          {/* 한줄 소개(선택) */}
-          <View style={styles.field}>
-            <View style={styles.fieldHead}>
-              <AppText variant="bodyStrong">한줄 소개 (선택)</AppText>
-              <AppText capScale style={styles.tabular} tone="sub" variant="secondary">
-                {bio.length}/{BIO_MAX}
-              </AppText>
-            </View>
-            <TextInput
-              accessibilityLabel="한줄 소개"
-              maxLength={BIO_MAX}
-              multiline
-              onChangeText={setBio}
-              placeholder="라멘에 진심인 편입니다. 깊은 국물 맛을 찾아다녀요."
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, styles.textarea]}
-              textAlignVertical="top"
-              value={bio}
-            />
-            <ScrollView contentContainerStyle={styles.quickTags} horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false}>
-              {QUICK_BIO_TAGS.map((tag) => (
-                <Pressable
-                  accessibilityLabel={`소개에 ${tag} 넣기`}
-                  accessibilityRole="button"
-                  key={tag}
-                  onPress={() => setBio(tag)}
-                  style={styles.quickTag}
-                >
-                  {/* 누름은 칩 면에만 보인다. 44pt 터치 영역까지 칠하면 알약 밖으로 회색 사각이 번진다 */}
-                  {({ pressed }) => (
-                    <View style={[styles.quickTagPill, pressed && styles.pressedWash]}>
-                      <AppText capScale tone="sub" variant="secondary">
-                        + {tag}
-                      </AppText>
-                    </View>
-                  )}
-                </Pressable>
-              ))}
-            </ScrollView>
+            <Pressable
+              accessibilityLabel={showMoreStyles ? "다른 스타일 접기" : "다른 스타일 보기"}
+              accessibilityRole="button"
+              onPress={() => setShowMoreStyles((value) => !value)}
+              style={styles.moreStyles}
+            >
+              <AppText tone="sub" variant="meta">{showMoreStyles ? "접기" : "다른 스타일 보기"}</AppText>
+            </Pressable>
           </View>
 
           {/* 약관 */}
@@ -467,7 +386,7 @@ export default function OnboardingScreen() {
             </View>
             <View style={styles.termRow}>
               <CheckRow checked={agreeTerms} label="필수, 서비스 이용약관 동의" onChange={setAgreeTerms}>
-                <AppText style={styles.bold} tone="brand" variant="body">
+                <AppText style={styles.bold} tone="sub" variant="meta">
                   [필수]
                 </AppText>{" "}
                 서비스 이용약관 동의
@@ -478,14 +397,14 @@ export default function OnboardingScreen() {
                 onPress={() => setPolicy("terms")}
                 style={({ pressed }) => [styles.viewLink, pressed && styles.pressedWash]}
               >
-                <AppText capScale style={styles.underline} tone="sub" variant="secondary">
+                <AppText capScale tone="muted" variant="meta">
                   보기
                 </AppText>
               </Pressable>
             </View>
             <View style={styles.termRow}>
               <CheckRow checked={agreePrivacy} label="필수, 개인정보 수집 및 이용 동의" onChange={setAgreePrivacy}>
-                <AppText style={styles.bold} tone="brand" variant="body">
+                <AppText style={styles.bold} tone="sub" variant="meta">
                   [필수]
                 </AppText>{" "}
                 개인정보 수집 및 이용 동의
@@ -496,58 +415,96 @@ export default function OnboardingScreen() {
                 onPress={() => setPolicy("privacy")}
                 style={({ pressed }) => [styles.viewLink, pressed && styles.pressedWash]}
               >
-                <AppText capScale style={styles.underline} tone="sub" variant="secondary">
+                <AppText capScale tone="muted" variant="meta">
                   보기
                 </AppText>
               </Pressable>
             </View>
             <CheckRow checked={agreeMarketing} label="선택, 라멘 추천 및 소식 수신 동의" onChange={setAgreeMarketing}>
-              <AppText style={styles.bold} tone="sub" variant="body">
+              <AppText style={styles.bold} tone="sub" variant="meta">
                 [선택]
               </AppText>{" "}
               라멘 추천 및 소식 수신 동의
             </CheckRow>
-            {agreementError ? (
-              <AppText accessibilityLiveRegion="polite" tone="critical" variant="secondary">
-                {agreementError}
-              </AppText>
-            ) : null}
+            <AppText
+              accessibilityElementsHidden={!agreementError}
+              accessibilityLiveRegion={agreementError ? "polite" : undefined}
+              importantForAccessibility={agreementError ? "auto" : "no-hide-descendants"}
+              style={!agreementError && styles.hiddenFeedback}
+              tone="critical"
+              variant="secondary"
+            >
+              {AGREEMENT_REQUIRED_ERROR}
+            </AppText>
           </View>
 
-          {saveError ? (
-            <AppText accessibilityLiveRegion="polite" tone="critical" variant="secondary">
-              {saveError}
-            </AppText>
-          ) : null}
+          {/* 한줄 소개(선택) */}
+          <View style={styles.field}>
+            <View style={styles.fieldHead}>
+              <AppText variant="button">한줄 소개 (선택)</AppText>
+              <CharacterCount max={BIO_MAX} value={bio.length} />
+            </View>
+            <TextInput
+              accessibilityLabel="한줄 소개"
+              maxLength={BIO_MAX}
+              onChangeText={setBio}
+              placeholder="라멘에 진심인 편입니다."
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+              value={bio}
+            />
+          </View>
+          {/* 프로필 사진은 유지하되 필수 입력 아래에 둔다. */}
+          <View style={styles.avatarBlock}>
+            <Pressable
+              accessibilityHint="사진 보관함에서 골라요"
+              accessibilityLabel="프로필 사진 선택"
+              accessibilityRole="button"
+              onPress={() => void pickAvatar()}
+              style={({ pressed }) => [styles.avatar, pressed && pressFade]}
+            >
+              {avatar ? (
+                <Image accessibilityLabel="고른 프로필 사진" contentFit="cover" source={{ uri: avatar }} style={styles.fill} />
+              ) : (
+                <UserRound color={colors.textMuted} size={24} />
+              )}
+            </Pressable>
+            <AppText tone="muted" variant="secondary">프로필 사진 (선택)</AppText>
+            <Pressable
+              accessibilityElementsHidden={!avatar}
+              accessibilityLabel="고른 사진 지우기"
+              accessibilityRole="button"
+              disabled={!avatar}
+              importantForAccessibility={avatar ? "auto" : "no-hide-descendants"}
+              onPress={() => setAvatar(null)}
+              style={[styles.avatarClear, !avatar && styles.hiddenFeedback]}
+            >
+              <X color={colors.ink} size={18} />
+            </Pressable>
+          </View>
 
+
+          <AppText
+            accessibilityElementsHidden={!saveError}
+            accessibilityLiveRegion={saveError ? "polite" : undefined}
+            importantForAccessibility={saveError ? "auto" : "no-hide-descendants"}
+            style={!saveError && styles.hiddenFeedback}
+            tone="critical"
+            variant="secondary"
+          >
+            {PROFILE_SAVE_ERROR}
+          </AppText>
+
+        </ScrollView>
+        <StickyActionBar>
           <Button
             fullWidth
             loading={saving}
             onPress={() => void submit()}
-            rightIcon={<ChevronRight color={colors.onDark} size={20} />}
             size="large"
-            style={styles.submit}
             title="회원가입 완료"
           />
-
-          {currentUser ? null : (
-            <View style={styles.loginRow}>
-              <AppText tone="sub" variant="body">
-                이미 계정이 있으신가요?
-              </AppText>
-              <Pressable
-                accessibilityLabel="로그인하기"
-                accessibilityRole="button"
-                onPress={() => router.replace("/auth/login")}
-                style={({ pressed }) => [styles.headerLink, pressed && styles.pressedWash]}
-              >
-                <AppText style={styles.underline} variant="bodyStrong">
-                  로그인하기
-                </AppText>
-              </Pressable>
-            </View>
-          )}
-        </ScrollView>
+        </StickyActionBar>
       </KeyboardAvoidingView>
 
       <PolicySheet
@@ -578,63 +535,35 @@ const styles = StyleSheet.create({
   fill: { width: "100%", height: "100%" },
   center: { textAlign: "center" },
   bold: { fontWeight: "700" },
-  underline: { textDecorationLine: "underline" },
   tabular: { fontVariant: ["tabular-nums"] },
-  // 흰·미색 면 위의 행과 링크는 canvasSoft 배경으로 눌린다. 사진이 깔리는 자리만 pressFade
-  pressedWash: { backgroundColor: colors.canvasSoft },
-  headerLink: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2, borderRadius: radii.sm },
+  counterSlot: { position: "relative" },
+  counterValue: { position: "absolute", top: 0, right: 0 },
+  hiddenFeedback: { opacity: 0 },
+  noteSlot: { position: "relative" },
+  noteValue: { position: "absolute", top: 0, left: 0, right: 0 },
+  // 흰 행과 링크를 누르면 면색이 바뀌고, 사진만 투명도가 바뀐다
+  pressedWash: { backgroundColor: colors.surfacePressed },
   content: {
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.x6,
+    paddingHorizontal: 20,
+    paddingTop: spacing.x4,
     paddingBottom: spacing.x8,
-    gap: spacing.x6,
   },
   intro: { gap: spacing.x1_5 },
-  avatarBlock: { alignItems: "center", gap: spacing.x2 },
-  // 사진 자리는 12pt 사각 + 2pt 먹선(원형 아바타를 쓰지 않는다)
+  introTitle: { fontSize: 26, lineHeight: 32 },
+  avatarBlock: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: touchTarget, marginTop: spacing.section },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
+    width: 44,
+    height: 44,
+    borderRadius: radii.pill,
     backgroundColor: colors.canvasSoft,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  cameraBadge: {
-    position: "absolute",
-    right: 0,
-    bottom: 0,
-    borderRadius: radii.xs,
-    borderWidth: line.base,
-    borderColor: colors.canvas,
-    backgroundColor: colors.ink,
-    padding: spacing.x1_5,
-  },
-  avatarClear: {
-    position: "absolute",
-    right: -spacing.x3,
-    top: -spacing.x3,
-    width: touchTarget,
-    height: touchTarget,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarClearDot: {
-    width: 28,
-    height: 28,
-    borderRadius: radii.xs,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  field: { gap: spacing.x1_5 },
+  avatarClear: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center", marginLeft: "auto" },
+  field: { gap: spacing.x3, marginTop: spacing.section },
   fieldHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  // 입력칸은 흰 면 + 2pt 먹선 + 12pt. 글씨는 다른 화면과 같은 typography.body(14)다. 오류일 때만 선 색이 바뀐다
+  // 입력 필드는 흰 면, 1pt 테두리와 16pt 본문으로 맞춘다
   input: {
     ...typography.body,
     minHeight: 48,
@@ -647,37 +576,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   inputError: { borderColor: colors.critical },
-  textarea: { minHeight: 72 },
-  fieldNote: { marginTop: spacing.x0_5 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5 },
-  quickTags: { gap: spacing.x1 },
-  quickTag: { minHeight: touchTarget, justifyContent: "center" },
-  // 소개 문구를 채워 넣는 칩. 흰 면 + 1.5pt 먹선 알약(선이 글씨에 붙지 않게 위아래 2pt만 넓힌다)
-  quickTagPill: {
-    borderRadius: radii.pill,
-    borderWidth: line.thin,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    paddingHorizontal: spacing.x3,
-    paddingVertical: spacing.x1_5,
-  },
-  terms: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.x3 },
-  termsAll: { borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: spacing.x1 },
+  styleTitle: { fontSize: 17, lineHeight: 24 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  styleChip: { height: 44 },
+  moreStyles: { minHeight: touchTarget, alignSelf: "flex-start", justifyContent: "center" },
+  terms: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.x4, marginTop: spacing.x4 },
+  termsAll: { borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 4 },
   termRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2 },
   checkRow: { flex: 1, minHeight: touchTarget, flexDirection: "row", alignItems: "center", gap: spacing.x2_5 },
-  // 체크 칸은 6pt 사각 + 2pt 먹선, 고르면 빨강 면 + 흰 체크
+  // 체크는 선택 면으로 채워 빨간 주요 행동과 경쟁하지 않는다.
   checkBox: {
-    width: 20,
-    height: 20,
-    borderRadius: radii.xs,
-    borderWidth: line.base,
+    width: 22,
+    height: 22,
+    borderRadius: radii.pill,
+    borderWidth: line.hair,
     borderColor: colors.outline,
     backgroundColor: colors.canvas,
     alignItems: "center",
     justifyContent: "center",
   },
-  checkBoxOn: { backgroundColor: colors.brand },
-  checkStrong: { fontWeight: "800" },
+  checkBoxOn: { backgroundColor: colors.selected, borderColor: colors.selected },
+  checkLabel: { flexShrink: 1, minWidth: 0, fontSize: 13, lineHeight: 18 },
+  checkStrong: { fontSize: 15, lineHeight: 20, fontWeight: "700" },
   viewLink: {
     minHeight: touchTarget,
     minWidth: touchTarget,
@@ -686,40 +606,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.x2,
     borderRadius: radii.sm,
   },
-  submit: { marginTop: -spacing.x2 },
-  loginRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", marginTop: -spacing.x4 },
-  doneContent: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x8, paddingBottom: spacing.x4 },
+  doneContent: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x6, paddingBottom: spacing.x8 },
   doneHead: { alignItems: "center", gap: spacing.x1 },
   doneAvatar: {
     width: 80,
     height: 80,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
+    borderRadius: radii.pill,
     backgroundColor: colors.canvasSoft,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    marginBottom: spacing.x2,
+    marginBottom: spacing.x3,
   },
-  features: { marginTop: spacing.x8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
+  features: { marginTop: spacing.section, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   feature: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3, paddingVertical: spacing.x4 },
+  featureDescription: { marginTop: spacing.x1 },
   featureDivider: { borderTopWidth: 1, borderTopColor: colors.border },
   featureIcon: {
     width: 40,
     height: 40,
     borderRadius: radii.sm,
-    backgroundColor: colors.brandWeak,
+    backgroundColor: colors.canvasSoft,
     alignItems: "center",
     justifyContent: "center",
-  },
-  // 하단 고정 행동 바: 흰 면 + 위쪽 2pt 먹선. 아래 여백에 홈 인디케이터 inset이 더해진다
-  doneFooter: {
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.x3,
-    paddingBottom: spacing.x3,
-    backgroundColor: colors.canvas,
-    borderTopWidth: line.base,
-    borderTopColor: colors.outline,
   },
 })

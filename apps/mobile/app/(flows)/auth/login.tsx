@@ -1,20 +1,20 @@
-import { useState, type ReactElement } from "react"
+import { type ReactElement } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import * as Haptics from "expo-haptics"
-import { Compass } from "lucide-react-native"
-import { Image, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native"
+import { Image, Platform, Pressable, ScrollView, StyleSheet, View, useColorScheme, useWindowDimensions, type ColorValue } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import Svg, { Path } from "react-native-svg"
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg"
 
 import type { AuthProvider } from "@raota/shared"
 import { track } from "@/src/analytics"
-import { AppText, Header, Toast } from "@/src/components/ui"
+import { ResilientUriImage } from "@/src/components/ResilientUriImage"
+import { AppText } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, pressInto, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
+import { colors, line, pressFade, radii, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
 /*
- * 로그인. 로고·소개·간편 로그인을 화면 가운데에 모으고, 둘러보기와 약관 링크는 아래에 둔다.
+ * 로그인. 실제 라멘 사진을 먼저 보여주고 소개·간편 로그인을 이어 놓는다.
  * MVP 로그인 수단은 Apple · 카카오 · Google 세 가지다.
  * params.mode === "signup"(마이·홈의 "회원가입")이면 같은 화면을 가입 흐름으로 보여준다:
  * 간편 로그인으로 계정을 만든 뒤 바로 온보딩(닉네임·약관)으로 간다.
@@ -36,12 +36,59 @@ const PROVIDER_BRAND = {
   googleRed: "#EA4335",
 } as const
 
-function AppleMark() {
+// 승인된 시안의 장식 사진 여섯 장. 특정 매장이나 기록의 사진이라고 주장하지 않는다.
+const COLLAGE_PHOTOS = [
+  "https://images.unsplash.com/photo-1742633882713-593c13e90231?w=290&h=360&fit=crop&auto=format&q=80",
+  "https://images.unsplash.com/photo-1635379511574-bc167ca085c8?w=290&h=330&fit=crop&auto=format&q=80",
+  "https://images.unsplash.com/photo-1742633882711-ef7b3cee63d7?w=290&h=430&fit=crop&auto=format&q=80",
+  "https://images.unsplash.com/photo-1760971578858-b6bbe21078f5?w=290&h=310&fit=crop&auto=format&q=80",
+  "https://images.unsplash.com/photo-1533787761082-492a5b83e614?w=290&h=320&fit=crop&auto=format&q=80",
+  "https://images.unsplash.com/photo-1780822734757-e45178b6b79c?w=290&h=380&fit=crop&auto=format&q=80",
+]
+const COLLAGE_COLUMNS = [[0, 1], [2, 3], [4, 5]] as const
+
+function RamenCollage({ height }: { height: number }) {
+  const { paper } = usePalette()
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.collage, { height }]}
+    >
+      {COLLAGE_COLUMNS.map((photos, column) => (
+        <View
+          key={column}
+          style={[styles.collageColumn, column === 1 && styles.collageColumnMiddle, column === 2 && styles.collageColumnLast]}
+        >
+          {photos.map((photo, index) => (
+            <ResilientUriImage
+              accessibilityLabel="라멘 사진"
+              key={`${column}-${index}`}
+              style={[styles.collagePhoto, { height: column === 1 && index === 0 ? 215 : column === 2 && index === 1 ? 200 : 165 }]}
+              uri={COLLAGE_PHOTOS[photo]}
+            />
+          ))}
+        </View>
+      ))}
+      <Svg height={130} pointerEvents="none" style={styles.collageFade} width="100%">
+        <Defs>
+          <LinearGradient id="fadeToCanvas" x1="0" x2="0" y1="0" y2="1">
+            <Stop offset="0" stopColor={paper} stopOpacity="0" />
+            <Stop offset="1" stopColor={paper} stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Rect fill="url(#fadeToCanvas)" height="100%" width="100%" />
+      </Svg>
+    </View>
+  )
+}
+
+function AppleMark({ color }: { color: ColorValue }) {
   return (
     <Svg height={20} viewBox="0 0 24 24" width={20}>
       <Path
         d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
-        fill={colors.white}
+        fill={color}
       />
     </Svg>
   )
@@ -81,15 +128,17 @@ function GoogleMark() {
   )
 }
 
-const PROVIDERS: Array<{ id: SocialProvider; label: string; Mark: () => ReactElement }> = [
-  // Apple 로그인은 다른 간편 로그인보다 눈에 덜 띄면 안 된다(App Store 가이드라인 4.8). 맨 위 검은 버튼
+const PROVIDERS: Array<{ id: SocialProvider; label: string; Mark: (props: { color: ColorValue }) => ReactElement }> = [
+  // Apple은 iOS 밝은 화면에서 검정, 어두운 화면에서 흰 버튼으로 제공한다.
   { id: "apple", label: "Apple로 계속하기", Mark: AppleMark },
   { id: "kakao", label: "카카오로 계속하기", Mark: KakaoMark },
   { id: "google", label: "Google로 계속하기", Mark: GoogleMark },
 ]
 
 function ProviderButton({ id, label, Mark, onPress }: (typeof PROVIDERS)[number] & { onPress: () => void }) {
-  const textColor = id === "apple" ? colors.white : id === "kakao" ? PROVIDER_BRAND.kakaoLabel : colors.ink
+  const scheme = useColorScheme()
+  const darkApple = id === "apple" && Platform.OS === "ios" && scheme === "dark"
+  const textColor = id === "apple" ? (darkApple ? colors.black : colors.white) : id === "kakao" ? PROVIDER_BRAND.kakaoLabel : colors.black
   return (
     <Pressable
       accessibilityLabel={label}
@@ -98,16 +147,17 @@ function ProviderButton({ id, label, Mark, onPress }: (typeof PROVIDERS)[number]
       style={({ pressed }) => [
         styles.provider,
         id === "apple" && styles.providerApple,
+        darkApple && styles.providerAppleDark,
         id === "kakao" && styles.providerKakao,
         id === "google" && styles.providerGoogle,
-        pressed && styles.pressedKey,
+        pressed && pressFade,
       ]}
       testID={`login-${id}`}
     >
       <View style={styles.providerMark}>
-        <Mark />
+        <Mark color={textColor} />
       </View>
-      <AppText maxFontSizeMultiplier={1.3} numberOfLines={1} style={[styles.providerLabel, { color: textColor }]}>
+      <AppText maxFontSizeMultiplier={1.3} numberOfLines={1} style={{ color: textColor }} variant="button">
         {label}
       </AppText>
     </Pressable>
@@ -118,7 +168,6 @@ function LegalLink({ doc, label }: { doc: "terms" | "privacy"; label: string }) 
   return (
     <Pressable
       accessibilityRole="link"
-      // 글씨 높이가 17pt라 위아래로 14pt씩 넓혀야 44pt가 된다
       hitSlop={{ top: 14, bottom: 14, left: 8, right: 8 }}
       onPress={() => router.push({ pathname: "/legal/[doc]", params: { doc } })}
       style={({ pressed }) => pressed && styles.pressedWash}
@@ -134,7 +183,7 @@ export default function LoginScreen() {
   const params = useLocalSearchParams<{ mode?: string; next?: string }>()
   const signup = params.mode === "signup"
   const { state, currentUser, actions } = useRaota()
-  const [notice, setNotice] = useState<string | null>(null)
+  const { height } = useWindowDimensions()
 
   const leave = () => {
     if (router.canGoBack()) router.back()
@@ -182,27 +231,9 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView edges={["top", "bottom"]} style={styles.root}>
-      <StatusBar style="dark" />
-      <Header
-        backLabel="뒤로가기"
-        onBack={leave}
-        right={
-          <Pressable
-            accessibilityLabel={signup ? "로그인" : "회원가입"}
-            accessibilityRole="button"
-            hitSlop={4}
-            onPress={() => router.setParams({ mode: signup ? "login" : "signup" })}
-            style={({ pressed }) => [styles.headerLink, pressed && styles.pressedWash]}
-          >
-            <AppText capScale tone="brand" variant="bodyStrong">
-              {signup ? "로그인" : "회원가입"}
-            </AppText>
-          </Pressable>
-        }
-        title={signup ? "회원가입" : "로그인"}
-      />
+      <StatusBar style="auto" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.main}>
+        <RamenCollage height={Math.min(312, Math.max(240, height - 568))} />
         <View style={styles.brand}>
           <Pressable
             accessible={false}
@@ -210,121 +241,87 @@ export default function LoginScreen() {
             disabled={!__DEV__}
             onLongPress={demoLogin}
           >
-          <Image
-            accessibilityIgnoresInvertColors
-            accessibilityLabel="RAOTA"
-            resizeMode="contain"
-            source={require("@/assets/images/logo.png")}
-            style={styles.logo}
-          />
+            <Image
+              accessibilityIgnoresInvertColors
+              accessibilityLabel="RAOTA"
+              resizeMode="contain"
+              source={require("@/assets/images/logo.png")}
+              style={styles.logo}
+            />
           </Pressable>
-          <AppText accessibilityRole="header" style={styles.center} variant="headline">
-            좋았던 한 그릇을{"\n"}
-            <AppText tone="brand" variant="headline">
-              잊지 않도록
-            </AppText>
+          <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.headline} variant="screenTitle">
+            좋았던 한 그릇, 잊지 않도록
           </AppText>
-          <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="body">
-            {signup
-              ? "간편 로그인으로 가입하고, 닉네임과 약관 동의만 하면 첫 기록을 남길 수 있어요."
-              : "가고 싶은 곳, 다녀온 곳, 다시 먹고 싶은 한 그릇을 라오타에 모아두세요."}
+          <AppText lineBreakStrategyIOS="hangul-word" style={styles.subtitle} tone="sub" variant="secondary">
+            가고 싶은 곳, 다녀온 곳을 라오타에 모아두세요.
           </AppText>
         </View>
-
         <View style={styles.providers}>
           {PROVIDERS.map((provider) => (
             <ProviderButton key={provider.id} {...provider} onPress={() => socialLogin(provider.id)} />
           ))}
         </View>
-
-        </View>
-
-        <View style={styles.bottom}>
-          <Pressable
-            accessibilityHint="로그인하지 않고 홈으로 가요"
-            accessibilityLabel="로그인 없이 둘러보기"
-            accessibilityRole="button"
-            onPress={browseAsGuest}
-            style={({ pressed }) => [styles.guest, pressed && styles.pressedWash]}
-          >
-            <Compass color={colors.inkSub} size={16} />
-            <AppText style={styles.bold} tone="sub" variant="body">
-              로그인 없이 둘러보기
-            </AppText>
-          </Pressable>
-          <View style={styles.legal}>
-            <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="meta">
-              처음이면 간편 로그인 뒤 닉네임과 약관 동의만 하면 가입이 끝나요.
-            </AppText>
-            <View style={styles.legalLinks}>
-              <LegalLink doc="terms" label="이용약관" />
-              <AppText tone="sub" variant="meta">
-                ·
-              </AppText>
-              <LegalLink doc="privacy" label="개인정보처리방침" />
-            </View>
+        <Pressable
+          accessibilityHint="로그인하지 않고 홈으로 가요"
+          accessibilityLabel="로그인 없이 둘러보기"
+          accessibilityRole="button"
+          onPress={browseAsGuest}
+          style={({ pressed }) => [styles.guest, pressed && styles.pressedWash]}
+        >
+          <AppText variant="button">로그인 없이 둘러보기</AppText>
+        </Pressable>
+        <View style={styles.legal}>
+          <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="muted" variant="meta">
+            처음이면 간편 로그인 뒤 닉네임과 약관 동의만 하면 가입이 끝나요.
+          </AppText>
+          <View style={styles.legalLinks}>
+            <LegalLink doc="terms" label="이용약관" />
+            <AppText tone="sub" variant="meta">·</AppText>
+            <LegalLink doc="privacy" label="개인정보처리방침" />
           </View>
         </View>
       </ScrollView>
-      <Toast message={notice ?? ""} onDismiss={() => setNotice(null)} visible={Boolean(notice)} />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.x4,
-    paddingBottom: spacing.x4,
-  },
-  // 로고·소개·간편 로그인 묶음을 남는 높이의 가운데에 둔다(헤더를 빼고 조금 위로 보이도록 아래 여백을 더 준다)
-  main: { flexGrow: 1, justifyContent: "center", gap: spacing.x3, paddingBottom: spacing.x8 },
+  content: { flexGrow: 1, paddingBottom: spacing.x6 },
+  collage: { flexDirection: "row", gap: 6, marginHorizontal: 10, overflow: "hidden", borderRadius: radii.sm },
+  collageColumn: { flex: 1, gap: 6 },
+  collageColumnMiddle: { marginTop: -36 },
+  collageColumnLast: { marginTop: -14 },
+  collagePhoto: { width: "100%", borderRadius: radii.sm },
+  collageFade: { position: "absolute", bottom: 0, left: 0, right: 0 },
   center: { textAlign: "center" },
-  bold: { fontWeight: "700" },
-  pressedWash: { backgroundColor: colors.canvasSoft, borderRadius: radii.sm },
-  // 그림자가 있는 키는 누르는 동안 그림자 속으로 들어간다
-  pressedKey: pressInto(2),
-  headerLink: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },
-  brand: { alignItems: "center", gap: spacing.x2, marginBottom: spacing.x4 },
-  // 로고는 12pt 사각 + 2pt 먹선 타일. 그림은 빨강 한 가지라 흰 면 위에 올린다
-  logo: {
-    width: 56,
-    height: 56,
-    marginBottom: spacing.x1,
-    backgroundColor: colors.canvas,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-  },
-  providers: { gap: spacing.x2_5 },
-  // 간편 로그인은 눌리는 키다: 12pt 사각 + 2pt 먹선 + 번지지 않는 그림자. 면 색만 제공자 브랜드를 따른다
+  pressedWash: { backgroundColor: colors.surfacePressed, borderRadius: radii.sm },
+  brand: { alignItems: "center", marginTop: -25, paddingHorizontal: spacing.x4 },
+  logo: { width: 60, height: 60 },
+  headline: { ...typography.screenTitle, fontSize: 22, lineHeight: 28, letterSpacing: -0.6, textAlign: "center", marginTop: spacing.x3 },
+  subtitle: { fontSize: 13, lineHeight: 18, textAlign: "center", marginTop: 4 },
+  providers: { gap: spacing.x4, marginTop: spacing.section, marginHorizontal: 24 },
   provider: {
     minHeight: 48,
     borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: spacing.x12,
-    ...shadows.hardS,
   },
   providerApple: { backgroundColor: colors.black },
+  providerAppleDark: { backgroundColor: colors.white },
   providerKakao: { backgroundColor: PROVIDER_BRAND.kakaoContainer },
-  providerGoogle: { backgroundColor: colors.canvas },
-  providerMark: { position: "absolute", left: spacing.x5, top: 0, bottom: 0, justifyContent: "center" },
-  providerLabel: { ...typography.cardTitle },
-  bottom: { paddingTop: spacing.x4, alignItems: "center", gap: spacing.x2 },
-  legal: { alignItems: "center", gap: spacing.x1 },
-  legalLinks: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
+  providerGoogle: { backgroundColor: colors.white, borderWidth: line.hair, borderColor: colors.border },
+  providerMark: { position: "absolute", left: spacing.x4, top: 0, bottom: 0, justifyContent: "center" },
+  legal: { alignItems: "center", gap: spacing.x3, paddingHorizontal: 24, paddingTop: spacing.x4, paddingBottom: spacing.x4, marginTop: "auto" },
+  legalLinks: { flexDirection: "row", alignItems: "center", gap: 8 },
   legalLinkText: { textDecorationLine: "underline" },
   guest: {
     minHeight: touchTarget,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.x1_5,
-    paddingHorizontal: spacing.x3,
+    alignSelf: "center",
+    paddingHorizontal: 16,
+    marginTop: spacing.x4,
   },
 })

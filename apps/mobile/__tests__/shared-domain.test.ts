@@ -6,6 +6,7 @@ import {
   DEMO_TYPE_COUNTS,
   PAST_REPORTS,
   SHOP_CATALOG,
+  SHOP_LEDGER,
   findShopById,
   getShopDetail,
   isTasteScores,
@@ -58,13 +59,13 @@ describe("shared ledger", () => {
     }
   })
 
-  it("does not borrow another shop's details for sparse catalog entries", () => {
+  it("does not borrow another shop's details for sparse ledger entries", () => {
     const ids = SHOP_CATALOG.map(shop => shop.id)
     expect(new Set(ids).size).toBe(ids.length)
-    const fuku = getShopDetail("후쿠 라멘")
-    expect(fuku.reviews).toEqual([])
-    expect(fuku.phone).toBeUndefined()
-    expect(fuku.instagramUrl).toBeUndefined()
+    const fuku = SHOP_LEDGER.find(shop => shop.name === "후쿠 라멘")
+    expect(fuku?.reviews).toEqual([])
+    expect(fuku?.phone).toBeUndefined()
+    expect(fuku?.instagramUrl).toBeUndefined()
     expect(findShopById(4)?.name).toBe("세상끝의라멘")
     expect(getShopDetail("없는 가게").id).toBe(0)
   })

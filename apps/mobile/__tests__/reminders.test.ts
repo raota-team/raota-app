@@ -128,6 +128,15 @@ describe("settings switch", () => {
     expect(await AsyncStorage.getItem(REMINDER_DECISION_KEY)).toBe("declined")
   })
 
+  it("reflects the last settings-switch choice in the native switch value", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(granted)
+    await setRemindersEnabled(true, { monthCount: 1 })
+    expect((await getReminderState()).enabled).toBe(true)
+
+    await setRemindersEnabled(false, { monthCount: 1 })
+    expect(await getReminderState()).toEqual({ enabled: false, blocked: false, supported: true })
+  })
+
   it("reports blocked when iOS denied it — the app cannot ask again", async () => {
     notifications.getPermissionsAsync.mockResolvedValue(denied)
     expect(await getReminderState()).toEqual({ enabled: false, blocked: true, supported: true })

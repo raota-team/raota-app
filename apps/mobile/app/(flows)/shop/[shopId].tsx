@@ -1,33 +1,40 @@
 import * as Haptics from "expo-haptics"
 import { router, useLocalSearchParams } from "expo-router"
-import { Bookmark, CalendarCheck, ChevronDown, ChevronLeft, ImageOff, Map as MapIcon, MapPin, PenLine, Phone, Sparkles, Store } from "lucide-react-native"
-import { useEffect, useRef, useState } from "react"
+import { CalendarCheck, ChevronLeft, ChevronRight, Ellipsis, Heart, ImageOff, Map as MapIcon, MapPin, Phone, Share2, Sparkles, X } from "lucide-react-native"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Linking,
+  Modal,
+  Share,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
+  type ColorValue,
 } from "react-native"
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Svg, { Path } from "react-native-svg"
 
-import type { Shop, ShopCatalogItem } from "@raota/shared"
+import { EMPTY_PROFILE, TASTE_AXES, mergeProfile, type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, Button, EmptyState, Header, IconButton, LoadingState, RamenTypeTag, Screen, Sticker, StickyActionBar, Tag, Toast } from "@/src/components/ui"
-import { useBookmarkedShops, useMyLogs, useShop } from "@/src/data/hooks"
+import { PhotoViewer } from "@/src/components/PhotoViewer"
+import { TasteFingerprint } from "@/src/components/TasteFingerprint"
+import { EdgeBackZone } from "@/src/components/EdgeBackZone"
+import { AppText, BottomSheet, Button, EmptyState, Header, IconButton, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
+import { useBookmarkedShops, useShop, useShops } from "@/src/data/hooks"
 import { naverMapLinks } from "@/src/domain/naverMap"
+import { isLogVisibleTo } from "@/src/domain/lounge"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, pressFade, pressInto, radii, shadows, spacing, touchTarget } from "@/src/theme"
+import { colors, line, radii, spacing, touchTarget } from "@/src/theme"
 
 const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
 const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
 /** 하단 고정 바 높이(버튼 48 + 위아래 여백)만큼 토스트를 띄운다 */
 const TOAST_OFFSET = 88
+const SAVE_EASE = Easing.bezier(0.22, 1, 0.36, 1)
 
 type DetailShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec" | "lastOrder">>
 
@@ -49,8 +56,7 @@ function businessLabel(shop: Shop): { label: string; open: boolean } {
   }
 }
 
-
-function InstagramIcon({ color, size = 16 }: { color: string; size?: number }) {
+function InstagramIcon({ color, size = 16 }: { color: ColorValue; size?: number }) {
   return (
     <Svg fill={color} height={size} viewBox="0 0 24 24" width={size}>
       <Path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
@@ -63,10 +69,6 @@ function goBack() {
   else router.replace("/native")
 }
 
-/** 차콜 면 안의 1pt 구분선. 흰색 18%를 토큰(onDark) + 투명도로 만든다 */
-function DarkDivider() {
-  return <View style={styles.darkDivider} />
-}
 
 export default function ShopDetailScreen() {
   const { shopId } = useLocalSearchParams<{ shopId: string }>()
@@ -104,13 +106,29 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const compact = width < 360
-  const { currentUser, actions } = useRaota()
+  const { currentUser, actions, state } = useRaota()
   const bookmarked = useBookmarkedShops()
-  const myLogs = useMyLogs()
-  const galleryRef = useRef<ScrollView>(null)
-  const [photoIndex, setPhotoIndex] = useState(0)
+  const nearbyShops = useShops().data as DetailShop[]
   const [hoursOpen, setHoursOpen] = useState(false)
-  /** 방금 띄운 알림이 "저장했어요"인지(빨간 저장 표시를 붙인다) */
+  const [moreOpen, setMoreOpen] = useState(false)
+  /** 크게 보고 있는 사진과 그 자리를 닫을 때까지 보관한다. */
+  const [viewingPhoto, setViewingPhoto] = useState<{
+    index: number
+    origin: { x: number; y: number; width: number; height: number } | null
+  } | null>(null)
+  const [photoIndex, setPhotoIndex] = useState(0)
+  const galleryRef = useRef<ScrollView>(null)
+  const photoRefs = useRef<(View | null)[]>([])
+  const reducedMotion = useReducedMotion()
+  const heartScale = useSharedValue(1)
+  const ringScale = useSharedValue(0.4)
+  const ringOpacity = useSharedValue(0)
+  const heartStyle = useAnimatedStyle(() => ({ transform: [{ scale: heartScale.value }] }))
+  const ringStyle = useAnimatedStyle(() => ({
+    opacity: ringOpacity.value,
+    transform: [{ scale: ringScale.value }],
+  }))
+  /** 방금 띄운 알림이 저장 완료인지 구분한다. */
   const [toastSaved, setToastSaved] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -126,7 +144,14 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const todayShort = DAY_SHORT[dayIndex]
   const hasHours = shop.openingHours.length > 0
   const todayEntry = shop.openingHours.find((entry) => entry.startsWith(todayName))
-  const todayTime = (todayEntry ?? shop.openingHours[0])?.replace(/^.*?: /, "")
+  const todayTime = todayEntry?.replace(/^.*?: /, "")
+  const todayOpening = todayTime?.match(/^\d{1,2}:\d{2}/)?.[0]
+  const openingMinute = todayOpening ? Number(todayOpening.split(":")[0]) * 60 + Number(todayOpening.split(":")[1]) : null
+  const now = new Date()
+  const upcomingOpening = shop.businessStatus === "OPERATIONAL" && !shop.isOpen && openingMinute !== null && now.getHours() * 60 + now.getMinutes() < openingMinute
+    ? `지금은 준비 중, ${todayOpening}에 열어요`
+    : null
+  const splitHours = todayTime?.match(/\d{1,2}:\d{2}\s*~\s*(\d{1,2}:\d{2})\s*,\s*(\d{1,2}:\d{2})/)
 
   const status = businessLabel(shop)
   const photos = shop.photos.filter(Boolean)
@@ -136,14 +161,31 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     { label: "육수 추가", value: shop.servicePerks?.soupRefill },
     { label: "양념", value: shop.servicePerks?.condiments },
   ].filter((perk): perk is { label: string; value: string } => Boolean(perk.value))
-  const metaParts = [
-    shop.distanceM > 0 ? formatDistance(shop.distanceM) : null,
-    shop.reviewCount > 0 ? `라멘로그 ${shop.reviewCount.toLocaleString()}개` : null,
-    shop.rating > 0 ? `★ ${shop.rating.toFixed(1)}` : null,
-  ].filter((part): part is string => Boolean(part))
-
-  /** 공개 피드 API는 MVP 밖이라 이 매장의 내 기록만 보여준다(최신순) */
-  const shopLogs = myLogs.data.filter((log) => log.shop.id === shop.id)
+  /** 가게별 5축 평균은 원장에 없으므로 이 화면에서 볼 수 있는 공개 라멘로그의 실제 평가만 모은다. */
+  const shopTaste = useMemo(() => {
+    const viewer = { userId: currentUser?.id ?? null, hiddenAuthorIds: state.hiddenAuthorIds, reports: state.contentReports }
+    const publicLogs = state.logs.filter((log) => log.shop.id === shop.id && log.isPublic && isLogVisibleTo(log, viewer))
+    return mergeProfile(EMPTY_PROFILE, publicLogs)
+  }, [currentUser?.id, shop.id, state.contentReports, state.hiddenAuthorIds, state.logs])
+  const tasteRows = useMemo(
+    () => shopTaste.count
+      ? TASTE_AXES.map(({ key, label }) => ({
+          key,
+          label: key === "satisfaction" ? "만족도" : key === "revisit" ? "재방문" : label,
+          value: shopTaste.scores[key],
+          text: shopTaste.scores[key].toFixed(1),
+        }))
+      : [],
+    [shopTaste],
+  )
+  /** 같은 종류의 실제 매장 두 곳. 도보 시간 데이터는 없으므로 시간은 추정하지 않는다. */
+  const similarShops = useMemo(
+    () => nearbyShops
+      .filter((other) => Boolean(shop.style) && other.id !== shop.id && other.style === shop.style && other.photos[0])
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, 2),
+    [nearbyShops, shop.id, shop.style],
+  )
 
   const requireLogin = () => router.push("/auth/login")
 
@@ -155,7 +197,27 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     const next = !saved
     actions.toggleBookmark(shop.id)
     track("bookmark_toggled", { shopId: shop.id, saved: next })
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined)
+    if (next && !reducedMotion) {
+      // 같은 44pt 자리 안에서만 하트와 파문이 커져 옆 버튼을 밀지 않는다.
+      heartScale.value = 1
+      heartScale.value = withSequence(
+        withTiming(1.3, { duration: 147, easing: SAVE_EASE }),
+        withTiming(0.92, { duration: 126, easing: SAVE_EASE }),
+        withTiming(1, { duration: 147, easing: SAVE_EASE }),
+      )
+      ringScale.value = 0.4
+      ringOpacity.value = 0.5
+      ringScale.value = withTiming(1.25, { duration: 450, easing: SAVE_EASE })
+      ringOpacity.value = withTiming(0, { duration: 450, easing: SAVE_EASE })
+    } else {
+      // 저장 취소와 동작 줄이기는 남은 파문까지 즉시 끝낸다.
+      cancelAnimation(heartScale)
+      cancelAnimation(ringScale)
+      cancelAnimation(ringOpacity)
+      heartScale.value = 1
+      ringOpacity.value = 0
+    }
+    if (next) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined)
     setToastSaved(next)
     setToast(next ? "가고 싶은 라멘집에 저장했어요" : "가고 싶어요에서 뺐어요")
   }
@@ -187,9 +249,17 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     void Linking.openURL(links.primary).catch(() => openUrl(fallback))
   }
 
+  const shareShop = () => {
+    const links = naverMapLinks(shop)
+    void Share.share({ message: `${shop.name}${shop.branch ? ` ${shop.branch}` : ""}\n${links.fallback ?? links.primary}` }).catch(() => {
+      setToastSaved(false)
+      setToast("링크를 열 수 없어요")
+    })
+  }
+
   /**
-   * 가게 소개 아래 바로가기(두 개씩 한 줄). 데이터가 있는 것만 보여준다.
-   * 네이버 지도는 매장 ID가 없어도 이름 검색으로 열 수 있어 항상 있다
+   * 데이터가 있는 바로가기만 보여 준다. 지도에서 보기는 앱 탭으로, 주소 줄은 네이버 길찾기로 간다.
+   * focus 값은 같은 가게를 다시 열어도 지도가 이동하게 한다.
    */
   const shortcuts = [
     shop.phone
@@ -197,23 +267,24 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           key: "phone",
           label: "전화",
           hint: `${shop.phone}로 전화를 걸어요`,
-          icon: <Phone color={colors.ink} size={16} />,
+          icon: <Phone color={colors.ink} size={20} />,
           onPress: () => openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`),
         }
       : null,
     {
-      key: "naver",
-      label: "네이버 지도",
-      hint: "네이버 지도에서 사진·메뉴·길찾기를 봐요",
-      icon: <MapIcon color={colors.ink} size={16} />,
-      onPress: openNaverMap,
+      key: "map",
+      label: "지도에서 보기",
+      hint: "라오타 지도에서 이 가게 위치를 봐요",
+      icon: <MapIcon color={colors.ink} size={20} />,
+      // focus는 같은 가게로 다시 와도 지도가 다시 옮겨 가게 하려는 값이다(탭 파라미터가 같으면 효과가 돌지 않는다)
+      onPress: () => router.navigate({ pathname: "/native/map", params: { shopId: String(shop.id), focus: String(Date.now()) } }),
     },
     shop.catchTableUrl
       ? {
           key: "catchtable",
           label: "캐치테이블",
           hint: "캐치테이블에서 예약·웨이팅을 해요",
-          icon: <CalendarCheck color={colors.ink} size={16} />,
+          icon: <CalendarCheck color={colors.ink} size={20} />,
           onPress: () => openUrl(shop.catchTableUrl!),
         }
       : null,
@@ -222,80 +293,74 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           key: "instagram",
           label: "인스타그램",
           hint: "매장 인스타그램을 열어요",
-          icon: <InstagramIcon color={colors.ink} />,
+          icon: <InstagramIcon color={colors.ink} size={20} />,
           onPress: () => openUrl(shop.instagramUrl!),
         }
       : null,
   ].filter((shortcut): shortcut is NonNullable<typeof shortcut> => shortcut !== null)
 
-  const selectPhoto = (index: number) => {
-    setPhotoIndex(index)
-    galleryRef.current?.scrollTo({ x: index * width, animated: true })
-  }
-
-  const onGalleryEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setPhotoIndex(Math.round(event.nativeEvent.contentOffset.x / width))
-  }
 
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* 1. 대표 사진. 없거나 불러오는 중이면 같은 자리를 비워 둔다 */}
-        <View style={[styles.hero, { width }]}>
+        {/* 사진은 큰 한 장씩 넘겨 볼 수 있고, 정보는 그 바로 아래에서 시작한다. */}
+        <View style={[styles.hero, { width: width - 16, height: Math.min(360, width - 16), marginTop: insets.top + spacing.x4 }]}>
           {photos.length ? (
             <ScrollView
               accessibilityLabel={`${shop.name} 사진 ${photos.length}장`}
               horizontal
-              onMomentumScrollEnd={onGalleryEnd}
+              onMomentumScrollEnd={({ nativeEvent }) => setPhotoIndex(Math.round(nativeEvent.contentOffset.x / Math.max(1, width - 16)))}
               pagingEnabled
               ref={galleryRef}
               scrollEnabled={photos.length > 1}
               showsHorizontalScrollIndicator={false}
             >
               {photos.map((photo, index) => (
-                <ResilientUriImage
-                  accessibilityLabel={`${shop.name} 사진 ${index + 1}`}
-                  fallback={<ImageOff color={colors.textMuted} size={28} />}
+                <Pressable
+                  accessibilityHint="사진을 크게 봐요"
+                  accessibilityRole="imagebutton"
+                  collapsable={false}
                   key={`${photo}-${index}`}
-                  style={{ width, height: "100%" }}
-                  uri={photo}
-                />
+                  onPress={() => {
+                    const photoView = photoRefs.current[index]
+                    if (!photoView) {
+                      setViewingPhoto({ index, origin: null })
+                      return
+                    }
+                    photoView.measureInWindow((x, y, measuredWidth, measuredHeight) => {
+                      setViewingPhoto({
+                        index,
+                        origin: measuredWidth > 0 && measuredHeight > 0
+                          ? { x, y, width: measuredWidth, height: measuredHeight }
+                          : null,
+                      })
+                    })
+                  }}
+                  ref={(node) => { photoRefs.current[index] = node }}
+                  // 커지는 사진이 원래 자리에 겹쳐 두 장으로 보이지 않게, 크게 보는 동안 원래 사진은 비운다
+                  style={viewingPhoto?.index === index && viewingPhoto.origin ? styles.hiddenSource : undefined}
+                >
+                  <ResilientUriImage
+                    accessibilityLabel={`${shop.name} 사진 ${index + 1}`}
+                    fallback={<ImageOff color={colors.textMuted} size={28} />}
+                    style={{ width: width - 16, height: "100%" }}
+                    uri={photo}
+                  />
+                </Pressable>
               ))}
             </ScrollView>
           ) : (
             <View accessibilityLabel="아직 등록된 사진이 없어요" accessibilityRole="image" style={styles.noPhoto}>
               <ImageOff color={colors.textMuted} size={28} />
-              <AppText tone="muted" variant="secondary">
-                아직 등록된 사진이 없어요
-              </AppText>
+              <AppText tone="muted" variant="secondary">아직 등록된 사진이 없어요</AppText>
             </View>
           )}
-
-          <View pointerEvents="box-none" style={[styles.heroControls, { top: insets.top + spacing.x2 }]}>
-            <IconButton
-              accessibilityLabel="뒤로가기"
-              icon={<ChevronLeft color={colors.ink} size={22} />}
-              onImage
-              onPress={goBack}
-            />
-            <IconButton
-              accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
-              accessibilityLabel={saved ? "가고 싶어요 저장 취소" : "가고 싶어요에 저장"}
-              accessibilityState={{ selected: saved }}
-              icon={<Bookmark color={saved ? colors.brand : colors.ink} fill={saved ? colors.brand : colors.transparent} size={20} />}
-              onImage
-              onPress={toggleSave}
-            />
+          <View pointerEvents="box-none" style={styles.heroControls}>
+            <IconButton accessibilityLabel="뒤로가기" icon={<ChevronLeft color={colors.onPhotoPill} size={22} />} onImage onPress={goBack} />
           </View>
-
+          {/* 여러 장이면 왼쪽 아래 썸네일로 바로 고른다. 사진 위라 고른 칸은 모드와 상관없이 흰 테두리 */}
           {photos.length > 1 ? (
-            <ScrollView
-              accessibilityLabel="매장 사진 선택"
-              contentContainerStyle={styles.thumbRow}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.thumbStrip}
-            >
+            <View accessibilityLabel="매장 사진 선택" style={styles.thumbRow}>
               {photos.map((photo, index) => {
                 const active = index === photoIndex
                 return (
@@ -304,98 +369,103 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                     key={`${photo}-thumb-${index}`}
-                    onPress={() => selectPhoto(index)}
+                    onPress={() => {
+                      setPhotoIndex(index)
+                      galleryRef.current?.scrollTo({ x: index * (width - 16), animated: true })
+                    }}
                     style={[styles.thumb, active ? styles.thumbActive : styles.thumbIdle]}
                   >
                     <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={photo} />
                   </Pressable>
                 )
               })}
-            </ScrollView>
+            </View>
           ) : null}
         </View>
+        {viewingPhoto !== null ? (
+          <PhotoViewer
+            index={viewingPhoto.index}
+            label={`${shop.name} 사진`}
+            onClose={() => setViewingPhoto(null)}
+            origin={viewingPhoto.origin}
+            originRadius={radii.lg}
+            photos={photos}
+          />
+        ) : null}
 
-        {/* 2. 매장 헤드라인 */}
+        <View style={styles.actions}>
+          <IconButton
+            accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
+            accessibilityLabel={saved ? "가고 싶어요 저장 취소" : "가고 싶어요에 저장"}
+            accessibilityState={{ selected: saved }}
+            icon={
+              <View pointerEvents="none" style={styles.saveGlyph}>
+                <Animated.View style={[styles.saveRing, ringStyle]} />
+                <Animated.View style={heartStyle}>
+                  <Heart color={colors.ink} fill={saved ? colors.ink : colors.transparent} size={22} />
+                </Animated.View>
+              </View>
+            }
+            onPress={toggleSave}
+            style={styles.actionIcon}
+          />
+          <IconButton accessibilityLabel="공유" icon={<Share2 color={colors.ink} size={22} />} onPress={shareShop} style={styles.actionIcon} />
+          <IconButton accessibilityLabel="더보기" icon={<Ellipsis color={colors.ink} size={22} />} onPress={() => setMoreOpen(true)} style={styles.actionIcon} />
+        </View>
+
         <View style={styles.headline}>
-          <View style={styles.metaLine}>
-            <AppText capScale style={styles.bold} tone={status.open ? "positive" : "muted"} variant="meta">
-              {`● ${status.label}`}
-            </AppText>
-            {metaParts.map((part) => (
-              <View key={part} style={styles.metaPart}>
-                <AppText capScale style={styles.dot} variant="meta">
-                  ·
-                </AppText>
-                <AppText capScale style={styles.bold} tone="sub" variant="meta">
-                  {part}
-                </AppText>
-              </View>
-            ))}
-          </View>
-
-          {shop.style ? <RamenTypeTag style={styles.styleLine} type={shop.style} /> : null}
-          <AppText accessibilityRole="header" style={styles.name} variant="screenTitle">
+          <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" variant="screenTitle">
             {shop.name}
-            {shop.branch ? (
-              <AppText style={styles.bold} tone="sub" variant="screenTitle">
-                {` · ${shop.branch}`}
-              </AppText>
-            ) : null}
+            {shop.branch ? <AppText style={styles.branch} tone="muted" variant="screenTitle">{` ${shop.branch}`}</AppText> : null}
           </AppText>
-          {shop.spec ? (
-            <AppText style={styles.spec} variant="body">
-              {shop.spec}
+          {shop.spec ? <AppText lineBreakStrategyIOS="hangul-word" style={styles.spec} tone="sub" variant="secondary">{shop.spec}</AppText> : null}
+          <View style={styles.metaLine}>
+            {shop.style ? (
+              <AppText capScale tone="sub" variant="meta">{shop.style}</AppText>
+            ) : null}
+            <AppText capScale style={styles.metaText} tone="muted" variant="meta">
+              {`${shop.style ? " · " : ""}${status.label}${shop.lastOrder ? ` · 라스트오더 ${shop.lastOrder}` : ""}${shop.distanceM > 0 ? ` · ${formatDistance(shop.distanceM)}` : ""}`}
             </AppText>
-          ) : null}
-          {shop.address ? (
-            <AppText style={styles.address} tone="sub" variant="secondary">
-              {shop.address}
-            </AppText>
-          ) : null}
-
-          {shop.tags.length ? (
-            <View accessibilityLabel={`특징: ${shop.tags.join(", ")}`} style={styles.tags}>
-              {shop.tags.map((tag) => (
-                <Tag key={tag} label={tag} />
-              ))}
-            </View>
-          ) : null}
+          </View>
         </View>
 
-        {/* 3. 가게 소개: AI 요약이 있으면 그 글에 "AI가 요약했어요" 표시만 붙이고, 없으면 가게가 쓴 소개 */}
-        {shop.aiSummary ? (
+        {shopTaste.count > 0 ? (
+          <TasteFingerprint meta={`공개 라멘로그 ${shopTaste.count}개 기준`} rows={tasteRows} style={styles.fingerprint} />
+        ) : null}
+
+        {/* 소개 글은 원장의 AI 요약 또는 매장 설명을 그대로 쓴다. */}
+        {shop.aiSummary || shop.description ? (
           <View style={styles.intro}>
-            <View style={styles.introHead}>
-              <Store color={colors.ink} size={16} />
-              <AppText accessibilityRole="header" style={[styles.bold, styles.flex]} variant="secondary">
-                가게 소개
+            <AppText accessibilityRole="header" style={styles.sectionTitle} variant="sectionTitle">가게 소개</AppText>
+            <View style={styles.introCard} testID="shop-intro-card">
+              {shop.aiSummary ? (
+                <View accessibilityLabel="AI가 요약했어요" accessible style={styles.aiLabel}>
+                  <Sparkles color={colors.ink} size={16} />
+                  <AppText capScale style={styles.aiLabelText} variant="meta">AI가 요약했어요</AppText>
+                </View>
+              ) : null}
+              <AppText lineBreakStrategyIOS="hangul-word" style={styles.introText} variant="secondary">
+                {shop.aiSummary?.text ?? shop.description}
               </AppText>
-              <View accessibilityLabel="AI가 요약했어요" accessible>
-                <Sticker icon={<Sparkles color={colors.ink} size={12} />} label="AI가 요약했어요" />
-              </View>
+              {shop.aiSummary?.keywords?.length ? (
+                <View style={styles.summaryKeywords}>
+                  {shop.aiSummary.keywords.map((keyword) => (
+                    <View key={keyword} style={styles.summaryKeyword}>
+                      <AppText capScale style={styles.keywordText} variant="secondary">{`#${keyword}`}</AppText>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
-            <AppText variant="body">{shop.aiSummary.text}</AppText>
-            {shop.aiSummary.keywords?.length ? (
-              <View style={styles.summaryKeywords}>
-                {shop.aiSummary.keywords.map((keyword) => (
-                  <Tag key={keyword} label={`#${keyword}`} />
-                ))}
-              </View>
-            ) : null}
           </View>
-        ) : shop.description ? (
-          <View style={styles.intro}>
-            <View style={styles.introHead}>
-              <Store color={colors.ink} size={16} />
-              <AppText accessibilityRole="header" style={styles.bold} variant="secondary">
-                가게 소개
-              </AppText>
-            </View>
-            <AppText variant="body">{shop.description}</AppText>
+        ) : null}
+        {shop.tags.length ? (
+          <View accessibilityLabel={`특징: ${shop.tags.join(", ")}`} style={[styles.tags, !shop.aiSummary && !shop.description && styles.tagsStandalone]}>
+            {shop.tags.map((tag) => <View key={tag} style={styles.keyword}><AppText capScale style={styles.keywordText} tone="muted" variant="secondary">{tag}</AppText></View>)}
           </View>
         ) : null}
 
-        {/* 3-1. 바로가기: 전화 · 네이버 지도 · 캐치테이블 · 인스타그램(두 개씩 한 줄, 홀수면 마지막이 한 줄 전체) */}
+        {/* 바로가기는 실제 링크가 있는 항목만 나타낸다. */}
         <View style={styles.shortcuts}>
           {shortcuts.map((shortcut) => (
             <Pressable
@@ -404,253 +474,152 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               accessibilityRole="link"
               key={shortcut.key}
               onPress={shortcut.onPress}
-              style={({ pressed }) => [styles.shortcut, pressed && styles.pressedInto]}
+              style={({ pressed }) => [styles.shortcut, pressed && styles.shortcutPressed]}
             >
-              {shortcut.icon}
-              <AppText capScale numberOfLines={1} style={styles.bold} variant="secondary">
+              <View style={styles.shortcutIcon}>{shortcut.icon}</View>
+              <AppText capScale numberOfLines={1} style={styles.bold} variant="meta">
                 {shortcut.label}
               </AppText>
             </Pressable>
           ))}
         </View>
 
-        {/* 4. 매장 혜택 */}
+        {/* 매장 혜택은 라벨과 내용이 한 줄씩 이어지는 목록이다. */}
         {perks.length ? (
           <View style={styles.section}>
-            <AppText accessibilityRole="header" style={styles.sectionTitle} variant="sectionTitle">
+            <AppText accessibilityRole="header" variant="sectionTitle">
               매장 혜택
             </AppText>
-            <View style={styles.perkGrid}>
-              {perks.map((perk) => (
-                <View accessible accessibilityLabel={`${perk.label}, ${perk.value}`} key={perk.label} style={styles.perk}>
-                  <AppText capScale style={styles.bold} tone="muted" variant="meta">
-                    {perk.label}
-                  </AppText>
-                  <AppText style={[styles.bold, styles.perkValue]} variant="secondary">
-                    {perk.value}
-                  </AppText>
+            {perks.map((perk) => (
+              <View
+                accessible
+                accessibilityLabel={`${perk.label}, ${perk.value}`}
+                key={perk.label}
+                style={styles.perkRow}
+              >
+                <AppText capScale style={styles.perkLabel} tone="sub" variant="secondary">
+                  {perk.label}
+                </AppText>
+                <AppText lineBreakStrategyIOS="hangul-word" style={styles.perkValue} tone="sub" variant="secondary">
+                  {perk.value}
+                </AppText>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {/* 주소와 영업시간은 흰 화면의 정보 줄로 두고, 영업시간만 눌러 펼친다. */}
+        <View style={styles.info}>
+          <AppText accessibilityRole="header" variant="sectionTitle">
+            가게 상세 정보
+          </AppText>
+          {shop.address ? (
+            <Pressable
+              accessibilityHint="네이버 지도에서 위치와 길찾기를 열어요"
+              accessibilityLabel={`주소, ${shop.address}`}
+              accessibilityRole="link"
+              onPress={openNaverMap}
+              style={({ pressed }) => [styles.infoRow, pressed && styles.infoPressed]}
+            >
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">주소</AppText>
+              <View style={styles.infoValue}>
+                <AppText lineBreakStrategyIOS="hangul-word" style={styles.infoText} variant="secondary">{shop.address}</AppText>
+                <View style={styles.naverHint}>
+                  <MapIcon color={colors.ink} size={14} />
+                  <AppText capScale style={styles.naverText} variant="secondary">네이버 지도에서 길찾기</AppText>
                 </View>
+              </View>
+            </Pressable>
+          ) : (
+            <View style={styles.infoRow}>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">주소</AppText>
+              <AppText style={styles.infoValue} tone="muted" variant="body">주소 정보가 아직 없어요</AppText>
+            </View>
+          )}
+          {hasHours ? (
+            <Pressable
+              accessibilityHint="요일별 영업시간을 시트로 열어요"
+              accessibilityLabel={`영업시간, 오늘(${todayShort}) ${todayTime ?? "정보 없음"}`}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: hoursOpen }}
+              onPress={() => setHoursOpen(true)}
+              style={({ pressed }) => [styles.infoRow, pressed && styles.infoPressed]}
+            >
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">영업시간</AppText>
+              <View style={styles.hoursPreview}>
+                <AppText capScale tone="muted" variant="meta">{`오늘(${todayShort})`}</AppText>
+                <AppText style={styles.infoText} variant="secondary">{todayTime ?? "정보 없음"}</AppText>
+                <ChevronRight color={colors.textMuted} size={16} />
+              </View>
+            </Pressable>
+          ) : (
+            <View style={styles.infoRow}>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">영업시간</AppText>
+              <AppText style={styles.infoValue} tone="muted" variant="body">영업시간 정보가 아직 없어요</AppText>
+            </View>
+          )}
+          {shop.lastOrder ? (
+            <View style={styles.infoRow}>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">라스트오더</AppText>
+              <AppText style={[styles.infoValue, styles.infoText]} variant="secondary">{shop.lastOrder}</AppText>
+            </View>
+          ) : null}
+          {shop.priceRange ? (
+            <View style={styles.infoRow}>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">가격대</AppText>
+              <AppText style={[styles.infoValue, styles.infoText]} variant="secondary">{shop.priceRange}</AppText>
+            </View>
+          ) : null}
+          {shop.phone ? (
+            <Pressable
+              accessibilityHint="전화를 걸어요"
+              accessibilityLabel={`전화번호, ${shop.phone}`}
+              accessibilityRole="link"
+              onPress={() => openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`)}
+              style={({ pressed }) => [styles.infoRow, pressed && styles.infoPressed]}
+            >
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">전화번호</AppText>
+              <View style={[styles.infoValue, styles.phone]}>
+                <AppText style={styles.infoText} variant="secondary">{shop.phone}</AppText>
+              </View>
+            </Pressable>
+          ) : null}
+        </View>
+        {similarShops.length ? (
+          <View style={styles.similar}>
+            <View style={styles.similarHead}>
+              <AppText accessibilityRole="header" variant="sectionTitle">비슷한 한 그릇</AppText>
+              <AppText capScale tone="muted" variant="meta">{`${shop.style} · 가까운 가게`}</AppText>
+            </View>
+            <View style={styles.similarCards}>
+              {similarShops.map((other) => (
+                <Pressable
+                  accessibilityLabel={`${other.name}${other.branch ? ` ${other.branch}` : ""}, 매장 상세 보기`}
+                  accessibilityRole="button"
+                  key={other.id}
+                  onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: String(other.id) } })}
+                  style={styles.similarCard}
+                >
+                  <View style={[styles.similarPhoto, { height: 220 }]}>
+                    <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={other.photos[0]} />
+                    {other.style ? (
+                      <View style={styles.similarPill}>
+                        <AppText capScale style={styles.similarPillText} variant="meta">{other.style}</AppText>
+                      </View>
+                    ) : null}
+                  </View>
+                  <AppText numberOfLines={2} style={styles.similarTitle} variant="secondary">
+                    {other.name}{other.branch ? ` ${other.branch}` : ""}
+                  </AppText>
+                </Pressable>
               ))}
             </View>
           </View>
         ) : null}
 
-        {/* 5. 가게 상세 정보 (차콜) */}
-        <View style={styles.dark}>
-          <AppText accessibilityRole="header" style={styles.darkTitle} tone="onDark" variant="sectionTitle">
-            가게 상세 정보
-          </AppText>
-
-          {shop.address ? (
-            <Pressable
-              accessibilityHint="네이버 지도에서 위치를 열어요"
-              accessibilityLabel={`주소, ${shop.address}`}
-              accessibilityRole="link"
-              onPress={openNaverMap}
-              style={({ pressed }) => [styles.darkRow, pressed && pressFade]}
-            >
-              <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
-                주소
-              </AppText>
-              <AppText style={styles.darkValue} tone="onDark" variant="body">
-                {shop.address}
-              </AppText>
-            </Pressable>
-          ) : (
-            <View style={styles.darkRow}>
-              <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
-                주소
-              </AppText>
-              <AppText style={styles.darkValue} tone="onDarkMuted" variant="body">
-                주소 정보가 아직 없어요
-              </AppText>
-            </View>
-          )}
-          <DarkDivider />
-
-          {hasHours ? (
-            <>
-              <Pressable
-                accessibilityHint={hoursOpen ? "요일별 영업시간을 접어요" : "요일별 영업시간을 펼쳐요"}
-                accessibilityLabel={`영업시간, 오늘(${todayShort}) ${todayTime ?? ""}`}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: hoursOpen }}
-                onPress={() => setHoursOpen((open) => !open)}
-                style={({ pressed }) => [styles.darkRow, styles.darkRowCenter, pressed && pressFade]}
-              >
-                <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
-                  영업시간
-                </AppText>
-                <View style={styles.hoursPreview}>
-                  <AppText capScale style={styles.bold} tone="onDarkMuted" variant="meta">
-                    {`오늘(${todayShort})`}
-                  </AppText>
-                  <AppText style={styles.medium} tone="onDark" variant="body">
-                    {todayTime}
-                  </AppText>
-                  <ChevronDown
-                    color={colors.onDarkMuted}
-                    size={16}
-                    style={hoursOpen ? styles.chevronUp : undefined}
-                  />
-                </View>
-              </Pressable>
-              {hoursOpen ? (
-                <View style={styles.hoursList}>
-                  {shop.openingHours.map((line) => {
-                    const isToday = line.startsWith(todayName)
-                    const [day, ...rest] = line.split(":")
-                    return (
-                      <View key={line} style={[styles.hourRow, isToday && styles.hourToday]}>
-                        <View style={styles.hourDay}>
-                          <AppText style={isToday && styles.bold} tone={isToday ? "onDark" : "onDarkMuted"} variant="secondary">
-                            {day}
-                          </AppText>
-                          {isToday ? (
-                            <AppText capScale style={styles.bold} tone="onDark" variant="meta">
-                              오늘
-                            </AppText>
-                          ) : null}
-                        </View>
-                        <AppText style={isToday && styles.bold} tone={isToday ? "onDark" : "onDarkMuted"} variant="secondary">
-                          {rest.join(":").trim()}
-                        </AppText>
-                      </View>
-                    )
-                  })}
-                </View>
-              ) : null}
-            </>
-          ) : (
-            <View style={styles.darkRow}>
-              <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
-                영업시간
-              </AppText>
-              <AppText style={styles.darkValue} tone="onDarkMuted" variant="body">
-                영업시간 정보가 아직 없어요
-              </AppText>
-            </View>
-          )}
-
-          {shop.lastOrder ? (
-            <>
-              <DarkDivider />
-              <View style={styles.darkRow}>
-                <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
-                  라스트오더
-                </AppText>
-                <AppText style={[styles.darkValue, styles.medium]} tone="onDark" variant="body">
-                  {shop.lastOrder}
-                </AppText>
-              </View>
-            </>
-          ) : null}
-
-          {shop.priceRange ? (
-            <>
-              <DarkDivider />
-              <View style={styles.darkRow}>
-                <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
-                  가격대
-                </AppText>
-                <AppText style={[styles.darkValue, styles.medium]} tone="onDark" variant="body">
-                  {shop.priceRange}
-                </AppText>
-              </View>
-            </>
-          ) : null}
-
-          {shop.phone ? (
-            <>
-              <DarkDivider />
-              <Pressable
-                accessibilityHint="전화를 걸어요"
-                accessibilityLabel={`전화번호, ${shop.phone}`}
-                accessibilityRole="link"
-                onPress={() => openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`)}
-                style={({ pressed }) => [styles.darkRow, styles.darkRowCenter, pressed && pressFade]}
-              >
-                <AppText style={styles.darkKey} tone="onDarkMuted" variant="body">
-                  전화번호
-                </AppText>
-                <View style={styles.phone}>
-                  <Phone color={colors.onDarkMuted} size={16} />
-                  <AppText style={styles.medium} tone="onDark" variant="body">
-                    {shop.phone}
-                  </AppText>
-                </View>
-              </Pressable>
-            </>
-          ) : null}
-        </View>
-
-        {/* 6. 내 라멘로그: 이 매장에서 내가 남긴 기록만 */}
-        <View style={styles.reviews}>
-          <View style={styles.reviewsHead}>
-            <AppText accessibilityRole="header" style={styles.flexShrink} variant="sectionTitle">
-              내 라멘로그
-              {shopLogs.length ? (
-                <AppText style={styles.bold} tone="sub" variant="sectionTitle">
-                  {` ${shopLogs.length}`}
-                </AppText>
-              ) : null}
-            </AppText>
-          </View>
-
-          {shopLogs.length ? (
-            shopLogs.map((log, index) => {
-              const photo = log.photos?.[0] ?? log.imageUrl ?? null
-              const meta = [
-                log.visitedAt.replace(/-/g, "."),
-                log.ramenType,
-                log.scores ? `만족도 ${log.scores.satisfaction}점` : null,
-                log.revisit ? `재방문 ${log.revisit}` : null,
-              ].filter(Boolean)
-              return (
-                <View
-                  accessible
-                  accessibilityLabel={`${log.menuName}, ${meta.join(", ")}${log.note ? `, ${log.note}` : ""}`}
-                  key={log.id}
-                  style={[styles.review, styles.logRow, index > 0 && styles.reviewDivider]}
-                >
-                  {photo ? <ResilientUriImage accessibilityLabel="" style={styles.logPhoto} uri={photo} /> : null}
-                  <View style={styles.flexShrink}>
-                    <AppText numberOfLines={1} variant="cardTitle">
-                      {log.menuName}
-                    </AppText>
-                    <AppText capScale numberOfLines={1} style={styles.logMeta} tone="sub" variant="meta">
-                      {meta.join(" · ")}
-                    </AppText>
-                    {log.note ? (
-                      <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={3} style={styles.reviewText} variant="body">
-                        {log.note}
-                      </AppText>
-                    ) : null}
-                  </View>
-                </View>
-              )
-            })
-          ) : (
-            <View style={styles.reviewsEmpty}>
-              <AppText style={styles.center} variant="cardTitle">
-                아직 이 가게 기록이 없어요
-              </AppText>
-              <AppText style={[styles.center, styles.emptyBody]} tone="sub" variant="secondary">
-                {loggedIn ? "먹어본 라멘의 맛을 기록해보세요." : "로그인하고 이 가게의 첫 기록을 남겨보세요."}
-              </AppText>
-              <Button
-                accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
-                leftIcon={<PenLine color={colors.ink} size={16} />}
-                onPress={startRecord}
-                size="small"
-                style={styles.firstRecord}
-                title="첫 기록 남기기"
-                variant="outline"
-              />
-            </View>
-          )}
-        </View>
       </ScrollView>
+      <View pointerEvents="none" style={[styles.statusCap, { height: insets.top }]} testID="shop-status-cap" />
+
 
       {/* 하단 고정: 가고 싶어요 / 먹은 라멘 기록하기. 웹과 같은 좌우 16, SE 폭에서도 문구를 자르지 않는다 */}
       <StickyActionBar style={styles.stickyBar}>
@@ -660,13 +629,13 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           fullWidth
           leftIcon={
             compact ? undefined : (
-              <Bookmark color={saved ? colors.brand : colors.ink} fill={saved ? colors.brand : colors.transparent} size={18} />
+              <Heart color={colors.ink} fill={saved ? colors.ink : colors.transparent} size={18} />
             )
           }
           onPress={toggleSave}
           style={styles.stickyButton}
           title={saved ? "저장됨" : "가고 싶어요"}
-          variant="outline"
+          variant="secondary"
         />
         <Button
           accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
@@ -676,161 +645,175 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           title="먹은 라멘 기록하기"
         />
       </StickyActionBar>
-
-      {/* 아래쪽 차콜 섹션 위에서도 묻히지 않게 흰 알림(경계·그림자)으로 띄운다 */}
+      <BottomSheet onClose={() => setMoreOpen(false)} title="더보기" visible={moreOpen}>
+        <View style={styles.moreOptions}>
+          {shop.address ? (
+            <Button onPress={() => { setMoreOpen(false); openNaverMap() }} title="네이버 지도에서 길찾기" variant="ghost" />
+          ) : null}
+          {shop.phone ? (
+            <Button onPress={() => { setMoreOpen(false); openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`) }} title="전화" variant="ghost" />
+          ) : null}
+          <Button onPress={() => { setMoreOpen(false); shareShop() }} title="공유" variant="ghost" />
+        </View>
+      </BottomSheet>
+      {hoursOpen ? (
+        <Modal animationType="slide" onRequestClose={() => setHoursOpen(false)} statusBarTranslucent transparent visible>
+          <View style={styles.hoursOverlay}>
+            <Pressable accessibilityLabel="영업시간 닫기" accessibilityRole="button" onPress={() => setHoursOpen(false)} style={StyleSheet.absoluteFill} />
+            <View accessibilityViewIsModal style={[styles.hoursSheet, { paddingBottom: Math.max(insets.bottom, spacing.x8) }]}>
+              <View style={styles.hoursHandle} />
+              <View style={styles.hoursHead}>
+                <View style={styles.flex}>
+                  <AppText accessibilityRole="header" variant="screenTitle">영업시간</AppText>
+                  <AppText capScale style={[styles.hoursStatus, styles.flexShrink]} tone="muted" variant="meta">
+                    {`${shop.name}${shop.branch ? ` ${shop.branch}` : ""} · ${upcomingOpening ?? status.label}`}
+                  </AppText>
+                </View>
+                <IconButton accessibilityLabel="닫기" icon={<X color={colors.ink} size={20} />} onPress={() => setHoursOpen(false)} />
+              </View>
+              <ScrollView contentContainerStyle={styles.hoursWeek} showsVerticalScrollIndicator={false}>
+                {shop.openingHours.map((entry, index) => {
+                  const day = entry.split(": ")[0]
+                  const time = entry.slice(day.length + 2)
+                  const isToday = day === todayName
+                  return (
+                    <View key={day} style={[styles.hourRow, index > 0 && styles.hourDivider]} testID="shop-hours-row">
+                      <View style={styles.hourDay}>
+                        <AppText style={[styles.hourText, isToday && styles.bold]} tone={isToday ? "ink" : "sub"} variant="secondary">{day}</AppText>
+                        {isToday ? <AppText capScale style={styles.todayChip} variant="meta">오늘</AppText> : null}
+                      </View>
+                      <AppText style={[styles.hourText, styles.hourTime, isToday && styles.bold]} tone={isToday ? "ink" : time === "정기 휴무" ? "muted" : "sub"} variant="secondary">
+                        {time}
+                      </AppText>
+                    </View>
+                  )
+                })}
+              </ScrollView>
+              {shop.lastOrder || splitHours ? (
+                <AppText capScale style={styles.hoursNote} tone="muted" variant="meta">
+                  {[shop.lastOrder ? `라스트오더 ${shop.lastOrder}` : null, splitHours ? `${splitHours[1]} ~ ${splitHours[2]}은 쉬는 시간` : null].filter(Boolean).join(" · ")}
+                </AppText>
+              ) : null}
+            </View>
+          </View>
+        </Modal>
+      ) : null}
       <Toast
-        appearance="light"
-        icon={toastSaved ? <Bookmark color={colors.brand} fill={colors.brand} size={18} /> : undefined}
+        icon={toastSaved ? <Heart color={colors.onDark} fill={colors.onDark} size={18} /> : undefined}
         message={toast ?? ""}
         onDismiss={() => setToast(null)}
         style={{ bottom: TOAST_OFFSET + insets.bottom }}
         visible={toast !== null}
       />
+      <EdgeBackZone />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
+  statusCap: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: colors.paper },
   flex: { flex: 1 },
   flexShrink: { flexShrink: 1, minWidth: 0 },
   bold: { fontWeight: "700" },
-  medium: { fontWeight: "500" },
-  center: { textAlign: "center" },
-  dot: { color: colors.textFaint },
-  // 그림자가 있는 키는 누르면 그림자 속으로 들어간다
-  pressedInto: pressInto(2),
-  scrollContent: { paddingBottom: spacing.x8 },
-
+  scrollContent: { paddingBottom: spacing.section },
   hero: {
-    aspectRatio: 4 / 3,
-    borderBottomWidth: line.base,
-    borderBottomColor: colors.outline,
+    marginHorizontal: spacing.x2,
+    borderRadius: radii.lg,
+    overflow: "hidden",
     backgroundColor: colors.canvasSoft,
   },
   noPhoto: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.x2 },
-  heroControls: {
-    position: "absolute",
-    left: spacing.x3,
-    right: spacing.x3,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  thumbStrip: { position: "absolute", left: 0, right: 0, bottom: spacing.x3 },
-  thumbRow: { gap: spacing.x2, paddingHorizontal: spacing.x4 },
-  // 48pt 썸네일은 8pt 모서리 + 2pt 선. 고른 사진만 빨강 선
-  thumb: { width: 48, height: 48, borderRadius: radii.md, borderWidth: line.base, overflow: "hidden", backgroundColor: colors.canvasSoft },
-  thumbActive: { borderColor: colors.brand },
-  thumbIdle: { borderColor: colors.onDark },
+  heroControls: { position: "absolute", left: spacing.x3_5, top: spacing.x3_5 },
+  thumbRow: { position: "absolute", left: spacing.x3_5, bottom: spacing.x3_5, flexDirection: "row", gap: spacing.x2 },
+  // 48pt 썸네일, 12pt 모서리 + 2pt 선. 고른 사진만 흰 선, 나머지는 살짝 흐리게
+  thumb: { width: 48, height: 48, borderRadius: 12, borderWidth: 2, overflow: "hidden", backgroundColor: colors.canvasSoft },
+  thumbActive: { borderColor: colors.white },
+  thumbIdle: { borderColor: colors.transparent, opacity: 0.75 },
+  hiddenSource: { opacity: 0 },
+  actions: { flexDirection: "row", alignItems: "center", gap: spacing.x1, paddingHorizontal: spacing.x4, paddingTop: spacing.x3 },
+  actionIcon: { backgroundColor: colors.transparent },
+  saveGlyph: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center" },
+  saveRing: { position: "absolute", width: touchTarget, height: touchTarget, borderRadius: radii.pill, borderWidth: 2, borderColor: colors.ink },
+  headline: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x1_5 },
+  branch: { fontSize: 18, fontWeight: "400" },
+  spec: { marginTop: spacing.x1 },
+  metaLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginTop: spacing.x1 },
+  metaText: { flexShrink: 1 },
+  fingerprint: { marginHorizontal: spacing.gutter, marginTop: spacing.section },
 
-  headline: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5 },
-  metaLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: spacing.x2, rowGap: spacing.x1 },
-  metaPart: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
-  styleLine: { marginTop: spacing.x3 },
-  name: { marginTop: spacing.x2 },
-  spec: { marginTop: spacing.x1_5 },
-  address: { marginTop: spacing.x1 },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
-
-  intro: {
-    marginHorizontal: spacing.gutter,
-    marginTop: spacing.x5,
-    padding: spacing.x4,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-  },
-  introHead: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginBottom: spacing.x1_5 },
+  intro: { marginHorizontal: spacing.gutter, marginTop: spacing.section },
+  introCard: { padding: spacing.x4, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
+  aiLabel: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginBottom: spacing.x3 },
+  aiLabelText: { fontWeight: "700" },
+  introText: { lineHeight: 20 },
   summaryKeywords: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
+  summaryKeyword: { minHeight: 28, justifyContent: "center", paddingHorizontal: spacing.x3, borderRadius: radii.pill, backgroundColor: colors.canvas },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginHorizontal: spacing.gutter, marginTop: spacing.x3 },
+  tagsStandalone: { marginTop: spacing.section },
+  keyword: { minHeight: 28, justifyContent: "center", paddingHorizontal: spacing.x3, borderRadius: radii.pill, backgroundColor: colors.canvasSoft },
+  keywordText: { fontSize: 13, lineHeight: 18, fontWeight: "600" },
 
-  section: { paddingHorizontal: spacing.gutter, marginTop: spacing.x5 },
-  sectionTitle: { marginBottom: spacing.x2_5 },
-  perkGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
-  // 값 하나만 보여 주는 정보 타일이라 1pt border. 바로 위 바로가기 키(2pt + 그림자)와 달리 누를 수 없다
-  perk: {
-    flexBasis: "47%",
-    flexGrow: 1,
-    paddingVertical: spacing.x2_5,
-    paddingHorizontal: spacing.x3,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.canvas,
-  },
-  perkValue: { marginTop: spacing.x0_5 },
-
-  dark: {
-    marginHorizontal: spacing.gutter,
-    marginTop: spacing.x5,
-    padding: spacing.x5,
-    borderRadius: radii.sm,
-    backgroundColor: colors.deep,
-  },
-  darkTitle: { marginBottom: spacing.x3 },
-  darkRow: {
-    minHeight: touchTarget,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: spacing.x4,
-    paddingVertical: spacing.x3,
-  },
-  darkRowCenter: { alignItems: "center", paddingVertical: spacing.x2 },
-  darkKey: { flexShrink: 0 },
-  darkValue: { flex: 1, textAlign: "right" },
-  darkDivider: { height: 1, backgroundColor: colors.onDarkLine },
-  hoursPreview: { flexDirection: "row", alignItems: "center", gap: spacing.x2, flexShrink: 1 },
-  chevronUp: { transform: [{ rotate: "180deg" }] },
-  hoursList: { paddingTop: spacing.x1, paddingBottom: spacing.x3 },
-  hourRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.x2,
-    paddingVertical: spacing.x1_5,
-    borderRadius: radii.xs,
-  },
-  // 먹색 면 안의 선은 흰색 18%(onDarkLine)가 규격이다
-  hourToday: { borderWidth: 1, borderColor: colors.onDarkLine },
-  hourDay: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
-  phone: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
-  // 가게 소개 아래 바로가기: 흰 키(2pt 먹선 + 번지지 않는 그림자). 그림자만큼 칸 사이를 10pt로 둔다
-  shortcuts: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2_5, paddingHorizontal: spacing.gutter, marginTop: spacing.x4 },
-  shortcut: {
-    flexBasis: "40%",
-    flexGrow: 1,
+  shortcuts: { flexDirection: "row", paddingHorizontal: spacing.x2, marginTop: spacing.section },
+  shortcut: { width: "25%", minHeight: 64, alignItems: "center", justifyContent: "center", gap: spacing.x1 },
+  shortcutIcon: {
+    width: touchTarget,
     height: touchTarget,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.x2,
-    borderRadius: radii.sm,
-    borderWidth: line.base,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    ...shadows.hardS,
+    borderRadius: radii.pill,
+    backgroundColor: colors.canvasSoft,
   },
-
-  reviews: { paddingHorizontal: spacing.gutter, marginTop: spacing.x6 },
-  reviewsHead: {
+  shortcutPressed: { backgroundColor: colors.surfacePressed, borderRadius: radii.sm },
+  section: { paddingHorizontal: spacing.gutter, marginTop: spacing.section },
+  sectionTitle: { marginBottom: spacing.x3 },
+  perkRow: { flexDirection: "row", gap: spacing.x2, paddingVertical: spacing.x3 },
+  perkLabel: { width: 88, flexShrink: 0, fontWeight: "700" },
+  perkValue: { flex: 1 },
+  info: { marginHorizontal: spacing.gutter, marginTop: spacing.section },
+  infoRow: {
+    minHeight: touchTarget,
     flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: spacing.x2,
-    paddingBottom: spacing.x3,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: spacing.x3,
+    borderTopWidth: line.hair,
+    borderTopColor: colors.border,
   },
-  review: { paddingVertical: spacing.x4 },
-  reviewDivider: { borderTopWidth: 1, borderTopColor: colors.border },
-  reviewText: { marginTop: spacing.x1 },
-  logRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3 },
-  logPhoto: { width: 56, height: 56, borderRadius: radii.sm, borderWidth: line.base, borderColor: colors.outline },
-  logMeta: { marginTop: spacing.x0_5 },
-  reviewsEmpty: { alignItems: "center", paddingVertical: spacing.x8 },
-  emptyBody: { marginTop: spacing.x1 },
-  firstRecord: { marginTop: spacing.x4 },
+  infoPressed: { backgroundColor: colors.surfacePressed },
+  infoKey: { width: 64, flexShrink: 0, fontSize: 13, lineHeight: 20 },
+  infoText: { fontWeight: "500", lineHeight: 20 },
+  infoValue: { flex: 1, minWidth: 0 },
+  naverHint: { flexDirection: "row", alignItems: "center", gap: spacing.x1, marginTop: spacing.x3 },
+  naverText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
+  hoursPreview: { flex: 1, minWidth: 0, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x1_5 },
+  phone: { flexDirection: "row", alignItems: "center" },
 
+  similar: { marginTop: spacing.section },
+  similarHead: { paddingHorizontal: spacing.gutter, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2 },
+  similarCards: { flexDirection: "row", gap: spacing.x2, paddingHorizontal: spacing.gutter, marginTop: spacing.x3 },
+  similarCard: { flex: 1, minWidth: 0, gap: spacing.x1_5 },
+  similarPhoto: { position: "relative", borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvasSoft },
+  similarPill: { position: "absolute", top: spacing.x2, left: spacing.x2, paddingVertical: spacing.x1_5, paddingHorizontal: spacing.x2_5, borderRadius: radii.pill, backgroundColor: colors.photoPill },
+  similarPillText: { fontWeight: "700", color: colors.onPhotoPill },
+  similarTitle: { fontWeight: "600", paddingHorizontal: spacing.x1 },
+
+  hoursOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: colors.overlay },
+  hoursSheet: { maxHeight: "90%", paddingTop: spacing.x2_5, borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg, backgroundColor: colors.canvas },
+  hoursHandle: { alignSelf: "center", width: 36, height: 5, borderRadius: radii.pill, backgroundColor: colors.secondaryPressed },
+  hoursHead: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingLeft: spacing.x5, paddingRight: spacing.x4, paddingTop: spacing.x3, paddingBottom: spacing.x2 },
+  hoursStatus: { marginTop: spacing.x1 },
+  hoursWeek: { paddingHorizontal: spacing.x5 },
+  hourRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2, paddingVertical: spacing.x3 },
+  hourDivider: { borderTopWidth: line.hair, borderTopColor: colors.border },
+  hourDay: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
+  hourText: { fontSize: 15, lineHeight: 20, fontWeight: "500" },
+  hourTime: { flexShrink: 1, textAlign: "right" },
+  todayChip: { paddingHorizontal: spacing.x2, paddingVertical: spacing.x0_5, borderRadius: radii.pill, backgroundColor: colors.selected, color: colors.onSelected, fontWeight: "700" },
+  hoursNote: { paddingHorizontal: spacing.x5, paddingTop: spacing.x3 },
+
+  moreOptions: { gap: spacing.x1, paddingBottom: spacing.x3 },
   stickyBar: { paddingHorizontal: spacing.x4 },
   stickyButton: { paddingHorizontal: spacing.x3 },
-  stickyPrimary: { flex: 1.3 },
+  stickyPrimary: { flex: 1.5 },
 })
