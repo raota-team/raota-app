@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
@@ -32,6 +32,7 @@ interface ShopItem {
   distanceM: number
   distance: string
   isOpen: boolean
+  status: string
   photo?: string
   tags: string[]
   region: string
@@ -59,21 +60,27 @@ const catalogField = (shop: Shop, key: "style" | "spec") => {
   return typeof value === "string" ? value : ""
 }
 
-const toShopItem = (shop: Shop): ShopItem => ({
-  id: shop.id,
-  name: shop.name,
-  branch: shop.branch ?? "",
-  style: catalogField(shop, "style"),
-  // 종류 태그에는 원장의 대표 스타일을 그대로 넘긴다("쇼유 라멘" → 태그가 "쇼유"로 보여 준다)
-  ramenType: catalogField(shop, "style"),
-  spec: catalogField(shop, "spec"),
-  distanceM: shop.distanceM,
-  distance: formatDistance(shop.distanceM),
-  isOpen: shop.isOpen,
-  photo: shop.photos[0],
-  tags: shop.tags,
-  region: regionOf(shop.address),
-})
+const toShopItem = (shop: Shop): ShopItem => {
+  const distanceUnknown = "unknownFields" in shop && Array.isArray(shop.unknownFields) && shop.unknownFields.includes("distance")
+  return {
+    id: shop.id,
+    name: shop.name,
+    branch: shop.branch ?? "",
+    style: catalogField(shop, "style"),
+    // 종류 태그에는 원장의 대표 스타일을 그대로 넘긴다("쇼유 라멘" → 태그가 "쇼유"로 보여 준다)
+    ramenType: catalogField(shop, "style"),
+    spec: catalogField(shop, "spec"),
+    distanceM: distanceUnknown ? Number.POSITIVE_INFINITY : shop.distanceM,
+    distance: distanceUnknown ? "거리 정보 없음" : formatDistance(shop.distanceM),
+    status: "unknownFields" in shop && Array.isArray(shop.unknownFields) && shop.unknownFields.includes("isOpen")
+      ? "영업 정보 확인 필요"
+      : shop.isOpen ? "영업 중" : "준비 중",
+    isOpen: shop.isOpen,
+    photo: shop.photos[0],
+    tags: shop.tags,
+    region: regionOf(shop.address),
+  }
+}
 
 const byDistance = (a: ShopItem, b: ShopItem) => a.distanceM - b.distanceM
 
@@ -81,7 +88,7 @@ const initialModeOf = (mode: string | undefined): Mode =>
   mode === "saved" || mode === "bookmarked" ? "saved" : mode === "search" ? "search" : "nearby"
 
 function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
-  const status = shop.isOpen ? "영업 중" : "준비 중"
+  const status = shop.status
   const label = [shop.name, shop.branch, shop.spec || shop.style, shop.distance, status, shop.region]
     .filter(Boolean)
     .join(", ")
@@ -132,10 +139,21 @@ export default function SelectShopScreen() {
   const [mode, setMode] = useState<Mode>(() => initialModeOf(params.mode))
   const [nearbyFilter, setNearbyFilter] = useState<NearbyFilter>("all")
   const [query, setQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(query.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [query])
+  const remoteSearch = useShops({ query: searchQuery || undefined })
   const searchRef = useRef<TextInput>(null)
 
   const allShops = useMemo(() => shopsQuery.data.map(toShopItem).sort(byDistance), [shopsQuery.data])
-  const savedShops = useMemo(() => bookmarked.data.map(toShopItem).sort(byDistance), [bookmarked.data])
+  const savedShops = useMemo(
+    () => (shopsQuery.remote
+      ? shopsQuery.data.filter((shop) => state.bookmarkedShopIds.includes(shop.id))
+      : bookmarked.data).map(toShopItem).sort(byDistance),
+    [bookmarked.data, shopsQuery.data, shopsQuery.remote, state.bookmarkedShopIds],
+  )
 
   // 빠른 검색어는 원장의 스타일과 동네에서만 만든다. 인기 검색어처럼 꾸미지 않는다.
   const quickKeywords = useMemo(
@@ -163,12 +181,13 @@ export default function SelectShopScreen() {
   const searchResults = useMemo(() => {
     const q = trimmedQuery.toLocaleLowerCase("ko-KR")
     if (!q) return []
+    if (shopsQuery.remote) return searchQuery === trimmedQuery ? remoteSearch.data.map(toShopItem).sort(byDistance) : []
     return allShops.filter((shop) =>
       [shop.name, shop.branch, shop.style, shop.spec, shop.region, ...shop.tags].some((text) =>
         text.toLocaleLowerCase("ko-KR").includes(q),
       ),
     )
-  }, [allShops, trimmedQuery])
+  }, [allShops, remoteSearch.data, searchQuery, shopsQuery.remote, trimmedQuery])
 
   const chooseNearbyFilter = () => {
     const options = ["전체", "500m 이내", "영업 중만", "취소"]
@@ -205,6 +224,10 @@ export default function SelectShopScreen() {
   }
 
   const data = mode === "nearby" ? nearbyList : mode === "saved" ? savedShops : searchResults
+  const activeQuery = mode === "search" && trimmedQuery && shopsQuery.remote ? remoteSearch : shopsQuery
+  const isLoading = mode === "search" && trimmedQuery && shopsQuery.remote
+    ? searchQuery !== trimmedQuery || (remoteSearch.isLoading && searchResults.length === 0)
+    : shopsQuery.isLoading && allShops.length === 0
 
   const listHeader = (
     <View style={styles.listHeader}>
@@ -234,7 +257,9 @@ export default function SelectShopScreen() {
   )
 
   const listEmpty =
-    mode === "nearby" ? (
+    activeQuery.error && mode !== "saved" ? (
+      <EmptyState description="잠시 후 다시 열어 주세요." title="가게 목록을 불러오지 못했어요" />
+    ) : mode === "nearby" ? (
       <EmptyState description="필터를 풀면 더 많은 가게를 볼 수 있어요." title="조건에 맞는 가게가 없어요" />
     ) : mode === "saved" ? (
       <EmptyState
@@ -328,7 +353,7 @@ export default function SelectShopScreen() {
         })}
       </View>
 
-      {shopsQuery.isLoading ? (
+      {isLoading ? (
         <LoadingState label="가게 목록을 불러오는 중…" />
       ) : (
         <FlatList
@@ -337,9 +362,16 @@ export default function SelectShopScreen() {
           ListHeaderComponent={listHeader}
           contentContainerStyle={styles.listContent}
           data={data}
+          ListFooterComponent={mode !== "saved" && activeQuery.error && data.length ? (
+            <EmptyState actionLabel="다시 불러오기" onAction={activeQuery.loadMore} title="다음 가게를 불러오지 못했어요" />
+          ) : mode !== "saved" && activeQuery.isLoading && data.length ? <LoadingState label="더 불러오는 중…" /> : null}
           keyExtractor={(item) => item.id}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
+          onEndReached={() => {
+            if (mode !== "saved" && activeQuery.hasMore && !activeQuery.isLoading && !activeQuery.error) activeQuery.loadMore()
+          }}
+          onEndReachedThreshold={0.6}
           renderItem={({ item }) => <ShopRow onSelect={() => choose(item)} shop={item} />}
           showsVerticalScrollIndicator={false}
         />

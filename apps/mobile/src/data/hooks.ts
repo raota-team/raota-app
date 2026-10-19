@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   DEMO_BASE_PROFILE,
   DEMO_BOWLS,
@@ -12,6 +12,7 @@ import {
   longestStreak,
   mergeProfile,
   monthKeyOfDate,
+  seoulToday,
   profileDelta,
   shopVisitsOf,
   tasteIdentity,
@@ -28,6 +29,9 @@ import {
   type TasteScores,
 } from "@raota/shared"
 
+import { isRemote, type RemoteMapPin, type ShopListParams } from "../api"
+import { remoteReads, type RemoteLoungeLogDetail, type RemotePage } from "./remote"
+
 import {
   LOUNGE_PAGE_SIZE,
   isLogVisibleTo,
@@ -39,16 +43,9 @@ import {
 import { useRaota } from "../state/RaotaStore"
 
 /**
- * 화면이 쓰는 데이터 입구. 지금은 로컬 스토어와 공유 원장에서 읽고,
- * API가 준비되면 이 파일 안쪽만 서버 요청으로 바꾼다. 화면은 원장(SHOP_CATALOG, DEMO_BOWLS)을 직접 import하지 않는다.
- *
- * 모든 hook은 { data, isLoading, error } 모양을 돌려준다. 더미 단계에서도 화면이
- * 로딩·오류 상태를 갖추게 하려는 것이다.
- *
- * 서버로 옮길 때: src/data/remote.ts에 hook마다 대응하는 함수(remoteReads·remoteWrites)를 만들어 뒀다.
- * .env로 EXPO_PUBLIC_API_MODE=remote와 EXPO_PUBLIC_API_REMOTE_DOMAINS(도메인별 스위치)를 켜고
- * 이 파일 안쪽만 그 함수로 바꾼다. hook 이름과 돌려주는 모양은 그대로 둔다(화면은 건드리지 않는다).
- * 기본값은 mock이라 지금은 아무 화면도 서버를 보지 않는다.
+ * 화면이 쓰는 데이터 입구. mock에서는 기존 로컬 스토어를, 공개 도메인의 remote에서는
+ * 서버 읽기를 사용한다. 화면은 원장(SHOP_CATALOG, DEMO_BOWLS)을 직접 import하지 않는다.
+ * 모든 hook의 { data, isLoading, error } 계약은 두 모드에서 같다.
  */
 export interface Query<T> {
   data: T
@@ -61,18 +58,173 @@ function useQueryState(): Pick<Query<unknown>, "isLoading" | "error"> {
   return { isLoading: !isHydrated, error: storageError }
 }
 
-/** 매장 원장 전체 */
-export function useShops(): Query<Shop[]> {
+type RemoteResult<T> = Query<T> & { key: string | null }
+type CacheEntry = { value: unknown } | { promise: Promise<unknown> }
+const remoteCache = new Map<string, CacheEntry>()
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "데이터를 불러오지 못했어요"
+}
+
+/** 첫 응답을 공유하며 동일 키의 동시 요청을 합친다. 실패한 요청은 캐시하지 않는다. */
+function useRemoteResult<T>(key: string | null, empty: T, read: () => Promise<T>): RemoteResult<T> {
+  const readRef = useRef(read)
+  readRef.current = read
+  const [result, setResult] = useState<RemoteResult<T>>(() => {
+    const cached = key ? remoteCache.get(key) : undefined
+    return { key, data: cached && "value" in cached ? cached.value as T : empty, isLoading: Boolean(key && !(cached && "value" in cached)), error: null }
+  })
+
+  useEffect(() => {
+    if (!key) return
+    let active = true
+    const entry = remoteCache.get(key)
+    if (entry && "value" in entry) {
+      setResult({ key, data: entry.value as T, isLoading: false, error: null })
+    } else {
+      setResult({ key, data: empty, isLoading: true, error: null })
+      let promise = entry && "promise" in entry ? entry.promise as Promise<T> : null
+      if (!promise) {
+        promise = readRef.current()
+        remoteCache.set(key, { promise })
+        void promise.then(
+          (value) => remoteCache.set(key, { value }),
+          () => remoteCache.delete(key),
+        )
+      }
+      void promise.then(
+        (data) => { if (active) setResult({ key, data, isLoading: false, error: null }) },
+        (cause) => { if (active) setResult({ key, data: empty, isLoading: false, error: errorMessage(cause) }) },
+      )
+    }
+    return () => { active = false }
+    // read/empty can be recreated during rendering; only the key identifies a request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return result.key === key ? result : { key, data: empty, isLoading: Boolean(key), error: null }
+}
+
+interface RemotePaging<T> extends Query<T[]> {
+  hasMore: boolean
+  loadMore(): void
+}
+
+/** 커서의 첫 응답은 공유하고, 이어지는 페이지는 이 화면이 필요할 때만 불러온다. */
+function useRemoteContinuation<T extends { id: string }>(
+  key: string | null,
+  first: Query<RemotePage<T>>,
+  read: (cursor: string) => Promise<RemotePage<T>>,
+): RemotePaging<T> {
+  const readRef = useRef(read)
+  readRef.current = read
+  const [extra, setExtra] = useState<{ key: string | null; pages: RemotePage<T>[]; loading: boolean; error: string | null }>({
+    key, pages: [], loading: false, error: null,
+  })
+  const pending = useRef<string | null>(null)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+  const currentKey = useRef(key)
+  const generation = useRef(0)
+  if (currentKey.current !== key) {
+    currentKey.current = key
+    generation.current += 1
+    pending.current = null
+  }
+  const active = extra.key === key ? extra : { key, pages: [], loading: false, error: null }
+  const last = active.pages.at(-1) ?? first.data
+  const hasMore = !first.isLoading && !first.error && last.hasNext && Boolean(last.nextCursor)
+  const loadMore = useCallback(() => {
+    if (!key || !hasMore || !last.nextCursor || pending.current === key) return
+    const cursor = last.nextCursor
+    const requestGeneration = generation.current
+    pending.current = key
+    setExtra((previous) => ({ key, pages: previous.key === key ? previous.pages : [], loading: true, error: null }))
+    void readRef.current(cursor).then(
+      (page) => {
+        if (mounted.current && currentKey.current === key && generation.current === requestGeneration) setExtra((previous) => ({ key, pages: [...(previous.key === key ? previous.pages : []), page], loading: false, error: null }))
+      },
+      (cause) => {
+        if (mounted.current && currentKey.current === key && generation.current === requestGeneration) setExtra((previous) => ({ ...previous, loading: false, error: errorMessage(cause) }))
+      },
+    ).finally(() => { if (currentKey.current === key && generation.current === requestGeneration) pending.current = null })
+  }, [hasMore, key, last.nextCursor])
+
+  const data = useMemo(() => {
+    const seen = new Set<string>()
+    return [first.data, ...active.pages].flatMap((page) => page.items.filter((item) => {
+      if (seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    }))
+  }, [active.pages, first.data])
+  return { data, isLoading: first.isLoading || active.loading, error: first.error ?? active.error, hasMore, loadMore }
+}
+
+const EMPTY_PAGE: RemotePage<never> = { items: [], nextCursor: null, hasNext: false }
+
+export interface ShopFeed extends Query<Shop[]> {
+  remote: boolean
+  hasMore: boolean
+  loadMore(): void
+}
+
+/** 매장 목록. remote에서는 화면이 필요로 할 때 다음 커서 페이지를 이어 붙인다. */
+export function useShops(params: Omit<ShopListParams, "cursor" | "size"> = {}): ShopFeed {
+  const { shops } = useRaota()
+  const status = useQueryState()
+  const remote = isRemote("shops")
+  const key = remote ? `shops:${JSON.stringify(params)}` : null
+  const first = useRemoteResult(key, EMPTY_PAGE as RemotePage<Shop>, () => remoteReads.shops({ ...params, size: 20 }))
+  const pages = useRemoteContinuation(key, first, (cursor) => remoteReads.shops({ ...params, cursor, size: 20 }))
+  return remote ? { ...pages, remote: true } : { data: shops, ...status, hasMore: false, loadMore: () => undefined, remote: false }
+}
+
+/** 회원 기록·취향 화면은 로컬 그릇과 같은 원장을 계속 참조한다. */
+export function useLocalShops(): Query<Shop[]> {
   const { shops } = useRaota()
   const status = useQueryState()
   return { data: shops, ...status }
+}
+
+/** 서버 지도 핀은 목록 커서와 별개로 전체를 읽는다. */
+export function useMapPins(): Query<RemoteMapPin[]> & { remote: boolean } {
+  const { shops } = useRaota()
+  const status = useQueryState()
+  const enabled = isRemote("shops")
+  const remote = useRemoteResult(enabled ? "shops:map-pins" : null, [] as RemoteMapPin[], remoteReads.mapPins)
+  const local = useMemo<RemoteMapPin[]>(
+    () => shops.filter((shop) => shop.lat && shop.lng).map((shop) => ({
+      id: shop.id, name: shop.name, branch: shop.branch, lat: shop.lat, lng: shop.lng,
+      ramenTypes: [], isOpen: shop.isOpen, unknownFields: [],
+    })),
+    [shops],
+  )
+  return enabled ? { ...remote, remote: true } : { data: local, ...status, remote: false }
+}
+
+/** 없는 오늘의 큐레이션은 null(서버가 픽을 발행하지 않았을 때). */
+export function useTodayCuration(): Query<{ shop: Shop; title: string; reason: string } | null> & { remote: boolean } {
+  const status = useQueryState()
+  const enabled = isRemote("shops")
+  const remote = useRemoteResult(
+    enabled ? `shops:curation:${seoulToday()}` : null,
+    null as { shop: Shop; title: string; reason: string } | null,
+    remoteReads.todayCuration,
+  )
+  return enabled ? { ...remote, remote: true } : { data: null, ...status, remote: false }
 }
 
 /** 매장 하나. 없으면 data가 null이다 */
 export function useShop(shopId: string | null | undefined): Query<Shop | null> {
   const { getShop } = useRaota()
   const status = useQueryState()
-  return { data: shopId ? (getShop(shopId) ?? null) : null, ...status }
+  const remote = isRemote("shops")
+  const result = useRemoteResult(remote && shopId ? `shop:${shopId}` : null, null as Shop | null, () => remoteReads.shop(shopId!))
+  return remote ? result : { data: shopId ? (getShop(shopId) ?? null) : null, ...status }
 }
 
 /** 찜한 매장 */
@@ -259,65 +411,84 @@ export interface LoungeFeedOptions {
 }
 
 export interface LoungeFeed extends Query<RamenLog[]> {
-  /** 필터에 맞는 전체 수(아직 안 불러온 것 포함) */
+  /** mock은 전체 수, remote는 현재까지 읽은 수(서버 커서에는 전체 수가 없다) */
   total: number
   hasMore: boolean
   /** 다음 쪽을 이어 붙인다. 필터·정렬이 바뀌면 첫 쪽부터 다시 */
   loadMore(): void
 }
 
-/**
- * 라운지 피드. 공개 라멘로그만, 숨긴 사용자와 내가 신고한 글은 뺀다. 내 공개 기록도 여기 올라온다.
- * 한 번에 pageSize(10)개씩 보여준다.
- */
+/** 공개 라멘로그 피드. remote에서는 필터·정렬마다 독립적으로 커서를 이어 읽는다. */
 export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: LoungeFeedOptions): LoungeFeed {
   const { state } = useRaota()
   const status = useQueryState()
   const viewer = useLoungeViewer()
-  // 댓글도 숨긴 사람·신고한 댓글을 뺀 목록으로 바꿔 둔다. 카드의 댓글 수가 상세 화면과 같아야 한다
+  const remote = isRemote("lounge")
+  const remoteKey = remote ? `lounge:${type}|${sort}|${pageSize}` : null
+  const first = useRemoteResult(remoteKey, EMPTY_PAGE as RemotePage<RamenLog>, () => remoteReads.loungeLogs({ type, sort, size: pageSize }))
+  const pages = useRemoteContinuation(remoteKey, first, (cursor) => remoteReads.loungeLogs({ type, sort, cursor, size: pageSize }))
+  // mock에서는 댓글도 숨긴 사람·신고한 댓글을 제외해 카드와 상세의 수를 맞춘다.
   const all = useMemo(
-    () =>
-      selectLoungeLogs(state.logs, { type, sort }, viewer).map((log) => ({
-        ...log,
-        comments: selectVisibleComments(log, viewer),
-      })),
-    [sort, state.logs, type, viewer],
+    () => remote ? [] : selectLoungeLogs(state.logs, { type, sort }, viewer).map((log) => ({
+      ...log,
+      comments: selectVisibleComments(log, viewer),
+    })),
+    [remote, sort, state.logs, type, viewer],
   )
-
   const key = `${type}|${sort}`
   const [paging, setPaging] = useState({ key, count: pageSize })
   const count = paging.key === key ? paging.count : pageSize
   const loadMore = useCallback(() => {
-    // TODO(API): remoteReads.loungeLogs({ type, sort, cursor: nextCursor, size: 10 })
-    // (GET /ramen-logs?sort=LATEST|LIKES&ramenType=&cursor=&size=10) 응답을 이어 붙인다.
-    // 지금은 로컬 목록을 10개씩 더 보여준다
     setPaging((prev) => ({ key, count: (prev.key === key ? prev.count : pageSize) + pageSize }))
   }, [key, pageSize])
 
   const data = useMemo(() => all.slice(0, count), [all, count])
-  return { data, ...status, total: all.length, hasMore: all.length > count, loadMore }
+  return remote
+    ? { ...pages, total: pages.data.length }
+    : { data, ...status, total: all.length, hasMore: all.length > count, loadMore }
 }
 
 export interface LoungeLogDetail {
   log: RamenLog
   /** 등록순. 숨긴 사람·신고한 댓글은 빠져 있다 */
   comments: RamenLogComment[]
+  commentCount: number
 }
 
-/**
- * 라멘로그 상세와 댓글. 없는 기록, 남의 비공개 기록, 숨긴 사람의 기록, 내가 신고한 기록이면 data가 null이다.
- * TODO(API): remoteReads.loungeLog(logId)의 상세 미리보기를 쓰고, 이후 댓글은
- * remoteReads.loungeLogComments(logId, cursor)로 이어 읽는다.
- * 서버가 비공개·차단·신고한 글을 이미 빼고 주므로 그때는 이 파일의 거르기가 이중 안전장치가 된다
- */
-export function useLoungeLog(logId: string | null | undefined): Query<LoungeLogDetail | null> {
+export interface LoungeLogQuery extends Query<LoungeLogDetail | null> {
+  hasMoreComments: boolean
+  loadMoreComments(): void
+}
+
+/** 상세의 댓글 미리보기를 먼저 쓰고 스크롤할 때만 다음 댓글 페이지를 읽는다. */
+export function useLoungeLog(logId: string | null | undefined): LoungeLogQuery {
   const { getLog } = useRaota()
   const status = useQueryState()
   const viewer = useLoungeViewer()
+  const remote = isRemote("lounge")
+  const key = remote && logId ? `lounge:detail:${logId}` : null
+  const detail = useRemoteResult(key, null as RemoteLoungeLogDetail | null, () => remoteReads.loungeLog(logId!))
+  const firstComments: Query<RemotePage<RamenLogComment>> = {
+    data: detail.data
+      ? { items: detail.data.comments, nextCursor: detail.data.nextCursor, hasNext: detail.data.hasNext }
+      : EMPTY_PAGE,
+    isLoading: detail.isLoading,
+    error: detail.error,
+  }
+  const comments = useRemoteContinuation(key, firstComments, (cursor) => remoteReads.loungeLogComments(logId!, cursor))
   const log = logId ? getLog(logId) : undefined
-  const data = useMemo(() => {
+  const local = useMemo(() => {
     if (!log || !isLogVisibleTo(log, viewer)) return null
-    return { log, comments: selectVisibleComments(log, viewer) }
+    const visibleComments = selectVisibleComments(log, viewer)
+    return { log, comments: visibleComments, commentCount: visibleComments.length }
   }, [log, viewer])
-  return { data, ...status }
+  return remote
+    ? {
+        data: detail.data ? { log: detail.data.log, comments: comments.data, commentCount: detail.data.commentCount } : null,
+        isLoading: detail.isLoading || comments.isLoading,
+        error: detail.error ?? comments.error,
+        hasMoreComments: comments.hasMore,
+        loadMoreComments: comments.loadMore,
+      }
+    : { data: local, ...status, hasMoreComments: false, loadMoreComments: () => undefined }
 }

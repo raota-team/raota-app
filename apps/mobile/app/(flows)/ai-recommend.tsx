@@ -19,7 +19,7 @@ import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, Button, Header, Screen, SoupDot, StickyActionBar, TicketCut } from "@/src/components/ui"
-import { useShops } from "@/src/data/hooks"
+import { useLocalShops } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { matchesShopRamenType } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -382,7 +382,7 @@ function focusOn(ref: React.RefObject<View | null>) {
 
 export default function AIRecommendScreen() {
   const { currentUser } = useRaota()
-  const shopsQuery = useShops()
+  const shopsQuery = useLocalShops()
   const reducedMotion = useReducedMotion()
   const { width, fontScale } = useWindowDimensions()
   const ctaSize = useMemo(() => ({ minHeight: Math.max(56, 2 * (typography.button.lineHeight ?? 18) * Math.min(fontScale, maxFontScale) + 2 * spacing.x2) }), [fontScale])

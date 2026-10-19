@@ -44,37 +44,19 @@ import {
 import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
 
 /**
- * 서버에서 읽고 쓰는 함수들. 지금은 아무 화면도 이 파일을 쓰지 않는다(기본값 mock).
- * src/data/hooks.ts가 "화면이 쓰는 데이터 입구"라는 규칙은 그대로다. 서버로 옮길 때도
- * 화면은 그대로 두고 hooks.ts 안쪽에서 이 함수들을 부른다.
+ * 서버 읽기/쓰기 함수. 공개 매장·라운지 읽기는 src/data/hooks.ts에서 연결하고,
+ * 기본값(mock)에서는 로컬 스토어만 사용한다. 로그인·쓰기 경로는 아직 연결하지 않았다.
  *
- * 옮기는 순서
- * 1) .env: EXPO_PUBLIC_API_MODE=remote, EXPO_PUBLIC_API_BASE_URL=<dev 주소(맥 LAN)>
- * 2) EXPO_PUBLIC_API_REMOTE_DOMAINS로 도메인을 하나씩 켠다(shops → lounge → ramenLogs → member)
- * 3) hooks.ts의 hook 안쪽만 바꾼다. { data, isLoading, error } 모양과 이름은 그대로 둔다
+ * 현재 연결된 hook ↔ 함수 ↔ 서버 경로
+ * - useShops             → remoteReads.shops             GET /shops (커서)
+ * - useMapPins           → remoteReads.mapPins           GET /shops/map-pins
+ * - useShop              → remoteReads.shop              GET /shops/{id}
+ * - useTodayCuration     → remoteReads.todayCuration     GET /curations/today
+ * - useLoungeLogs        → remoteReads.loungeLogs        GET /ramen-logs (커서)
+ * - useLoungeLog         → remoteReads.loungeLog         GET /ramen-logs/{id}
+ * - 댓글 다음 쪽         → remoteReads.loungeLogComments GET /ramen-logs/{id}/comments (커서)
  *
- * hook ↔ 함수 ↔ 서버 경로
- * - useShops              → remoteReads.shops            GET /shops (커서)
- * - (지도)                 → remoteReads.mapPins          GET /shops/map-pins
- * - useShop               → remoteReads.shop             GET /shops/{id}
- * - useBookmarkedShops    → remoteReads.bookmarkedShops  GET /members/me/bookmarked-shops
- * - useMyLogs             → remoteReads.myLogs           GET /members/me/ramen-logs
- * - useMyBowls·useVisitedShops·useLongestStreak·useMonthlyReports·useTasteProfile
- *                         → remoteReads.myBowls          GET /members/me/ramen-logs/summary
- *                           (캘린더·방문 매장 API는 없다. 요약 목록 하나로 앱이 계산한다)
- * - useLog                → remoteReads.log              GET /ramen-logs/{id}
- * - useLoungeLogs         → remoteReads.loungeLogs       GET /ramen-logs?sort=LATEST|LIKES
- * - useLoungeLog          → remoteReads.loungeLog        GET /ramen-logs/{id} (댓글 미리보기 포함)
- * - 댓글 다음 쪽          → remoteReads.loungeLogComments GET /ramen-logs/{id}/comments?cursor=
- * - 홈 오늘의 큐레이션      → remoteReads.todayCuration    GET /curations/today
- * - AI 추천 화면           → remoteReads.recommendations  POST /ai/recommendations
- * - auth/onboarding 닉네임 → remoteReads.nicknameAvailability GET /members/nickname-availability
- * - auth/onboarding       → remoteWrites.completeOnboarding PUT /members/me/onboarding → 선택값만 PATCH /members/me
- * - 스토어 actions(찜·기록·공감·댓글·신고·숨기기) → remoteWrites.*
- *
- * 스토어(RaotaProvider)가 붙일 것
- * - subscribeSessionEndedToLogout(() => actions.logout()) — 토큰이 무효화되면 로컬 로그인 상태도 내린다
- * - 로그아웃·탈퇴 때 idempotencyOutbox.clearAccount(userId)
+ * 회원 기록·찜·AI 추천·쓰기 API는 화면/스토어에 연결하지 않았다.
  */
 
 export interface RemotePage<T> {
@@ -133,6 +115,14 @@ export interface LoungeFeedRequest {
   size?: number
 }
 
+export interface RemoteLoungeLogDetail {
+  log: RamenLog
+  comments: RamenLogComment[]
+  commentCount: number
+  nextCursor: string | null
+  hasNext: boolean
+}
+
 export const remoteReads = {
   /** 매장 목록. 커서 페이지라서 화면은 이어 붙이며 보여준다 */
   async shops(params: ShopListParams = {}): Promise<RemotePage<Shop>> {
@@ -185,13 +175,7 @@ export const remoteReads = {
   },
 
   /** 상세 응답의 댓글 미리보기(최대 20개). 다음 쪽은 커서로 별도 요청한다 */
-  async loungeLog(logId: string): Promise<{
-    log: RamenLog
-    comments: RamenLogComment[]
-    commentCount: number
-    nextCursor: string | null
-    hasNext: boolean
-  } | null> {
+  async loungeLog(logId: string): Promise<RemoteLoungeLogDetail | null> {
     const detail = await orNull(ramenLogApi.get(logId))
     if (!detail) return null
     const log = toAppRamenLog(detail)

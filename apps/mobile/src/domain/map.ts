@@ -19,7 +19,7 @@ export interface ClusterViewport {
  * while shops in another part of the city remain independently selectable.
  */
 export function calculateMapClusters(
-  shops: Shop[],
+  shops: Array<Pick<Shop, "id" | "lat" | "lng">>,
   viewport: ClusterViewport,
   aggregateThreshold = 0.075,
 ): MapCluster[] {
@@ -39,7 +39,7 @@ export function calculateMapClusters(
   const minimumLongitude = Math.min(...ordered.map((shop) => shop.lng))
   const latitudeCell = Math.max(viewport.latitudeDelta / 3, 0.005)
   const longitudeCell = Math.max(viewport.longitudeDelta / 3, 0.005)
-  const buckets = new Map<string, Shop[]>()
+  const buckets = new Map<string, Array<Pick<Shop, "id" | "lat" | "lng">>>()
 
   for (const shop of ordered) {
     const latitudeIndex = Math.floor(

@@ -277,10 +277,10 @@ export default function LogDetailScreen() {
         ) : (
           <EmptyState
             actionLabel="라운지로 돌아가기"
-            description="삭제됐거나 비공개로 바뀐 기록이에요."
+            description={query.error ? "잠시 후 다시 열어 주세요." : "삭제됐거나 비공개로 바뀐 기록이에요."}
             icon={<Soup color={colors.textMuted} size={32} />}
             onAction={goBack}
-            title="라멘로그를 볼 수 없어요"
+            title={query.error ? "라멘로그를 불러오지 못했어요" : "라멘로그를 볼 수 없어요"}
           />
         )
     }
@@ -306,12 +306,19 @@ export default function LogDetailScreen() {
             첫 댓글을 남겨 대화를 시작해 보세요.
           </AppText>
         }
-        ListHeaderComponent={<LogDetailHeader commentCount={comments.length} log={log} onLike={() => like(log)} onMore={own ? undefined : openLogMenu} />}
+        ListHeaderComponent={<LogDetailHeader commentCount={detail.commentCount} log={log} onLike={() => like(log)} onMore={own ? undefined : openLogMenu} />}
+        ListFooterComponent={query.error ? (
+          <EmptyState actionLabel="다시 불러오기" onAction={query.loadMoreComments} title="댓글을 불러오지 못했어요" />
+        ) : query.isLoading && query.hasMoreComments ? <LoadingState label="댓글을 더 불러오는 중…" /> : null}
         contentContainerStyle={styles.listContent}
         data={comments}
         keyExtractor={(comment) => comment.id}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
+        onEndReached={() => {
+          if (query.hasMoreComments && !query.isLoading && !query.error) query.loadMoreComments()
+        }}
+        onEndReachedThreshold={0.5}
         ref={listRef}
         renderItem={renderComment}
         style={styles.flex}

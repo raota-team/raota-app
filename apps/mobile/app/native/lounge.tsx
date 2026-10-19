@@ -155,7 +155,9 @@ export default function LoungeScreen() {
       </ScrollView>
       <FlatList
         ListEmptyComponent={empty}
-        ListFooterComponent={feed.hasMore ? <LoadingState label="더 불러오는 중…" /> : null}
+        ListFooterComponent={feed.error && feed.data.length ? (
+          <EmptyState actionLabel="다시 불러오기" onAction={feed.loadMore} title="다음 라멘로그를 불러오지 못했어요" />
+        ) : feed.hasMore && feed.isLoading ? <LoadingState label="더 불러오는 중…" /> : null}
         columnWrapperStyle={styles.columns}
         contentContainerStyle={styles.listContent}
         data={feed.data.length ? COLUMNS : []}
@@ -164,7 +166,7 @@ export default function LoungeScreen() {
         keyExtractor={String}
         numColumns={2}
         onEndReached={() => {
-          if (feed.hasMore) feed.loadMore()
+          if (feed.hasMore && !feed.isLoading && !feed.error) feed.loadMore()
         }}
         onEndReachedThreshold={0.6}
         ref={listRef}

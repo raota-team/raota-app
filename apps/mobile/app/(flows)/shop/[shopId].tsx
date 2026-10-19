@@ -92,11 +92,11 @@ export default function ShopDetailScreen() {
         <Header backLabel="뒤로가기" onBack={goBack} title="매장 정보" />
         <EmptyState
           actionLabel="지도에서 다시 찾기"
-          description="삭제되었거나 잘못된 매장 링크일 수 있어요."
+          description={shopQuery.error ? "잠시 후 다시 열어 주세요." : "삭제되었거나 잘못된 매장 링크일 수 있어요."}
           icon={<MapPin color={colors.textMuted} size={28} />}
           onAction={() => router.replace("/native/map")}
           style={styles.flex}
-          title="매장을 찾을 수 없어요"
+          title={shopQuery.error ? "매장 정보를 불러오지 못했어요" : "매장을 찾을 수 없어요"}
         />
       </Screen>
     )
@@ -123,7 +123,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   }
   const { currentUser, actions, state } = useRaota()
   const bookmarked = useBookmarkedShops()
-  const nearbyShops = useShops().data as DetailShop[]
+  const shopsQuery = useShops()
+  const nearbyShops = shopsQuery.data as DetailShop[]
   const [hoursOpen, setHoursOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   /** 크게 보고 있는 사진과 그 자리를 닫을 때까지 보관한다. */
@@ -148,7 +149,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const [toast, setToast] = useState<string | null>(null)
 
   const loggedIn = Boolean(currentUser?.isLoggedIn)
-  const saved = loggedIn && bookmarked.data.some((item) => item.id === shop.id)
+  const saved = loggedIn && (shopsQuery.remote ? state.bookmarkedShopIds.includes(shop.id) : bookmarked.data.some((item) => item.id === shop.id))
 
   useEffect(() => {
     track("shop_viewed", { shopId: shop.id })
@@ -179,9 +180,9 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   /** 가게별 5축 평균은 원장에 없으므로 이 화면에서 볼 수 있는 공개 라멘로그의 실제 평가만 모은다. */
   const shopTaste = useMemo(() => {
     const viewer = { userId: currentUser?.id ?? null, hiddenAuthorIds: state.hiddenAuthorIds, reports: state.contentReports }
-    const publicLogs = state.logs.filter((log) => log.shop.id === shop.id && log.isPublic && isLogVisibleTo(log, viewer))
+    const publicLogs = shopsQuery.remote ? [] : state.logs.filter((log) => log.shop.id === shop.id && log.isPublic && isLogVisibleTo(log, viewer))
     return mergeProfile(EMPTY_PROFILE, publicLogs)
-  }, [currentUser?.id, shop.id, state.contentReports, state.hiddenAuthorIds, state.logs])
+  }, [currentUser?.id, shop.id, shopsQuery.remote, state.contentReports, state.hiddenAuthorIds, state.logs])
   const tasteRows = useMemo(
     () => shopTaste.count
       ? TASTE_AXES.map(({ key, label }) => ({

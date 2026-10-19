@@ -1,6 +1,5 @@
 /**
- * 서버 API 설정. 백엔드 v2가 아직 없어서 기본값은 mock(로컬 더미 데이터)이고,
- * 화면은 지금도 src/data/hooks.ts(로컬 스토어)만 읽는다. 서버를 붙일 때 env로 remote를 켠다.
+ * 기본값은 mock(로컬 더미 데이터)이고, 공개 화면은 도메인 스위치를 켰을 때만 서버를 읽는다.
  *
  * Metro는 `process.env.EXPO_PUBLIC_*`를 "글자 그대로 쓴 자리"에서만 값으로 바꾼다.
  * 구조 분해(const { EXPO_PUBLIC_API_MODE } = process.env)나 동적 키는 빌드에서 undefined가 되니 쓰지 않는다.
@@ -9,7 +8,7 @@
 export type ApiMode = "mock" | "remote"
 
 /** 기본 서버 주소. dev 서버는 EXPO_PUBLIC_API_BASE_URL로 바꾼다 */
-export const DEFAULT_API_BASE_URL = "https://api.raota.app/api/v2"
+export const DEFAULT_API_BASE_URL = "https://api.raota.net/api/v2"
 
 /** 한 번의 요청이 기다리는 최대 시간 */
 export const DEFAULT_API_TIMEOUT_MS = 15_000
@@ -70,7 +69,7 @@ export const REMOTE_DOMAINS: ReadonlySet<ApiDomain> = parseRemoteDomains(
   process.env.EXPO_PUBLIC_API_REMOTE_DOMAINS,
 )
 
-/** 이 도메인을 서버에서 읽는가. 지금은 어디서도 true가 아니다(기본값 mock) */
+/** 이 도메인을 서버에서 읽는가. 기본 빌드(mock)에서는 항상 false다 */
 export function isRemote(domain: ApiDomain): boolean {
   return REMOTE_DOMAINS.has(domain)
 }

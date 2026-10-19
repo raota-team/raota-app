@@ -7,8 +7,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { monthKeyOfDate, seoulMonthKey, seoulToday, type RamenLog, type Shop, type ShopCatalogItem, type TasteIdentity, type TasteProfile } from "@raota/shared"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, LoadingState } from "@/src/components/ui"
-import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile } from "@/src/data/hooks"
+import { AppText, EmptyState, LoadingState } from "@/src/components/ui"
+import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile, useTodayCuration } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -101,6 +101,7 @@ function plainReason(shop: Shop) {
   if (shop.reviewCount > 0) {
     return [`라멘로그 ${shop.reviewCount.toLocaleString()}개`, shop.rating > 0 ? `★ ${shop.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")
   }
+  if (shop.distanceM <= 0 && "unknownFields" in shop) return shop.tags[0] ?? "새로운 라멘집"
   const open = statusOf(shop).open
   return open ? `가까운 영업 중 매장 · ${formatDistance(shop.distanceM)}` : `${formatDistance(shop.distanceM)} 거리`
 }
@@ -196,6 +197,7 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions()
   const { currentUser } = useRaota()
   const shopsQuery = useShops()
+  const curation = useTodayCuration()
   const bowls = useMyBowls()
   const tasteProfile = useTasteProfile()
   const tasteIdentity = useTasteIdentity()
@@ -212,13 +214,15 @@ export default function HomeScreen() {
     )
   }, [origin, shopsQuery.data])
 
-  /** 오늘의 픽: 원장에서 소개글과 사진이 있는 첫 매장 (웹과 같은 에디터 픽) */
+  /** mock에서는 원장 에디터 픽, remote에서는 발행된 오늘의 큐레이션만 보여준다. */
   const todayPick = useMemo(
-    () => shops.find((shop) => (shop.aiSummary || shop.description) && shop.photos[0]) ?? shops[0] ?? null,
-    [shops],
+    () => curation.remote
+      ? curation.data?.shop ?? null
+      : shops.find((shop) => (shop.aiSummary || shop.description) && shop.photos[0]) ?? shops[0] ?? null,
+    [curation.data?.shop, curation.remote, shops],
   )
   /** 추천: 기록이 있는 로그인 사용자는 취향 기반 랭킹, 그 외에는 라멘로그·거리 기준 */
-  const personal = loggedIn && tasteProfile.data.profile.count > 0 && Boolean(tasteIdentity.data.leader)
+  const personal = !shopsQuery.remote && loggedIn && tasteProfile.data.profile.count > 0 && Boolean(tasteIdentity.data.leader)
   /** 오늘의 픽으로 이미 소개한 매장은 아래 목록에서 다시 보여주지 않는다 */
   const recommendations = useMemo(() => {
     const pool = shops.filter((shop) => shop.id !== todayPick?.id)
@@ -257,10 +261,12 @@ export default function HomeScreen() {
   )
   const pickCatalog = todayPick ? catalogOf(todayPick) : {}
   const pickMeta = todayPick
-    ? [pickCatalog.spec, formatDistance(todayPick.distanceM)].filter(Boolean).join(" · ")
+    ? curation.remote
+      ? [curation.data?.title, todayPick.distanceM > 0 ? formatDistance(todayPick.distanceM) : null].filter(Boolean).join(" · ")
+      : [pickCatalog.spec, formatDistance(todayPick.distanceM)].filter(Boolean).join(" · ")
     : ""
-  const pickAiSummary = todayPick?.aiSummary?.text.trim() || ""
-  const pickQuote = pickAiSummary || todayPick?.description?.trim() || ""
+  const pickAiSummary = curation.remote ? "" : todayPick?.aiSummary?.text.trim() || ""
+  const pickQuote = curation.remote ? curation.data?.reason?.trim() || "" : pickAiSummary || todayPick?.description?.trim() || ""
   const pickDateLabel = formatPickDate(today)
   const curatorPhoto = recommendations.find(({ shop }) => shop.photos[0] && shop.photos[0] !== todayPick?.photos[0])?.shop.photos[0]
     ?? todayPick?.photos[1]
@@ -379,6 +385,7 @@ export default function HomeScreen() {
         </Pressable>
 
         {shopsQuery.isLoading ? <LoadingState label="라멘집을 불러오는 중…" /> : null}
+        {shopsQuery.error ? <EmptyState title="라멘집을 불러오지 못했어요" description="잠시 후 다시 열어 주세요." /> : null}
 
         {todayPick ? (
           <View style={styles.sectionFirst} testID="home-curation">
@@ -417,6 +424,18 @@ export default function HomeScreen() {
                 ) : null}
               </View>
             </Pressable>
+          </View>
+        ) : curation.remote ? (
+          <View style={styles.sectionFirst} testID="home-curation">
+            <SectionHead title="오늘의 큐레이션" />
+            {curation.isLoading ? (
+              <LoadingState label="오늘의 큐레이션을 불러오는 중…" />
+            ) : (
+              <EmptyState
+                title={curation.error ? "오늘의 큐레이션을 불러오지 못했어요" : "오늘의 큐레이션을 준비 중이에요"}
+                description={curation.error ? "잠시 후 다시 열어 주세요." : "곧 새로운 라멘집을 소개할게요."}
+              />
+            )}
           </View>
         ) : null}
 
@@ -474,14 +493,14 @@ export default function HomeScreen() {
                   <ChevronRight color={colors.inkSub} size={16} />
                 </Pressable>
               }
-              title="가까운 라멘집"
+              title={shopsQuery.remote && !origin ? "라멘집 둘러보기" : "가까운 라멘집"}
             />
             {nearby.map((shop, index) => {
               const catalog = catalogOf(shop)
               const status = statusOf(shop)
               return (
                 <Pressable
-                  accessibilityLabel={`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${formatDistance(shop.distanceM)}, ${status.label}, 매장 상세 보기`}
+                  accessibilityLabel={`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${shopsQuery.remote && shop.distanceM <= 0 ? "거리 정보 없음" : formatDistance(shop.distanceM)}, ${status.label}, 매장 상세 보기`}
                   accessibilityRole="button"
                   key={shop.id}
                   onPress={() => openShop(shop.id)}
@@ -498,7 +517,7 @@ export default function HomeScreen() {
                       </AppText>
                     ) : null}
                     <AppText capScale numberOfLines={1} tone="muted" variant="meta">
-                      {`${formatDistance(shop.distanceM)} · `}
+                      {`${shopsQuery.remote && shop.distanceM <= 0 ? "거리 정보 없음" : formatDistance(shop.distanceM)} · `}
                       <AppText style={status.open && styles.openStatus} tone="muted" variant="meta">{status.label}</AppText>
                     </AppText>
                   </View>
