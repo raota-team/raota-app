@@ -6,6 +6,7 @@ import {
   filterAndSortShops,
   firstRecordValidationMessage,
   matchesShopRamenType,
+  isValidLogComment,
   rankShopsForAIRecommendation,
   validateRecordDraft,
 } from "@/src/domain"
@@ -91,6 +92,15 @@ describe("record validation", () => {
       "visitedAt",
       "tasteNotes",
     ])
+  })
+})
+
+describe("라운지 댓글 길이", () => {
+  it("공백을 빼고 최소 2자부터 앱 입력 상한 300자까지만 허용한다", () => {
+    expect(isValidLogComment(" 라 ")).toBe(false)
+    expect(isValidLogComment("  라면  ")).toBe(true)
+    expect(isValidLogComment("라".repeat(300))).toBe(true)
+    expect(isValidLogComment("라".repeat(301))).toBe(false)
   })
 })
 

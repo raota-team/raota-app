@@ -25,6 +25,7 @@ import { useLoungeLog } from "@/src/data/hooks"
 import {
   COMMENT_COUNTER_FROM,
   COMMENT_MAX_LENGTH,
+  isValidLogComment,
   formatRelativeTime,
   photosOf,
   tasteTagsOf,
@@ -97,6 +98,7 @@ function CommentComposer({ logId, onPosted }: { logId: string; onPosted: () => v
   const [focused, setFocused] = useState(false)
   const [failed, setFailed] = useState(false)
   const trimmed = text.trim()
+  const canSubmit = isValidLogComment(text)
   const bottom = keyboardVisible ? spacing.x2 : Math.max(insets.bottom, spacing.x3)
 
   if (!currentUser) {
@@ -114,8 +116,8 @@ function CommentComposer({ logId, onPosted }: { logId: string; onPosted: () => v
   }
 
   const submit = () => {
-    if (!trimmed) return
-    // TODO(API): POST /logs/{id}/comments { content } — 실패하면 입력을 지우지 않고 다시 보낼 수 있게 한다
+    if (!canSubmit) return
+    // TODO(API): remoteWrites.addLogComment(logId, { content: trimmed }) — 실패하면 입력을 지우지 않는다
     const comment = actions.addLogComment(logId, { content: trimmed })
     if (!comment) {
       setFailed(true)
@@ -133,8 +135,8 @@ function CommentComposer({ logId, onPosted }: { logId: string; onPosted: () => v
     ? "댓글을 등록하지 못했어요. 다시 시도해 주세요."
     : atLimit
       ? `댓글은 ${COMMENT_MAX_LENGTH}자까지 쓸 수 있어요`
-      : focused && !trimmed
-        ? "내용을 입력하면 등록할 수 있어요"
+      : focused && trimmed.length < 2
+        ? trimmed ? "댓글을 2자 이상 입력해 주세요" : "내용을 입력하면 등록할 수 있어요"
         : null
 
   return (
@@ -201,12 +203,12 @@ function CommentComposer({ logId, onPosted }: { logId: string; onPosted: () => v
           value={text}
         />
         <Button
-          accessibilityHint={trimmed ? undefined : "내용을 입력하면 등록할 수 있어요"}
-          disabled={!trimmed}
+          accessibilityHint={canSubmit ? undefined : trimmed ? "댓글을 2자 이상 입력해 주세요" : "내용을 입력하면 등록할 수 있어요"}
+          disabled={!canSubmit}
           onPress={submit}
           size="small"
           title="등록"
-          variant={trimmed ? "primary" : "secondary"}
+          variant={canSubmit ? "primary" : "secondary"}
         />
       </View>
     </View>

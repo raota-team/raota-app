@@ -51,7 +51,7 @@ export function createLoungeApi(client: ApiClient = apiClient) {
       })
     },
 
-    /** 댓글 작성(2~500자). 기록 저장과 마찬가지로 Idempotency-Key가 필수다 */
+    /** 댓글 작성(서버 2~500자, 앱 입력은 300자까지). Idempotency-Key 필수 */
     createComment(
       logId: Id,
       body: CreateCommentRequest,

@@ -44,6 +44,7 @@ import {
 } from "../repository"
 import { track } from "../analytics"
 import { validateRecordDraft } from "../domain/record"
+import { isValidLogComment } from "../domain/lounge"
 import { compareShopIds } from "../domain/shops"
 import {
   clearPersistedMediaDirectory,
@@ -991,7 +992,7 @@ export function RaotaProvider({
       const log = state.logs.find((item) => item.id === logId)
       const user = selectCurrentUser(state)
       const content = input.content.trim()
-      if (!log || !user || !content) return null
+      if (!log || !user || !isValidLogComment(content)) return null
 
       const allComments = state.logs.flatMap((item) => item.comments ?? [])
       const nextCommentId = nextNumericId(allComments, allocatedIds.current.comment)

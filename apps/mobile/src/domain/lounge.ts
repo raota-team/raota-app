@@ -27,9 +27,16 @@ export const LOUNGE_TYPE_FILTERS: string[] = [LOUNGE_ALL_TYPES, ...RAMEN_TYPES]
 /** 한 번에 보여주는 라멘로그 수. 서버 커서 페이지 크기와 맞춘다 */
 export const LOUNGE_PAGE_SIZE = 10
 
+/** 서버는 2~500자, 앱 입력창은 300자까지 받는다. */
+export const COMMENT_MIN_LENGTH = 2
 export const COMMENT_MAX_LENGTH = 300
 /** 이 글자 수부터 남은 글자를 보여준다 */
 export const COMMENT_COUNTER_FROM = 250
+
+export function isValidLogComment(content: string): boolean {
+  const length = content.trim().length
+  return length >= COMMENT_MIN_LENGTH && length <= COMMENT_MAX_LENGTH
+}
 
 export const REPORT_REASONS: Array<{ value: ContentReportReason; label: string }> = [
   { value: "spam", label: "스팸·홍보" },

@@ -314,6 +314,21 @@ describe("라멘로그 상세", () => {
     expect(track).toHaveBeenCalledWith("log_commented")
   })
 
+  it("공백을 빼고 1자면 등록을 막고 2자부터 허용한다", async () => {
+    useLocalSearchParams.mockReturnValue({ logId: "5" })
+    const { view } = await renderWith(<LogDetailScreen />)
+    const input = view.getByLabelText("댓글 입력")
+    await fireEvent(input, "focus")
+    await fireEvent.changeText(input, " 라 ")
+    expect(view.getByText("댓글을 2자 이상 입력해 주세요")).toBeTruthy()
+    expect(view.getByRole("button", { name: "등록" }).props.accessibilityState).toEqual(expect.objectContaining({ disabled: true }))
+
+    await fireEvent.changeText(input, " 라면 ")
+    expect(view.getByRole("button", { name: "등록" }).props.accessibilityState).toEqual(expect.objectContaining({ disabled: false }))
+    await fireEvent.press(view.getByRole("button", { name: "등록" }))
+    expect(view.getByText("라면")).toBeTruthy()
+  })
+
   it("opens and comments on a BIGINT log without rounding its log or shop ID", async () => {
     const logId = "9007199254740993123"
     const shopId = "9007199254740993124"
