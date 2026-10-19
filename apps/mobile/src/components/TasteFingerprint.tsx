@@ -22,6 +22,8 @@ export interface TasteFingerprintProps {
   meta?: string
   rows: Array<{ key: TasteAxisKey; label: string; value: number; text: string }>
   style?: StyleProp<ViewStyle>
+  /** false인 동안은 판만 보이고 기다린다. true가 되는 순간 한 번 펼쳐진다(스크롤해서 화면에 들어왔을 때 등). 기본 true */
+  play?: boolean
 }
 
 /* 오각형 판. 꼭짓점 바깥에 축 이름과 값을 둔다. 크기는 카드 폭에 맞추되 판 반지름은 글씨 자리를 남기고 정한다. */
@@ -64,6 +66,7 @@ function AxisLabel({
   strong,
   mutedColor,
   accentColor,
+  play,
 }: {
   row: TasteFingerprintProps["rows"][number]
   index: number
@@ -74,6 +77,7 @@ function AxisLabel({
   strong: boolean
   mutedColor: string
   accentColor: string
+  play: boolean
 }) {
   const reducedMotion = useReducedMotion()
   const revealed = useRef(false)
@@ -83,11 +87,11 @@ function AxisLabel({
     if (reducedMotion) {
       progress.value = 1
       revealed.current = true
-    } else if (!revealed.current) {
+    } else if (play && !revealed.current) {
       revealed.current = true
       progress.value = withDelay(550 + index * 60, withTiming(1, { duration: strong ? 500 : 350, easing: REVEAL_EASE }))
     }
-  }, [index, progress, reducedMotion, strong])
+  }, [index, play, progress, reducedMotion, strong])
   useEffect(() => () => cancelAnimation(progress), [progress])
 
   const labelStyle = useAnimatedStyle(() => {
@@ -127,7 +131,7 @@ function AxisLabel({
  * 회색 판(바깥 선 + 옅어지는 눈금 세 겹) 위에 만족도 축 색으로 면과 선을 긋고, 가장 높은 축 이름만 같은 색 굵은 글씨로 올린다.
  * 값 1점이 판 지름의 1/5이라 도형이 점으로 무너지지 않는다.
  */
-export function TasteFingerprint({ title = "맛 지문", meta, rows, style }: TasteFingerprintProps) {
+export function TasteFingerprint({ title = "맛 지문", meta, rows, style, play = true }: TasteFingerprintProps) {
   const [width, setWidth] = useState(0)
   const palette = usePalette()
   const axis = useTasteAxisPalette()
@@ -142,7 +146,7 @@ export function TasteFingerprint({ title = "맛 지문", meta, rows, style }: Ta
   const reducedMotion = useReducedMotion()
   const revealed = useRef(false)
   const polygonScale = useSharedValue(reducedMotion ? 1 : 0)
-  const ready = width > 0 && rows.length >= 3
+  const ready = width > 0 && rows.length >= 3 && play
 
   useEffect(() => {
     if (!ready) return
@@ -203,6 +207,7 @@ export function TasteFingerprint({ title = "맛 지문", meta, rows, style }: Ta
                   cy={cy}
                   index={index}
                   key={row.key}
+                  play={play}
                   mutedColor={palette.textMuted}
                   radius={radius}
                   row={row}

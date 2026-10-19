@@ -34,6 +34,10 @@ const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요�
 const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
 /** 하단 고정 바 높이(버튼 48 + 위아래 여백)만큼 토스트를 띄운다 */
 const TOAST_OFFSET = 88
+/** 화면 아래 하단 고정 바에 가려지는 높이. 이만큼 위에 들어와야 보인다고 친다 */
+const FINGERPRINT_REVEAL_INSET = TOAST_OFFSET
+/** 맛 지문 카드 윗변에서 이만큼(제목 + 오각형 윗부분) 보이면 펼친다 */
+const FINGERPRINT_REVEAL_DEPTH = 140
 const SAVE_EASE = Easing.bezier(0.22, 1, 0.36, 1)
 
 type DetailShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec" | "lastOrder">>
@@ -105,6 +109,18 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const compact = width < 360
+  /*
+   * 맛 지문은 처음부터 펼쳐 두지 않고, 카드의 오각형 부분이 화면 아래쪽에 들어오면 한 번 펼친다.
+   * 하단 고정 버튼 줄에 가려지는 높이만큼 덜 보이는 것으로 친다.
+   */
+  const [fingerprintPlay, setFingerprintPlay] = useState(false)
+  const fingerprintTop = useRef<number | null>(null)
+  const viewportHeight = useRef(0)
+  const scrollY = useRef(0)
+  const revealFingerprint = () => {
+    if (fingerprintPlay || fingerprintTop.current === null || viewportHeight.current === 0) return
+    if (scrollY.current + viewportHeight.current - FINGERPRINT_REVEAL_INSET >= fingerprintTop.current + FINGERPRINT_REVEAL_DEPTH) setFingerprintPlay(true)
+  }
   const { currentUser, actions, state } = useRaota()
   const bookmarked = useBookmarkedShops()
   const nearbyShops = useShops().data as DetailShop[]
@@ -301,7 +317,19 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        onLayout={({ nativeEvent }) => {
+          viewportHeight.current = nativeEvent.layout.height
+          revealFingerprint()
+        }}
+        onScroll={({ nativeEvent }) => {
+          scrollY.current = nativeEvent.contentOffset.y
+          revealFingerprint()
+        }}
+        scrollEventThrottle={32}
+        showsVerticalScrollIndicator={false}
+      >
         {/* 사진은 큰 한 장씩 넘겨 볼 수 있고, 정보는 그 바로 아래에서 시작한다. */}
         <View style={[styles.hero, { width: width - 16, height: Math.min(360, width - 16), marginTop: insets.top + spacing.x4 }]}>
           {photos.length ? (
@@ -428,10 +456,6 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           </View>
         </View>
 
-        {shopTaste.count > 0 ? (
-          <TasteFingerprint meta={`공개 라멘로그 ${shopTaste.count}개 기준`} rows={tasteRows} style={styles.fingerprint} />
-        ) : null}
-
         {/* 소개 글은 원장의 AI 요약 또는 매장 설명을 그대로 쓴다. */}
         {shop.aiSummary || shop.description ? (
           <View style={styles.intro}>
@@ -461,6 +485,19 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
         {shop.tags.length ? (
           <View accessibilityLabel={`특징: ${shop.tags.join(", ")}`} style={[styles.tags, !shop.aiSummary && !shop.description && styles.tagsStandalone]}>
             {shop.tags.map((tag) => <View key={tag} style={styles.keyword}><AppText capScale style={styles.keywordText} tone="muted" variant="secondary">{tag}</AppText></View>)}
+          </View>
+        ) : null}
+
+        {/* 맛 지문은 소개 아래에 둔다. 스크롤해서 화면에 들어오는 순간 펼쳐지게 위치를 잰다 */}
+        {shopTaste.count > 0 ? (
+          <View
+            onLayout={({ nativeEvent }) => {
+              fingerprintTop.current = nativeEvent.layout.y
+              revealFingerprint()
+            }}
+            style={styles.fingerprint}
+          >
+            <TasteFingerprint meta={`공개 라멘로그 ${shopTaste.count}개 기준`} play={fingerprintPlay} rows={tasteRows} />
           </View>
         ) : null}
 
