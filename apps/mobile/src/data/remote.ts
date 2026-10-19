@@ -68,6 +68,7 @@ import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
  * - 댓글 다음 쪽          → remoteReads.loungeLogComments GET /ramen-logs/{id}/comments?cursor=
  * - 홈 오늘의 큐레이션      → remoteReads.todayCuration    GET /curations/today
  * - AI 추천 화면           → remoteReads.recommendations  POST /ai/recommendations
+ * - auth/onboarding 닉네임 → remoteReads.nicknameAvailability GET /members/nickname-availability
  * - auth/onboarding       → remoteWrites.completeOnboarding PUT /members/me/onboarding → 선택값만 PATCH /members/me
  * - 스토어 actions(찜·기록·공감·댓글·신고·숨기기) → remoteWrites.*
  *
@@ -210,6 +211,12 @@ export const remoteReads = {
       cursor,
       toAppRamenLogComment,
     )
+  },
+
+  /** member remote로 연결할 때만 화면에서 디바운스해 호출한다 */
+  async nicknameAvailability(nickname: string): Promise<boolean> {
+    const result = await memberApi.nicknameAvailability(nickname)
+    return result.available
   },
 
   /**

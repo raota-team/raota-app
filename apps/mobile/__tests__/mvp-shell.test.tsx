@@ -343,6 +343,18 @@ describe("onboarding", () => {
     expect(track).not.toHaveBeenCalledWith("sign_up", expect.anything())
   })
 
+  it("온보딩 입력에서 이모지를 안내하고 전각 닉네임을 정규화해 저장한다", async () => {
+    const view = await renderApp(<OnboardingScreen />, freshState())
+    await fireEvent.changeText(view.getByLabelText("닉네임"), "면🍜")
+    expect(view.getByText("닉네임은 한글·영문·숫자·밑줄만 쓸 수 있어요.")).toBeTruthy()
+
+    await fireEvent.changeText(view.getByLabelText("닉네임"), " ＡＢ ")
+    await fireEvent.press(view.getByRole("checkbox", { name: "필수, 서비스 이용약관 동의" }))
+    await fireEvent.press(view.getByRole("checkbox", { name: "필수, 개인정보 수집 및 이용 동의" }))
+    await fireEvent.press(view.getByRole("button", { name: "회원가입 완료" }))
+    expect(await view.findByText("AB님, 반가워요")).toBeTruthy()
+  })
+
   it("checks a required term from the policy sheet's 확인하고 동의", async () => {
     const view = await renderApp(<OnboardingScreen />, freshState())
     const terms = view.getByRole("checkbox", { name: "필수, 서비스 이용약관 동의" })

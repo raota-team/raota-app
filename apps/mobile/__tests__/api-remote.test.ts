@@ -211,8 +211,16 @@ describe("src/data/remote", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it("회원 remote 연결용 닉네임 중복 확인 결과를 읽는다", async () => {
+    await tokenStore.set({ accessToken: "a1", refreshToken: "r1" })
+    fetchMock.mockResolvedValueOnce(success({ available: false }))
+
+    expect(await remoteReads.nicknameAvailability("AB_9")).toBe(false)
+    expect(fetchMock.mock.calls[0][0]).toContain("/members/nickname-availability?nickname=AB_9")
+  })
+
   it("hook마다 대응하는 함수가 준비돼 있다", () => {
-    for (const name of ["shops", "mapPins", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "loungeLogComments", "me", "todayCuration", "recommendations"] as const) {
+    for (const name of ["shops", "mapPins", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "loungeLogComments", "nicknameAvailability", "me", "todayCuration", "recommendations"] as const) {
       expect(typeof remoteReads[name]).toBe("function")
     }
     for (const name of ["completeOnboarding", "toggleBookmark", "createRamenLog", "deleteRamenLog", "toggleLogLike", "addLogComment", "deleteLogComment", "reportContent", "hideAuthor", "unhideAuthor", "updateProfile"] as const) {

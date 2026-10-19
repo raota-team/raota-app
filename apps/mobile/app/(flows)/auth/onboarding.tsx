@@ -24,6 +24,7 @@ import { MONTHLY_REPORT_TARGET, RAMEN_TYPES, type UserProfile } from "@raota/sha
 import { track } from "@/src/analytics"
 import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
 import { AppText, Button, Chip, ConfirmDialog, Header, StickyActionBar } from "@/src/components/ui"
+import { NICKNAME_MAX, NICKNAME_MIN, NICKNAME_REQUIRED_ERROR, validateNickname } from "@/src/domain/nickname"
 import { ONBOARDING_PROMPT_DELAY, useRecordReminderPrompt } from "@/src/notifications"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, pressFade, radii, spacing, touchTarget, typography } from "@/src/theme"
@@ -33,10 +34,7 @@ import { colors, line, pressFade, radii, spacing, touchTarget, typography } from
  * 약관 "보기"는 PolicySheet로 열고, "확인하고 동의"를 누르면 그 항목이 체크된다.
  */
 
-const NICKNAME_MIN = 2
-const NICKNAME_MAX = 12
 const BIO_MAX = 60
-const NICKNAME_REQUIRED_ERROR = `닉네임을 입력해 주세요. ${NICKNAME_MIN}~${NICKNAME_MAX}자로 쓸 수 있어요.`
 const AGREEMENT_REQUIRED_ERROR = "필수 약관 두 가지에 동의해야 가입할 수 있어요."
 const PROFILE_SAVE_ERROR = "프로필을 저장하지 못했어요. 잠시 후 다시 시도해 주세요."
 
@@ -49,13 +47,6 @@ const ONBOARDING_FEATURES: Array<{ Icon: LucideIcon; title: string; desc: string
   { Icon: Sparkles, title: "AI 큐레이터", desc: "원하는 국물과 분위기를 고르면 오늘의 한 곳을 골라 드려요." },
 ]
 
-function nicknameErrorOf(value: string): string | null {
-  const length = value.trim().length
-  if (length === 0) return NICKNAME_REQUIRED_ERROR
-  if (length < NICKNAME_MIN) return `닉네임이 너무 짧아요. ${NICKNAME_MIN - length}자만 더 적어 주세요.`
-  if (length > NICKNAME_MAX) return `닉네임은 ${NICKNAME_MAX}자까지예요. 지금 ${length}자예요.`
-  return null
-}
 
 function success() {
   if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined)
@@ -132,7 +123,9 @@ export default function OnboardingScreen() {
   const nicknameRef = useRef<TextInput>(null)
   const nicknameBlockY = useRef(0)
 
-  const nicknameError = nicknameErrorOf(nickname)
+  // TODO(API): isRemote("member")일 때만 유효한 닉네임을 디바운스해 remoteReads.nicknameAvailability로 확인한다.
+  const nicknameValidation = validateNickname(nickname)
+  const nicknameError = nicknameValidation.error
   const showNicknameError = Boolean(nicknameError) && (attempted || nickname.length > 0)
   const agreementError = attempted && (!agreeTerms || !agreePrivacy) ? AGREEMENT_REQUIRED_ERROR : null
   const allAgreed = agreeTerms && agreePrivacy && agreeMarketing
@@ -184,15 +177,15 @@ export default function OnboardingScreen() {
       AccessibilityInfo.announceForAccessibility?.("필수 약관 두 가지에 동의해야 가입할 수 있어요.")
       return
     }
-    const trimmed = nickname.trim()
+    const displayNickname = nicknameValidation.display
     setSaving(true)
     setSaveError(null)
     try {
       // TODO(API): remoteWrites.completeOnboarding({ nickname, consents, profile })로 교체한다.
       // PATCH만 실패했다면 이미 가입됐으므로 PUT을 다시 보내지 않고 프로필만 재시도한다.
       const profile = await actions.completeOnboarding({
-        name: trimmed,
-        nickname: trimmed,
+        name: displayNickname,
+        nickname: displayNickname,
         avatar,
         bio: bio.trim() || undefined,
         ...(favorite ? { favoriteRamenType: favorite } : {}),
@@ -311,10 +304,10 @@ export default function OnboardingScreen() {
           <View onLayout={(event) => (nicknameBlockY.current = event.nativeEvent.layout.y)} style={styles.field}>
             <View style={styles.fieldHead}>
               <AppText nativeID="nickname-label" variant="button">닉네임</AppText>
-              <CharacterCount max={NICKNAME_MAX} prefix="· " value={nickname.length} />
+              <CharacterCount max={NICKNAME_MAX} prefix="· " value={nicknameValidation.length} />
             </View>
             <TextInput
-              accessibilityHint={showNicknameError && nicknameError ? nicknameError : `한글, 영문, 숫자 ${NICKNAME_MIN}~${NICKNAME_MAX}자`}
+              accessibilityHint={showNicknameError && nicknameError ? nicknameError : `한글, 영문, 숫자, 밑줄 ${NICKNAME_MIN}~${NICKNAME_MAX}자`}
               accessibilityLabel="닉네임"
               autoComplete="nickname"
               autoCorrect={false}
@@ -347,7 +340,7 @@ export default function OnboardingScreen() {
                 tone={showNicknameError ? "critical" : "sub"}
                 variant="secondary"
               >
-                {showNicknameError ? nicknameError : `한글, 영문, 숫자 ${NICKNAME_MIN}~${NICKNAME_MAX}자`}
+                {showNicknameError ? nicknameError : `한글, 영문, 숫자, 밑줄 ${NICKNAME_MIN}~${NICKNAME_MAX}자`}
               </AppText>
             </View>
           </View>

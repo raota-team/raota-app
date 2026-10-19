@@ -1,5 +1,6 @@
 export * from "./ai-recommendation"
 export * from "./lounge"
 export * from "./map"
+export * from "./nickname"
 export * from "./record"
 export * from "./shops"

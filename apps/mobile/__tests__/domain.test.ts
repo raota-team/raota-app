@@ -8,6 +8,7 @@ import {
   matchesShopRamenType,
   isValidLogComment,
   rankShopsForAIRecommendation,
+  validateNickname,
   validateRecordDraft,
 } from "@/src/domain"
 
@@ -101,6 +102,24 @@ describe("라운지 댓글 길이", () => {
     expect(isValidLogComment("  라면  ")).toBe(true)
     expect(isValidLogComment("라".repeat(300))).toBe(true)
     expect(isValidLogComment("라".repeat(301))).toBe(false)
+  })
+})
+
+describe("서버 닉네임 형식", () => {
+  it("trim 뒤 NFKC 정규화하고 대소문자 무시 값을 만든다", () => {
+    expect(validateNickname("  ＡＢ＿９  ")).toMatchObject({ display: "AB_9", normalized: "ab_9", length: 4, error: null })
+    expect(validateNickname(" a ").display).toBe("a")
+    expect(validateNickname(" \u00a0가나").error).toBe("닉네임은 한글·영문·숫자·밑줄만 쓸 수 있어요.")
+  })
+
+  it("코드포인트 2~12자만 허용하고 공백·이모지는 거부한다", () => {
+    expect(validateNickname("").error).toBe("닉네임을 입력해 주세요. 2~12자로 쓸 수 있어요.")
+    expect(validateNickname("가").error).toBe("닉네임이 너무 짧아요. 1자만 더 적어 주세요.")
+    expect(validateNickname("가나").error).toBeNull()
+    expect(validateNickname("가".repeat(12)).error).toBeNull()
+    expect(validateNickname("가".repeat(13)).error).toBe("닉네임은 12자까지예요. 지금 13자예요.")
+    expect(validateNickname("가😀")).toMatchObject({ length: 2, error: "닉네임은 한글·영문·숫자·밑줄만 쓸 수 있어요." })
+    expect(validateNickname("가 나").error).toBe("닉네임은 한글·영문·숫자·밑줄만 쓸 수 있어요.")
   })
 })
 
