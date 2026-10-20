@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { memo, useEffect, useMemo, useRef, useState } from "react"
+import * as Haptics from "expo-haptics"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
@@ -6,16 +7,18 @@ import { ArrowRight, RotateCw, Share2 } from "lucide-react-native"
 import { AccessibilityInfo, Platform, Pressable, ScrollView, Share, StyleSheet, View, findNodeHandle, useWindowDimensions } from "react-native"
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withDelay,
+  withRepeat,
+  withSequence,
   withTiming,
-  type SharedValue,
 } from "react-native-reanimated"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import Svg, { ClipPath, Defs, Ellipse, Path, Rect } from "react-native-svg"
+import Svg, { Ellipse, Path } from "react-native-svg"
 
 import {
   MENU_CATEGORY_NAMES,
@@ -31,7 +34,7 @@ import {
 import { track } from "@/src/analytics"
 import { EdgeBackZone } from "@/src/components/EdgeBackZone"
 import { TasteStory } from "@/src/components/TasteStory"
-import { AppText, BottomSheet, Button, Header, IconButton, LoadingState, SoupDot, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, Header, IconButton, LoadingState, Toast } from "@/src/components/ui"
 import {
   useActivityLevel,
   useBowlCount,
@@ -47,17 +50,35 @@ import { colors, line, radii, soupColorOf, spacing, typography } from "@/src/the
 /* 취향 종합 리포트: 한 장씩 넘기는 이야기 → 종류별 분포 → 자주 간 라멘집 → 다음 한 그릇. */
 
 /**
- * 그릇 채우기 연출의 박자(ms). 사용자가 "그릇이 차오른다 → 종류끼리 모인다 → 결과"를
- * 하나씩 따라 읽을 수 있을 만큼 천천히 둔다. 결과는 도장이 찍힌 뒤 RESULT_HOLD만큼 보여 주고 넘어간다.
+ * 그릇 쌓기 연출의 박자(ms). 사용자 결정 2026.10.20 B안(scratch/ramen-objects-prototype/bowl-b.html).
+ * 기록한 순서대로 한 그릇씩 떨어져 종류별 탑이 된다. 처음엔 천천히, 갈수록 빠르게(DROP_ACCEL) 떨어지고,
+ * 다 쌓이면 가장 높은 탑을 짚은 뒤 결과를 띄우고, 결과는 RESULT_HOLD만큼 보여 주고 넘어간다.
  */
-const FILL_START = 200
-const FILL_STEP = 50
-const FILL_DURATION = 400
-const SORT_AT = 2800
-const SORT_DURATION = 900
-const LEGEND_AT = 3700
-const LOADING_DURATION = 4000
+const DROP_START = 300
+const DROP_SPAN = 3000
+/** 그릇이 몇 개 안 되면 3초 동안 띄엄띄엄 떨어지지 않게 그릇 사이를 이만큼까지만 둔다 */
+const DROP_STEP_MAX = 250
+const DROP_ACCEL = 1.7
+const FALL_DURATION = 420
+/** 떨어지기 시작해 받침(또는 아래 그릇)에 닿기까지. 남은 시간은 살짝 눌렸다 돌아온다 */
+const FALL_IMPACT = 344
+const FALL_HEIGHT = 170
+const LANDING_SQUASH = 0.04
+const SQUASH_IN = 24
+const NUDGE_DURATION = 160
+const HIGHLIGHT_DELAY = 200
+const WINNER_LIFT = 4
+const LIFT_DURATION = 380
+const DIM_OPACITY = 0.4
+const DIM_DURATION = 450
+const COUNT_REVEAL = 300
+const STEAM_DURATION = 2200
+const STEAM_STAGGER = 350
+const RESULT_DELAY = 500
+const RESULT_REVEAL = 500
 const RESULT_HOLD = 1200
+/** 착지마다 숫자를 올리되, 끝의 빠른 구간에서도 한 프레임에 한 번만 다시 그린다 */
+const LANDING_FRAME = 16
 
 /** 매장 원장의 대표 스타일. 공유 Shop 타입에는 없어서 값이 있을 때만 읽는다 */
 export function shopStyleOf(shop: Shop): string | undefined {
@@ -121,44 +142,62 @@ function focusOn(ref: React.RefObject<View | null>) {
   }
 }
 
-const STATUS_MESSAGES = [
-  "라멘 기록을 모으고 있어요",
-  "그릇마다 국물을 채우고 있어요",
-  "종류별로 모으고 있어요",
-  "나의 라멘 취향이 정리됐어요",
-]
-const MAX_LOADING_BOWLS = 42
-const BOWL_COLUMNS = 7
-const BOWL_ROW_HEIGHT = 34
-const BOWL_PATH = "M3 9H33C33 18.5 26.3 26 18 26C9.7 26 3 18.5 3 9Z"
-const AnimatedRect = Animated.createAnimatedComponent(Rect)
+/**
+ * 화면에 그리는 그릇은 많아야 60개다(그릇마다 움직이는 View 하나라 이 정도까지 부드럽다).
+ * 보통 계정은 모든 그릇을 그대로 그리고, 그보다 많으면 종류별 몫을 나눠 뽑고 "그릇 1개 ≈ n그릇"을 함께 보인다
+ */
+const MAX_LOADING_BOWLS = 60
+/** 그릇 한 개(44×34 viewBox): 국물이 담긴 반구와 테두리 선 */
+const BOWL_PATH = "M3 10H41C41 21.6 32.5 31 22 31C11.5 31 3 21.6 3 10Z"
+const BOWL_RIM_PATH = "M2.5 10H41.5"
+const BOWL_VIEW_WIDTH = 44
+const BOWL_VIEW_HEIGHT = 34
+/** 그릇 그림의 바닥(viewBox y). 이 높이가 받침선에 닿는다 */
+const BOWL_VIEW_FOOT = 31
+const STEAM_PATHS = ["M15 6c0-2.5 2.5-2.5 2.5-5", "M22 5c0-2.5 2.5-2.5 2.5-5", "M29 6c0-2.5 2.5-2.5 2.5-5"]
+const STEAM_STROKE = 1.8
+/** 받침선 위로 그릇이 쌓이는 높이. 가장 높은 탑 위에 김이 오를 자리(TOWER_HEADROOM)를 늘 남긴다 */
+const TOWER_STAGE_HEIGHT = 252
+const TOWER_HEADROOM = 40
+const TOWER_MAX_GAP = 13
+const LOADING_SHEET_MAX_WIDTH = 358
+const LOADING_TITLES = {
+  drop: "그릇을 쌓고 있어요",
+  highlight: "가장 높이 쌓인 건",
+  result: "취향 정리가 끝났어요",
+} as const
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse)
 
-type LoadingBowl = { type: string; order: number; sorted: number }
-type BowlLegend = { type: string; count: number; icons: number; first: number }
+type LoadingPhase = keyof typeof LOADING_TITLES
+/** order: 떨어지는 순서, level: 탑 안에서 아래부터 몇 번째, source: 오래된 순 원장에서의 자리 */
+type LoadingBowl = { type: string; order: number; level: number; source: number }
+type BowlTower = { type: string; count: number; icons: number; first: number }
+type TowerPlanBowl = LoadingBowl & { dropAt: number; coveredAt: number | null }
+/** 탑 하나의 그릇과 박자. 화면 폭과 상관없어 원장이 바뀔 때만 다시 계산한다 */
+type TowerPlan = BowlTower & { bowls: TowerPlanBowl[]; lastOrder: number }
 
 /**
- * 화면에는 최대 42개만 그리되, 그 이상일 때는 최대 잔여 방식으로 종류별 몫을 배분한다.
- * 배분된 종류 안에서는 날짜순 원장에서 골고루 뽑아 채우는 순서를 그대로 지킨다.
+ * 화면에는 최대 60개만 그리되, 그 이상일 때는 최대 잔여 방식으로 종류별 몫을 배분한다.
+ * 배분된 종류 안에서는 날짜순 원장에서 골고루 뽑아 떨어지는 순서를 그대로 지킨다.
  */
 function loadingBowlsOf(bowls: DemoBowl[]) {
-  const records = [...bowls].reverse() // useMyBowls는 최신순; 이 연출은 오래 먹은 그릇부터 채운다
-  const counts = new Map<string, BowlLegend>()
+  const records = [...bowls].reverse() // useMyBowls는 최신순; 이 연출은 오래 먹은 그릇부터 쌓는다
+  const counts = new Map<string, BowlTower>()
   records.forEach((bowl, index) => {
     const type = menuCategoryOf(bowl.type)
     const entry = counts.get(type)
     if (entry) entry.count += 1
     else counts.set(type, { type, count: 1, icons: 0, first: index })
   })
-  const legend = [...counts.values()].sort((a, b) => b.count - a.count || a.first - b.first)
+  const towers = [...counts.values()].sort((a, b) => b.count - a.count || a.first - b.first)
   const limit = Math.min(MAX_LOADING_BOWLS, records.length)
   let allocated = 0
-  for (const item of legend) {
+  for (const item of towers) {
     item.icons = Math.floor((item.count * limit) / records.length)
     allocated += item.icons
   }
   // 몫이 같은 종류는 실제 그릇 수, 원장 첫 등장 순으로 결정한다
-  const byRemainder = [...legend].sort(
+  const byRemainder = [...towers].sort(
     (a, b) =>
       ((b.count * limit) % records.length) - ((a.count * limit) % records.length) ||
       b.count - a.count ||
@@ -166,99 +205,281 @@ function loadingBowlsOf(bowls: DemoBowl[]) {
   )
   for (let index = 0; index < limit - allocated; index += 1) byRemainder[index].icons += 1
 
-  const starts = new Map<string, number>()
-  let slot = 0
-  for (const item of legend) {
-    starts.set(item.type, slot)
-    slot += item.icons
-  }
   const seen = new Map<string, number>()
   const placed = new Map<string, number>()
   const icons: LoadingBowl[] = []
-  for (const bowl of records) {
+  records.forEach((bowl, source) => {
     const type = menuCategoryOf(bowl.type)
     const item = counts.get(type)!
     const nth = seen.get(type) ?? 0
     seen.set(type, nth + 1)
-    // 시간순 표본에서 고르게 뽑아, 42칸일 때도 한 종류가 통째로 사라지지 않게 한다
-    if (Math.floor(((nth + 1) * item.icons) / item.count) === Math.floor((nth * item.icons) / item.count)) continue
-    const rank = placed.get(type) ?? 0
-    placed.set(type, rank + 1)
-    icons.push({ type, order: icons.length, sorted: starts.get(type)! + rank })
-  }
-  return { icons, legend }
+    // 시간순 표본에서 고르게 뽑아, 60개로 줄일 때도 한 종류가 통째로 사라지지 않게 한다
+    if (Math.floor(((nth + 1) * item.icons) / item.count) === Math.floor((nth * item.icons) / item.count)) return
+    const level = placed.get(type) ?? 0
+    placed.set(type, level + 1)
+    icons.push({ type, order: icons.length, level, source })
+  })
+  return { icons, records, towers }
 }
 
-function LoadingBowlIcon({
-  bowl,
-  columnWidth,
+/** i번째 그릇이 떨어지기 시작하는 시각. 처음엔 천천히, 갈수록 빠르게: 300 + 3000·(1 − (1 − i/(N−1))^1.7) */
+function dropScheduleOf(count: number) {
+  const span = Math.min(DROP_SPAN, Math.max(0, count - 1) * DROP_STEP_MAX)
+  const dropAt = Array.from({ length: count }, (_, index) =>
+    Math.round(DROP_START + (count > 1 ? span * (1 - (1 - index / (count - 1)) ** DROP_ACCEL) : 0)),
+  )
+  const highlightAt = DROP_START + span + FALL_DURATION + HIGHLIGHT_DELAY
+  return { dropAt, highlightAt, resultAt: highlightAt + RESULT_DELAY }
+}
+
+/** 떨어져 착지하는 그릇 하나. 탑 꼭대기 그릇만 국물 면을 보인다(위에 다음 그릇이 닿으면 감춘다) */
+const TowerBowl = memo(function TowerBowl({
+  coveredAt,
+  dropAt,
+  height,
+  left,
+  order,
   reducedMotion,
-  sorted,
+  top,
+  type,
+  width,
 }: {
-  bowl: LoadingBowl
-  columnWidth: number
+  coveredAt: number | null
+  dropAt: number
+  height: number
+  left: number
+  order: number
   reducedMotion: boolean
-  sorted: SharedValue<number>
+  top: number
+  type: string
+  width: number
 }) {
-  const fill = useSharedValue(reducedMotion ? 1 : 0)
+  const fall = useSharedValue(reducedMotion ? 1 : 0)
+  const squash = useSharedValue(0)
+  const surface = useSharedValue(reducedMotion && coveredAt !== null ? 0 : 1)
   useEffect(() => {
-    fill.value = reducedMotion
-      ? 1
-      : withDelay(FILL_START + bowl.order * FILL_STEP, withTiming(1, { duration: FILL_DURATION, easing: Easing.out(Easing.quad) }))
-  }, [bowl.order, fill, reducedMotion])
-  const soupProps = useAnimatedProps(() => ({ y: 26 - 17 * fill.value, height: 17 * fill.value }))
-  const surfaceProps = useAnimatedProps(() => ({ ry: 3.5 * fill.value, opacity: fill.value }))
-  const moveStyle = useAnimatedStyle(() => ({
+    if (reducedMotion) {
+      fall.value = 1
+      squash.value = 0
+      surface.value = coveredAt === null ? 1 : 0
+      return
+    }
+    fall.value = withDelay(dropAt, withTiming(1, { duration: FALL_IMPACT, easing: Easing.in(Easing.quad) }))
+    squash.value = withDelay(
+      dropAt + FALL_IMPACT,
+      withSequence(
+        withTiming(1, { duration: SQUASH_IN }),
+        withTiming(0, { duration: FALL_DURATION - FALL_IMPACT - SQUASH_IN, easing: Easing.out(Easing.quad) }),
+      ),
+    )
+    if (coveredAt !== null) surface.value = withDelay(coveredAt, withTiming(0, { duration: 0 }))
+    return () => {
+      cancelAnimation(fall)
+      cancelAnimation(squash)
+      cancelAnimation(surface)
+    }
+  }, [coveredAt, dropAt, fall, reducedMotion, squash, surface])
+  const fallStyle = useAnimatedStyle(() => ({
+    // 위에서 나타나 받침에 닿으면 살짝 눌렸다(가로 4% 넓게, 세로 4% 낮게) 돌아온다
+    opacity: Math.min(1, fall.value / 0.3),
     transform: [
-      { translateX: ((bowl.sorted % BOWL_COLUMNS) - (bowl.order % BOWL_COLUMNS)) * columnWidth * sorted.value },
-      {
-        translateY:
-          (Math.floor(bowl.sorted / BOWL_COLUMNS) - Math.floor(bowl.order / BOWL_COLUMNS)) *
-          BOWL_ROW_HEIGHT *
-          sorted.value,
-      },
+      { translateY: -FALL_HEIGHT * (1 - fall.value) },
+      { scaleX: 1 + LANDING_SQUASH * squash.value },
+      { scaleY: 1 - LANDING_SQUASH * squash.value },
     ],
   }))
+  const surfaceProps = useAnimatedProps(() => ({ opacity: surface.value }))
+  const soup = soupColorOf(type)
   return (
-    <Animated.View
-      style={[
-        styles.bowlSlot,
-        { left: (bowl.order % BOWL_COLUMNS) * columnWidth, top: Math.floor(bowl.order / BOWL_COLUMNS) * BOWL_ROW_HEIGHT + 3, width: columnWidth },
-        moveStyle,
-      ]}
-      testID={`report-bowl-${bowl.order}`}
-    >
-      <Svg height={30} viewBox="0 0 36 29" width={38}>
-        <Defs>
-          <ClipPath id={`report-bowl-clip-${bowl.order}`}>
-            <Path d={BOWL_PATH} />
-          </ClipPath>
-        </Defs>
-        <Path d={BOWL_PATH} fill={colors.canvas} />
-        <AnimatedRect
-          animatedProps={soupProps}
-          clipPath={`url(#report-bowl-clip-${bowl.order})`}
-          fill={soupColorOf(bowl.type)}
-          height={reducedMotion ? 17 : 0}
-          width={36}
-          x={0}
-          y={reducedMotion ? 9 : 26}
+    <Animated.View style={[styles.towerBowl, { left, top, width, height }, fallStyle]} testID={`report-bowl-${order}`}>
+      <Svg height={height} viewBox={`0 0 ${BOWL_VIEW_WIDTH} ${BOWL_VIEW_HEIGHT}`} width={width}>
+        <Path
+          d={BOWL_PATH}
+          fill={soup}
+          stroke={colors.soupEdge}
+          strokeLinejoin="round"
+          strokeWidth={line.base}
+          testID={`report-bowl-soup-${order}`}
         />
+        <Path d={BOWL_RIM_PATH} fill="none" stroke={colors.soupEdge} strokeLinecap="round" strokeWidth={line.base} />
         <AnimatedEllipse
           animatedProps={surfaceProps}
-          cx={18}
-          cy={9}
-          fill={soupColorOf(bowl.type)}
-          opacity={reducedMotion ? 1 : 0}
-          rx={14}
-          ry={reducedMotion ? 3.5 : 0}
+          cx={22}
+          cy={10}
+          fill={soup}
+          opacity={reducedMotion && coveredAt !== null ? 0 : 1}
+          rx={19}
+          ry={3.6}
           stroke={colors.soupEdge}
           strokeWidth={line.base}
-          testID={`report-bowl-soup-${bowl.order}`}
+          testID={`report-bowl-surface-${order}`}
         />
-        <Path d={BOWL_PATH} fill="none" stroke={colors.soupEdge} strokeLinejoin="round" strokeWidth={line.base} />
-        <Path d="M12 27.5h12" fill="none" stroke={colors.soupEdge} strokeLinecap="round" strokeWidth={line.base} />
       </Svg>
+    </Animated.View>
+  )
+})
+
+/** 이긴 탑 꼭대기 그릇에서 오르는 김 한 줄기. 화면을 떠나면(언마운트) 반복을 멈춘다 */
+function SteamWisp({ d, delay, height, index, left, top, width }: {
+  d: string
+  delay: number
+  height: number
+  index: number
+  left: number
+  top: number
+  width: number
+}) {
+  const rise = useSharedValue(0)
+  useEffect(() => {
+    rise.value = withDelay(delay, withRepeat(withTiming(1, { duration: STEAM_DURATION, easing: Easing.out(Easing.quad) }), -1, false))
+    return () => cancelAnimation(rise)
+  }, [delay, rise])
+  const style = useAnimatedStyle(() => ({
+    opacity: rise.value < 0.25 ? (rise.value / 0.25) * 0.85 : 0.85 * (1 - (rise.value - 0.25) / 0.75),
+    transform: [{ translateY: 5 - 21 * rise.value }],
+  }))
+  return (
+    <Animated.View style={[styles.towerBowl, { left, top, width, height }, style]} testID={`report-tower-steam-${index}`}>
+      <Svg height={height} viewBox={`0 0 ${BOWL_VIEW_WIDTH} ${BOWL_VIEW_HEIGHT}`} width={width}>
+        <Path d={d} fill="none" stroke={colors.outline} strokeLinecap="round" strokeWidth={STEAM_STROKE} />
+      </Svg>
+    </Animated.View>
+  )
+}
+
+/** 종류 하나의 탑. 착지마다 1pt 눌리고, 다 쌓이면 이긴 탑은 4pt 떴다 내려오고 나머지는 옅어진다 */
+function TasteTower({ bowlHeight, bowlWidth, gap, highlightAt, left, plan, reducedMotion, winner }: {
+  bowlHeight: number
+  bowlWidth: number
+  gap: number
+  highlightAt: number
+  left: number
+  plan: TowerPlan
+  reducedMotion: boolean
+  winner: boolean
+}) {
+  const nudge = useSharedValue(0)
+  const lift = useSharedValue(0)
+  const dim = useSharedValue(reducedMotion && !winner ? DIM_OPACITY : 1)
+  useEffect(() => {
+    if (reducedMotion) {
+      nudge.value = 0
+      lift.value = 0
+      dim.value = winner ? 1 : DIM_OPACITY
+      return
+    }
+    // 위에 그릇이 닿을 때마다 탑이 1pt 눌렸다 돌아온다. 끝의 빠른 구간에서 겹치는 눌림은 하나로 친다
+    const steps: number[] = []
+    let cursor = 0
+    for (const bowl of plan.bowls.slice(1)) {
+      const at = bowl.dropAt + FALL_IMPACT
+      if (at < cursor) continue
+      steps.push(
+        withDelay(at - cursor, withTiming(1, { duration: NUDGE_DURATION / 2, easing: Easing.out(Easing.quad) })),
+        withTiming(0, { duration: NUDGE_DURATION / 2, easing: Easing.in(Easing.quad) }),
+      )
+      cursor = at + NUDGE_DURATION
+    }
+    if (steps.length) nudge.value = withSequence(steps[0], ...steps.slice(1))
+    if (winner) {
+      lift.value = withDelay(
+        highlightAt,
+        withSequence(
+          withTiming(-WINNER_LIFT, { duration: LIFT_DURATION / 2, easing: Easing.out(Easing.cubic) }),
+          withTiming(0, { duration: LIFT_DURATION / 2, easing: Easing.inOut(Easing.quad) }),
+        ),
+      )
+    } else {
+      dim.value = withDelay(highlightAt, withTiming(DIM_OPACITY, { duration: DIM_DURATION }))
+    }
+    return () => {
+      cancelAnimation(nudge)
+      cancelAnimation(lift)
+      cancelAnimation(dim)
+    }
+  }, [dim, highlightAt, lift, nudge, plan, reducedMotion, winner])
+  const towerStyle = useAnimatedStyle(() => ({ opacity: dim.value, transform: [{ translateY: nudge.value + lift.value }] }))
+  // level번째 그릇의 위치: 바닥 그릇의 발이 받침선에 닿고, 위로 gap씩 겹쳐 쌓인다
+  const topOf = (level: number) => TOWER_STAGE_HEIGHT - line.hair - (bowlHeight * BOWL_VIEW_FOOT) / BOWL_VIEW_HEIGHT - level * gap
+  const crown = plan.bowls[plan.bowls.length - 1]
+  return (
+    <Animated.View style={[styles.tower, towerStyle]} testID={`report-tower-${plan.type}`}>
+      {plan.bowls.map((bowl) => (
+        <TowerBowl
+          coveredAt={bowl.coveredAt}
+          dropAt={bowl.dropAt}
+          height={bowlHeight}
+          key={bowl.order}
+          left={left}
+          order={bowl.order}
+          reducedMotion={reducedMotion}
+          top={topOf(bowl.level)}
+          type={bowl.type}
+          width={bowlWidth}
+        />
+      ))}
+      {winner && !reducedMotion && crown
+        ? STEAM_PATHS.map((d, index) => (
+            <SteamWisp
+              d={d}
+              delay={highlightAt + index * STEAM_STAGGER}
+              height={bowlHeight}
+              index={index}
+              key={d}
+              left={left}
+              top={topOf(crown.level)}
+              width={bowlWidth}
+            />
+          ))
+        : null}
+    </Animated.View>
+  )
+}
+
+/** 탑 아래 종류 이름과 개수. 개수는 그 탑이 다 쌓이면 떠오르고, 자리는 처음부터 잡아 둔다 */
+function TowerLabel({ count, done, highlightAt, highlighted, reducedMotion, type, winner }: {
+  count: number
+  done: boolean
+  highlightAt: number
+  highlighted: boolean
+  reducedMotion: boolean
+  type: string
+  winner: boolean
+}) {
+  const dim = useSharedValue(reducedMotion && !winner ? DIM_OPACITY : 1)
+  const shown = useSharedValue(reducedMotion ? 1 : 0)
+  useEffect(() => {
+    if (winner) return
+    if (reducedMotion) {
+      dim.value = DIM_OPACITY
+      return
+    }
+    dim.value = withDelay(highlightAt, withTiming(DIM_OPACITY, { duration: DIM_DURATION }))
+    return () => cancelAnimation(dim)
+  }, [dim, highlightAt, reducedMotion, winner])
+  useEffect(() => {
+    if (!done) return
+    shown.value = reducedMotion ? 1 : withTiming(1, { duration: COUNT_REVEAL, easing: Easing.out(Easing.cubic) })
+  }, [done, reducedMotion, shown])
+  const labelStyle = useAnimatedStyle(() => ({ opacity: dim.value }))
+  const countStyle = useAnimatedStyle(() => ({ opacity: shown.value, transform: [{ translateY: 4 * (1 - shown.value) }] }))
+  return (
+    <Animated.View style={[styles.towerLabel, labelStyle]}>
+      <View style={styles.towerCountSlot}>
+        {done ? (
+          <Animated.View style={countStyle}>
+            <AppText
+              capScale
+              style={[styles.tabular, highlighted && winner && styles.winnerCount]}
+              testID={`report-tower-count-${type}`}
+              variant="sectionTitle"
+            >
+              {count}
+            </AppText>
+          </Animated.View>
+        ) : null}
+      </View>
+      <AppText capScale numberOfLines={1} tone="muted" variant="meta">{type}</AppText>
     </Animated.View>
   )
 }
@@ -278,81 +499,117 @@ function TasteReportLoading({
 }) {
   const reducedMotion = useReducedMotion()
   const { width } = useWindowDimensions()
-  const { icons, legend } = useMemo(() => loadingBowlsOf(bowls), [bowls])
-  const [columnWidth, setColumnWidth] = useState(Math.min(302, Math.max(0, width - spacing.x4 * 4 - line.base * 2)) / BOWL_COLUMNS)
-  const [stage, setStage] = useState(reducedMotion ? 3 : 0)
-  const [showLegend, setShowLegend] = useState(reducedMotion)
-  const complete = stage === 3
+  const { icons, records, towers } = useMemo(() => loadingBowlsOf(bowls), [bowls])
+  const schedule = useMemo(() => dropScheduleOf(icons.length), [icons.length])
+  const plans = useMemo<TowerPlan[]>(
+    () =>
+      towers.map((tower) => {
+        const own = icons.filter((icon) => icon.type === tower.type)
+        return {
+          ...tower,
+          bowls: own.map((icon, index) => ({
+            ...icon,
+            dropAt: schedule.dropAt[icon.order],
+            coveredAt: index + 1 < own.length ? schedule.dropAt[own[index + 1].order] + FALL_IMPACT : null,
+          })),
+          lastOrder: own.length ? own[own.length - 1].order : -1,
+        }
+      }),
+    [icons, schedule, towers],
+  )
+  const [stageWidth, setStageWidth] = useState(
+    Math.max(0, Math.min(LOADING_SHEET_MAX_WIDTH, width - spacing.gutter * 2) - spacing.x4 * 2),
+  )
+  const [landed, setLanded] = useState(reducedMotion ? icons.length : 0)
+  const [phase, setPhase] = useState<LoadingPhase>(reducedMotion ? "result" : "drop")
+  const complete = phase === "result"
+  const highlighted = phase !== "drop"
   const titleRef = useRef<View>(null)
   const loadingScrollRef = useRef<ScrollView>(null)
   const onCompleteRef = useRef(onComplete)
   onCompleteRef.current = onComplete
-  const sorted = useSharedValue(reducedMotion ? 1 : 0)
-  const reveal = useSharedValue(reducedMotion ? 1 : 0)
   const resultReveal = useSharedValue(reducedMotion ? 1 : 0)
 
+  const count = bowls.length
+  // 가장 많은 종류가 여럿이면 모두 짚는다(다른 라멘 표시와 같은 규칙)
+  const topCount = towers[0].count
+  const winners = towers.filter((tower) => tower.count === topCount).map((tower) => tower.type)
+  const tied = winners.length > 1
+  const topPercent = Math.round((topCount / count) * 100)
+  const finalMessage = `${identity.title}, ${winners.join(", ")} ${tied ? "각 " : ""}${topCount}그릇`
+  const finalMessageRef = useRef(finalMessage)
+  finalMessageRef.current = finalMessage
+
   useEffect(() => {
+    // 포커스를 제목으로 옮기지 않으면 VoiceOver가 이전 화면에 머문 채 리포트로 교체된다.
+    // 제목의 접근성 이름("n그릇을 정리하고 있어요")이 시작 안내이고, 끝 안내는 결과가 뜰 때 한 번만 읽는다
+    const focus = setTimeout(() => focusOn(titleRef), 250)
     if (reducedMotion) {
-      sorted.value = 1
-      reveal.value = 1
+      setLanded(icons.length)
+      setPhase("result")
       resultReveal.value = 1
-      setStage(3)
-      setShowLegend(true)
-      const focus = setTimeout(() => focusOn(titleRef), 250)
+      const announce = setTimeout(() => AccessibilityInfo.announceForAccessibility(finalMessageRef.current), 400)
       // 움직임이 없으니 완성된 감정서를 읽을 시간만 준다(연출 길이만큼 기다리게 하지 않는다)
       const timer = setTimeout(() => onCompleteRef.current(), RESULT_HOLD + 1000)
       return () => {
         clearTimeout(focus)
+        clearTimeout(announce)
         clearTimeout(timer)
       }
     }
-    sorted.value = withDelay(SORT_AT, withTiming(1, { duration: SORT_DURATION, easing: Easing.inOut(Easing.cubic) }))
-    reveal.value = withDelay(LEGEND_AT, withTiming(1, { duration: 240, easing: Easing.out(Easing.quad) }))
-    resultReveal.value = withDelay(LOADING_DURATION, withTiming(1, { duration: 260, easing: Easing.out(Easing.quad) }))
-    const timers = [
-      setTimeout(() => setStage(1), 900),
-      setTimeout(() => setStage(2), SORT_AT),
-      setTimeout(() => setShowLegend(true), LEGEND_AT),
-      setTimeout(() => setStage(3), LOADING_DURATION),
-      setTimeout(() => onCompleteRef.current(), LOADING_DURATION + RESULT_HOLD),
-    ]
-    // 포커스를 제목으로 옮기지 않으면 VoiceOver가 이전 화면에 머문 채 리포트로 교체된다
-    const focus = setTimeout(() => focusOn(titleRef), 250)
+    const frames = new Map<number, number>()
+    schedule.dropAt.forEach((at, index) => frames.set(Math.ceil((at + FALL_IMPACT) / LANDING_FRAME) * LANDING_FRAME, index + 1))
+    const timers = [...frames].map(([at, landedCount]) => setTimeout(() => setLanded(landedCount), at))
+    timers.push(
+      setTimeout(() => {
+        setPhase("highlight")
+        if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined)
+      }, schedule.highlightAt),
+      setTimeout(() => {
+        setPhase("result")
+        resultReveal.value = withTiming(1, { duration: RESULT_REVEAL, easing: Easing.out(Easing.cubic) })
+        AccessibilityInfo.announceForAccessibility(finalMessageRef.current)
+      }, schedule.resultAt),
+      setTimeout(() => onCompleteRef.current(), schedule.resultAt + RESULT_HOLD),
+    )
     return () => {
-      timers.forEach(clearTimeout)
       clearTimeout(focus)
+      timers.forEach(clearTimeout)
     }
-    // 시간표는 한 번만 시작한다. 실제 shared value는 안정적이며 단계 렌더 때 타이머를 다시 잡지 않는다.
+    // 시간표는 한 번만 시작한다. 원장은 연출 동안 바뀌지 않고, 단계 렌더 때 타이머를 다시 잡지 않는다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reducedMotion])
 
-  /**
-   * iOS에는 accessibilityLiveRegion이 없다(안드로이드 전용 prop이라 무시된다).
-   * 단계가 바뀔 때마다 직접 읽어 준다. 첫 문구는 제목 포커스와 겹치므로 건너뛴다.
-   */
-  useEffect(() => {
-    if (stage === 0) return
-    // 움직임을 줄일 때는 이미 완성된 감정서를 읽는다. 제목 포커스가 먼저 간 뒤 최종 상태를 알린다
-    if (reducedMotion && stage === 3) {
-      const timer = setTimeout(() => AccessibilityInfo.announceForAccessibility(STATUS_MESSAGES[stage]), 400)
-      return () => clearTimeout(timer)
-    }
-    AccessibilityInfo.announceForAccessibility(STATUS_MESSAGES[stage])
-  }, [reducedMotion, stage])
-  // The result now owns its space before it appears, so content size does not change at completion.
+  // The result owns its space before it appears, so content size does not change at completion.
   useEffect(() => {
     if (!complete) return
     const frame = requestAnimationFrame(() => loadingScrollRef.current?.scrollToEnd({ animated: false }))
     return () => cancelAnimationFrame(frame)
   }, [complete])
 
-
-  const legendStyle = useAnimatedStyle(() => ({ opacity: reveal.value, transform: [{ translateY: 4 * (1 - reveal.value) }] }))
-  const resultStyle = useAnimatedStyle(() => ({ opacity: resultReveal.value }))
-  const count = bowls.length
+  const resultStyle = useAnimatedStyle(() => ({
+    opacity: resultReveal.value,
+    transform: [{ translateY: 10 * (1 - resultReveal.value) }],
+  }))
   const sampleRatio = count > MAX_LOADING_BOWLS
     ? (count / MAX_LOADING_BOWLS).toFixed(2).replace(/0+$/, "").replace(/\.$/, "")
     : null
+
+  // 숫자와 기간은 방금 닿은 그릇의 원장 자리를 따른다. 마지막 그릇이 닿으면 전체를 보인다
+  const finished = landed >= icons.length
+  const lastLanded = landed > 0 ? icons[landed - 1] : null
+  const shownCount = finished ? count : lastLanded ? lastLanded.source + 1 : 0
+  const periodEnd = finished ? records[records.length - 1] : lastLanded ? records[lastLanded.source] : null
+  const period = periodEnd
+    ? `${records[0].date.slice(0, 7).replace("-", ".")} ~ ${periodEnd.date.slice(0, 7).replace("-", ".")}`
+    : " "
+
+  // 가장 높은 탑도 받침 위 공간 안에 들게 그릇 간격을 좁힌다(최대 13pt)
+  const columnWidth = stageWidth / plans.length
+  const bowlWidth = Math.max(0, Math.min(BOWL_VIEW_WIDTH, columnWidth - spacing.x1))
+  const bowlHeight = (bowlWidth * BOWL_VIEW_HEIGHT) / BOWL_VIEW_WIDTH
+  const tallest = Math.max(1, ...plans.map((plan) => plan.bowls.length))
+  const gap = Math.min(TOWER_MAX_GAP, (TOWER_STAGE_HEIGHT - TOWER_HEADROOM) / tallest)
 
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.root}>
@@ -367,73 +624,78 @@ function TasteReportLoading({
         ref={loadingScrollRef}
         showsVerticalScrollIndicator={false}
       >
-        <View accessible accessibilityRole="header" ref={titleRef}>
-          <AppText style={styles.center} variant="headline">
-            {"나의 라멘 취향을\n정리하고 있어요"}
-          </AppText>
+        <View accessible accessibilityLabel={`${count}그릇을 정리하고 있어요`} accessibilityRole="header" ref={titleRef}>
+          <AppText style={styles.center} variant="headline">{LOADING_TITLES[phase]}</AppText>
         </View>
-        <AppText style={[styles.center, styles.gapTop2]} tone="sub" variant="secondary">
-          기록한 {count}그릇을 바탕으로 분석해요
+        <AppText style={[styles.center, styles.loadingCounter]} testID="report-bowl-counter" variant="counter">
+          {shownCount}
+          <AppText style={styles.tabular} variant="sectionTitle">그릇</AppText>
+        </AppText>
+        <AppText capScale style={[styles.center, styles.tabular, styles.loadingPeriod]} testID="report-bowl-period" tone="muted" variant="meta">
+          {period}
         </AppText>
         <View style={styles.loadingSheet}>
           <View style={styles.loadingSheetHead}>
             <AppText variant="cardTitle">라멘 취향 감정서</AppText>
-            <AppText capScale style={styles.loadingSheetNumber} tone="muted" variant="meta">
+            <AppText capScale style={styles.tabular} tone="muted" variant="meta">
               No. {membershipNo.replace(/^#/, "")}
             </AppText>
           </View>
           <View
             accessible
             accessibilityLabel={
-              complete
-                ? `${count}그릇을 종류별로 모았어요. ${legend.map((item) => `${item.type} ${item.count}그릇`).join(", ")}`
-                : `기록 순서대로 ${icons.length}개 그릇의 국물을 채우고 있어요`
+              highlighted
+                ? `${count}그릇을 종류별로 쌓았어요. ${towers.map((tower) => `${tower.type} ${tower.count}그릇`).join(", ")}`
+                : `기록 순서대로 ${icons.length}개 그릇을 종류별로 쌓고 있어요`
             }
             accessibilityRole="image"
-            onLayout={(event) => setColumnWidth(event.nativeEvent.layout.width / BOWL_COLUMNS)}
-            style={[styles.bowlGrid, { height: Math.max(1, Math.ceil(icons.length / BOWL_COLUMNS)) * BOWL_ROW_HEIGHT + spacing.x2 }]}
-            testID="report-bowl-grid"
+            testID="report-bowl-stage"
           >
-            {icons.map((bowl) => (
-              <LoadingBowlIcon bowl={bowl} columnWidth={columnWidth} key={bowl.order} reducedMotion={reducedMotion} sorted={sorted} />
-            ))}
-          </View>
-          <View style={styles.loadingLegendSlot}>
-            {showLegend ? (
-              <Animated.View style={[styles.loadingLegend, legendStyle]} testID="report-bowl-legend">
-                {legend.map((item) => (
-                  <View accessibilityLabel={`${item.type} ${item.count}그릇`} accessible key={item.type} style={styles.loadingLegendItem}>
-                    <View style={styles.loadingLegendName}>
-                      <SoupDot type={item.type} size={10} />
-                      <AppText capScale variant="meta">{item.type}</AppText>
-                    </View>
-                    <AppText capScale style={styles.loadingLegendCount} variant="sectionTitle">{item.count}</AppText>
-                  </View>
-                ))}
-              </Animated.View>
-            ) : null}
+            <View onLayout={(event) => setStageWidth(event.nativeEvent.layout.width)} style={styles.towerStage}>
+              {plans.map((plan, column) => (
+                <TasteTower
+                  bowlHeight={bowlHeight}
+                  bowlWidth={bowlWidth}
+                  gap={gap}
+                  highlightAt={schedule.highlightAt}
+                  key={plan.type}
+                  left={column * columnWidth + (columnWidth - bowlWidth) / 2}
+                  plan={plan}
+                  reducedMotion={reducedMotion}
+                  winner={winners.includes(plan.type)}
+                />
+              ))}
+            </View>
+            <View style={styles.towerLabels}>
+              {plans.map((plan) => (
+                <TowerLabel
+                  count={plan.count}
+                  done={plan.bowls.length ? landed > plan.lastOrder : highlighted}
+                  highlightAt={schedule.highlightAt}
+                  highlighted={highlighted}
+                  key={plan.type}
+                  reducedMotion={reducedMotion}
+                  type={plan.type}
+                  winner={winners.includes(plan.type)}
+                />
+              ))}
+            </View>
           </View>
           {sampleRatio ? (
-            <AppText accessibilityElementsHidden={!showLegend} capScale style={[styles.loadingScaleNote, !showLegend && styles.invisible]} tone="muted" variant="meta">
+            <AppText capScale style={styles.loadingScaleNote} tone="muted" variant="meta">
               그릇 1개 ≈ {sampleRatio}그릇 · 전체 {count}그릇
             </AppText>
           ) : null}
-          <View style={styles.loadingResultSlot}>
-            {complete ? (
-              <Animated.View style={[styles.loadingResult, resultStyle]} testID="report-bowl-result">
-                <AppText variant="screenTitle">{identity.title}</AppText>
-                <AppText tone="sub" variant="secondary">
-                  {count}그릇 중 {legend[0].type} {legend[0].count}그릇
-                </AppText>
-              </Animated.View>
-            ) : null}
-          </View>
         </View>
-        <View accessibilityLiveRegion="polite" accessibilityRole="text" style={styles.loadingStatus}>
-          <View style={[styles.dot, complete && styles.dotComplete]} />
-          <AppText style={styles.loadingStatusText} tone="sub" variant="secondary">
-            {STATUS_MESSAGES[stage]}
-          </AppText>
+        <View style={styles.loadingResultSlot}>
+          {complete ? (
+            <Animated.View style={[styles.loadingResult, resultStyle]} testID="report-bowl-result">
+              <AppText style={styles.center} variant="headline">{identity.title}</AppText>
+              <AppText style={[styles.center, styles.tabular]} tone="muted" variant="secondary">
+                {count}그릇 중 {winners.join("·")} {tied ? "각 " : ""}{topCount}그릇 · {topPercent}%
+              </AppText>
+            </Animated.View>
+          ) : null}
         </View>
       </ScrollView>
       <View style={styles.loadingFooter}>
@@ -817,7 +1079,6 @@ const styles = StyleSheet.create({
   gapTop2: { marginTop: spacing.x2 },
   gapTop3: { marginTop: spacing.x3 },
   gapTop5: { marginTop: spacing.x5 },
-  invisible: { opacity: 0 },
   pressedWash: { backgroundColor: colors.surfacePressed },
   scroll: { paddingBottom: spacing.x8 },
   top: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4 },
@@ -867,22 +1128,21 @@ const styles = StyleSheet.create({
   fallbackBox: { backgroundColor: colors.canvasSoft, borderRadius: radii.sm },
   fallbackContent: { padding: spacing.x3 },
   loadingBody: { flexGrow: 1, alignItems: "center", paddingHorizontal: spacing.gutter, paddingTop: spacing.x6, paddingBottom: spacing.x8 },
-  loadingSheet: { alignSelf: "center", width: "100%", maxWidth: 358, backgroundColor: colors.canvasSoft, borderRadius: radii.lg, padding: spacing.x5, marginTop: spacing.section },
+  loadingCounter: { marginTop: spacing.x1_5 },
+  loadingPeriod: { marginTop: spacing.x1, minHeight: typography.meta.lineHeight },
+  loadingSheet: { alignSelf: "center", width: "100%", maxWidth: LOADING_SHEET_MAX_WIDTH, backgroundColor: colors.canvasSoft, borderRadius: radii.lg, padding: spacing.x4, marginTop: spacing.x4_5 },
   loadingSheetHead: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: spacing.x1 },
-  loadingSheetNumber: { fontVariant: ["tabular-nums"] },
-  bowlGrid: { alignSelf: "center", width: "100%", maxWidth: 302, position: "relative", marginTop: spacing.x4 },
-  bowlSlot: { position: "absolute", height: 29, alignItems: "center" },
-  loadingLegendSlot: { minHeight: spacing.x4_5 + (typography.meta.lineHeight ?? 18) + spacing.x1_5 + (typography.sectionTitle.lineHeight ?? 24) },
-  loadingLegend: { flexDirection: "row", justifyContent: "space-between", gap: spacing.x1, marginTop: spacing.x4_5 },
-  loadingLegendItem: { flex: 1, gap: spacing.x1_5 },
-  loadingLegendName: { flexDirection: "row", alignItems: "center", gap: spacing.x1 },
-  loadingLegendCount: { paddingLeft: spacing.x3_5, fontVariant: ["tabular-nums"] },
+  // 받침선은 hairline 하나. 그릇은 그 위에 절대 위치로 쌓이고 개수 자리는 아래 줄에 미리 잡아 둔다.
+  // 떨어지는 그릇은 이 칸 위쪽 끝에서 나타나게 잘라, 감정서 제목이나 위 숫자 위로 넘어가지 않게 한다
+  towerStage: { height: TOWER_STAGE_HEIGHT, marginTop: spacing.x2_5, borderBottomWidth: line.hair, borderBottomColor: colors.border, overflow: "hidden" },
+  tower: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, pointerEvents: "none" },
+  towerBowl: { position: "absolute", transformOrigin: "bottom" },
+  towerLabels: { flexDirection: "row", paddingTop: spacing.x1_5 },
+  towerLabel: { flex: 1, minWidth: 0, alignItems: "center" },
+  towerCountSlot: { minHeight: typography.sectionTitle.lineHeight, justifyContent: "flex-end" },
+  winnerCount: { color: colors.brandText },
   loadingScaleNote: { textAlign: "center", marginTop: spacing.x2 },
-  loadingResultSlot: { minHeight: spacing.section + (typography.screenTitle.lineHeight ?? 28) * 2 + spacing.x1 + (typography.secondary.lineHeight ?? 20) },
-  loadingResult: { gap: spacing.x1, marginTop: spacing.section },
-  loadingStatus: { width: "100%", maxWidth: 300, flexDirection: "row", alignSelf: "center", alignItems: "center", gap: spacing.x2, minHeight: 24, marginTop: spacing.section },
-  loadingStatusText: { fontWeight: "600" },
-  dot: { width: 8, height: 8, borderRadius: radii.pill, backgroundColor: colors.textMuted },
-  dotComplete: { backgroundColor: colors.ink },
+  loadingResultSlot: { alignSelf: "stretch", minHeight: spacing.x5 + (typography.headline.lineHeight ?? 34) * 2 + spacing.x1 + (typography.secondary.lineHeight ?? 20) },
+  loadingResult: { gap: spacing.x1, marginTop: spacing.x5 },
   loadingFooter: { alignItems: "center", paddingHorizontal: spacing.x6, paddingBottom: spacing.x4, paddingTop: spacing.x2 },
 })

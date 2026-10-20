@@ -2,13 +2,13 @@ import { act, fireEvent, render, waitFor, within } from "@testing-library/react-
 import type { ReactElement } from "react"
 import type * as Reanimated from "react-native-reanimated"
 import appConfig from "../app.json"
-import { Share, processColor } from "react-native"
+import { AccessibilityInfo, Share, StyleSheet, processColor } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import { createInitialPersistedState } from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider } from "@/src/state/RaotaStore"
-import { soupColorOf } from "@/src/theme"
+import { colors, soupColorOf } from "@/src/theme"
 import MyScreen from "@/app/native/my"
 import SettingsScreen from "@/app/(flows)/settings"
 import TasteReportScreen from "@/app/(flows)/taste/index"
@@ -56,6 +56,13 @@ jest.mock("expo-image-picker", () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(),
   launchImageLibraryAsync: jest.fn(),
 }))
+jest.mock("expo-haptics", () => ({
+  ImpactFeedbackStyle: { Light: "light" },
+  NotificationFeedbackType: { Success: "success" },
+  impactAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+}))
 
 
 const { router } = jest.requireMock("expo-router") as { router: Record<string, jest.Mock> }
@@ -64,6 +71,7 @@ const imagePicker = jest.requireMock("expo-image-picker") as {
   requestMediaLibraryPermissionsAsync: jest.Mock
   launchImageLibraryAsync: jest.Mock
 }
+const haptics = jest.requireMock("expo-haptics") as { impactAsync: jest.Mock }
 const { useReducedMotion, withDelay, withTiming } = jest.requireMock("react-native-reanimated") as {
   useReducedMotion: jest.Mock
   withDelay: jest.Mock
@@ -394,7 +402,7 @@ describe("taste report", () => {
     // 공유는 헤더 하나뿐이다. 끝에 같은 공유 버튼을 또 두지 않는다
     expect(view.queryByRole("button", { name: "리포트 공유하기" })).toBeNull()
     await fireEvent.press(view.getByRole("button", { name: "리포트 다시 뽑기" }))
-    expect(view.getByTestId("report-bowl-grid")).toBeTruthy()
+    expect(view.getByTestId("report-bowl-stage")).toBeTruthy()
   })
 
   it("closes quietly when the share sheet is dismissed", async () => {
@@ -419,58 +427,95 @@ describe("taste report", () => {
     await waitFor(() => expect(view.getByText("공유하지 못했어요")).toBeTruthy())
   })
 
-  it("fills real bowls in order, groups them, then shows the identity", async () => {
+  it("drops real bowls into per-type towers, highlights the tallest, then shows the identity", async () => {
     mockParams.analyze = "1"
     jest.useFakeTimers()
+    const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility")
     const view = await renderScreen(<TasteReportScreen />)
 
-    expect(await view.findByText("기록한 42그릇을 바탕으로 분석해요")).toBeTruthy()
-    expect(view.getByText("라멘 취향 감정서")).toBeTruthy()
+    expect(await view.findByText("라멘 취향 감정서")).toBeTruthy()
     expect(view.getByText("No. RT-0842")).toBeTruthy()
+    // 시작 안내는 포커스를 받는 제목이 맡는다
+    expect(view.getByLabelText("42그릇을 정리하고 있어요")).toBeTruthy()
+    expect(view.getByText("그릇을 쌓고 있어요")).toBeTruthy()
     expect(view.getAllByTestId(/^report-bowl-\d+$/)).toHaveLength(42)
+    expect(view.getByText("0그릇")).toBeTruthy()
+    // 개수와 결과는 나중에 뜨지만 자리는 처음부터 잡혀 있다
+    expect(view.queryByTestId(/^report-tower-count-/)).toBeNull()
     expect(view.queryByTestId("report-bowl-result")).toBeNull()
     expect(view.queryByText("종류별로 먹은 라멘")).toBeNull()
-    expect(view.getByText("라멘 기록을 모으고 있어요")).toBeTruthy()
 
-    await act(async () => jest.advanceTimersByTimeAsync(950))
-    expect(view.getByText("그릇마다 국물을 채우고 있어요")).toBeTruthy()
-    await act(async () => jest.advanceTimersByTimeAsync(1900))
-    expect(view.getByText("종류별로 모으고 있어요")).toBeTruthy()
-    await act(async () => jest.advanceTimersByTimeAsync(900))
-    expect(view.getByLabelText("기타 4그릇")).toBeTruthy()
-    await act(async () => jest.advanceTimersByTimeAsync(300))
+    // 첫 그릇이 닿으면 숫자와 기간이 흐르기 시작한다(오래된 기록부터)
+    await act(async () => jest.advanceTimersByTimeAsync(700))
+    expect(view.getByText("1그릇")).toBeTruthy()
+    expect(view.getByTestId("report-bowl-period").props.children).toMatch(/^\d{4}\.\d{2} ~ \d{4}\.\d{2}$/)
+
+    // 3.65초쯤 마지막 그릇이 닿는다. 탑마다 다 쌓이면 개수가 뜨고, 아직 빨강·진동은 없다
+    await act(async () => jest.advanceTimersByTimeAsync(3000))
+    expect(view.getByText("42그릇")).toBeTruthy()
+    expect(view.getByTestId("report-tower-count-돈코츠").props.children).toBe(14)
+    expect(view.getByTestId("report-tower-count-기타").props.children).toBe(4)
+    expect(StyleSheet.flatten(view.getByTestId("report-tower-count-돈코츠").props.style).color).not.toBe(colors.brandText)
+    expect(haptics.impactAsync).not.toHaveBeenCalled()
+    expect(announce).not.toHaveBeenCalled()
+
+    // 가장 높은 탑만 짚는다: 숫자 하나만 빨강, 김, 가벼운 진동 한 번
+    await act(async () => jest.advanceTimersByTimeAsync(250))
+    expect(view.getByText("가장 높이 쌓인 건")).toBeTruthy()
+    expect(StyleSheet.flatten(view.getByTestId("report-tower-count-돈코츠").props.style).color).toBe(colors.brandText)
+    expect(StyleSheet.flatten(view.getByTestId("report-tower-count-쇼유").props.style).color).not.toBe(colors.brandText)
+    expect(within(view.getByTestId("report-tower-돈코츠")).getAllByTestId(/^report-tower-steam-/)).toHaveLength(3)
+    expect(view.getAllByTestId(/^report-tower-steam-/)).toHaveLength(3)
+    expect(haptics.impactAsync).toHaveBeenCalledTimes(1)
+    expect(haptics.impactAsync).toHaveBeenCalledWith("light")
+    expect(view.getByLabelText(/^42그릇을 종류별로 쌓았어요\. 돈코츠 14그릇, /)).toBeTruthy()
+
+    await act(async () => jest.advanceTimersByTimeAsync(500))
+    expect(view.getByTestId("report-bowl-result")).toBeTruthy()
     expect(view.getByText("진한 돈골파")).toBeTruthy()
-    expect(view.getByText("42그릇 중 돈코츠 14그릇")).toBeTruthy()
-    expect(view.queryByTestId("report-stamp")).toBeNull()
-    expect(view.getByText("나의 라멘 취향이 정리됐어요")).toBeTruthy()
+    expect(view.getByText("42그릇 중 돈코츠 14그릇 · 33%")).toBeTruthy()
+    expect(announce).toHaveBeenCalledTimes(1)
+    expect(announce).toHaveBeenCalledWith("진한 돈골파, 돈코츠 14그릇")
 
     await act(async () => jest.advanceTimersByTimeAsync(1200))
     expect(view.getByText("종류별로 먹은 라멘")).toBeTruthy()
+    expect(view.getByText("전체 42그릇으로 취향을 다시 정리했어요")).toBeTruthy()
   })
 
-  it("uses every bowl for a short ledger, preserving its record order and soup colors", async () => {
+  it("uses every bowl for a short ledger in record order and highlights every tied tower", async () => {
     mockParams.analyze = "1"
+    jest.useFakeTimers()
     const state = createInitialPersistedState()
     state.user = { ...state.user!, id: "local-taste", visitedCount: 2, membershipNo: "#RT-0022" }
     state.logs.push(
-      { ...state.logs[0], id: "901", author: { ...state.logs[0].author, id: "local-taste" }, visitedAt: "2026. 10. 01", ramenType: "쇼유" },
+      { ...state.logs[0], id: "901", author: { ...state.logs[0].author, id: "local-taste" }, visitedAt: "2026. 09. 01", ramenType: "쇼유" },
       { ...state.logs[0], id: "902", author: { ...state.logs[0].author, id: "local-taste" }, visitedAt: "2026. 10. 02", ramenType: "시오" },
     )
     const view = await renderScreen(<TasteReportScreen />, state)
 
-    expect(await view.findByText("기록한 2그릇을 바탕으로 분석해요")).toBeTruthy()
-    expect(view.getByText("No. RT-0022")).toBeTruthy()
+    expect(await view.findByText("No. RT-0022")).toBeTruthy()
     expect(view.getAllByTestId(/^report-bowl-\d+$/)).toHaveLength(2)
-    expect(within(view.getByTestId("report-bowl-0")).getByTestId("report-bowl-soup-0").props.fill).toEqual(
+    expect(within(view.getByTestId("report-tower-쇼유")).getByTestId("report-bowl-soup-0").props.fill).toEqual(
       expect.objectContaining({ payload: processColor(soupColorOf("쇼유")) }),
     )
-    expect(within(view.getByTestId("report-bowl-1")).getByTestId("report-bowl-soup-1").props.fill).toEqual(
+    expect(within(view.getByTestId("report-tower-시오")).getByTestId("report-bowl-soup-1").props.fill).toEqual(
       expect.objectContaining({ payload: processColor(soupColorOf("시오")) }),
     )
     expect(view.queryByText(/그릇 1개 ≈/)).toBeNull()
+
+    await act(async () => jest.advanceTimersByTimeAsync(1000))
+    expect(view.getByText("2그릇")).toBeTruthy()
+    expect(view.getByText("2026.09 ~ 2026.10")).toBeTruthy()
+    await act(async () => jest.advanceTimersByTimeAsync(800))
+    for (const type of ["쇼유", "시오"]) {
+      expect(StyleSheet.flatten(view.getByTestId(`report-tower-count-${type}`).props.style).color).toBe(colors.brandText)
+      expect(within(view.getByTestId(`report-tower-${type}`)).getAllByTestId(/^report-tower-steam-/)).toHaveLength(3)
+    }
+    expect(haptics.impactAsync).toHaveBeenCalledTimes(1)
+    expect(view.getByText("2그릇 중 쇼유·시오 각 1그릇 · 50%")).toBeTruthy()
   })
 
-  it("caps a large ledger at 42 icons but reports the actual per-type totals", async () => {
+  it("draws every bowl of an ordinary 43-bowl ledger without a scale note", async () => {
     mockParams.analyze = "1"
     jest.useFakeTimers()
     const state = createInitialPersistedState()
@@ -484,16 +529,51 @@ describe("taste report", () => {
     })
     const view = await renderScreen(<TasteReportScreen />, state)
 
-    expect(await view.findByText("기록한 43그릇을 바탕으로 분석해요")).toBeTruthy()
+    expect(await view.findByLabelText("43그릇을 정리하고 있어요")).toBeTruthy()
+    expect(view.getAllByTestId(/^report-bowl-\d+$/)).toHaveLength(43)
+    // 기타는 츠케멘·아부라소바를 묶어 다섯 종류로 읽는다
+    expect(within(view.getByTestId("report-tower-돈코츠")).getAllByTestId(/^report-bowl-\d+$/)).toHaveLength(14)
+    expect(within(view.getByTestId("report-tower-기타")).getAllByTestId(/^report-bowl-\d+$/)).toHaveLength(5)
+    expect(view.queryByText(/그릇 1개 ≈/)).toBeNull()
+
+    await act(async () => jest.advanceTimersByTimeAsync(3700))
+    expect(view.getByText("43그릇")).toBeTruthy()
+    expect(view.getByTestId("report-tower-count-기타").props.children).toBe(5)
+  })
+
+  it("caps a ledger over 60 bowls at 60 drawn bowls but reports the actual per-type totals", async () => {
+    mockParams.analyze = "1"
+    jest.useFakeTimers()
+    const state = createInitialPersistedState()
+    state.user = { ...state.user!, visitedCount: 90 }
+    // 데모 원장 42그릇 + 돈코츠·츠케멘 24그릇씩 = 90그릇
+    for (let index = 0; index < 48; index += 1) {
+      state.logs.push({
+        ...state.logs[0],
+        id: `95${index}`,
+        author: { ...state.logs[0].author, id: state.user!.id },
+        visitedAt: `2026. 10. ${String(1 + (index % 28)).padStart(2, "0")}`,
+        ramenType: index % 2 ? "츠케멘" : "돈코츠",
+      })
+    }
+    const view = await renderScreen(<TasteReportScreen />, state)
+
+    expect(await view.findByLabelText("90그릇을 정리하고 있어요")).toBeTruthy()
     const icons = view.getAllByTestId(/^report-bowl-\d+$/)
-    expect(icons).toHaveLength(42)
-    // 최대 잔여 배분: 기타는 츠케멘·아부라소바를 묶어 다섯 종류로 읽는다
-    const soupColors = icons.map((icon, index) => within(icon).getByTestId(`report-bowl-soup-${index}`).props.fill.payload)
-    expect(soupColors.filter((color) => color === processColor(soupColorOf("돈코츠")))).toHaveLength(13)
-    expect(soupColors.filter((color) => color === processColor(soupColorOf("기타")))).toHaveLength(5)
-    await act(async () => jest.advanceTimersByTimeAsync(3750))
-    expect(view.getByLabelText("기타 5그릇")).toBeTruthy()
-    expect(view.getByText("그릇 1개 ≈ 1.02그릇 · 전체 43그릇")).toBeTruthy()
+    expect(icons).toHaveLength(60)
+    const drawn = Object.fromEntries(
+      ["돈코츠", "이에케", "쇼유", "시오", "미소", "기타"]
+        .filter((type) => view.queryByTestId(`report-tower-${type}`))
+        .map((type) => [type, within(view.getByTestId(`report-tower-${type}`)).queryAllByTestId(/^report-bowl-\d+$/).length]),
+    )
+    // 최대 잔여 배분(×60/90): 돈코츠 38→25, 기타 28→19, 쇼유 12→8, 시오 8→5, 미소 4→3
+    expect(drawn).toEqual({ 돈코츠: 25, 기타: 19, 쇼유: 8, 시오: 5, 미소: 3 })
+    expect(view.getByText("그릇 1개 ≈ 1.5그릇 · 전체 90그릇")).toBeTruthy()
+
+    await act(async () => jest.advanceTimersByTimeAsync(3700))
+    expect(view.getByText("90그릇")).toBeTruthy()
+    expect(view.getByTestId("report-tower-count-돈코츠").props.children).toBe(38)
+    expect(view.getByTestId("report-tower-count-기타").props.children).toBe(28)
   })
 
   it("does not animate an empty account when an analysis link opens before hydration", async () => {
@@ -506,7 +586,7 @@ describe("taste report", () => {
     expect(view.queryByText("라멘 취향 감정서")).toBeNull()
   })
 
-  it("skips on request and shows the final filled sheet immediately for Reduce Motion", async () => {
+  it("skips on request and shows the final stacked sheet immediately for Reduce Motion", async () => {
     mockParams.analyze = "1"
     const view = await renderScreen(<TasteReportScreen />)
     expect(await view.findByText("라멘 취향 감정서")).toBeTruthy()
@@ -517,14 +597,23 @@ describe("taste report", () => {
 
     useReducedMotion.mockReturnValue(true)
     jest.useFakeTimers()
+    const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility")
     const reduced = await renderScreen(<TasteReportScreen />)
     expect(await reduced.findByText("라멘 취향 감정서")).toBeTruthy()
     expect(reduced.getByTestId("report-bowl-result")).toBeTruthy()
-    expect(reduced.queryByTestId("report-stamp")).toBeNull()
-    expect(reduced.getByLabelText("돈코츠 14그릇")).toBeTruthy()
+    expect(reduced.getByText("42그릇")).toBeTruthy()
+    expect(reduced.getByText("42그릇 중 돈코츠 14그릇 · 33%")).toBeTruthy()
+    expect(reduced.getByTestId("report-tower-count-기타").props.children).toBe(4)
+    expect(StyleSheet.flatten(reduced.getByTestId("report-tower-count-돈코츠").props.style).color).toBe(colors.brandText)
+    expect(reduced.getByLabelText(/^42그릇을 종류별로 쌓았어요\. 돈코츠 14그릇, /)).toBeTruthy()
+    // 움직임 없이: 김도, 진동도 없다
+    expect(reduced.queryByTestId(/^report-tower-steam-/)).toBeNull()
     await act(async () => jest.advanceTimersByTimeAsync(500))
-    await act(async () => jest.advanceTimersByTimeAsync(4800))
+    // 앞 화면의 토스트 안내가 늦게 섞일 수 있어, 이 연출의 끝 안내가 한 번인지만 본다
+    expect(announce.mock.calls.filter(([message]) => message === "진한 돈골파, 돈코츠 14그릇")).toHaveLength(1)
+    await act(async () => jest.advanceTimersByTimeAsync(1800))
     expect(reduced.getByText("종류별로 먹은 라멘")).toBeTruthy()
+    expect(haptics.impactAsync).not.toHaveBeenCalled()
   })
 })
 
