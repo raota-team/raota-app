@@ -345,7 +345,8 @@ describe("taste report", () => {
 
     expect(await view.findByText("진한 돈골파")).toBeTruthy()
     expect(view.getByLabelText("돈코츠 14그릇, 33%")).toBeTruthy()
-    expect(view.getByLabelText(/^맛 지문\. 육수 농도 진한 편 3\.9, 면 삶기 단단한 편 4\.0$/)).toBeTruthy()
+    expect(view.getByLabelText(/^나의 취향\. 진한 육수에 단단한 면\. 진한 돈골파 · #진한 육수 #단단한 면/)).toBeTruthy()
+    expect(view.getByLabelText("1 / 4")).toBeTruthy()
     expect(view.getByText("자주 간 라멘집")).toBeTruthy()
     expect(view.getByText(/숙주와 양배추를 센 불에 볶아 올려서/)).toBeTruthy()
     expect(view.getByText("별점 5")).toBeTruthy()

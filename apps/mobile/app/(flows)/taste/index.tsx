@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from "react-native-reanimated"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import Svg, { ClipPath, Defs, Ellipse, Path, Rect } from "react-native-svg"
 
 import {
@@ -25,12 +25,12 @@ import {
   typeCountsOf,
   type DemoBowl,
   type MenuCategoryName,
-  type MetricItem,
   type Shop,
   type TasteIdentity,
-  type TasteProfile,
 } from "@raota/shared"
 import { track } from "@/src/analytics"
+import { EdgeBackZone } from "@/src/components/EdgeBackZone"
+import { TasteStory } from "@/src/components/TasteStory"
 import { AppText, BottomSheet, Button, Header, IconButton, LoadingState, SoupDot, Toast } from "@/src/components/ui"
 import {
   useActivityLevel,
@@ -42,9 +42,9 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, radii, soupColorOf, spacing, tasteAxis, typography } from "@/src/theme"
+import { colors, line, radii, soupColorOf, spacing, typography } from "@/src/theme"
 
-/* 취향 종합 리포트: 감정서 → 종류별 분포 → 자주 간 라멘집 → 다음 한 그릇. */
+/* 취향 종합 리포트: 한 장씩 넘기는 이야기 → 종류별 분포 → 자주 간 라멘집 → 다음 한 그릇. */
 
 /**
  * 그릇 채우기 연출의 박자(ms). 사용자가 "그릇이 차오른다 → 종류끼리 모인다 → 결과"를
@@ -77,38 +77,14 @@ function openShop(shop: Shop | undefined) {
   if (shop) router.push({ pathname: "/shop/[shopId]", params: { shopId: shop.id } })
 }
 
-/**
- * 취향의 위치를 말하는 한 마디. 육수 농도와 면 삶기는 좋고 나쁨이 아니라서 차오르지 않고,
- * 기록 화면·라멘로그 상세와 같은 어휘("진한 편", "단단한 편")로 위치만 말한다.
- * 같은 표가 record/new의 AXIS_PRESENTATION과 src/domain/lounge의 wordOf에도 있지만
- * 둘 다 내보내지 않아 여기서 다시 적는다(후속 과제: 공용 함수로 합치기).
- */
-const SPECTRUM_WORDS = {
-  brothDensity: ["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"],
-  noodleFirmness: ["아주 부드럽게", "부드러운 편", "중간", "단단한 편", "아주 단단하게"],
-} as const
-
-type SpectrumAxisKey = keyof typeof SPECTRUM_WORDS
-
-const isSpectrumMetric = (metric: MetricItem): metric is MetricItem & { key: SpectrumAxisKey } =>
-  metric.key === "brothDensity" || metric.key === "noodleFirmness"
-
-/** 평균 점수를 반올림해 다섯 단어 중 하나로 읽는다. 기록 화면의 계산과 같다 */
-function spectrumWordOf(key: SpectrumAxisKey, score: number) {
-  return SPECTRUM_WORDS[key][Math.min(5, Math.max(1, Math.round(score))) - 1]
-}
-
 // ---------------------------------------------------------------------------
-// 종합 리포트의 결론. 표시하는 두 축은 TASTE_AXES의 육수 → 면 순서를 따른다.
+// 기록이 없을 때의 표지. 기록이 생기면 TasteStory가 이 자리를 대신한다.
 // ---------------------------------------------------------------------------
 
-function TasteReportCover({ recordCount, identity, profile, updatedLabel }: {
-  recordCount: number
+function TasteReportCover({ identity, updatedLabel }: {
   identity: TasteIdentity
-  profile: TasteProfile
   updatedLabel: string
 }) {
-  const metrics = metricsFromProfile(profile).filter(isSpectrumMetric)
   return (
     <View style={styles.card}>
       <View style={styles.coverHead}>
@@ -124,31 +100,6 @@ function TasteReportCover({ recordCount, identity, profile, updatedLabel }: {
           {identity.tags.map((tag) => (
             <AppText key={tag} style={styles.coverTag} variant="secondary">#{tag}</AppText>
           ))}
-        </View>
-      ) : null}
-      {recordCount > 0 ? (
-        <View
-          accessibilityLabel={`맛 지문. ${metrics.map((metric) => `${metric.label} ${spectrumWordOf(metric.key, metric.score)} ${metric.score.toFixed(1)}`).join(", ")}`}
-          accessibilityRole="text"
-          accessible
-          style={styles.coverFingerprint}
-        >
-          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            {metrics.map((metric) => (
-              <View key={metric.key} style={styles.fingerprintRow}>
-                <AppText style={styles.fingerprintLabel} variant="secondary">{metric.label}</AppText>
-                <View style={styles.fingerprintTrack}>
-                  <View style={[styles.fingerprintKnob, {
-                    left: `${(Math.max(1, Math.min(5, metric.score)) - 1) * 25}%`,
-                    backgroundColor: tasteAxis[metric.key],
-                  }]} />
-                </View>
-                <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.fingerprintValue} tone="muted" variant="meta">
-                  {spectrumWordOf(metric.key, metric.score)} <AppText style={styles.heavy} variant="meta">{metric.score.toFixed(1)}</AppText>
-                </AppText>
-              </View>
-            ))}
-          </View>
         </View>
       ) : null}
     </View>
@@ -515,6 +466,7 @@ function seoulTime(now = new Date()) {
 export default function TasteReportScreen() {
   const { analyze } = useLocalSearchParams<{ analyze?: string }>()
   const { height: windowHeight } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   const { currentUser } = useRaota()
   const { data: recordCount, isLoading } = useBowlCount()
   const { data: taste } = useTasteProfile()
@@ -549,6 +501,8 @@ export default function TasteReportScreen() {
   }, [bowls.length, generating, isLoading])
 
   const shopByName = (name: string) => shops.find((shop) => shop.name === name)
+  const favoriteShop = topShops[0] ? shopByName(topShops[0].name) : undefined
+  const updatedLabel = generatedAt ? `${seoulToday().replace(/-/g, ".")} ${generatedAt}에 다시 정리함` : `${seoulToday().replace(/-/g, ".")} 기준`
 
   // 다음 한 그릇: 가장 적게 먹은 종류(기타 제외)를 파는 원장 매장. 안 가 본 곳을 먼저 고른다
   const suggestion = useMemo(() => {
@@ -625,14 +579,25 @@ export default function TasteReportScreen() {
         <LoadingState fullScreen label="취향을 불러오는 중…" />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} ref={scrollRef} showsVerticalScrollIndicator={false}>
-          <View style={styles.top}>
-            <TasteReportCover
-              identity={identity}
-              profile={profile}
-              recordCount={recordCount}
-              updatedLabel={generatedAt ? `${seoulToday().replace(/-/g, ".")} ${generatedAt}에 다시 정리함` : `${seoulToday().replace(/-/g, ".")} 기준`}
-            />
-          </View>
+          {recordCount === 0 ? (
+            <View style={styles.top}>
+              <TasteReportCover identity={identity} updatedLabel={updatedLabel} />
+            </View>
+          ) : (
+            <View style={styles.story}>
+              <TasteStory
+                bowls={bowls}
+                identity={identity}
+                onOpenFavorite={favoriteShop ? () => openShop(favoriteShop) : undefined}
+                // 아래 종류별 막대와 같은 원천(그릇 목록)으로 센다. 프로필 카운터와 어긋나면 한 화면에 숫자가 둘이 된다
+                recordCount={bowls.length}
+                scores={profile.scores}
+                typeCounts={typeCounts}
+                visits={visits}
+              />
+              <AppText capScale style={[styles.center, styles.tabular, styles.gapTop2]} tone="muted" variant="meta">{updatedLabel}</AppText>
+            </View>
+          )}
 
           {recordCount === 0 ? (
             <View style={[styles.block, styles.emptySection]}>
@@ -836,6 +801,8 @@ export default function TasteReportScreen() {
           {currentUser?.nickname ?? "라오타 회원"} · Lv.{level.number} {level.title}
         </AppText>
       </BottomSheet>
+      {/* 이야기 카드가 왼쪽 끝까지 가로로 넘어가서, 헤더 아래 가장자리는 뒤로 쓸기에 양보한다 */}
+      {recordCount > 0 ? <EdgeBackZone top={insets.top + 56} /> : null}
     </SafeAreaView>
   )
 }
@@ -856,6 +823,8 @@ const styles = StyleSheet.create({
   pressedWash: { backgroundColor: colors.surfacePressed },
   scroll: { paddingBottom: spacing.x8 },
   top: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4 },
+  // 이야기 카드는 화면 끝까지 넘어가야 해서 좌우 여백을 TasteStory가 직접 둔다
+  story: { paddingTop: spacing.x4 },
   section: { marginHorizontal: spacing.gutter, marginTop: spacing.section },
   sectionContent: { marginTop: spacing.x3 },
   block: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.x5 },
@@ -868,12 +837,6 @@ const styles = StyleSheet.create({
   coverTitle: { marginTop: spacing.x4 },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1_5, marginTop: spacing.x3 },
   coverTag: { backgroundColor: colors.paper, borderRadius: radii.pill, overflow: "hidden", paddingHorizontal: spacing.x3, paddingVertical: spacing.x1_5, fontWeight: "700", fontSize: 13, lineHeight: 18 },
-  coverFingerprint: { marginTop: spacing.x3 },
-  fingerprintRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2_5, minHeight: 28 },
-  fingerprintLabel: { width: 60, flexShrink: 1, fontWeight: "700", color: colors.ink, fontSize: 13, lineHeight: 18 },
-  fingerprintTrack: { flex: 1, minWidth: 48, height: 8, borderRadius: radii.pill, backgroundColor: colors.secondary, justifyContent: "center" },
-  fingerprintKnob: { position: "absolute", width: 18, height: 18, marginLeft: -9, borderRadius: radii.pill },
-  fingerprintValue: { minWidth: 92, maxWidth: "42%", flexShrink: 0, textAlign: "right", fontSize: 12, lineHeight: 18 },
   rowDivider: { borderTopColor: colors.border, borderTopWidth: line.hair },
   track: { flex: 1, height: 12, borderRadius: radii.pill, backgroundColor: colors.secondary, overflow: "hidden" },
   trackFill: { height: "100%", borderRadius: radii.pill, borderWidth: line.base, borderColor: colors.soupEdge },
