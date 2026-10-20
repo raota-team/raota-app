@@ -11,7 +11,6 @@ import {
 } from "react-native"
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
 import { Image } from "expo-image"
-import Svg, { Path } from "react-native-svg"
 
 import {
   MENU_CATEGORY_NAMES,
@@ -34,8 +33,9 @@ const BOWL_DOT = 12
  * 최소 높이는 글과 그림이 들어갈 만큼만 둔다(너무 크면 빈 면이 남는다)
  */
 const SLIDE_MIN_HEIGHT = 168
-const ART = 64
-const BOWL_PATH = "M3 9H33C33 18.5 26.3 26 18 26C9.7 26 3 18.5 3 9Z"
+/** 단골집 사진이 차지하는 카드 폭의 몫 */
+const PHOTO_SHARE = 0.4
+const PIP = 8
 
 /**
  * 평균 점수를 육수·면 한 마디로 읽는다. 가게 상세 "이 가게의 맛"(src/domain/shopTaste.ts)과 같은 기준:
@@ -61,9 +61,9 @@ interface Slide {
   bowls?: string[]
   /** 국물 종류별 몫(한 줄 막대) */
   shares?: Array<{ name: string; count: number }>
-  /** 오른쪽 아래 그림: 그 국물 색 그릇 */
-  bowlArt?: string
-  /** 오른쪽 아래 그림: 단골집 사진 */
+  /** 맛 평균 점수를 5칸 점으로. 큰 문장이 어디서 나왔는지 숫자로 받쳐 준다 */
+  pips?: Array<{ label: string; value: number }>
+  /** 오른쪽 면을 채우는 단골집 사진 */
   photo?: string
   onPress?: () => void
 }
@@ -121,7 +121,10 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
     kicker: "나의 취향",
     big: [{ accent: broth }, "에\n", { accent: noodle }],
     sub: [identity.title, ...(identity.tags.length ? [identity.tags.map((tag) => `#${tag}`).join(" ")] : [])],
-    bowlArt: top,
+    pips: [
+      { label: "육수", value: scores.brothDensity },
+      { label: "면", value: scores.noodleFirmness },
+    ],
   })
   if (favorite) {
     slides.push({
@@ -167,7 +170,7 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
         snapToInterval={interval}
       >
         {slides.map((slide, index) => (
-          <StorySlide bowlEdge={bowlEdge} first={index === 0} key={slide.key} slide={slide} soupEdge={palette.soupEdge} width={cardWidth} />
+          <StorySlide bowlEdge={bowlEdge} first={index === 0} key={slide.key} slide={slide} width={cardWidth} />
         ))}
       </ScrollView>
       <View accessibilityLabel={`${page + 1} / ${slides.length}`} accessibilityRole="text" accessible style={styles.dots}>
@@ -179,16 +182,19 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   )
 }
 
-function StorySlide({ slide, width, first, bowlEdge, soupEdge }: { slide: Slide; width: number; first: boolean; bowlEdge: string; soupEdge: string }) {
+function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: number; first: boolean; bowlEdge: string }) {
   const tone = slide.dark ? "onInk" : "ink"
   const subTone = slide.dark ? "onInk" : "sub"
   const bigText = slide.big.map((part) => (typeof part === "string" ? part : part.accent)).join("")
-  const label = [slide.kicker, bigText.replace(/\n/g, " "), slide.sub.join(" · ")].filter(Boolean).join(". ")
+  const pipsText = slide.pips?.map((pip) => `${pip.label} ${pip.value.toFixed(1)}점`).join(", ")
+  const label = [slide.kicker, bigText.replace(/\n/g, " "), slide.sub.join(" · "), pipsText].filter(Boolean).join(". ")
   const total = slide.shares?.reduce((sum, share) => sum + share.count, 0) ?? 0
+  // 사진은 카드 오른쪽 면을 위아래 끝까지 채운다. 글은 그 폭만큼 비켜 선다
+  const photoWidth = slide.photo ? Math.round(width * PHOTO_SHARE) : 0
   const content = (
     <>
       <View style={styles.head}>
-        <View style={styles.text}>
+        <View style={[styles.text, photoWidth ? { paddingRight: photoWidth - spacing.x5 + spacing.x3 } : null]}>
           <AppText capScale style={[styles.kicker, slide.dark ? styles.dim : null]} tone={slide.dark ? "onInk" : "muted"} variant="secondary">
             {slide.kicker}
           </AppText>
@@ -211,14 +217,23 @@ function StorySlide({ slide, width, first, bowlEdge, soupEdge }: { slide: Slide;
             </AppText>
           ) : null}
         </View>
-        {slide.bowlArt ? (
-          // 가장 많이 먹은 국물 색으로 채운 그릇. 취향 문장 옆에서 "어떤 국물의 사람인지"를 색으로 한 번 더 말한다
-          <Svg height={ART * (28 / 36)} viewBox="0 0 36 28" width={ART}>
-            <Path d={BOWL_PATH} fill={soupColorOf(slide.bowlArt)} stroke={soupEdge} strokeWidth={1} />
-          </Svg>
-        ) : null}
-        {slide.photo ? <Image contentFit="cover" source={{ uri: slide.photo }} style={styles.photo} transition={150} /> : null}
       </View>
+      {slide.pips?.length ? (
+        <View style={[styles.footer, styles.pipRows]}>
+          {slide.pips.map((pip) => (
+            <View key={pip.label} style={styles.pipRow}>
+              <AppText capScale style={styles.pipLabel} tone="muted" variant="meta">{pip.label}</AppText>
+              <View style={styles.pips}>
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <View key={step} style={[styles.pip, step <= Math.round(pip.value) && styles.pipOn]} />
+                ))}
+              </View>
+              <AppText capScale tone="sub" variant="meta">{pip.value.toFixed(1)}</AppText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {slide.photo ? <Image contentFit="cover" source={{ uri: slide.photo }} style={[styles.photo, { width: photoWidth }]} transition={150} /> : null}
       {slide.shares && total > 0 ? (
         // 국물별 몫을 한 줄로 이어 붙인 막대. 손잡이 없는 비율 띠라 슬라이더로 읽히지 않는다
         <View style={styles.footer}>
@@ -280,7 +295,7 @@ function BigText({ animate, children }: { animate: boolean; children: ReactNode 
 const styles = StyleSheet.create({
   track: { paddingHorizontal: spacing.gutter, gap: spacing.gutter },
   // 큰 카드 모양은 32pt(radii.lg) 하나다. 시안의 24pt는 디자인 시스템에 없는 중간 반경이라 맞췄다
-  slide: { minHeight: SLIDE_MIN_HEIGHT, padding: spacing.x5, borderRadius: radii.lg, backgroundColor: colors.canvasSoft },
+  slide: { minHeight: SLIDE_MIN_HEIGHT, padding: spacing.x5, borderRadius: radii.lg, backgroundColor: colors.canvasSoft, overflow: "hidden" },
   // ink 면은 다크 모드에서 흰 면으로 뒤집혀, 두 모드 모두 이 장이 가장 대비가 큰 카드가 된다
   slideDark: { backgroundColor: colors.ink },
   pressed: { opacity: 0.8 },
@@ -292,7 +307,15 @@ const styles = StyleSheet.create({
   sub: { marginTop: spacing.x1_5 },
   head: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3 },
   text: { flex: 1 },
-  photo: { width: ART, height: ART, borderRadius: radii.sm, backgroundColor: colors.secondary },
+  // 카드 둥근 모서리가 사진 오른쪽 끝을 잘라 준다. 사진 자체에는 반경을 두지 않는다
+  photo: { position: "absolute", top: 0, right: 0, bottom: 0, backgroundColor: colors.secondary },
+  pipRows: { gap: spacing.x1_5 },
+  pipRow: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
+  pipLabel: { width: 28 },
+  pips: { flexDirection: "row", gap: spacing.x1 },
+  // 빈 칸은 카드 면(canvasSoft)과 붙지 않게 secondary보다 한 단 진한 회색으로 둔다
+  pip: { width: PIP, height: PIP, borderRadius: radii.pill, backgroundColor: colors.secondaryPressed },
+  pipOn: { backgroundColor: tasteAxis.satisfaction },
   footer: { marginTop: "auto", paddingTop: spacing.x3 },
   shares: { flexDirection: "row", gap: 2, height: 10 },
   share: { borderRadius: radii.pill, borderWidth: 1, borderColor: colors.soupEdge },
