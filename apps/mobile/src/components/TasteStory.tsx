@@ -153,8 +153,8 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   }
 
   // 국물 점 테두리는 카드 면(ink)과 반대색으로 둘러야 같은 계열 국물 색이 면에 묻히지 않는다.
-  // soupEdge는 바탕(canvas) 기준이라 반전된 ink 면 위에서는 사라진다
-  const bowlEdge = `${palette.onInk}4D`
+  // soupEdge는 바탕(canvas) 기준이라 어두운 deep 면 위에서는 사라진다. 흰 30%로 두른다
+  const bowlEdge = `${palette.onDark}4D`
 
   return (
     <View onLayout={onLayout}>
@@ -183,8 +183,8 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
 }
 
 function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: number; first: boolean; bowlEdge: string }) {
-  const tone = slide.dark ? "onInk" : "ink"
-  const subTone = slide.dark ? "onInk" : "sub"
+  const tone = slide.dark ? "onDark" : "ink"
+  const subTone = slide.dark ? "onDark" : "sub"
   const bigText = slide.big.map((part) => (typeof part === "string" ? part : part.accent)).join("")
   const pipsText = slide.pips?.map((pip) => `${pip.label} ${pip.value.toFixed(1)}점`).join(", ")
   const label = [slide.kicker, bigText.replace(/\n/g, " "), slide.sub.join(" · "), pipsText].filter(Boolean).join(". ")
@@ -195,7 +195,7 @@ function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: nu
     <>
       <View style={styles.head}>
         <View style={[styles.text, photoWidth ? { paddingRight: photoWidth - spacing.x5 + spacing.x3 } : null]}>
-          <AppText capScale style={[styles.kicker, slide.dark ? styles.dim : null]} tone={slide.dark ? "onInk" : "muted"} variant="secondary">
+          <AppText capScale style={[styles.kicker, slide.dark ? styles.dim : null]} tone={slide.dark ? "onDark" : "muted"} variant="secondary">
             {slide.kicker}
           </AppText>
           <BigText animate={first}>
@@ -296,8 +296,9 @@ const styles = StyleSheet.create({
   track: { paddingHorizontal: spacing.gutter, gap: spacing.gutter },
   // 큰 카드 모양은 32pt(radii.lg) 하나다. 시안의 24pt는 디자인 시스템에 없는 중간 반경이라 맞췄다
   slide: { minHeight: SLIDE_MIN_HEIGHT, padding: spacing.x5, borderRadius: radii.lg, backgroundColor: colors.canvasSoft, overflow: "hidden" },
-  // ink 면은 다크 모드에서 흰 면으로 뒤집혀, 두 모드 모두 이 장이 가장 대비가 큰 카드가 된다
-  slideDark: { backgroundColor: colors.ink },
+  // 순검정(ink)은 따뜻한 회색 화면에서 너무 무거웠다(사용자 의견 2026.10.20). 따뜻한 숯색 deep을 쓰고,
+  // 다크 모드에서도 흰 면으로 뒤집히지 않고 한 단 밝은 숯색으로 남아 눈부시지 않다
+  slideDark: { backgroundColor: colors.deep },
   pressed: { opacity: 0.8 },
   kicker: { fontWeight: "600" },
   dim: { opacity: 0.7 },

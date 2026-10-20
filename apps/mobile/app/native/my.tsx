@@ -1002,9 +1002,9 @@ function MyTasteTicket({
         <View style={[styles.deckCard, styles.deckBack2]} />
         <View style={[styles.deckCard, styles.deckBack1]} />
         <View style={[styles.deckCard, styles.deckFront]}>
-          <AppText capScale style={styles.deckDim} tone="onInk" variant="secondary">{identity.title} · 지금까지</AppText>
-          <AppText lineBreakStrategyIOS="hangul-word" style={[styles.deckBig, styles.tabular]} tone="onInk" variant="headline">{recordCount}그릇을 기록했어요</AppText>
-          <AppText capScale style={styles.deckDim} tone="onInk" variant="secondary">{visits.length}곳을 다녔어요</AppText>
+          <AppText capScale style={styles.deckDim} tone="onDark" variant="secondary">{identity.title} · 지금까지</AppText>
+          <AppText lineBreakStrategyIOS="hangul-word" style={[styles.deckBig, styles.tabular]} tone="onDark" variant="headline">{recordCount}그릇을 기록했어요</AppText>
+          <AppText capScale style={styles.deckDim} tone="onDark" variant="secondary">{visits.length}곳을 다녔어요</AppText>
         </View>
       </View>
       <View style={styles.deckFoot}>
@@ -1258,9 +1258,11 @@ const styles = StyleSheet.create({
   // 뒤의 두 장은 앞장 오른쪽으로 비어져 나와 "넘겨 볼 카드가 더 있다"만 말한다. 앞장이 높이를 정한다
   deck: { paddingRight: spacing.x7 },
   deckCard: { borderRadius: radii.lg },
+  // 뒤로 갈수록 옅어지는 두 장. 카드에는 테두리를 두르지 않아 면 색만으로 층을 나눈다
   deckBack2: { position: "absolute", top: spacing.x4, bottom: spacing.x4, right: 0, left: "40%", backgroundColor: colors.secondary },
-  deckBack1: { position: "absolute", top: spacing.x2, bottom: spacing.x2, right: spacing.x3_5, left: "30%", backgroundColor: colors.canvasSoft, borderWidth: line.hair, borderColor: colors.border },
-  deckFront: { padding: spacing.x5, gap: spacing.x1, backgroundColor: colors.ink },
+  deckBack1: { position: "absolute", top: spacing.x2, bottom: spacing.x2, right: spacing.x3_5, left: "30%", backgroundColor: colors.secondaryPressed },
+  // 리포트 첫 장과 같은 따뜻한 숯색(deep). 순검정은 화면에서 너무 무거웠다
+  deckFront: { padding: spacing.x5, gap: spacing.x1, backgroundColor: colors.deep },
   deckDim: { opacity: 0.7 },
   deckBig: { fontWeight: "700" },
   deckFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingRight: spacing.x7 },
