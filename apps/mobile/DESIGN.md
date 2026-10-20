@@ -163,10 +163,10 @@ One family, Pretendard, weights 400 · 500 · 600 · 700. 12pt minimum, 700 maxi
 - **Card**: `surface-card`, 16pt radius (32pt for large cards), no border. Never put a card inside a card.
 - **Text input**: `canvas` surface with a 1pt `ash` border, 16pt radius, 48pt high. The search bar is a 48pt `surface-card` pill.
 - **ScoreSegment**: five pills for 1–5; the selected one uses `selected`.
-- **Swipe back**: on every stack screen, swiping right from the left edge goes back. Screens whose horizontal scrollers (photo paging, chip rows) reach the left edge of the screen put an `EdgeBackZone` (a 12pt strip, intentionally tap-dead; screens with a top header start it below the header via `top`) at the outermost level so the scroller cannot steal the back swipe.
+- **BottomSheet / ConfirmDialog**: `canvas`, 32pt radius, `shadows.modal`, 36×4 `stone` handle.
 - **Toast**: `surface-dark` surface with white text, 16pt radius.
 - **PhotoViewer**: tapping a photo on the shop or ramen log detail opens it full screen on black. Swipe sideways to page, pinch or double-tap to zoom (up to 4×), drag down or tap close (✕) to dismiss; "n / total" at the top center.
-- **Swipe back**: on every stack screen, swiping right from the left edge goes back. Screens whose horizontal scrollers (photo paging, chip rows) reach the left edge of the screen put an `EdgeBackZone` (a 20pt strip) at the outermost level so the scroller cannot steal the back swipe.
+- **Swipe back**: on every stack screen, swiping right from the left edge goes back. Screens whose horizontal scrollers (photo paging, chip rows) reach the left edge of the screen put an `EdgeBackZone` (a 12pt strip, intentionally tap-dead; screens with a top header start it below the header via `top`) at the outermost level so the scroller cannot steal the back swipe.
 - **Tab bar**: 홈 (Home) · 지도 (Map) · record (+) · 라운지 (Lounge) · 마이 (My). The center record button has no label: a 64×40pt `primary` shape with a white + in a 16pt-radius rectangle. Tapping it opens the record-method sheet (it is not a screen tab). Its accessibility name is "라멘 기록하기" ("record ramen"). Selected tab `ink`, others `mute`.
 
 ## Screens
