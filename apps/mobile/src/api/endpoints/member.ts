@@ -1,6 +1,7 @@
 import { apiClient, type ApiClient } from "../client"
 import type {
   BlockedMember,
+  ConsentsRequest,
   CursorPage,
   CursorParams,
   MemberMe,
@@ -15,7 +16,7 @@ import type {
 
 /**
  * 내 계정(#44).
- * 온보딩 중(status=ONBOARDING)에는 me·onboarding·닉네임 확인·업로드 티켓·로그아웃만 되고,
+ * 온보딩 중(status=ONBOARDING)에는 me·onboarding·약관 동의·닉네임 확인·업로드 티켓·로그아웃만 되고,
  * 다른 쓰기는 403 ONBOARDING_REQUIRED가 온다.
  */
 export function createMemberApi(client: ApiClient = apiClient) {
@@ -35,6 +36,11 @@ export function createMemberApi(client: ApiClient = apiClient) {
 
     nicknameAvailability(nickname: string): Promise<NicknameAvailabilityResponse> {
       return client.get<NicknameAvailabilityResponse>("/members/nickname-availability", { query: { nickname } })
+    },
+
+    /** 현재 약관·처리방침 동의(웹에서 옮긴 회원, 문서 개정 뒤 consentRequired일 때). 동의 결과가 반영된 회원을 돌려준다 */
+    consents(body: ConsentsRequest): Promise<MemberMe> {
+      return client.put<MemberMe>("/members/me/consents", body)
     },
 
     /** 탈퇴. confirmation은 반드시 "WITHDRAW" */

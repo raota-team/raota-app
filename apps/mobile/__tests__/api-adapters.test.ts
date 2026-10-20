@@ -1,4 +1,4 @@
-import type { CreateRamenLogInput } from "@raota/shared"
+import { legalDocumentVersion, type CreateRamenLogInput } from "@raota/shared"
 
 import {
   authorLevelLabel,
@@ -429,6 +429,7 @@ describe("회원", () => {
     status: "ACTIVE",
     logCount: 42,
     onboardingCompletedAt: "2026-05-01T00:00:00Z",
+    consentRequired: true,
   }
 
   it("등급은 기록 수로 계산하고 온보딩 여부를 함께 만든다", () => {
@@ -442,6 +443,16 @@ describe("회원", () => {
     expect(profile.membershipNo).toBe("#RT-9001")
     expect(profile.isLoggedIn).toBe(true)
     expect(onboardingCompleted).toBe(true)
+  })
+
+  it("온보딩을 마친 회원도 서버가 동의를 요구하면 그대로 알린다", () => {
+    expect(toAppMember(member).consentRequired).toBe(true)
+    expect(toAppMember({ ...member, consentRequired: false }).consentRequired).toBe(false)
+  })
+
+  it("동의 기록의 문서 버전은 약관·처리방침 시행일을 YYYY-MM-DD로 바꾼 값이다", () => {
+    expect(legalDocumentVersion("terms")).toBe("2026-06-11")
+    expect(legalDocumentVersion("privacy")).toBe("2026-10-27")
   })
 
   it("온보딩 중인 계정은 닉네임이 비어 있고 온보딩이 끝나지 않았다", () => {

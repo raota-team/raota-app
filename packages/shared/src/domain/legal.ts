@@ -379,3 +379,11 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
 export function isLegalDocumentKey(value: unknown): value is LegalDocumentKey {
   return value === "terms" || value === "privacy"
 }
+
+/** 동의 기록에 남기는 문서 버전. 시행일 "2026년 10월 27일"을 서버 형식 "2026-10-27"로 바꾼다 */
+export function legalDocumentVersion(key: LegalDocumentKey): string {
+  const match = LEGAL_DOCUMENTS[key].effectiveDate.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/)
+  if (!match) throw new Error(`시행일 형식을 읽을 수 없어요: ${LEGAL_DOCUMENTS[key].effectiveDate}`)
+  const [, year, month, day] = match
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+}

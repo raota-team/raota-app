@@ -74,6 +74,7 @@ const wireMember: MemberMe = {
   status: "ACTIVE",
   logCount: 0,
   onboardingCompletedAt: "2026-10-19T08:00:00Z",
+  consentRequired: false,
 }
 
 const onboarding: CompleteOnboardingInput = {

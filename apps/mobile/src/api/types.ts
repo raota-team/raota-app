@@ -94,6 +94,8 @@ export interface MemberMe {
   /** 내가 남긴 라멘로그 수 */
   logCount: number
   onboardingCompletedAt: DateTime | null
+  /** 현재 약관·처리방침 동의가 필요한가(웹에서 옮긴 회원, 문서 개정 뒤). true면 동의 화면을 띄우고 PUT /members/me/consents */
+  consentRequired: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -150,9 +152,17 @@ export interface UpdateMemberRequest {
 
 export type ConsentType = "TERMS" | "PRIVACY" | "MARKETING"
 
+/** documentVersion은 문서 시행일 YYYY-MM-DD(legalDocumentVersion으로 만든다) */
+export type ConsentDecision = { type: ConsentType; documentVersion: string; granted: boolean }
+
 export interface OnboardingRequest {
   nickname: string
-  consents: Array<{ type: ConsentType; documentVersion: string; granted: boolean }>
+  consents: ConsentDecision[]
+}
+
+/** TERMS·PRIVACY는 철회할 수 없다(granted=false면 400). MARKETING은 켜고 끌 수 있다 */
+export interface ConsentsRequest {
+  consents: ConsentDecision[]
 }
 
 export interface NicknameAvailabilityResponse {

@@ -559,6 +559,8 @@ export interface AppMember {
   profile: UserProfile
   /** 온보딩(닉네임·약관)을 마쳤는가 */
   onboardingCompleted: boolean
+  /** 현재 약관·처리방침에 다시 동의해야 하는가. 온보딩을 마친 회원도 true일 수 있다 */
+  consentRequired: boolean
 }
 
 export interface AppMemberOptions {
@@ -598,6 +600,7 @@ export function toAppMember(member: MemberMe, options: AppMemberOptions = {}): A
   return {
     profile: toAppUserProfile(member, options),
     onboardingCompleted: member.status === "ACTIVE" && Boolean(member.onboardingCompletedAt),
+    consentRequired: member.consentRequired,
   }
 }
 
