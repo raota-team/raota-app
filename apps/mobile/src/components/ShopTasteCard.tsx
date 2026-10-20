@@ -48,7 +48,7 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
     revisit.sometimes > 0 ? `가끔 생각남 ${revisit.sometimes}명` : null,
     revisit.once > 0 ? `한 번이면 충분 ${revisit.once}명` : null,
   ].filter(Boolean).join(" · ")
-  const headline = revisit.often > 0 ? `${count}명 중 ${revisit.often}명이\n또 가고 싶대요` : `${count}명 모두\n한 번쯤 가 볼 만하대요`
+  const headline = revisit.often > 0 ? `${count}명 중 ${revisit.often}명이 또 가고 싶대요` : `${count}명 모두 한 번쯤 가 볼 만하대요`
   const cells = [
     { label: "많이 먹은 메뉴", value: summary.topMenuCount > 1 ? `${summary.topMenu} · ${summary.topMenuCount}명` : summary.topMenu },
     { label: "육수", value: summary.broth },
@@ -87,9 +87,9 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
               <AppText capScale tone="muted" variant="meta">또 갈래요</AppText>
             </View>
           </View>
-          <Reveal from={0.15} progress={progress} to={0.6}>
-            <AppText lineBreakStrategyIOS="hangul-word" variant="cardTitle">{headline}</AppText>
-            {rest ? <AppText capScale style={styles.rest} tone="muted" variant="meta">{rest}</AppText> : null}
+          <Reveal from={0.15} progress={progress} style={styles.revisitText} to={0.6}>
+            <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} variant="cardTitle">{headline}</AppText>
+            {rest ? <AppText capScale style={[styles.rest, styles.center]} tone="muted" variant="meta">{rest}</AppText> : null}
           </Reveal>
         </View>
         <View style={styles.grid}>
@@ -117,7 +117,10 @@ function Reveal({ progress, from, to, style, children }: { progress: { value: nu
 const styles = StyleSheet.create({
   card: { padding: spacing.x4, backgroundColor: colors.canvasSoft, borderRadius: radii.sm },
   header: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: spacing.x2, marginBottom: spacing.x4 },
-  revisit: { flexDirection: "row", alignItems: "center", gap: spacing.x4 },
+  // 원과 문장을 카드 가운데에 위아래로 둔다(사용자 결정, 2026.10.20)
+  revisit: { alignItems: "center", gap: spacing.x3 },
+  revisitText: { alignItems: "center" },
+  center: { textAlign: "center" },
   ring: { width: RING, height: RING },
   ringCenter: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" },
   ringValue: { fontWeight: "700" },
