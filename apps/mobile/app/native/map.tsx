@@ -2,7 +2,7 @@ import * as Haptics from "expo-haptics"
 import { useIsFocused, useLocalSearchParams } from "expo-router"
 import * as Location from "expo-location"
 import { MapPin, Navigation } from "lucide-react-native"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Keyboard, Linking, Pressable, StyleSheet, View } from "react-native"
 import MapView, { Marker, type Region } from "react-native-maps"
 import { useReducedMotion } from "react-native-reanimated"
@@ -106,12 +106,19 @@ export default function MapScreen() {
   const selected = selectedInList ?? selectedShop ?? markerShops[0] ?? null
   const clusters = useMemo(() => calculateMapClusters(markerShops, region), [markerShops, region])
 
-  // 핀이 바뀌면 잠깐 다시 그리게 두고(로고가 실릴 시간) 곧 고정한다
-  useEffect(() => {
+  // 핀이 바뀌면 잠깐 다시 그리게 두고(로고가 실릴 시간) 곧 고정한다.
+  // 로고가 늦게 오면(개발 빌드는 그림을 Metro에서 받는다) 실린 순간 한 번 더 그리게 해 빈 원으로 굳지 않게 한다
+  const cancelSettle = useRef(() => {})
+  const trackPinsBriefly = useCallback(() => {
     setTrackingPins(true)
+    cancelSettle.current()
     const settle = setTimeout(() => setTrackingPins(false), 700)
-    return () => clearTimeout(settle)
-  }, [clusters, selectedId])
+    cancelSettle.current = () => clearTimeout(settle)
+  }, [])
+  useEffect(() => {
+    trackPinsBriefly()
+  }, [clusters, selectedId, trackPinsBriefly])
+  useEffect(() => () => cancelSettle.current(), [])
 
   const animateTo = (target: Region) => mapRef.current?.animateToRegion(target, reducedMotion ? 0 : 350)
 
@@ -248,7 +255,7 @@ export default function MapScreen() {
                     tracksViewChanges={trackingPins}
                     zIndex={isSelected ? SELECTED_Z_INDEX : 1}
                   >
-                    <MapShopPin name={shop.name} selected={isSelected} />
+                    <MapShopPin name={shop.name} onLogoLoad={trackPinsBriefly} selected={isSelected} />
                   </Marker>
                 )
               })}

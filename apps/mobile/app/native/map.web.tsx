@@ -535,37 +535,29 @@ export function LocationNotice({ message, actionLabel, onAction }: { message: st
   )
 }
 
+/*
+ * 핀 로고는 28pt 전용 작은 그림(pin-logo, @2x·@3x)을 쓴다. 1024px 앱 로고를 핀마다 풀면 늦게 뜨고,
+ * 지도 마커는 그려진 순간을 사진처럼 굳혀 쓰므로 로고가 늦으면 빈 원으로 굳는다. 그래서 로고가 실리면 onLogoLoad로 알린다
+ */
+const PIN_LOGO = require("@/assets/images/pin-logo.png")
+
 /** 핀 그림은 지도 조작과 별개인 뷰로 두어 두 플랫폼에서 같은 모양을 쓸 수 있다. */
-export function MapShopPin({ name, selected }: { name: string; selected: boolean }) {
+export function MapShopPin({ name, selected, onLogoLoad }: { name: string; selected: boolean; onLogoLoad?: () => void }) {
   return (
     <View style={mapStyles.pin} testID={selected ? "selected-map-pin" : "unselected-map-pin"}>
-      {selected ? (
-        <SelectedMapPin name={name} />
-      ) : (
-        <View style={mapStyles.pinHitArea}>
-          <View style={mapStyles.pinCircle} testID="map-pin-symbol">
-            <Image accessible={false} source={require("@/assets/images/logo.png")} style={mapStyles.pinLogo} testID="map-pin-logo" />
-          </View>
-        </View>
-      )}
-    </View>
-  )
-}
-
-function SelectedMapPin({ name }: { name: string }) {
-  return (
-    <>
       <View style={mapStyles.pinHitArea}>
-        <View style={[mapStyles.pinCircle, mapStyles.pinCircleSelected]} testID="map-pin-symbol">
-          <Image accessible={false} source={require("@/assets/images/logo.png")} style={mapStyles.pinLogo} testID="map-pin-logo" />
+        <View style={[mapStyles.pinCircle, selected && mapStyles.pinCircleSelected]} testID="map-pin-symbol">
+          <Image accessible={false} onLoad={onLogoLoad} source={PIN_LOGO} style={mapStyles.pinLogo} testID="map-pin-logo" />
         </View>
       </View>
-      <View style={mapStyles.pinLabel} testID="map-pin-label">
-        <AppText capScale numberOfLines={1} style={mapStyles.pinLabelText} variant="meta">
-          {name}
-        </AppText>
-      </View>
-    </>
+      {selected ? (
+        <View style={mapStyles.pinLabel} testID="map-pin-label">
+          <AppText capScale numberOfLines={1} style={mapStyles.pinLabelText} variant="meta">
+            {name}
+          </AppText>
+        </View>
+      ) : null}
+    </View>
   )
 }
 
