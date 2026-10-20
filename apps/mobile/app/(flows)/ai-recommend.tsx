@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics"
 import { router } from "expo-router"
 import { ArrowRight, ChevronRight } from "lucide-react-native"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   AccessibilityInfo,
   Platform,
@@ -19,12 +19,15 @@ import type { Edge } from "react-native-safe-area-context"
 import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, Button, Header, Screen, SoupDot, StickyActionBar, TicketCut } from "@/src/components/ui"
+import { AppText, Button, Header, Screen, StickyActionBar, TicketCut } from "@/src/components/ui"
 import { useLocalShops } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { matchesShopRamenType } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, maxFontScale, radii, spacing, touchTarget, typography, usePalette } from "@/src/theme"
+import { colors, line, maxFontScale, radii, soupColorOf, spacing, tasteAxis, touchTarget, typography, usePalette } from "@/src/theme"
+
+/** 식권 자판기 버튼이 눌려 들어가는 깊이 */
+const BUTTON_SINK = 2
 
 type CuratorShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec">>
 type Step = 1 | 2 | 3 | 4 | "loading" | "result"
@@ -41,18 +44,19 @@ const SOUP_OPTIONS = [
   { id: "tori", label: "토리파이탄", sub: "닭백탕", keys: ["토리파이탄", "닭백탕"] },
 ]
 
+// sub은 고르는 뜻을 풀어 쓴 말이다. 매장 정보로 거르는 조건처럼 들리게 쓰지 않는다(상황은 대조할 정보가 없어 "참고"로만 쓴다)
 const MOOD_OPTIONS = [
-  { id: "solo", label: "혼밥하기 좋은 곳" },
-  { id: "date", label: "데이트/아늑한 분위기" },
-  { id: "waiting", label: "웨이팅 감수 맛집" },
-  { id: "quick", label: "빠르고 든든한 한 끼" },
+  { id: "solo", label: "혼밥하기 좋은 곳", sub: "혼자 편하게" },
+  { id: "date", label: "데이트/아늑한 분위기", sub: "둘이 오래 머물기" },
+  { id: "waiting", label: "웨이팅 감수 맛집", sub: "줄 서도 가는 곳" },
+  { id: "quick", label: "빠르고 든든한 한 끼", sub: "빨리 먹고 나가기" },
 ]
 
 const PRIORITY_OPTIONS = [
-  { id: "rich", label: "진하고 묵직한 국물", keys: ["진한", "농후", "백탕", "이에케", "돈코츠", "적된장"] },
-  { id: "noodle", label: "탱글탱글 자가제면", keys: ["자가제면", "치지레멘"] },
-  { id: "chashu", label: "두툼하고 부드러운 차슈", keys: ["차슈"] },
-  { id: "clean", label: "깔끔하고 깊은 감칠맛", keys: ["깔끔", "맑은", "청탕", "감칠맛", "시오"] },
+  { id: "rich", label: "진하고 묵직한 국물", sub: "백탕 · 농후", keys: ["진한", "농후", "백탕", "이에케", "돈코츠", "적된장"] },
+  { id: "noodle", label: "탱글탱글 자가제면", sub: "직접 뽑은 면", keys: ["자가제면", "치지레멘"] },
+  { id: "chashu", label: "두툼하고 부드러운 차슈", sub: "토핑이 주인공", keys: ["차슈"] },
+  { id: "clean", label: "깔끔하고 깊은 감칠맛", sub: "청탕 · 맑은 국물", keys: ["깔끔", "맑은", "청탕", "감칠맛", "시오"] },
 ]
 
 const QUICK_PROMPTS = ["국물이 덜 짠 곳", "차슈가 푸짐한 곳", "주차 가능한 곳", "웨이팅 적은 곳", "매운맛 조절 가능한 곳", "밥 무료 제공"]
@@ -106,13 +110,13 @@ interface Curation {
  */
 const DEFAULT_INPUTS: Inputs = { soupId: "", moodId: "", priorityId: "", prompt: "" }
 
-/** 고른 조건은 실제 네 단계와 같은 이름으로 표시한다. */
+/** 고른 조건은 실제 네 단계와 같은 이름으로 표시한다. 아직 고르지 않은 값은 빈 문자열(칸에는 이름만 남는다) */
 function chosenConditions(inputs: Inputs) {
   return [
-    { label: "국물", value: SOUP_OPTIONS.find((option) => option.id === inputs.soupId)?.label ?? "—" },
-    { label: "상황", value: MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label ?? "—" },
-    { label: "중요", value: PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label ?? "—" },
-    { label: "추가", value: inputs.prompt.trim() || "—" },
+    { label: "국물", value: SOUP_OPTIONS.find((option) => option.id === inputs.soupId)?.label ?? "" },
+    { label: "상황", value: MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label ?? "" },
+    { label: "중요", value: PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label ?? "" },
+    { label: "추가", value: inputs.prompt.trim() },
   ]
 }
 
@@ -120,14 +124,19 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 const CHOICE_EASE = Easing.bezier(0.22, 1, 0.36, 1)
 const SETTLE_EASE = Easing.bezier(0.34, 1.56, 0.64, 1)
 
-/** 조건의 선택 색과 눌림 크기만 바꿔 격자 크기는 그대로 둔다. */
-function useChoiceMotion(selected: boolean) {
+/**
+ * 조건의 선택 색과 눌림만 바꿔 격자 크기는 그대로 둔다.
+ * sink: 식권 자판기 버튼처럼 누르거나 고르면 2pt 눌려 들어간다(크기 대신 위치). 바탕은 자판기 면 위의 canvas
+ */
+function useChoiceMotion(selected: boolean, { sink = false }: { sink?: boolean } = {}) {
   const palette = usePalette()
   const reducedMotion = useReducedMotion()
   const selection = useSharedValue(selected ? 1 : 0)
   const scale = useSharedValue(1)
+  const press = useSharedValue(0)
   // 동작 줄이기에서는 크기 변화 대신 즉시 바뀌는 투명도로 눌림을 알린다(공용 칩과 같은 규칙)
   const pressOpacity = useSharedValue(1)
+  const base = sink ? palette.canvas : palette.canvasSoft
 
   useEffect(() => {
     selection.value = reducedMotion ? (selected ? 1 : 0) : withTiming(selected ? 1 : 0, { duration: 200, easing: CHOICE_EASE })
@@ -135,10 +144,12 @@ function useChoiceMotion(selected: boolean) {
   }, [selected, reducedMotion, selection, scale])
 
   const containerStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(selection.value, [0, 1], [palette.canvasSoft, palette.selected]),
-    transform: [{ scale: scale.value }],
+    backgroundColor: interpolateColor(selection.value, [0, 1], [base, palette.selected]),
+    transform: sink
+      ? [{ translateY: reducedMotion ? 0 : BUTTON_SINK * Math.max(selection.value, press.value) }]
+      : [{ scale: scale.value }],
     opacity: pressOpacity.value,
-  }), [palette])
+  }), [palette, base, sink, reducedMotion])
   const textStyle = useAnimatedStyle(() => ({
     color: interpolateColor(selection.value, [0, 1], [palette.ink, palette.onSelected]),
   }), [palette])
@@ -149,10 +160,12 @@ function useChoiceMotion(selected: boolean) {
 
   const pressIn = () => {
     if (reducedMotion) pressOpacity.value = 0.6
+    else if (sink) press.value = withTiming(1, { duration: 80 })
     else scale.value = withTiming(0.97, { duration: 120 })
   }
   const pressOut = () => {
     pressOpacity.value = 1
+    press.value = reducedMotion ? 0 : withTiming(0, { duration: 160, easing: CHOICE_EASE })
     scale.value = reducedMotion ? 1 : withTiming(1, { duration: 180, easing: CHOICE_EASE })
   }
 
@@ -160,7 +173,7 @@ function useChoiceMotion(selected: boolean) {
 }
 
 function ChosenConditionCell({ label, value }: { label: string; value: string }) {
-  const filled = value !== "—"
+  const filled = value !== ""
   const palette = usePalette()
   const reducedMotion = useReducedMotion()
   const wasFilled = useRef(filled)
@@ -200,14 +213,17 @@ function ChosenConditionCell({ label, value }: { label: string; value: string })
       <Animated.Text maxFontSizeMultiplier={maxFontScale} style={[typography.meta, styles.chosenLabel, labelStyle]}>
         {label}
       </Animated.Text>
-      <Animated.Text
-        lineBreakStrategyIOS="hangul-word"
-        maxFontSizeMultiplier={maxFontScale}
-        numberOfLines={2}
-        style={[typography.meta, styles.chosenValue, valueStyle]}
-      >
-        {value}
-      </Animated.Text>
+      {/* 아직 고르지 않은 칸은 이름만 둔다("—" 같은 빈 값 표시는 쓰지 않는다). 칸 높이는 고정이라 채워져도 밀리지 않는다 */}
+      {filled ? (
+        <Animated.Text
+          lineBreakStrategyIOS="hangul-word"
+          maxFontSizeMultiplier={maxFontScale}
+          numberOfLines={2}
+          style={[typography.meta, styles.chosenValue, valueStyle]}
+        >
+          {value}
+        </Animated.Text>
+      ) : null}
     </Animated.View>
   )
 }
@@ -235,7 +251,11 @@ function QuickPromptTile({ text, added, onPress }: { text: string; added: boolea
   )
 }
 
-function ChoiceTile({
+/**
+ * 식권 자판기 버튼(사용자 결정 2026.10.20 · 방안 C, 번호는 빼기로). 오른쪽 위 작은 불빛이 있고, 누르면 2pt 눌려 들어가며
+ * 고르면 눌린 채 불이 켜진다. 버튼 아래 2pt 턱은 테두리가 아니라 면 한 장(secondary)이다
+ */
+function TicketButton({
   label,
   sub,
   soupType,
@@ -243,27 +263,31 @@ function ChoiceTile({
   onPress,
 }: {
   label: string
-  sub?: string
+  sub: string
   soupType?: string
   selected: boolean
   onPress: () => void
 }) {
-  const motion = useChoiceMotion(selected)
+  const motion = useChoiceMotion(selected, { sink: true })
   return (
-    <AnimatedPressable
-      accessibilityLabel={sub ? `${label}, ${sub}` : label}
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
-      onPress={onPress}
-      onPressIn={motion.pressIn}
-      onPressOut={motion.pressOut}
-      style={[styles.optionTile, motion.containerStyle]}
-    >
-      {soupType ? <SoupDot size={42} type={soupType} /> : null}
-      <Animated.Text lineBreakStrategyIOS="hangul-word" style={[typography.cardTitle, styles.optionName, motion.textStyle]}>
-        {label}
-      </Animated.Text>
-      {sub ? (
+    <View style={styles.ticketButtonSlot}>
+      <View style={styles.ticketButtonLip} />
+      <AnimatedPressable
+        accessibilityLabel={`${label}, ${sub}`}
+        accessibilityRole="radio"
+        accessibilityState={{ checked: selected }}
+        onPress={onPress}
+        onPressIn={motion.pressIn}
+        onPressOut={motion.pressOut}
+        style={[styles.ticketButton, motion.containerStyle]}
+      >
+        <View style={styles.lampWrap}>
+          {selected ? <View style={styles.lampGlow} /> : null}
+          <View style={[styles.lamp, selected && styles.lampOn]} />
+        </View>
+        <Animated.Text lineBreakStrategyIOS="hangul-word" style={[typography.cardTitle, motion.textStyle]}>
+          {label}
+        </Animated.Text>
         <Animated.Text
           lineBreakStrategyIOS="hangul-word"
           maxFontSizeMultiplier={maxFontScale}
@@ -271,8 +295,26 @@ function ChoiceTile({
         >
           {sub}
         </Animated.Text>
-      ) : null}
-    </AnimatedPressable>
+        {soupType ? <View style={[styles.soupSwatch, { backgroundColor: soupColorOf(soupType) }]} /> : null}
+      </AnimatedPressable>
+    </View>
+  )
+}
+
+/** 고르는 단계(1~3)의 버튼 묶음을 식권 자판기 면에 담는다. 머리줄과 아래 투입구 줄은 장식이라 읽지 않는다 */
+function TicketMachine({ step, picked, hint, children }: { step: 1 | 2 | 3; picked: string; hint: string; children: ReactNode }) {
+  return (
+    <View style={styles.machine}>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.machineHead}>
+        <AppText capScale style={styles.machineBrand} variant="meta">RAOTA 식권</AppText>
+        <AppText capScale tone="muted" variant="meta">{step}단계</AppText>
+      </View>
+      {children}
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.machineSlot}>
+        <View style={styles.machineSlotBar} />
+        <AppText capScale numberOfLines={1} tone="muted" variant="meta">{picked ? `${picked} 골랐어요` : hint}</AppText>
+      </View>
+    </View>
   )
 }
 
@@ -451,7 +493,7 @@ export default function AIRecommendScreen() {
   if (step === "loading" && curation) {
     return (
       <CurationLoading
-        conditions={selectedConditions.filter(({ value }) => value !== "—")}
+        conditions={selectedConditions.filter(({ value }) => value !== "")}
         onBack={() => setStep(4)}
         onComplete={() => setStep("result")}
         resultReady={resultReady}
@@ -516,7 +558,11 @@ export default function AIRecommendScreen() {
             <AppText style={styles.chosenTitle} tone="sub" variant="meta">고른 조건</AppText>
             <View
               accessible
-              accessibilityLabel={`고른 조건. ${selectedConditions.map(({ label, value }) => `${label} ${value}`).join(", ")}`}
+              accessibilityLabel={
+                selectedConditions.some(({ value }) => value)
+                  ? `고른 조건. ${selectedConditions.filter(({ value }) => value).map(({ label, value }) => `${label} ${value}`).join(", ")}`
+                  : "고른 조건 없음"
+              }
               style={styles.chosenRow}
             >
               {selectedConditions.map(({ label, value }) => (
@@ -531,31 +577,48 @@ export default function AIRecommendScreen() {
             </AppText>
 
             {numericStep === 1 ? (
-              <View accessibilityLabel="국물 베이스" accessibilityRole="radiogroup" style={styles.optionGrid}>
-                {SOUP_OPTIONS.map((soup) => (
-                  <ChoiceTile
-                    key={soup.id}
-                    label={soup.label}
-                    soupType={soup.label}
-                    onPress={() => setInput("soupId", soup.id)}
-                    selected={inputs.soupId === soup.id}
-                    sub={soup.sub}
-                  />
-                ))}
-              </View>
+              <TicketMachine
+                hint="국물 버튼을 눌러 주세요"
+                picked={SOUP_OPTIONS.find((soup) => soup.id === inputs.soupId)?.label ?? ""}
+                step={1}
+              >
+                <View accessibilityLabel="국물 베이스" accessibilityRole="radiogroup" style={styles.optionGrid}>
+                  {SOUP_OPTIONS.map((soup) => (
+                    <TicketButton
+                      key={soup.id}
+                      label={soup.label}
+                      soupType={soup.label}
+                      onPress={() => setInput("soupId", soup.id)}
+                      selected={inputs.soupId === soup.id}
+                      sub={soup.sub}
+                    />
+                  ))}
+                </View>
+              </TicketMachine>
             ) : null}
 
             {numericStep === 2 || numericStep === 3 ? (
-              <View accessibilityLabel={numericStep === 2 ? "식사 상황" : "가장 중요한 요소"} accessibilityRole="radiogroup" style={styles.optionGrid}>
-                {(numericStep === 2 ? MOOD_OPTIONS : PRIORITY_OPTIONS).map((option) => (
-                  <ChoiceTile
-                    key={option.id}
-                    label={option.label}
-                    onPress={() => setInput(numericStep === 2 ? "moodId" : "priorityId", option.id)}
-                    selected={numericStep === 2 ? inputs.moodId === option.id : inputs.priorityId === option.id}
-                  />
-                ))}
-              </View>
+              <TicketMachine
+                hint={numericStep === 2 ? "상황 버튼을 눌러 주세요" : "가장 중요한 것을 눌러 주세요"}
+                picked={
+                  (numericStep === 2
+                    ? MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label
+                    : PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label) ?? ""
+                }
+                step={numericStep}
+              >
+                <View accessibilityLabel={numericStep === 2 ? "식사 상황" : "가장 중요한 요소"} accessibilityRole="radiogroup" style={styles.optionGrid}>
+                  {(numericStep === 2 ? MOOD_OPTIONS : PRIORITY_OPTIONS).map((option) => (
+                    <TicketButton
+                      key={option.id}
+                      label={option.label}
+                      onPress={() => setInput(numericStep === 2 ? "moodId" : "priorityId", option.id)}
+                      selected={numericStep === 2 ? inputs.moodId === option.id : inputs.priorityId === option.id}
+                      sub={option.sub}
+                    />
+                  ))}
+                </View>
+              </TicketMachine>
             ) : null}
 
             {numericStep === 4 ? (
@@ -972,24 +1035,33 @@ const styles = StyleSheet.create({
   promptLabel: { fontWeight: "700", marginBottom: spacing.x3 },
   help: { marginTop: spacing.x1_5, color: colors.textMuted },
 
-  optionGrid: {
+  // 식권 자판기: canvasSoft 면 위에 canvas 버튼. 큰 면이라 32pt, 버튼은 16pt
+  machine: { marginTop: spacing.x4, padding: spacing.x3, borderRadius: radii.lg, backgroundColor: colors.canvasSoft },
+  machineHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.x2, paddingTop: spacing.x1, paddingBottom: spacing.x3 },
+  machineBrand: { fontWeight: "700", letterSpacing: 0.5 },
+  machineSlot: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    columnGap: spacing.x2,
-    rowGap: spacing.x4,
-    marginTop: spacing.x3,
-  },
-  optionTile: {
-    flexBasis: "47%",
-    flexGrow: 1,
-    minHeight: 118,
-    padding: spacing.x4,
-    borderRadius: radii.sm,
-    backgroundColor: colors.canvasSoft,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "flex-start",
+    gap: spacing.x2,
+    minHeight: 36,
+    marginTop: spacing.x3,
+    paddingHorizontal: spacing.x3,
+    borderRadius: radii.sm,
+    backgroundColor: colors.canvas,
   },
-  optionName: { marginTop: spacing.x2 },
+  machineSlotBar: { width: 40, height: 6, borderRadius: radii.pill, backgroundColor: colors.secondary },
+  optionGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },
+  ticketButtonSlot: { flexBasis: "47%", flexGrow: 1, paddingBottom: BUTTON_SINK },
+  // 버튼 아래로 2pt 비어져 나온 턱. 버튼이 눌려 내려오면 가려진다
+  ticketButtonLip: { position: "absolute", top: BUTTON_SINK, left: 0, right: 0, bottom: 0, borderRadius: radii.sm, backgroundColor: colors.secondary },
+  ticketButton: { minHeight: 104, padding: spacing.x3, paddingRight: spacing.x7, borderRadius: radii.sm, justifyContent: "flex-end", gap: spacing.x0_5 },
+  lampWrap: { position: "absolute", top: spacing.x2, right: spacing.x2, width: 18, height: 18, alignItems: "center", justifyContent: "center" },
+  // 켜진 불빛 둘레의 옅은 번짐. 같은 파랑을 25%로 깐다
+  lampGlow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: radii.pill, backgroundColor: tasteAxis.satisfaction, opacity: 0.25 },
+  lamp: { width: 10, height: 10, borderRadius: radii.pill, backgroundColor: colors.secondary },
+  lampOn: { backgroundColor: tasteAxis.satisfaction },
+  soupSwatch: { height: 6, marginTop: spacing.x2, marginRight: -spacing.x4, borderRadius: radii.pill, borderWidth: line.hair, borderColor: colors.soupEdge },
   optionSub: { marginTop: spacing.x0_5 },
 
   promptWrap: { marginTop: spacing.x3 },
