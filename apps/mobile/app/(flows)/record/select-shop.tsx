@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import { Bookmark, ChevronDown, ChevronRight, Search, SearchX, X } from "lucide-react-native"
 import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, StyleSheet, TextInput, View } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
@@ -133,6 +133,7 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
 
 export default function SelectShopScreen() {
   const params = useLocalSearchParams<{ mode?: string; source?: string }>()
+  const insets = useSafeAreaInsets()
   const { state, actions } = useRaota()
   const shopsQuery = useShops()
   const bookmarked = useBookmarkedShops()
@@ -360,7 +361,8 @@ export default function SelectShopScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={listEmpty}
           ListHeaderComponent={listHeader}
-          contentContainerStyle={styles.listContent}
+          // 모달 시트도 화면 아래 끝까지 내려오므로 홈 인디케이터 영역 위에 끝 여백을 둔다
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.x8 }]}
           data={data}
           ListFooterComponent={mode !== "saved" && activeQuery.error && data.length ? (
             <EmptyState actionLabel="다시 불러오기" onAction={activeQuery.loadMore} title="다음 가게를 불러오지 못했어요" />
@@ -446,7 +448,7 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: colors.selected },
   tabPressed: { backgroundColor: colors.surfacePressed },
   listHeader: { minHeight: touchTarget, justifyContent: "center" },
-  listContent: { paddingHorizontal: spacing.gutter, paddingTop: 0, paddingBottom: spacing.x8, flexGrow: 1 },
+  listContent: { paddingHorizontal: spacing.gutter, paddingTop: 0, flexGrow: 1 },
   listCaptionButton: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x1 },
   listCaption: { color: colors.textMuted },
   quickKeywords: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x2 },

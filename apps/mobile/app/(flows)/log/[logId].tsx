@@ -416,7 +416,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     borderTopWidth: line.base,
   },
-  noComments: { textAlign: "center", paddingTop: spacing.x4, paddingBottom: spacing.x6, paddingHorizontal: spacing.gutter },
+  // 끝 여백은 listContent의 paddingBottom 하나로만 둔다
+  noComments: { textAlign: "center", paddingTop: spacing.x4, paddingHorizontal: spacing.gutter },
 
   commentRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x2, paddingHorizontal: spacing.gutter, paddingVertical: spacing.x3_5 },
   commentBody: { flex: 1, minWidth: 0, gap: spacing.x1, paddingTop: spacing.x0_5 },

@@ -166,7 +166,6 @@ export const spacing = {
   /** 큰 구획 사이. 40pt는 너무 벌어진다는 피드백으로 32pt로 맞췄다 */
   section: 32,
   component: 12,
-  screenBottom: 56,
 } as const
 
 /** 16·32pt와 알약 세 가지가 전부다(rounded.md · lg · full). */

@@ -17,20 +17,6 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native"
-import Animated, {
-  cancelAnimation,
-  Easing,
-  runOnJS,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withSpring,
-  withTiming,
-  type SharedValue,
-} from "react-native-reanimated"
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import {
@@ -41,11 +27,14 @@ import {
   typeCountsOf,
   type DemoBowl,
   type Shop,
+  type ShopVisit,
   type TasteIdentity,
+  type TasteScores,
   type RamenLog,
 } from "@raota/shared"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, BottomSheet, Button, Chip, EmptyState, SoupDot, Tag, Toast } from "@/src/components/ui"
+import { tasteLeanWords } from "@/src/components/TasteStory"
+import { AppText, BottomSheet, Button, Chip, EmptyState, Tag, Toast } from "@/src/components/ui"
 import {
   useActivityLevel,
   useBookmarkedShops,
@@ -55,6 +44,7 @@ import {
   useMyLogs,
   useLocalShops,
   useTasteIdentity,
+  useTasteProfile,
   useMonthlyReports,
   useVisitedShops,
 } from "@/src/data"
@@ -78,9 +68,6 @@ const BIO_MAX = 60
 const LEVEL_LABELS = ["1그릇", "2그릇", "3그릇", "4그릇 이상"]
 const CELL = 11
 const CELL_GAP = 3
-const REVEAL_EASE = Easing.bezier(0.22, 1, 0.36, 1)
-// 탭 화면이 다시 마운트되어도 같은 그릇 수에는 한 번만 재생한다.
-const revealedBowlCounts = new Map<string, number>()
 
 const shortDate = (iso: string) => iso.slice(5).replace("-", ".")
 const haptic = () => void Haptics.selectionAsync().catch(() => undefined)
@@ -197,12 +184,13 @@ function MemberView() {
   const { height: windowHeight } = useWindowDimensions()
   const focused = useIsFocused()
   const { currentUser: user, actions } = useRaota()
-  const { data: recordCount, isLoading: countLoading } = useBowlCount()
+  const { data: recordCount } = useBowlCount()
   const { data: bowls } = useMyBowls()
   const { data: visits } = useVisitedShops()
   const { data: streak } = useLongestStreak()
   const { data: level } = useActivityLevel()
   const { data: identity } = useTasteIdentity()
+  const { data: taste } = useTasteProfile()
   const { data: myLogs } = useMyLogs()
   const { data: saved } = useBookmarkedShops()
   const { data: shops } = useLocalShops()
@@ -225,48 +213,6 @@ function MemberView() {
   const calendarRef = useRef<ScrollView>(null)
   const [compactHeader, setCompactHeader] = useState(false)
   const [profileHeight, setProfileHeight] = useState(0)
-  const reducedMotion = useReducedMotion()
-  const shouldReveal = !reducedMotion && !!user && revealedBowlCounts.get(String(user.id)) !== recordCount
-  const animatedCount = useSharedValue(shouldReveal ? 0 : recordCount)
-  const levelReveal = useSharedValue(shouldReveal ? 0 : 1)
-  const [dotRun, setDotRun] = useState(0)
-  const pendingDots = useRef(false)
-
-  useEffect(() => {
-    if (reducedMotion) {
-      animatedCount.value = recordCount
-      levelReveal.value = 1
-      pendingDots.current = false
-    }
-    if (!focused || countLoading || !user) return
-    const id = String(user.id)
-    if (revealedBowlCounts.get(id) === recordCount) return
-    revealedBowlCounts.set(id, recordCount)
-    if (reducedMotion) return
-    animatedCount.value = 0
-    animatedCount.value = withTiming(recordCount, { duration: 1100, easing: Easing.out(Easing.cubic) })
-    levelReveal.value = 0
-    levelReveal.value = withDelay(500, withTiming(1, { duration: 900, easing: REVEAL_EASE }))
-    if (tab === "logs") setDotRun((run) => run + 1)
-    else pendingDots.current = true
-  }, [animatedCount, countLoading, focused, levelReveal, recordCount, reducedMotion, tab, user?.id])
-
-  useEffect(() => {
-    if (tab !== "logs" || !pendingDots.current || reducedMotion) return
-    pendingDots.current = false
-    setDotRun((run) => run + 1)
-  }, [reducedMotion, tab])
-
-  useEffect(() => () => {
-    cancelAnimation(animatedCount)
-    cancelAnimation(levelReveal)
-  }, [animatedCount, levelReveal])
-
-  const levelFillStyle = useAnimatedStyle(() => ({
-    transformOrigin: "left center",
-    transform: [{ scaleX: levelReveal.value }],
-  }))
-
   const shopByName = (name: string) => shops.find((shop) => shop.name === name)
   const today = seoulToday()
 
@@ -488,7 +434,7 @@ function MemberView() {
           <View style={styles.stats}>
             {stats.map((stat, index) => (
               <View accessibilityLabel={`${stat.label} ${stat.value}${stat.unit}`} accessible key={stat.label} style={styles.stat}>
-                {index === 0 ? <BowlCountNumber count={animatedCount} target={recordCount} /> : <AppText style={styles.statValue} variant="secondary">{stat.value}</AppText>}
+                <AppText style={[styles.statValue, index === 0 && styles.tabular]} variant="secondary">{stat.value}</AppText>
                 <AppText variant="secondary">{stat.unit}</AppText>
                 {index === 0 ? <AppText tone="muted" variant="secondary"> · </AppText> : null}
               </View>
@@ -511,7 +457,7 @@ function MemberView() {
             style={({ pressed }) => [styles.levelProgress, pressed && styles.gradePressed]}
           >
             <View style={styles.levelTrack}>
-              <Animated.View style={[styles.levelFill, { width: `${level.progress}%` as `${number}%` }, levelFillStyle]} />
+              <View style={[styles.levelFill, { width: `${level.progress}%` as `${number}%` }]} />
             </View>
             <View style={styles.levelCaption}>
               <AppText tone="muted" variant="meta">
@@ -531,18 +477,17 @@ function MemberView() {
           {tabBar}
         </View>
 
-        <View style={[styles.main, { minHeight: Math.max(0, windowHeight - insets.top - touchTarget * 2 - spacing.screenBottom) }]}>
+        <View style={[styles.main, { minHeight: Math.max(0, windowHeight - insets.top - touchTarget * 2 - spacing.x8) }]}>
           {tab === "logs" ? (
             <>
               <MyTasteTicket
                 bowls={bowls}
-                dotRun={dotRun}
-                initiallyHidden={shouldReveal || pendingDots.current}
-                reducedMotion={reducedMotion}
                 identity={identity}
                 onOpen={() => router.push("/taste")}
                 onStart={() => router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })}
                 recordCount={recordCount}
+                scores={taste.profile.scores}
+                visits={visits}
               />
               <MonthlyTasteEntry onOpen={() => router.push("/taste/archive")} />
               <TasteBoards bowls={bowls} myLogs={myLogs} shops={shops} />
@@ -1019,134 +964,53 @@ function ProfileAvatar({ uri, size }: { uri: string | null; size: number }) {
   )
 }
 
-/** 숫자만 갱신하고 최종 자릿수만큼만 자리를 잡아 둔다. 자릿수를 더 잡으면 작은 수 앞이 비어 보인다. */
-function BowlCountNumber({ count, target }: { count: SharedValue<number>; target: number }) {
-  const [displayed, setDisplayed] = useState(() => Math.round(count.value))
-  useAnimatedReaction(
-    () => Math.round(count.value),
-    (next, previous) => {
-      if (next !== previous) runOnJS(setDisplayed)(next)
-    },
-    [count],
-  )
-
-  return (
-    <View style={styles.countSlot}>
-      <AppText accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.statValue, styles.tabular, styles.invisible]} variant="secondary">
-        {"8".repeat(String(target).length)}
-      </AppText>
-      <AppText style={[styles.statValue, styles.tabular, styles.countOverlay]} variant="secondary">{displayed}</AppText>
-    </View>
-  )
-}
-
-function AnimatedBowlDot({
-  type,
-  index,
-  total,
-  run,
-  initiallyHidden,
-  reducedMotion,
-}: {
-  type: string
-  index: number
-  total: number
-  run: number
-  initiallyHidden: boolean
-  reducedMotion: boolean
-}) {
-  const scale = useSharedValue(initiallyHidden ? 0 : 1)
-  const previousRun = useRef(run)
-  // 숨긴 채 마운트된 점은 재생이 건너뛰어져도 반드시 다시 보여야 한다.
-  const awaitingReveal = useRef(initiallyHidden)
-
-  useEffect(() => {
-    if (reducedMotion) {
-      scale.value = 1
-      previousRun.current = run
-      awaitingReveal.current = false
-    } else if (run !== previousRun.current) {
-      previousRun.current = run
-      awaitingReveal.current = false
-      scale.value = 0
-      // 점이 많아도 마지막 점까지 1초 안에 들어오게 간격만 좁힌다.
-      const delay = index * Math.min(18, 560 / Math.max(1, total - 1))
-      scale.value = withDelay(delay, withSequence(
-        withTiming(1.3, { duration: 120, easing: REVEAL_EASE }),
-        withSpring(1, { duration: 220, dampingRatio: 0.68 }),
-      ))
-    } else if (awaitingReveal.current && !initiallyHidden) {
-      // 같은 그릇 수라 연출을 건너뛴 경우: 재생 없이 그대로 보인다.
-      awaitingReveal.current = false
-      scale.value = 1
-    }
-  }, [index, initiallyHidden, reducedMotion, run, scale, total])
-
-  useEffect(() => () => cancelAnimation(scale), [scale])
-
-  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
-  return (
-    <Animated.View style={[styles.dotSlot, popStyle]}>
-      <SoupDot type={type} size={15} />
-    </Animated.View>
-  )
-}
-
-/** 화면에는 원장의 다섯 종류별 국물 색 점과 해당 개수만 담는다. */
+/**
+ * 리포트 이야기 카드의 세 장(국물 · 취향 · 단골집)을 한 줄씩 미리 보여 준다.
+ * 국물 색 점은 바로 아래 종류별 사진 보드와 겹쳐서 뺐다(사용자 결정, 2026.10.20).
+ */
 function MyTasteTicket({
   bowls,
   identity,
   recordCount,
-  dotRun,
-  initiallyHidden,
-  reducedMotion,
+  scores,
+  visits,
   onOpen,
   onStart,
 }: {
   bowls: DemoBowl[]
   identity: TasteIdentity
   recordCount: number
-  dotRun: number
-  initiallyHidden: boolean
-  reducedMotion: boolean
+  scores: TasteScores
+  visits: ShopVisit[]
   onOpen: () => void
   onStart: () => void
 }) {
   const groups = typeCountsOf(bowls)
-  const populated = MENU_CATEGORY_NAMES.filter((type) => groups[type] > 0)
+  const top = MENU_CATEGORY_NAMES.filter((type) => groups[type] > 0).sort((a, b) => groups[b] - groups[a])[0]
+  const { broth, noodle } = tasteLeanWords(scores)
+  const favorite = visits[0]
+  const cells = top
+    ? [
+        { label: "많이 먹은 국물", value: `${top} ${groups[top]}그릇` },
+        { label: "나의 취향", value: `${broth}에 ${noodle}` },
+        ...(favorite ? [{ label: "단골집", value: `${favorite.name} ${favorite.visitCount}번` }] : []),
+      ]
+    : []
   return (
     <View style={styles.reportTicket} testID="my-report-ticket">
       <View style={styles.ticketHead}>
         <AppText accessibilityRole="header" style={styles.ticketTitle} variant="sectionTitle">{identity.title}</AppText>
         <AppText capScale style={styles.tabular} tone="muted" variant="meta">종합 감정 · {recordCount}그릇</AppText>
       </View>
-      {populated.length ? (
-        <>
-          <View accessibilityLabel={`그릇 감정서. ${populated.map((type) => `${type} ${groups[type]}그릇`).join(", ")}`} accessible style={styles.bowlDots}>
-            {(() => {
-              // 위치 대신 그릇 자체로 키를 잡아, 중간 기록이 지워져도 뒤의 점이 다시 마운트되지 않게 한다.
-              const seen = new Map<string, number>()
-              return bowls.map((_, index) => {
-                const bowl = bowls[bowls.length - 1 - index]
-                const base = `${bowl.date}-${bowl.shop}-${bowl.menu}`
-                const nth = seen.get(base) ?? 0
-                seen.set(base, nth + 1)
-                return (
-                  <AnimatedBowlDot
-                    index={index}
-                    initiallyHidden={initiallyHidden}
-                    key={`${base}-${nth}`}
-                    reducedMotion={reducedMotion}
-                    run={dotRun}
-                    total={bowls.length}
-                    type={menuCategoryOf(bowl.type)}
-                  />
-                )
-              })
-            })()}
-          </View>
-          <AppText capScale tone="muted" variant="meta">{populated.map((type) => `${type} ${groups[type]}`).join(" · ")}</AppText>
-        </>
+      {cells.length ? (
+        <View accessibilityLabel={`리포트 미리 보기. ${cells.map((cell) => `${cell.label} ${cell.value}`).join(", ")}`} accessible style={styles.previewRow}>
+          {cells.map((cell, index) => (
+            <View key={cell.label} style={[styles.previewCell, index > 0 && styles.previewDivider]}>
+              <AppText capScale numberOfLines={1} tone="muted" variant="meta">{cell.label}</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} variant="bodyStrong">{cell.value}</AppText>
+            </View>
+          ))}
+        </View>
       ) : (
         <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">{identity.description}</AppText>
       )}
@@ -1364,7 +1228,7 @@ const styles = StyleSheet.create({
   guestLogo: { width: 64, height: 64, alignSelf: "center" },
   guestActions: { marginTop: spacing.section, gap: spacing.x4 },
   policyLinks: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: spacing.section },
-  scroll: { paddingBottom: spacing.screenBottom },
+  scroll: { paddingBottom: spacing.x8 },
   profile: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.x3, alignItems: "center" },
   profileTop: { width: "100%", height: touchTarget, alignItems: "flex-end", justifyContent: "center" },
   settingsButton: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center", borderRadius: radii.pill },
@@ -1379,14 +1243,11 @@ const styles = StyleSheet.create({
   stats: { flexDirection: "row", alignItems: "center", justifyContent: "center", flexWrap: "wrap", marginTop: spacing.x3 },
   stat: { flexDirection: "row", alignItems: "center" },
   statValue: { fontWeight: "700", color: colors.ink },
-  countSlot: { position: "relative" },
-  countOverlay: { position: "absolute", top: 0, right: 0 },
   gradeLevel: { minHeight: touchTarget, paddingHorizontal: spacing.x1, alignItems: "center", justifyContent: "center" },
   gradePressed: { backgroundColor: colors.surfacePressed, borderRadius: radii.sm },
   levelProgress: { minHeight: touchTarget, alignItems: "center", justifyContent: "center", gap: spacing.x2, marginTop: spacing.x1, paddingHorizontal: spacing.x4 },
   levelTrack: { width: 168, maxWidth: "100%", height: 4, borderRadius: radii.pill, backgroundColor: colors.secondary, overflow: "hidden" },
   levelFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.ink },
-  dotSlot: { width: 15, height: 15 },
   levelCaption: { flexDirection: "row", alignItems: "center", gap: spacing.x0_5 },
   stickyTabs: { backgroundColor: colors.paper, zIndex: 1, paddingHorizontal: spacing.gutter },
   compactNav: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -1400,7 +1261,10 @@ const styles = StyleSheet.create({
   reportTicket: { padding: spacing.x4, borderRadius: radii.sm, backgroundColor: colors.canvasSoft, gap: spacing.x3 },
   ticketHead: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: spacing.x1 },
   ticketTitle: { flexShrink: 1 },
-  bowlDots: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.x1, rowGap: spacing.x1_5 },
+  previewRow: { flexDirection: "row", paddingVertical: spacing.x1 },
+  previewCell: { flex: 1, gap: spacing.x1, paddingRight: spacing.x3 },
+  // 칸 사이는 카드 안에 카드를 두지 않고 세로 실선 하나로만 나눈다
+  previewDivider: { paddingLeft: spacing.x3, borderLeftWidth: line.hair, borderLeftColor: colors.border },
   boards: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.x2, rowGap: spacing.x4, marginHorizontal: -spacing.x1 },
   board: { width: "48%", flexGrow: 1, maxWidth: "49%" },
   collage: { height: 116, flexDirection: "row", gap: 2, borderRadius: radii.sm, backgroundColor: colors.canvasSoft, overflow: "hidden" },

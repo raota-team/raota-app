@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 import Animated, { Easing, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
+import type { Edge } from "react-native-safe-area-context"
 
 import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
@@ -27,6 +28,8 @@ import { colors, line, maxFontScale, radii, spacing, touchTarget, typography, us
 
 type CuratorShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec">>
 type Step = 1 | 2 | 3 | 4 | "loading" | "result"
+
+const ALL_EDGES: Edge[] = ["top", "left", "right", "bottom"]
 
 const SOUP_OPTIONS = [
   { id: "shoyu", label: "쇼유", sub: "간장 타레", keys: ["쇼유"] },
@@ -471,7 +474,8 @@ export default function AIRecommendScreen() {
           : true
 
   return (
-    <Screen contentContainerStyle={styles.flex} keyboardAvoiding>
+    // 아래 고정 버튼이 없는 화면(추천 실패)은 홈 인디케이터 영역을 비워 둔다
+    <Screen contentContainerStyle={styles.flex} edges={numericStep || result ? undefined : ALL_EDGES} keyboardAvoiding>
       <Header
         align="center"
         backLabel={numericStep && numericStep > 1 ? "이전 단계로" : "뒤로가기"}
@@ -841,7 +845,7 @@ function CurationLoading({
     : shop.address.trim().split(/\s+/).slice(0, 2).join(" ")
 
   return (
-    <Screen contentContainerStyle={styles.flex}>
+    <Screen contentContainerStyle={styles.flex} edges={ALL_EDGES}>
       <Header align="center" backLabel="추천 조건으로 돌아가기" onBack={onBack} style={styles.flowHeader} title="AI 라멘 큐레이터" titleStyle={styles.navTitle} />
       <ScrollView
         contentContainerStyle={[styles.loadingBody, !ticketHeight || !stubHeight ? styles.invisible : undefined]}
@@ -941,7 +945,7 @@ const styles = StyleSheet.create({
   flowHeader: { minHeight: 52 },
   navTitle: { fontSize: 18, lineHeight: 24 },
 
-  body: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x10 },
+  body: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x8 },
   progressTrack: {
     height: 4,
     borderRadius: radii.pill,
@@ -1064,7 +1068,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: spacing.x4,
     paddingTop: spacing.x6,
-    paddingBottom: spacing.x10,
+    paddingBottom: spacing.x8,
   },
   loadingTitleVisible: { position: "absolute", top: 0, left: 0, right: 0, textAlign: "center" },
   loadingSub: { textAlign: "center", marginTop: spacing.x1_5 },

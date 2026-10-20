@@ -925,7 +925,7 @@ export default function NewRecordScreen() {
             <View style={styles.divider} />
 
             {/* 메모는 쓰고 싶을 때만 펼쳐서 적는다. */}
-            <View style={styles.section}>
+            <View style={[styles.section, styles.lastSection]}>
               <SectionHeader
                 meta={`선택 · ${note.length}/${RECORD_NOTE_MAX_LENGTH}`}
                 metaStyle={styles.counterMeta}
@@ -1082,6 +1082,8 @@ const styles = StyleSheet.create({
   medium: { fontWeight: "500" },
   dateValue: { flex: 1, minWidth: 0 },
   section: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x5, paddingBottom: spacing.x5 },
+  // 끝 여백은 bottomSpace 하나로만 둔다
+  lastSection: { paddingBottom: 0 },
   divider: { height: line.hair, backgroundColor: colors.border },
   field: { marginBottom: spacing.x4 },
   introShopField: { marginBottom: spacing.x1 },

@@ -116,8 +116,7 @@ describe("my screen (demo account)", () => {
     expect(view.getByTestId("my-report-ticket")).toBeTruthy()
     expect(view.getByText("종합 감정 · 42그릇")).toBeTruthy()
     expect(view.getByText("진한 돈골파")).toBeTruthy()
-    expect(view.getByLabelText(/^그릇 감정서\. 돈코츠 14그릇/)).toBeTruthy()
-    expect(view.getByText("돈코츠 14 · 쇼유 12 · 시오 8 · 미소 4 · 기타 4")).toBeTruthy()
+    expect(view.getByLabelText(/^리포트 미리 보기\. 많이 먹은 국물 돈코츠 14그릇, 나의 취향 \S+ \S+에 \S+ \S+, 단골집 .+ \d+번$/)).toBeTruthy()
     expect(view.queryByText(/^이번 달 \d+그릇$/)).toBeNull()
     expect(view.queryByRole("button", { name: "최근 기록으로 다시 정리" })).toBeNull()
 
@@ -332,7 +331,7 @@ describe("my screen (demo account)", () => {
     expect(view.getByText("아직 취향을 모으는 중")).toBeTruthy()
     expect(view.getByText("아직 기록이 없어요")).toBeTruthy()
     expect(view.queryByText("진한 돈골파")).toBeNull()
-    expect(view.queryByLabelText(/^그릇 감정서/)).toBeNull()
+    expect(view.queryByLabelText(/^리포트 미리 보기/)).toBeNull()
     expect(view.queryByRole("button", { name: "최근 기록으로 다시 정리" })).toBeNull()
     await fireEvent.press(view.getAllByRole("button", { name: "첫 그릇 기록하기" })[0])
     expect(router.push).toHaveBeenCalledWith({ pathname: "/record/select-shop", params: { mode: "nearby" } })

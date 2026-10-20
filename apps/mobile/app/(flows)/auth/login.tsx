@@ -287,7 +287,8 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
-  content: { flexGrow: 1, paddingBottom: spacing.x6 },
+  // 약관 줄의 paddingBottom(16)과 더해 홈 인디케이터 위 32pt
+  content: { flexGrow: 1, paddingBottom: spacing.x4 },
   collage: { flexDirection: "row", gap: 6, marginHorizontal: 10, overflow: "hidden", borderRadius: radii.sm },
   collageColumn: { flex: 1, gap: 6 },
   collageColumnMiddle: { marginTop: -36 },
