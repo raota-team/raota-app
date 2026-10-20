@@ -131,7 +131,7 @@ Things Pinterest does not have and only RAOTA has. These four separate RAOTA fro
 - **Text color**: headings `ink`, body `body` (`inkSub`), secondary `mute` (`textMuted`). Build hierarchy with weight and size, not color.
 - **Surfaces**: background `canvas`; cards, chips, search bar `surface-card` (`canvasSoft`); secondary buttons `secondary-bg`.
 - **Lines**: list dividers `hairline` (`border`), text inputs `ash` (`outline`). Draw no other lines.
-- **Dark mode**: follows the system setting. On iOS, `colors` are `DynamicColorIOS`, so they switch automatically. Selected states use `selected` (a light gray `#5C5C55` in dark mode instead of a white surface), and pills on photos use `photoPill` (nearly black at 88% in dark mode), so white surfaces never glare in dark mode. Never use an `ink` surface for a selected state. `onDark` is only for text on red. When a color must be a string, use `usePalette()`.
+- **Dark mode**: follows the system setting. On iOS, `colors` are `DynamicColorIOS`, so they switch automatically. Selected states use `selected` (a light gray `#5C5C55` in dark mode instead of a white surface), and pills on photos use `photoPill` (nearly black at 88% in dark mode), so white surfaces never glare in dark mode. Never use an `ink` surface for a selected state. `onDark` is only for text on red and on the warm charcoal `deep` surface (toast, report story first card, My report deck). When a color must be a string, use `usePalette()`.
 - No yellow stickers and no soy-sauce-colored signboards.
 
 ## Typography
