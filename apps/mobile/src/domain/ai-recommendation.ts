@@ -1,6 +1,36 @@
-import type { Shop, TasteReport } from "@raota/shared"
+import { RAMEN_TYPES, type Shop, type ShopCatalogItem, type TasteReport } from "@raota/shared"
 
 import { compareShopIds, distanceBetweenCoordinates, matchesShopRamenType } from "./shops"
+
+/** 큐레이터가 고를 수 있는 국물 이름. 서버 분류(RAMEN_TYPES)에 토리파이탄을 더하고 "기타"는 뺀다 */
+const CURATOR_SOUP_TYPES: readonly string[] = [...RAMEN_TYPES.filter((type) => type !== "기타"), "토리파이탄"]
+const PORK_TYPES: Record<string, true> = { 돈코츠: true, 이에케: true }
+
+function catalogStyleType(shop: Shop): string {
+  const style = (shop as Shop & Partial<Pick<ShopCatalogItem, "style">>).style
+  return style?.replace(/\s*라멘$/, "").trim() ?? ""
+}
+
+/**
+ * 큐레이터에서 고른 국물과 매장 종류가 맞는지. 소개글 속 낱말(돈코츠쇼유의 "쇼유" 같은)로는 맞추지 않는다.
+ * 서버 분류가 있으면 그것만 믿고, 없으면 대표 스타일이 다른 국물인 매장을 먼저 걸러 낸 뒤
+ * 나머지 판단(돈코츠·이에케 구분, 스펙·태그 키)은 지도 필터와 같은 matchesShopRamenType에 맡긴다.
+ */
+export function matchesSoupChoice(shop: Shop, soup: string, keys?: readonly string[]): boolean {
+  if (shop.ramenTypes?.length && RAMEN_TYPES.includes(soup)) return shop.ramenTypes.includes(soup)
+  const style = catalogStyleType(shop)
+  const otherSoup = style !== soup && CURATOR_SOUP_TYPES.includes(style)
+  // 돈코츠와 이에케는 같은 계열이라 판단을 matchesShopRamenType에 넘긴다
+  if (otherSoup && !(PORK_TYPES[style] && PORK_TYPES[soup])) return false
+  return matchesShopRamenType(shop, soup, keys)
+}
+
+/** 매장 자신의 라멘 종류 이름(사진 위 종류 표시용). 모르면 빈 문자열 */
+export function shopSoupLabel(shop: Shop): string {
+  const style = catalogStyleType(shop)
+  if (style) return style
+  return shop.ramenTypes?.find((type) => type !== "기타") ?? ""
+}
 
 export interface RecommendationOrigin {
   latitude: number

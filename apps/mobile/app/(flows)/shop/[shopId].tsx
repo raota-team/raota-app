@@ -24,6 +24,7 @@ import { PhotoViewer } from "@/src/components/PhotoViewer"
 import { ShopTasteCard } from "@/src/components/ShopTasteCard"
 import { EdgeBackZone } from "@/src/components/EdgeBackZone"
 import { AppText, BottomSheet, Button, EmptyState, Header, IconButton, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
+import { isRemote } from "@/src/api/config"
 import { useBookmarkedShops, useShop, useShops } from "@/src/data/hooks"
 import { naverMapLinks } from "@/src/domain/naverMap"
 import { isLogVisibleTo } from "@/src/domain/lounge"
@@ -73,7 +74,16 @@ function goBack() {
 }
 
 
+/*
+ * 실패한 서버 읽기는 캐시하지 않으므로 본문을 새 key로 다시 올리면 실패한 요청만 다시 보낸다.
+ * 데이터 hook에 refetch가 생기면 이 key 대신 그것을 부른다.
+ */
 export default function ShopDetailScreen() {
+  const [retryKey, setRetryKey] = useState(0)
+  return <ShopDetailLoader key={retryKey} onRetry={() => setRetryKey((key) => key + 1)} />
+}
+
+function ShopDetailLoader({ onRetry }: { onRetry: () => void }) {
   const { shopId } = useLocalSearchParams<{ shopId?: string }>()
   const shopQuery = useShop(typeof shopId === "string" && shopId.length > 0 ? shopId : null)
   const shop = shopQuery.data as DetailShop | null
@@ -86,14 +96,16 @@ export default function ShopDetailScreen() {
         </Screen>
       )
     }
+    // 서버에서 못 읽었으면 다시 불러오기, 없는 매장이면 지도에서 다시 찾기. 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않는다
+    const retryable = Boolean(shopQuery.error) && isRemote("shops")
     return (
       <Screen>
         <Header backLabel="뒤로가기" onBack={goBack} title="매장 정보" />
         <EmptyState
-          actionLabel="지도에서 다시 찾기"
+          actionLabel={retryable ? "다시 불러오기" : "지도에서 다시 찾기"}
           description={shopQuery.error ? "잠시 후 다시 열어 주세요." : "삭제되었거나 잘못된 매장 링크일 수 있어요."}
           icon={<MapPin color={colors.textMuted} size={28} />}
-          onAction={() => router.replace("/native/map")}
+          onAction={retryable ? onRetry : () => router.replace("/native/map")}
           style={styles.flex}
           title={shopQuery.error ? "매장 정보를 불러오지 못했어요" : "매장을 찾을 수 없어요"}
         />

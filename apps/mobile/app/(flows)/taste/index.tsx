@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
-import { ArrowRight, RotateCw, Share2 } from "lucide-react-native"
+import { ArrowRight, Share2 } from "lucide-react-native"
 import { AccessibilityInfo, Platform, Pressable, ScrollView, Share, StyleSheet, View, findNodeHandle, useWindowDimensions } from "react-native"
 import Animated, {
   Easing,
@@ -524,13 +524,8 @@ export default function TasteReportScreen() {
   const finishGeneration = () => {
     setGenerating(false)
     setGeneratedAt(seoulTime())
-    setToast(`전체 ${recordCount}그릇으로 취향을 다시 정리했어요`)
+    setToast(`전체 ${bowls.length}그릇으로 취향을 다시 정리했어요`)
     scrollRef.current?.scrollTo({ y: 0, animated: false })
-  }
-
-  const restart = () => {
-    setToast(null)
-    setGenerating(true)
   }
 
   const shareText = [
@@ -766,17 +761,14 @@ export default function TasteReportScreen() {
                 </View>
               ) : null}
 
+              {/* 다 읽은 끝에는 다시 정리(같은 수치를 다시 훑기)보다 남에게 보여 주는 쪽이 할 일이다. 헤더 공유와 같은 동작이다 */}
               <View style={[styles.block, styles.bottom]}>
                 <Button
                   fullWidth
-                  leftIcon={<RotateCw color={colors.ink} size={16} />}
-                  onPress={restart}
-                  title="최근 기록으로 다시 정리"
-                  variant="secondary"
+                  leftIcon={<Share2 color={colors.onDark} size={16} />}
+                  onPress={handleShare}
+                  title="리포트 공유하기"
                 />
-                <AppText lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.gapTop3]} tone="sub" variant="meta">
-                  새 기록을 남기면 이 화면의 수치는 이미 더해져 있어요. 다시 정리하면 처음부터 다시 훑어봐요.
-                </AppText>
               </View>
             </>
           )}

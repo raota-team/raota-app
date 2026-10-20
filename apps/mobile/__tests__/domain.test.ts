@@ -1,7 +1,7 @@
 import type { CreateRamenLogInput, RamenLog, Shop } from "@raota/shared"
 
 import { INITIAL_LOGS, INITIAL_TASTE_REPORTS, SHOPS } from "@/src/data/fixtures"
-import { shopTasteSummaryOf } from "@/src/domain/shopTaste"
+import { revisitHeadlineOf, SHOP_TASTE_RATIO_MIN_LOGS, shopTasteSummaryOf } from "@/src/domain/shopTaste"
 import {
   calculateMapClusters,
   filterAndSortShops,
@@ -52,6 +52,16 @@ describe("이 가게의 맛 요약", () => {
 
   it("says nothing when no log has scores", () => {
     expect(shopTasteSummaryOf([{ ...INITIAL_LOGS[0], scores: undefined }])).toBeNull()
+  })
+
+  it("speaks in head counts and draws the ratio only from five logs", () => {
+    const summaryOf = (revisits: RamenLog["revisit"][]) =>
+      shopTasteSummaryOf(revisits.map((revisit) => logWith({ satisfaction: 4, brothDensity: 3, noodleFirmness: 3, topping: 3, revisit: 4 }, revisit)))!
+    expect(SHOP_TASTE_RATIO_MIN_LOGS).toBe(5)
+    expect(revisitHeadlineOf(summaryOf(["자주 감", "자주 감"]))).toBe("2명 모두 또 가고 싶대요")
+    expect(revisitHeadlineOf(summaryOf(["자주 감", "가끔 생각남", "자주 감"]))).toBe("3명 중 2명이 또 가고 싶대요")
+    expect(revisitHeadlineOf(summaryOf(["자주 감"]))).toBe("1명이 또 가고 싶대요")
+    expect(revisitHeadlineOf(summaryOf(["가끔 생각남"]))).toBe("1명이 한 번쯤 가 볼 만하대요")
   })
 })
 

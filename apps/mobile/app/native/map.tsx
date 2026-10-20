@@ -50,6 +50,15 @@ type LocationStatus = "loading" | "granted" | "denied"
  * 위치 권한을 이 화면에서 묻고, 거절하면 기본 지역과 설정 경로를 보여준다.
  */
 export default function MapScreen() {
+  const [retryKey, setRetryKey] = useState(0)
+  return <MapBody key={retryKey} onRetry={() => setRetryKey((key) => key + 1)} />
+}
+
+/*
+ * 실패한 서버 읽기는 캐시하지 않으므로 본문을 새 key로 다시 올리면 실패한 요청만 다시 보낸다.
+ * 데이터 hook에 refetch가 생기면 이 key 대신 그것을 부른다.
+ */
+function MapBody({ onRetry }: { onRetry: () => void }) {
   const insets = useSafeAreaInsets()
   const mapRef = useRef<MapView>(null)
   const [viewMode, setViewMode] = useState<"map" | "list">("map")
@@ -193,7 +202,7 @@ export default function MapScreen() {
 
   const deniedNotice =
     locationStatus === "denied" ? (
-      <MapLocationNotice onAction={() => void Linking.openSettings()} />
+      <MapNotice actionLabel="설정 열기" icon={<MapPin color={colors.inkSub} size={16} />} message="위치 권한이 없어 망원·합정 일대를 보여드려요." onAction={() => void Linking.openSettings()} />
     ) : null
 
   return (
@@ -269,7 +278,14 @@ export default function MapScreen() {
             <View pointerEvents="box-none" style={[styles.mapOverlays, { top: headerHeight + spacing.x2 }]}>
               {deniedNotice ? <View style={styles.noticeWrap}>{deniedNotice}</View> : null}
               {filters.error ? (
-                <View style={styles.noticeWrap}><AppText tone="sub" variant="secondary">라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요.</AppText></View>
+                <View style={styles.noticeWrap}>
+                  <MapNotice
+                    // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
+                    actionLabel={filters.remote ? "다시 불러오기" : undefined}
+                    message={filters.remote ? "라멘집을 불러오지 못했어요." : "라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요."}
+                    onAction={onRetry}
+                  />
+                </View>
               ) : null}
               {locationStatus !== "loading" ? (
                 <View style={styles.controls}>
@@ -286,31 +302,33 @@ export default function MapScreen() {
       ) : (
         <View style={styles.flex}>
           <MapHeader filters={filters} onToggleView={() => setViewMode("map")} viewMode="list" />
-          <ShopListView filters={filters} notice={deniedNotice} />
+          <ShopListView filters={filters} notice={deniedNotice} onRetry={onRetry} />
         </View>
       )}
     </View>
   )
 }
 
-/** 네이티브 지도에서는 권한 안내를 얇은 정보 행으로 두어 지도를 더 보여준다 */
-function MapLocationNotice({ onAction }: { onAction: () => void }) {
+/** 네이티브 지도에서는 권한·불러오기 안내를 얇은 정보 행으로 두어 지도를 더 보여준다 */
+function MapNotice({ icon, message, actionLabel, onAction }: { icon?: React.ReactNode; message: string; actionLabel?: string; onAction: () => void }) {
   return (
     <View accessibilityLiveRegion="polite" style={styles.mapNotice}>
-      <MapPin color={colors.inkSub} size={16} />
+      {icon}
       <AppText lineBreakStrategyIOS="hangul-word" style={styles.noticeMessage} tone="sub" variant="secondary">
-        위치 권한이 없어 망원·합정 일대를 보여드려요.
+        {message}
       </AppText>
-      <Pressable
-        accessibilityLabel="설정 열기"
-        accessibilityRole="button"
-        onPress={onAction}
-        style={({ pressed }) => [styles.noticeAction, pressed && styles.noticePressed]}
-      >
-        <AppText capScale style={styles.noticeActionText} variant="secondary">
-          설정 열기
-        </AppText>
-      </Pressable>
+      {actionLabel ? (
+        <Pressable
+          accessibilityLabel={actionLabel}
+          accessibilityRole="button"
+          onPress={onAction}
+          style={({ pressed }) => [styles.noticeAction, pressed && styles.noticePressed]}
+        >
+          <AppText capScale style={styles.noticeActionText} variant="secondary">
+            {actionLabel}
+          </AppText>
+        </Pressable>
+      ) : null}
     </View>
   )
 }

@@ -7,6 +7,7 @@ import {
   Easing,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -108,7 +109,8 @@ const toneColor: Record<TextTone, ColorValue> = {
   onInk: colors.onInk,
   sub: colors.inkSub,
   muted: colors.textMuted,
-  brand: colors.brand,
+  // 빨간 글씨는 다크 모드에서 밝힌 brandText. 빨간 면(brand)과 일부러 나눴다
+  brand: colors.brandText,
   onDark: colors.onDark,
   onDarkMuted: colors.onDarkMuted,
   positive: colors.positive,
@@ -800,17 +802,32 @@ export function Toast({
   icon,
   style,
 }: ToastProps) {
+  const screenReader = useScreenReaderEnabled()
+  const hasAction = Boolean(actionLabel && onAction)
+  // 2.5초는 화면 읽기로 되돌리기 버튼까지 가기에 짧다. 화면 읽기가 켜져 있고 행동이 있으면 직접 닫을 때까지 두고,
+  // 화면 읽기나 행동 중 하나만 있으면 10초는 머문다.
+  const holdUntilClosed = screenReader && hasAction
+  const effectiveDuration = screenReader || hasAction ? Math.max(duration, TOAST_ACCESSIBLE_MS) : duration
+
   useEffect(() => {
-    if (!visible || !onDismiss || duration <= 0) return
-    const timer = setTimeout(onDismiss, duration)
+    if (!visible || !onDismiss || effectiveDuration <= 0 || holdUntilClosed) return
+    const timer = setTimeout(onDismiss, effectiveDuration)
     return () => clearTimeout(timer)
-  }, [duration, onDismiss, visible])
+  }, [effectiveDuration, holdUntilClosed, onDismiss, visible])
+
+  // iOS는 alert 역할만으로 읽어 주지 않는다. 안드로이드는 live region이 읽으므로 두 번 읽지 않게 iOS·웹에서만 알린다.
+  useEffect(() => {
+    if (!visible || !message || Platform.OS === "android") return
+    AccessibilityInfo.announceForAccessibility(hasAction ? `${message}. ${actionLabel} 버튼이 있어요` : message)
+  }, [actionLabel, hasAction, message, visible])
 
   if (!visible) return null
   return (
     <View
       accessibilityLiveRegion={variant === "critical" ? "assertive" : "polite"}
       accessibilityRole="alert"
+      // 직접 닫을 때까지 머무는 토스트는 VoiceOver 문지르기(escape)로도 닫힌다
+      onAccessibilityEscape={onDismiss}
       style={[styles.toast, style]}
     >
       {icon}
@@ -824,8 +841,31 @@ export function Toast({
           </AppText>
         </Pressable>
       ) : null}
+      {holdUntilClosed && onDismiss ? (
+        <Pressable accessibilityLabel="알림 닫기" accessibilityRole="button" onPress={onDismiss} style={styles.toastAction}>
+          <X color={colors.onDark} size={18} />
+        </Pressable>
+      ) : null}
     </View>
   )
+}
+
+/** 화면 읽기가 켜졌거나 되돌리기 같은 행동이 붙은 토스트가 2.5초 대신 머무는 최소 시간 */
+const TOAST_ACCESSIBLE_MS = 10_000
+
+/** VoiceOver·TalkBack이 켜져 있는지. 켜고 끄는 대로 따라간다 */
+function useScreenReaderEnabled() {
+  const [enabled, setEnabled] = useState(false)
+  useEffect(() => {
+    let alive = true
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => alive && setEnabled(on))
+    const sub = AccessibilityInfo.addEventListener("screenReaderChanged", setEnabled)
+    return () => {
+      alive = false
+      sub.remove()
+    }
+  }, [])
+  return enabled
 }
 
 export interface EmptyStateProps {
@@ -963,7 +1003,8 @@ export function BottomSheet({
   footer,
   children,
 }: BottomSheetProps) {
-  const { mounted, progress, sheetHeight, onSheetLayout } = useSheetTransition(visible)
+  const { mounted, progress, sheetHeight, reduceMotion, onSheetLayout } = useSheetTransition(visible)
+  const { dragY, dragHandlers } = useSheetDrag({ visible, sheetHeight, reduceMotion, enabled: dismissOnBackdropPress, onDismiss: onClose })
   // Keep the header mounted while the sheet exits. Some callers clear their title
   // together with `visible`, which otherwise shortens the sheet mid-animation.
   const lastHeader = useRef({ title, description })
@@ -994,28 +1035,35 @@ export function BottomSheet({
           onLayout={onSheetLayout}
           style={[
             { maxHeight },
-            { transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [sheetHeight, 0] }) }] },
+            {
+              transform: [
+                { translateY: Animated.add(progress.interpolate({ inputRange: [0, 1], outputRange: [sheetHeight, 0] }), dragY) },
+              ],
+            },
           ]}
         >
         <SafeAreaView accessibilityViewIsModal edges={["bottom"]} style={styles.sheet}>
-          <View style={styles.sheetHandle} />
-          {shownTitle || shownDescription ? (
-            <View style={styles.sheetHeader}>
-              <View style={styles.flex}>
-                {shownTitle ? (
-                  <AppText accessibilityRole="header" variant="sectionTitle">
-                    {shownTitle}
-                  </AppText>
-                ) : null}
-                {shownDescription ? (
-                  <AppText style={styles.sheetDescription} tone="muted" variant="secondary">
-                    {shownDescription}
-                  </AppText>
-                ) : null}
+          {/* 손잡이와 머리를 끌어내리면 닫힌다. 내용 영역은 스크롤과 다투지 않게 빼 두었다 */}
+          <View {...dragHandlers}>
+            <View style={styles.sheetHandle} />
+            {shownTitle || shownDescription ? (
+              <View style={styles.sheetHeader}>
+                <View style={styles.flex}>
+                  {shownTitle ? (
+                    <AppText accessibilityRole="header" variant="sectionTitle">
+                      {shownTitle}
+                    </AppText>
+                  ) : null}
+                  {shownDescription ? (
+                    <AppText style={styles.sheetDescription} tone="muted" variant="secondary">
+                      {shownDescription}
+                    </AppText>
+                  ) : null}
+                </View>
+                <IconButton accessibilityLabel={closeLabel} icon={<X color={colors.ink} size={22} />} onPress={onClose} />
               </View>
-              <IconButton accessibilityLabel={closeLabel} icon={<X color={colors.ink} size={22} />} onPress={onClose} />
-            </View>
-          ) : null}
+            ) : null}
+          </View>
           <View style={styles.sheetContent}>{children}</View>
           {footer ? <View style={styles.sheetFooter}>{footer}</View> : null}
         </SafeAreaView>
@@ -1023,6 +1071,64 @@ export function BottomSheet({
       </KeyboardAvoidingView>
     </Modal>
   )
+}
+
+/** 이만큼(시트 높이 비율) 끌어내리거나 빠르게 튕기면 닫는다 */
+const SHEET_DISMISS_RATIO = 0.25
+const SHEET_DISMISS_VELOCITY = 1
+
+/**
+ * 시트 손잡이를 끌어내려 닫는다. 손가락을 따라가는 움직임은 사용자가 직접 만드는 것이라 그대로 두고,
+ * 놓았을 때 제자리로 돌아가는 움직임만 Reduce Motion에서 즉시 바꾼다.
+ * 뒤판으로 닫지 못하게 한 시트(저장 중 등)는 끌어서도 닫히지 않는다.
+ */
+function useSheetDrag({
+  visible,
+  sheetHeight,
+  reduceMotion,
+  enabled,
+  onDismiss,
+}: {
+  visible: boolean
+  sheetHeight: number
+  reduceMotion: boolean
+  enabled: boolean
+  onDismiss: () => void
+}) {
+  const dragY = useRef(new Animated.Value(0)).current
+  const latest = useRef({ visible, sheetHeight, reduceMotion, enabled, onDismiss })
+  latest.current = { visible, sheetHeight, reduceMotion, enabled, onDismiss }
+
+  // 다시 열 때는 지난번 끌어내린 자리에서 시작하지 않는다
+  useEffect(() => {
+    if (visible) dragY.setValue(0)
+  }, [dragY, visible])
+
+  const responder = useRef(
+    PanResponder.create({
+      // 탭(닫기 버튼)은 그대로 통과시키고, 아래로 분명히 끌 때만 잡는다
+      onMoveShouldSetPanResponder: (_, gesture) => latest.current.enabled && gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      onPanResponderMove: (_, gesture) => dragY.setValue(Math.max(0, gesture.dy)),
+      onPanResponderRelease: (_, gesture) => {
+        const settle = () => {
+          if (latest.current.reduceMotion) dragY.setValue(0)
+          else Animated.timing(dragY, { toValue: 0, duration: 200, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start()
+        }
+        if (gesture.dy > latest.current.sheetHeight * SHEET_DISMISS_RATIO || gesture.vy > SHEET_DISMISS_VELOCITY) {
+          latest.current.onDismiss()
+          // 부르는 쪽이 닫기를 거절하면(저장 중 등) 시트가 끌린 자리에 멈추지 않게 되돌린다
+          requestAnimationFrame(() => {
+            if (latest.current.visible) settle()
+          })
+          return
+        }
+        settle()
+      },
+      onPanResponderTerminate: () => dragY.setValue(0),
+    }),
+  ).current
+
+  return { dragY, dragHandlers: responder.panHandlers }
 }
 
 /**
@@ -1064,7 +1170,7 @@ function useSheetTransition(visible: boolean) {
     if (height > 0) setSheetHeight(height)
   }
 
-  return { mounted, progress, sheetHeight, onSheetLayout }
+  return { mounted, progress, sheetHeight, reduceMotion, onSheetLayout }
 }
 
 export interface ConfirmDialogProps {

@@ -131,16 +131,36 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
   )
 }
 
+/*
+ * 실패한 서버 읽기는 캐시하지 않으므로 본문을 새 key로 다시 올리면 실패한 요청만 다시 보낸다.
+ * 데이터 hook에 refetch가 생기면 이 key 대신 그것을 부른다. 고르던 탭과 검색어는 이어 간다.
+ */
 export default function SelectShopScreen() {
+  const [retry, setRetry] = useState<{ key: number; mode?: Mode; query?: string }>({ key: 0 })
+  return (
+    <SelectShopBody
+      key={retry.key}
+      onRetry={(mode, query) => setRetry((previous) => ({ key: previous.key + 1, mode, query }))}
+      restoredMode={retry.mode}
+      restoredQuery={retry.query}
+    />
+  )
+}
+
+function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
+  onRetry: (mode: Mode, query: string) => void
+  restoredMode?: Mode
+  restoredQuery?: string
+}) {
   const params = useLocalSearchParams<{ mode?: string; source?: string }>()
   const insets = useSafeAreaInsets()
   const { state, actions } = useRaota()
   const shopsQuery = useShops()
   const bookmarked = useBookmarkedShops()
-  const [mode, setMode] = useState<Mode>(() => initialModeOf(params.mode))
+  const [mode, setMode] = useState<Mode>(() => restoredMode ?? initialModeOf(params.mode))
   const [nearbyFilter, setNearbyFilter] = useState<NearbyFilter>("all")
-  const [query, setQuery] = useState("")
-  const [searchQuery, setSearchQuery] = useState("")
+  const [query, setQuery] = useState(restoredQuery)
+  const [searchQuery, setSearchQuery] = useState(restoredQuery.trim())
   useEffect(() => {
     const timer = setTimeout(() => setSearchQuery(query.trim()), 300)
     return () => clearTimeout(timer)
@@ -259,9 +279,24 @@ export default function SelectShopScreen() {
 
   const listEmpty =
     activeQuery.error && mode !== "saved" ? (
-      <EmptyState description="잠시 후 다시 열어 주세요." title="가게 목록을 불러오지 못했어요" />
+      <EmptyState
+        // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
+        actionLabel={shopsQuery.remote ? "다시 불러오기" : undefined}
+        description="잠시 후 다시 열어 주세요."
+        onAction={() => onRetry(mode, query)}
+        title="가게 목록을 불러오지 못했어요"
+      />
     ) : mode === "nearby" ? (
-      <EmptyState description="필터를 풀면 더 많은 가게를 볼 수 있어요." title="조건에 맞는 가게가 없어요" />
+      nearbyFilter === "all" ? (
+        <EmptyState description="검색에서 이름이나 동네로 찾아보세요." title="주변에 등록된 가게가 아직 없어요" />
+      ) : (
+        <EmptyState
+          actionLabel="전체 보기"
+          description="필터를 풀면 더 많은 가게를 볼 수 있어요."
+          onAction={() => setNearbyFilter("all")}
+          title="조건에 맞는 가게가 없어요"
+        />
+      )
     ) : mode === "saved" ? (
       <EmptyState
         description="가게 상세에서 찜해 두면 여기서 바로 기록할 수 있어요."
@@ -290,7 +325,7 @@ export default function SelectShopScreen() {
         <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.flex} variant="headline">
           {"어느 가게를\n기록할까요?"}
         </AppText>
-        <IconButton accessibilityLabel="닫기" icon={<ChevronRight color={colors.ink} size={24} />} onPress={close} />
+        <IconButton accessibilityLabel="닫기" icon={<X color={colors.ink} size={24} />} onPress={close} />
       </View>
 
       <View style={styles.searchWrap}>

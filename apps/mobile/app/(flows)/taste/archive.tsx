@@ -420,66 +420,71 @@ function MonthDetail({
 
       <View style={styles.section}>
         <AppText accessibilityRole="header" variant="sectionTitle">
-          {canCompare ? `${previousLabel}과 달라진 메뉴` : "종류별로 먹은 라멘"}
+          {/* 표는 메뉴가 아니라 국물 종류를 비교한다 */}
+          {canCompare ? `${previousLabel}과 달라진 종류` : "종류별로 먹은 라멘"}
         </AppText>
         <AppText lineBreakStrategyIOS="hangul-word" style={styles.compareHint} tone="sub" variant="secondary">
           {compareHint}
         </AppText>
-        <View accessibilityLabel={`${selected.period} 라멘 종류별 그릇 수와 비율`} style={styles.table}>
-          <View style={[styles.tableRow, styles.tableHead]}>
-            <AppText capScale style={styles.colName} tone="sub" variant="secondary">
-              종류
-            </AppText>
-            <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
-              그릇 수
-            </AppText>
-            <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
-              비율
-            </AppText>
-            <View style={styles.changeNum}>
-              {canCompare ? <AppText capScale tone="sub" variant="secondary">변화</AppText> : null}
-            </View>
-          </View>
-          {tableRows.map((item) => {
-            const changeText = item.difference ? `${item.difference > 0 ? "+" : "−"}${Math.abs(item.difference)}%p` : "—"
-            const changeLabel = item.difference
-              ? `${Math.abs(item.difference)}퍼센트포인트 ${item.difference > 0 ? "증가" : "감소"}`
-              : "변화 없음"
-            return (
-              <View
-                accessibilityLabel={`${item.name} ${item.count}그릇, ${distribution.total ? `${item.pct}%` : "비율 없음"}${canCompare ? `, ${changeLabel}` : ""}`}
-                accessible
-                key={item.name}
-                style={styles.tableRow}
-              >
-                <AppText capScale variant="secondary" style={[styles.colName, styles.bold]}>
-                  {item.name}
-                </AppText>
-                <AppText capScale style={[styles.colNum, styles.tabular]} tone="sub" variant="secondary">
-                  {item.count}그릇
-                </AppText>
-                <AppText capScale style={[styles.colNum, styles.tabular, styles.bold]} variant="secondary">
-                  {distribution.total ? `${item.pct}%` : "—"}
-                </AppText>
-                {canCompare ? (
-                  <Animated.View style={[styles.changeNum, comparisonStyle]}>
-                    <AppText
-                      capScale
-                      // 늘고 줌은 수량이라 빨강 대신 굵기로 말한다(+/− 기호와 라벨이 방향을 읽어 준다)
-                      style={[styles.tabular, item.difference > 0 && styles.bold]}
-                      tone={item.difference > 0 ? "ink" : "sub"}
-                      variant="secondary"
-                    >
-                      {changeText}
-                    </AppText>
-                  </Animated.View>
-                ) : (
-                  <View style={styles.changeNum} />
-                )}
+        {/* 종류가 확인된 그릇이 없는 달은 0그릇 줄만 늘어놓지 않고 표를 감춘다(위 요약이 이유를 말한다) */}
+        {distribution.total ? (
+          <View accessibilityLabel={`${selected.period} 라멘 종류별 그릇 수와 비율`} style={styles.table}>
+            <View style={[styles.tableRow, styles.tableHead]}>
+              <AppText capScale style={styles.colName} tone="sub" variant="secondary">
+                종류
+              </AppText>
+              <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
+                그릇 수
+              </AppText>
+              <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
+                비율
+              </AppText>
+              <View style={styles.changeNum}>
+                {canCompare ? <AppText capScale tone="sub" variant="secondary">변화</AppText> : null}
               </View>
-            )
-          })}
-        </View>
+            </View>
+            {tableRows.map((item) => {
+              // 변화가 없으면 칸을 비운다. "—"를 두지 않고 줄 라벨이 "변화 없음"을 읽어 준다
+              const changeText = item.difference ? `${item.difference > 0 ? "+" : "−"}${Math.abs(item.difference)}%p` : ""
+              const changeLabel = item.difference
+                ? `${Math.abs(item.difference)}퍼센트포인트 ${item.difference > 0 ? "증가" : "감소"}`
+                : "변화 없음"
+              return (
+                <View
+                  accessibilityLabel={`${item.name} ${item.count}그릇, ${item.pct}%${canCompare ? `, ${changeLabel}` : ""}`}
+                  accessible
+                  key={item.name}
+                  style={styles.tableRow}
+                >
+                  <AppText capScale variant="secondary" style={[styles.colName, styles.bold]}>
+                    {item.name}
+                  </AppText>
+                  <AppText capScale style={[styles.colNum, styles.tabular]} tone="sub" variant="secondary">
+                    {item.count}그릇
+                  </AppText>
+                  <AppText capScale style={[styles.colNum, styles.tabular, styles.bold]} variant="secondary">
+                    {item.pct}%
+                  </AppText>
+                  {canCompare ? (
+                    <Animated.View style={[styles.changeNum, comparisonStyle]}>
+                      <AppText
+                        capScale
+                        // 늘고 줌은 수량이라 빨강 대신 굵기로 말한다(+/− 기호와 라벨이 방향을 읽어 준다)
+                        style={[styles.tabular, item.difference > 0 && styles.bold]}
+                        tone={item.difference > 0 ? "ink" : "sub"}
+                        variant="secondary"
+                      >
+                        {changeText}
+                      </AppText>
+                    </Animated.View>
+                  ) : (
+                    <View style={styles.changeNum} />
+                  )}
+                </View>
+              )
+            })}
+          </View>
+        ) : null}
         <View style={styles.compareSummarySlot}>
           {canCompare && previous ? (
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.compareSummary} variant="secondary">

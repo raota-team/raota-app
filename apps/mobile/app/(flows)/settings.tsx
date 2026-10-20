@@ -137,10 +137,10 @@ export default function SettingsScreen() {
                 accessibilityHint={reminders.blocked ? "iOS 설정 앱을 엽니다" : undefined}
                 accessibilityLabel="기록 리마인더"
                 disabled={reminders.busy}
-                ios_backgroundColor={colors.secondary}
+                // 꺼짐 트랙은 iOS 기본 회색에 맡긴다. 켜짐은 회색 계열(selected)이면 다크 모드에서 꺼짐과 구분되지 않아 영업 중 초록(open)을 쓴다
                 onValueChange={(next) => void toggleReminders(next)}
                 thumbColor={colors.white}
-                trackColor={{ false: colors.secondary, true: colors.selected }}
+                trackColor={{ true: colors.open }}
                 value={reminders.enabled}
               />
             </View>

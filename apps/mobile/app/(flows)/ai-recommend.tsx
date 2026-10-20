@@ -1,5 +1,6 @@
 import * as Haptics from "expo-haptics"
 import { router } from "expo-router"
+import { usePreventRemove } from "expo-router/react-navigation"
 import { ArrowRight, Check, ChevronRight } from "lucide-react-native"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
@@ -16,13 +17,13 @@ import {
 import Animated, { Easing, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
 import type { Edge } from "react-native-safe-area-context"
 
-import { type Shop, type ShopCatalogItem } from "@raota/shared"
+import { type Shop, type ShopCatalogItem, type TasteReport } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, Button, Header, Screen, StickyActionBar, TicketCut } from "@/src/components/ui"
-import { useLocalShops } from "@/src/data/hooks"
-import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
-import { matchesShopRamenType } from "@/src/domain/shops"
+import { useLocalShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
+import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
+import { curatorTasteReport } from "@/src/domain/curatorTaste"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, maxFontScale, radii, soupColorOf, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
@@ -59,7 +60,8 @@ const PRIORITY_OPTIONS = [
   { id: "clean", label: "깔끔하고 깊은 감칠맛", sub: "청탕 · 맑은 국물", keys: ["깔끔", "맑은", "청탕", "감칠맛", "시오"] },
 ]
 
-const QUICK_PROMPTS = ["국물이 덜 짠 곳", "차슈가 푸짐한 곳", "주차 가능한 곳", "웨이팅 적은 곳", "매운맛 조절 가능한 곳", "밥 무료 제공"]
+// 큐레이터가 매장 정보와 실제로 대조할 수 있는 조건만 내놓는다(curate의 직접 입력 대조와 짝이 맞아야 한다)
+const QUICK_PROMPTS = ["차슈가 푸짐한 곳", "지금 영업 중인 곳", "밥 무료 제공", "면 리필 가능한 곳"]
 
 const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
   1: { title: "오늘 어떤 국물이 당기나요?", help: "맑은 청탕부터 묵직한 백탕까지 골라보세요." },
@@ -67,7 +69,7 @@ const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
   3: { title: "한 그릇에서 가장 포기할 수 없는 것은?", help: "가게 특징과 태그에 이 요소가 있는 곳을 먼저 찾아요." },
   4: {
     title: "더 바라는 점이 있나요?",
-    help: "선택 사항이에요. 웨이팅, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요.",
+    help: "선택 사항이에요. 영업 중, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요.",
   },
 }
 
@@ -97,11 +99,19 @@ interface Condition {
   note: string
 }
 
-interface Curation {
+interface Candidate {
   shop: CuratorShop
+  /** 사진 위·식권의 종류 이름. 고른 국물과 맞은 매장이면 고른 이름 그대로 쓴다 */
+  typeLabel: string
+}
+
+interface Curation extends Candidate {
   conditions: Condition[]
   /** 조건으로 고르지 못해 인기·거리순으로 대신 골랐는지 */
   fallback: boolean
+  /** "다시 추천받기"가 차례로 보여 줄 후보(순위순). 지금 보이는 것은 candidates[index] */
+  candidates: Candidate[]
+  index: number
 }
 
 /**
@@ -326,11 +336,11 @@ const byPopularity = (a: CuratorShop, b: CuratorShop) =>
 
 /**
  * 선택한 조건을 원장과 실제로 대조해 후보를 좁히고(웹 AIRecommendScreen과 같은 규칙),
- * 남은 후보 안에서 src/domain/ai-recommendation 랭킹으로 한 곳을 고른다.
+ * 남은 후보 안에서 src/domain/ai-recommendation 랭킹(내 취향 포함)으로 순서를 매긴다.
  * 대조할 정보가 없는 조건은 applied=false("참고했어요")로 남긴다. 랭킹이 실패하거나 후보가 없으면 인기·거리순으로 대신한다.
  * 서버 추천(#46)이 붙으면 이 함수만 바꾼다.
  */
-function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
+function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null): Curation | null {
   const all = shops.filter((shop) => shop.lat && shop.lng)
   if (all.length === 0) return null
   const conditions: Condition[] = []
@@ -344,13 +354,10 @@ function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
     return true
   }
 
+  // 국물은 지도 필터와 같은 종류 판정으로만 맞춘다. 소개글 낱말로 맞추면 쇼유를 골라도 이에케가 나온다
   const soup = SOUP_OPTIONS.find((option) => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
-  if (narrow((shop) => {
-    if (soup.label === "돈코츠" || soup.label === "이에케") {
-      return matchesShopRamenType(shop, soup.label, soup.keys)
-    }
-    return hasAnyKey(shop, soup.keys)
-  })) {
+  const soupMatches = (shop: CuratorShop) => matchesSoupChoice(shop, soup.label, soup.keys)
+  if (narrow(soupMatches)) {
     conditions.push({ label: `${soup.label} 계보`, applied: true, note: `${soup.label} 계보 ${pool.length}곳 중에서 골랐어요` })
   } else {
     conditions.push({ label: `${soup.label} 계보`, applied: false, note: "전체 라멘집으로 넓혀서 골라 봤어요" })
@@ -384,13 +391,18 @@ function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
     }
   }
 
+  // QUICK_PROMPTS는 여기서 대조하는 조건만 내놓는다. 대조하지 못한 말은 "참고"로 남긴다
   const prompt = inputs.prompt.trim()
   if (prompt) {
     const applied: string[] = []
-    if (prompt.includes("웨이팅") && narrow((shop) => shop.isOpen)) applied.push("지금 영업 중")
-    if (prompt.includes("밥") && narrow((shop) => Boolean(shop.servicePerks?.riceRefill))) applied.push("공깃밥 제공")
+    if (/영업 ?중|지금 ?여/.test(prompt) && narrow((shop) => shop.isOpen)) applied.push("지금 영업 중")
+    if (prompt.includes("밥") && narrow((shop) => Boolean(shop.servicePerks?.riceRefill?.includes("무료")))) applied.push("공깃밥 무료")
     if (prompt.includes("차슈") && narrow((shop) => hasAnyKey(shop, ["차슈"]))) applied.push("차슈")
-    if (prompt.includes("면") && narrow((shop) => hasAnyKey(shop, ["자가제면", "치지레멘", "면"]))) applied.push("면")
+    if (/면.*(리필|무료)|(리필|무료).*면/.test(prompt)) {
+      if (narrow((shop) => Boolean(shop.servicePerks?.noodleRefill?.includes("무료")))) applied.push("면 무료 리필")
+    } else if (prompt.includes("면") && narrow((shop) => hasAnyKey(shop, ["자가제면", "치지레멘", "면"]))) {
+      applied.push("면")
+    }
     conditions.push(
       applied.length
         ? { label: `직접 입력: ${prompt}`, applied: true, note: `${applied.join(", ")} 조건을 매장 정보와 대조했어요` }
@@ -398,25 +410,37 @@ function curate(shops: CuratorShop[], inputs: Inputs): Curation | null {
     )
   }
 
-  let picked: CuratorShop | undefined
+  // 고른 국물과 맞은 매장은 종류도 고른 이름으로 적는다(사진 위 표시·식권·조건 줄이 같은 말을 쓴다)
+  const candidate = (shop: CuratorShop): Candidate => ({ shop, typeLabel: soupMatches(shop) ? soup.label : shopSoupLabel(shop) })
+  let ranked: CuratorShop[] = []
   if (byDistance) {
-    picked = [...pool].sort((a, b) => a.distanceM - b.distanceM || byPopularity(a, b))[0]
+    ranked = [...pool].sort((a, b) => a.distanceM - b.distanceM || byPopularity(a, b))
   } else {
     try {
-      picked = rankShopsForAIRecommendation(pool, {
+      ranked = rankShopsForAIRecommendation(pool, {
         soup: soup.label,
         mood: mood.label,
         priority: priority?.label ?? "",
         prompt,
-      })[0]?.shop as CuratorShop | undefined
+        currentTasteReport: taste,
+      }).map(({ shop }) => shop as CuratorShop)
     } catch {
-      picked = undefined
+      ranked = []
+    }
+    // 랭킹이 실제로 내 취향 리포트를 받아 순서를 매긴 경우에만 알린다(빠른 한 끼는 거리순이라 쓰지 않는다)
+    if (taste && ranked.length) {
+      conditions.push({ label: "내 취향", applied: true, note: `내 기록 ${taste.recordCount}그릇의 취향을 반영했어요` })
     }
   }
-  if (picked) return { shop: picked, conditions, fallback: false }
+  if (ranked.length) {
+    const candidates = ranked.map(candidate)
+    return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
+  }
 
-  const fallbackShop = [...all].sort(byPopularity)[0]
-  return fallbackShop ? { shop: fallbackShop, conditions, fallback: true } : null
+  const fallbackCandidates = [...all].sort(byPopularity).map(candidate)
+  return fallbackCandidates.length
+    ? { ...fallbackCandidates[0], conditions, fallback: true, candidates: fallbackCandidates, index: 0 }
+    : null
 }
 
 /** 스크린리더 포커스를 새 제목으로 옮긴다 */
@@ -434,6 +458,8 @@ function focusOn(ref: React.RefObject<View | null>) {
 export default function AIRecommendScreen() {
   const { currentUser } = useRaota()
   const shopsQuery = useLocalShops()
+  const bowls = useMyBowls()
+  const tasteProfile = useTasteProfile()
   const reducedMotion = useReducedMotion()
   const { width, fontScale } = useWindowDimensions()
   const ctaSize = useMemo(() => ({ minHeight: Math.max(56, 2 * (typography.button.lineHeight ?? 18) * Math.min(fontScale, maxFontScale) + 2 * spacing.x2) }), [fontScale])
@@ -453,12 +479,24 @@ export default function AIRecommendScreen() {
 
   const loggedIn = Boolean(currentUser?.isLoggedIn)
   const nickname = loggedIn ? currentUser?.nickname : null
+  // 내 그릇 목록(데모 원장 + 앱 기록)으로 취향을 계산한다. 비회원·기록 없음이면 null
+  const taste = useMemo(
+    () => (loggedIn ? curatorTasteReport(bowls.data, tasteProfile.data.profile, shopsQuery.data) : null),
+    [loggedIn, bowls.data, tasteProfile.data.profile, shopsQuery.data],
+  )
 
+  // 2~4단계(와 발권 연출)에서 스와이프·하드웨어 뒤로 가기는 플로우를 나가지 않고 한 단계만 올라간다.
+  // 나가면 고른 답이 전부 사라진다. 1단계와 결과 화면은 평소처럼 나간다. usePreventRemove는 iOS 네이티브 스와이프까지 막는다
+  usePreventRemove(step !== 1 && step !== "result", () => {
+    setStep((current) => (current === "loading" ? 4 : typeof current === "number" && current > 1 ? ((current - 1) as Step) : current))
+  })
+
+  // 다음 후보로 바뀔 때도 결과 맨 위(제목)부터 다시 읽게 한다
   useEffect(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false })
     const timer = setTimeout(() => focusOn(headingRef), 250)
     return () => clearTimeout(timer)
-  }, [step])
+  }, [step, curation?.index])
 
   const setInput = <K extends keyof Inputs>(key: K, value: Inputs[K]) => {
     setInputs((prev) => ({ ...prev, [key]: value }))
@@ -472,7 +510,7 @@ export default function AIRecommendScreen() {
       priority: inputs.priorityId,
       hasPrompt: inputs.prompt.trim().length > 0,
     })
-    const next = curate(shopsQuery.data as CuratorShop[], inputs)
+    const next = curate(shopsQuery.data as CuratorShop[], inputs, taste)
     setCuration(next)
     // Reduce Motion이면 연출 없이 바로 결과를 보여준다
     setStep(next && !reducedMotion ? "loading" : "result")
@@ -481,6 +519,15 @@ export default function AIRecommendScreen() {
   const restart = () => {
     setCuration(null)
     setStep(1)
+  }
+
+  /** 같은 답으로 다음 순위 후보를 보여 준다. 끝까지 보면 처음 후보로 돌아간다 */
+  const showNextCandidate = () => {
+    if (!curation) return
+    const index = (curation.index + 1) % curation.candidates.length
+    const next = curation.candidates[index]
+    setCuration({ ...curation, ...next, index })
+    AccessibilityInfo.announceForAccessibility(`다음 추천, ${next.shop.name}`)
   }
 
   const recordShop = (shop: CuratorShop) => {
@@ -499,12 +546,13 @@ export default function AIRecommendScreen() {
         onComplete={() => setStep("result")}
         resultReady={resultReady}
         shop={curation.shop}
+        typeLabel={curation.typeLabel}
       />
     )
   }
 
   const result = step === "result" ? curation : null
-  const resultType = result?.shop.style ?? ""
+  const resultType = result?.typeLabel ?? ""
   const numericStep = typeof step === "number" ? step : null
   // 4단계(직접 입력)는 선택 사항이라 비워 두고 넘어갈 수 있다
   const stepAnswered =
@@ -633,7 +681,7 @@ export default function AIRecommendScreen() {
                   multiline
                   scrollEnabled
                   onChangeText={(text) => setInput("prompt", text)}
-                  placeholder="예: 차슈가 부드럽고 국물이 덜 짠 곳"
+                  placeholder="예: 차슈가 푸짐하고 지금 영업 중인 곳"
                   placeholderTextColor={colors.textMuted}
                   style={styles.promptInput}
                   textAlignVertical="top"
@@ -737,7 +785,12 @@ export default function AIRecommendScreen() {
               </View>
             ) : null}
 
-            <RestartButton onPress={restart} />
+            {/* 후보가 하나뿐이면 같은 가게만 다시 나오므로 조건을 바꾸러 처음으로 간다(고른 답은 남는다) */}
+            {result.candidates.length > 1 ? (
+              <RestartButton onPress={showNextCandidate} />
+            ) : (
+              <RestartButton label="조건 바꿔 다시 고르기" onPress={restart} />
+            )}
           </View>
         ) : null}
       </ScrollView>
@@ -779,15 +832,15 @@ export default function AIRecommendScreen() {
   )
 }
 
-function RestartButton({ onPress }: { onPress: () => void }) {
+function RestartButton({ label = "다시 추천받기", onPress }: { label?: string; onPress: () => void }) {
   return (
     <Pressable
-      accessibilityLabel="다시 추천받기"
+      accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.restart, pressed && styles.pressedWash]}
     >
-      <AppText style={styles.restartText} variant="bodyStrong">다시 추천받기</AppText>
+      <AppText style={styles.restartText} variant="bodyStrong">{label}</AppText>
     </Pressable>
   )
 }
@@ -808,12 +861,14 @@ function CurationLoading({
   onComplete,
   resultReady,
   shop,
+  typeLabel,
 }: {
   conditions: TicketCondition[]
   onBack: () => void
   onComplete: () => void
   resultReady: Promise<Curation | null>
   shop: CuratorShop
+  typeLabel: string
 }) {
   const { width: screenWidth } = useWindowDimensions()
   const reducedMotion = useReducedMotion()
@@ -965,7 +1020,7 @@ function CurationLoading({
               <AppText tone="muted" variant="meta">오늘의 한 그릇</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketName} variant="headline">{shop.name}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketPlace} tone="sub" variant="secondary">
-                {[shop.style, place].filter(Boolean).join(" · ")}
+                {[typeLabel, place].filter(Boolean).join(" · ")}
               </AppText>
             </View>
             <TicketCut />

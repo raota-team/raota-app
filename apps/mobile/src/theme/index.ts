@@ -10,9 +10,12 @@ import type { TasteAxisKey } from "@raota/shared"
  * 색을 문자열로 다뤄야 하는 곳(투명도 합성, 그라데이션 끝색)은 usePalette()로 지금 모드의 hex를 받는다.
  */
 const light = {
+  /** 빨간 면(주요 버튼, 도장 테두리). 글씨에는 brandText를 쓴다 */
   brand: "#E60000",
   brandPressed: "#CC0000",
   brandWeak: "#FFF0F0",
+  /** 빨간 글씨(필수 안내, 좋아요 수 등). 밝은 모드는 brand와 같고 다크 모드에서만 밝힌다 */
+  brandText: "#E60000",
   /** 제목, 고른 칩·탭의 면 */
   ink: "#000000",
   /** ink 면 위의 글씨 */
@@ -80,6 +83,8 @@ const dark: Palette = {
   brand: "#E60000",
   brandPressed: "#CC0000",
   brandWeak: "#3A1414",
+  /** #E60000은 어두운 바탕에서 3.9:1이라 작은 글씨로 읽기 어렵다. 바탕 대비 6.1:1로 밝혔다 */
+  brandText: "#FF5A5A",
   ink: "#FFFFFF",
   onInk: "#000000",
   inkSub: "#E5E5E0",
@@ -98,7 +103,8 @@ const dark: Palette = {
   onDarkMuted: "rgba(255, 255, 255, 0.7)",
   onDarkLine: "rgba(255, 255, 255, 0.18)",
   inkWash: "rgba(255, 255, 255, 0.08)",
-  deep: "#3A3A35",
+  /** 흰 글씨 8.2:1. 바탕(#121211)과 확실히 떨어져 보이도록 한 단계 밝혔다 */
+  deep: "#4F4F48",
   positive: "#7FD39A",
   positiveWeak: "#16301B",
   warning: "#E0A040",
@@ -113,7 +119,8 @@ const dark: Palette = {
   white: "#FFFFFF",
   black: "#000000",
   soupEdge: "rgba(255, 255, 255, 0.18)",
-  selected: "#5C5C55",
+  /** 흰 글씨 4.8:1을 지키면서 회색 면(#22221F) 위에서도 고른 상태가 드러나는 밝기 */
+  selected: "#73736C",
   onSelected: "#FFFFFF",
   photoPill: "rgba(18, 18, 17, 0.88)",
   onPhotoPill: "#FFFFFF",

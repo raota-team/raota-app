@@ -192,7 +192,16 @@ function PhotoTypePill({ type }: { type: string }) {
   )
 }
 
+/*
+ * 실패한 서버 읽기는 캐시하지 않으므로 본문을 새 key로 다시 올리면 성공한 읽기는 캐시에서, 실패한 읽기만 다시 보낸다.
+ * 데이터 hook에 refetch가 생기면 이 key 대신 그것을 부른다.
+ */
 export default function HomeScreen() {
+  const [retryKey, setRetryKey] = useState(0)
+  return <HomeBody key={retryKey} onRetry={() => setRetryKey((key) => key + 1)} />
+}
+
+function HomeBody({ onRetry }: { onRetry: () => void }) {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { currentUser } = useRaota()
@@ -388,7 +397,15 @@ export default function HomeScreen() {
         </Pressable>
 
         {shopsQuery.isLoading ? <LoadingState label="라멘집을 불러오는 중…" /> : null}
-        {shopsQuery.error ? <EmptyState title="라멘집을 불러오지 못했어요" description="잠시 후 다시 열어 주세요." /> : null}
+        {shopsQuery.error ? (
+          <EmptyState
+            // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
+            actionLabel={shopsQuery.remote ? "다시 불러오기" : undefined}
+            description="잠시 후 다시 열어 주세요."
+            onAction={onRetry}
+            title="라멘집을 불러오지 못했어요"
+          />
+        ) : null}
 
         {todayPick ? (
           <View style={styles.sectionFirst} testID="home-curation">
@@ -435,8 +452,10 @@ export default function HomeScreen() {
               <LoadingState label="오늘의 큐레이션을 불러오는 중…" />
             ) : (
               <EmptyState
-                title={curation.error ? "오늘의 큐레이션을 불러오지 못했어요" : "오늘의 큐레이션을 준비 중이에요"}
+                actionLabel={curation.error ? "다시 불러오기" : undefined}
                 description={curation.error ? "잠시 후 다시 열어 주세요." : "곧 새로운 라멘집을 소개할게요."}
+                onAction={onRetry}
+                title={curation.error ? "오늘의 큐레이션을 불러오지 못했어요" : "오늘의 큐레이션을 준비 중이에요"}
               />
             )}
           </View>

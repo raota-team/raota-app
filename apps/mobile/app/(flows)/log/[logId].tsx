@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router"
 import { LogIn, MoreHorizontal, Soup } from "lucide-react-native"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { FlatList, Keyboard, Platform, Pressable, StyleSheet, TextInput, View, type ListRenderItem } from "react-native"
+import { ActionSheetIOS, FlatList, Keyboard, Platform, Pressable, StyleSheet, TextInput, View, type ListRenderItem } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import type { RamenLog, RamenLogComment } from "@raota/shared"
@@ -20,7 +20,7 @@ import {
   type ModerationTarget,
 } from "@/src/components/LoungeLog"
 import { EdgeBackZone } from "@/src/components/EdgeBackZone"
-import { AppText, Button, EmptyState, Header, IconButton, LoadingState, Screen } from "@/src/components/ui"
+import { AppText, Button, ConfirmDialog, EmptyState, Header, IconButton, LoadingState, Screen, Toast } from "@/src/components/ui"
 import { useLoungeLog } from "@/src/data/hooks"
 import {
   COMMENT_COUNTER_FROM,
@@ -42,7 +42,7 @@ import { colors, line, radii, spacing, touchTarget, typography } from "@/src/the
 /** 하단 댓글 바 위로 토스트를 띄운다(입력 44 + 여백 + 하단 inset) */
 const TOAST_ABOVE_COMPOSER = 100
 
-type Outcome = { kind: "hidden"; authorId: string; authorName: string } | { kind: "reported" } | null
+type Outcome = { kind: "hidden"; authorId: string; authorName: string } | { kind: "reported" } | { kind: "deleted" } | null
 
 function goBack() {
   if (router.canGoBack()) router.back()
@@ -219,10 +219,13 @@ export default function LogDetailScreen() {
   const { logId } = useLocalSearchParams<{ logId?: string }>()
   const query = useLoungeLog(typeof logId === "string" && logId.length > 0 ? logId : null)
   const detail = query.data
-  const { currentUser, actions } = useRaota()
+  const { currentUser, actions, getLog } = useRaota()
   const like = useLikeLog()
   const listRef = useRef<FlatList<RamenLogComment>>(null)
   const [outcome, setOutcome] = useState<Outcome>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteFailed, setDeleteFailed] = useState(false)
   const viewerId = currentUser?.id ?? null
   const logAuthorId = detail?.log.author.id
 
@@ -254,6 +257,24 @@ export default function LogDetailScreen() {
     [onCommentMore, viewerId],
   )
 
+  const deleteOwnLog = useCallback(async () => {
+    if (!detail) return
+    setDeleting(true)
+    try {
+      await actions.deleteLog(detail.log.id)
+    } catch {
+      setDeleting(false)
+      setConfirmingDelete(false)
+      setDeleteFailed(true)
+      return
+    }
+    // 뒤로 가는 애니메이션 동안 "볼 수 없어요"가 비치지 않게 삭제한 결과를 먼저 남긴다
+    setOutcome({ kind: "deleted" })
+    setDeleting(false)
+    setConfirmingDelete(false)
+    goBack()
+  }, [actions, detail])
+
   if (!detail) {
     let body = <LoadingState fullScreen label="라멘로그를 불러오는 중…" />
     if (!query.isLoading) {
@@ -273,6 +294,14 @@ export default function LogDetailScreen() {
             icon={<Soup color={colors.textMuted} size={32} />}
             onAction={goBack}
             title="신고를 접수했어요"
+          />
+        ) : outcome?.kind === "deleted" ? (
+          <EmptyState
+            actionLabel="라운지로 돌아가기"
+            description="라운지와 내 기록에서 사라졌어요."
+            icon={<Soup color={colors.textMuted} size={32} />}
+            onAction={goBack}
+            title="라멘로그를 삭제했어요"
           />
         ) : (
           <EmptyState
@@ -295,7 +324,25 @@ export default function LogDetailScreen() {
 
   const { log, comments } = detail
   const own = Boolean(viewerId) && log.author.id === viewerId
+  /*
+   * actions.deleteLog는 기기 저장소에 있는 기록만 지운다. 서버에서 읽은 기록(remote)은 저장소의 객체가 아니므로
+   * 삭제가 실제로 일어나지 않는다 — 가짜 삭제를 보여주지 않도록 그때는 내 기록 메뉴를 숨긴다(서버 삭제 API 연결 전까지)
+   */
+  const deletable = own && getLog(log.id) === log
   const openLogMenu = () => openMenu({ kind: "log", id: log.id, authorId: log.author.id, authorName: log.author.name })
+  // 내 기록의 "…"은 신고·숨기기 대신 삭제만 둔다. 웹 미리보기처럼 액션 시트가 없으면 바로 확인 창을 연다
+  const openOwnLogMenu = () => {
+    if (Platform.OS !== "ios") {
+      setConfirmingDelete(true)
+      return
+    }
+    ActionSheetIOS.showActionSheetWithOptions(
+      { title: "내 라멘로그", options: ["삭제", "취소"], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
+      (index) => {
+        if (index === 0) setConfirmingDelete(true)
+      },
+    )
+  }
 
   return (
     // contentContainerStyle flex: 1 — 목록 높이를 화면 안으로 묶어야 하단 댓글 바가 화면 밖으로 밀리지 않는다
@@ -306,7 +353,7 @@ export default function LogDetailScreen() {
             첫 댓글을 남겨 대화를 시작해 보세요.
           </AppText>
         }
-        ListHeaderComponent={<LogDetailHeader commentCount={detail.commentCount} log={log} onLike={() => like(log)} onMore={own ? undefined : openLogMenu} />}
+        ListHeaderComponent={<LogDetailHeader commentCount={detail.commentCount} log={log} onLike={() => like(log)} onMore={deletable ? openOwnLogMenu : own ? undefined : openLogMenu} own={own} />}
         ListFooterComponent={query.error ? (
           <EmptyState actionLabel="다시 불러오기" onAction={query.loadMoreComments} title="댓글을 불러오지 못했어요" />
         ) : query.isLoading && query.hasMoreComments ? <LoadingState label="댓글을 더 불러오는 중…" /> : null}
@@ -326,6 +373,23 @@ export default function LogDetailScreen() {
       />
       <CommentComposer logId={log.id} onPosted={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)} />
       {moderationElement}
+      <ConfirmDialog
+        confirmLabel="삭제"
+        destructive
+        loading={deleting}
+        message="사진과 메모, 받은 댓글과 공감이 모두 사라지고 되돌릴 수 없어요."
+        onCancel={() => setConfirmingDelete(false)}
+        onConfirm={() => void deleteOwnLog()}
+        title="이 라멘로그를 삭제할까요?"
+        visible={confirmingDelete}
+      />
+      <Toast
+        message="라멘로그를 삭제하지 못했어요. 다시 시도해 주세요."
+        onDismiss={() => setDeleteFailed(false)}
+        style={{ bottom: TOAST_ABOVE_COMPOSER }}
+        variant="critical"
+        visible={deleteFailed}
+      />
       <EdgeBackZone />
     </Screen>
   )
@@ -336,11 +400,13 @@ function LogDetailHeader({
   commentCount,
   onLike,
   onMore,
+  own,
 }: {
   log: RamenLog
   commentCount: number
   onLike: () => void
   onMore?: () => void
+  own: boolean
 }) {
   const shopName = log.shop.branch ? `${log.shop.name} ${log.shop.branch}` : log.shop.name
   const tags = tasteTagsOf(log)
@@ -352,7 +418,7 @@ function LogDetailHeader({
           <LogAuthorRow log={log} />
           {onMore ? (
             <IconButton
-              accessibilityLabel={`${log.author.name}님의 라멘로그 메뉴`}
+              accessibilityLabel={own ? "내 라멘로그 메뉴" : `${log.author.name}님의 라멘로그 메뉴`}
               icon={<MoreHorizontal color={colors.inkSub} size={20} />}
               onPress={onMore}
             />

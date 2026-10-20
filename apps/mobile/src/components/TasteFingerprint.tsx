@@ -35,6 +35,18 @@ const LABEL_WIDTH = 92
 const RINGS = [4 / 5, 3 / 5, 2 / 5]
 const REVEAL_EASE = Easing.bezier(0.22, 1, 0.36, 1)
 
+/**
+ * 높을수록 좋은 품질 축. 육수 농도·면 삶기는 진하고 단단할수록 좋은 게 아닌 스타일 축이라
+ * 점수가 높아도 "잘한 점"처럼 파랗게 올리지 않는다(사용자 결정, 2026.10.20).
+ */
+const QUALITY_AXIS: Record<TasteAxisKey, boolean> = {
+  satisfaction: true,
+  topping: true,
+  revisit: true,
+  brothDensity: false,
+  noodleFirmness: false,
+}
+
 function pointAt(index: number, count: number, ratio: number, cx: number, cy: number, radius: number) {
   const angle = ((Math.PI * 2) / count) * index - Math.PI / 2
   return { x: cx + radius * ratio * Math.cos(angle), y: cy + radius * ratio * Math.sin(angle), cos: Math.cos(angle), sin: Math.sin(angle) }
@@ -128,7 +140,8 @@ function AxisLabel({
 
 /**
  * 맛 지문: 다섯 평가를 오각형 하나로 그린다. 가게·기록마다 모양이 달라서 한눈에 견줄 수 있다.
- * 회색 판(바깥 선 + 옅어지는 눈금 세 겹) 위에 만족도 축 색으로 면과 선을 긋고, 가장 높은 축 이름만 같은 색 굵은 글씨로 올린다.
+ * 회색 판(바깥 선 + 옅어지는 눈금 세 겹) 위에 만족도 축 색으로 면과 선을 긋고,
+ * 품질 축(만족도·토핑·재방문) 중 가장 높은 축 이름만 같은 색 굵은 글씨로 올린다. 스타일 축은 늘 회색이다.
  * 값 1점이 판 지름의 1/5이라 도형이 점으로 무너지지 않는다.
  */
 export function TasteFingerprint({ title = "맛 지문", meta, rows, style, play = true }: TasteFingerprintProps) {
@@ -139,8 +152,10 @@ export function TasteFingerprint({ title = "맛 지문", meta, rows, style, play
   const cx = width / 2
   const cy = 134
   const ratios = rows.map((row) => Math.max(1, Math.min(5, row.value)) / 5)
-  // 가장 높은 점수의 축을 파랗게 강조한다. 같은 점수는 같은 색이어야 해서 최고점이 여럿이면 모두 강조한다
-  const top = Math.max(...rows.map((row) => row.value))
+  // 품질 축 중 가장 높은 점수의 축을 파랗게 강조한다. 같은 점수는 같은 색이어야 해서 최고점이 여럿이면 모두 강조한다
+  const qualityValues = rows.filter((row) => QUALITY_AXIS[row.key]).map((row) => row.value)
+  const top = qualityValues.length > 0 ? Math.max(...qualityValues) : null
+  const strongLabels = rows.filter((row) => QUALITY_AXIS[row.key] && row.value === top).map((row) => row.label)
   const ringColors = [palette.secondaryPressed, palette.border, palette.secondary]
   const reducedMotion = useReducedMotion()
   const revealed = useRef(false)
@@ -167,7 +182,8 @@ export function TasteFingerprint({ title = "맛 지문", meta, rows, style, play
 
   return (
     <View
-      accessibilityLabel={`${title}. ${meta ? `${meta}. ` : ""}${rows.map((row) => `${row.label} ${row.text}`).join(", ")}`}
+      // 화면에서 파랗게 올린 축을 읽기 화면에서도 같은 무게로 알린다
+      accessibilityLabel={`${title}. ${meta ? `${meta}. ` : ""}${rows.map((row) => `${row.label} ${row.text}`).join(", ")}${strongLabels.length > 0 ? `. 가장 높은 평가 ${strongLabels.join(", ")}` : ""}`}
       accessibilityRole="text"
       accessible
       style={[styles.card, style]}
@@ -210,7 +226,7 @@ export function TasteFingerprint({ title = "맛 지문", meta, rows, style, play
                   mutedColor={palette.textMuted}
                   radius={radius}
                   row={row}
-                  strong={row.value === top}
+                  strong={QUALITY_AXIS[row.key] && row.value === top}
                 />
               ))}
             </>

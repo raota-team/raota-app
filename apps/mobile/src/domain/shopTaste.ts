@@ -35,6 +35,20 @@ const BROTH: Record<Lean, string> = { high: "진한 편", mid: "중간", low: "�
 const NOODLE: Record<Lean, string> = { high: "단단한 편", mid: "중간", low: "부드러운 편" }
 const TOPPING: Record<Lean, string> = { high: "훌륭한 편", mid: "보통", low: "아쉬운 편" }
 
+/**
+ * 재방문 비율 원을 그리는 최소 기록 수. 2명 중 2명을 "100% 또 갈래요"로 크게 쓰면
+ * 표본보다 확신이 커 보여서, 그 아래에서는 비율 대신 사람 수 문장만 보여 준다.
+ */
+export const SHOP_TASTE_RATIO_MIN_LOGS = 5
+
+/** "3명 중 2명이 또 가고 싶대요". 모두 같으면 "모두"로 줄이고, 한 명뿐이면 "모두"를 쓰지 않는다 */
+export function revisitHeadlineOf({ count, revisit }: ShopTasteSummary): string {
+  const everyone = count === 1 ? "1명이" : `${count}명 모두`
+  if (revisit.often === 0) return `${everyone} 한 번쯤 가 볼 만하대요`
+  if (revisit.often === count) return `${everyone} 또 가고 싶대요`
+  return `${count}명 중 ${revisit.often}명이 또 가고 싶대요`
+}
+
 export function shopTasteSummaryOf(logs: readonly RamenLog[]): ShopTasteSummary | null {
   const rated = logs.flatMap((log) => {
     const scores = scoresFromLog(log)

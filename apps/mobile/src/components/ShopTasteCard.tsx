@@ -3,7 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native"
 import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated"
 import Svg, { Circle } from "react-native-svg"
 
-import type { ShopTasteSummary } from "../domain/shopTaste"
+import { revisitHeadlineOf, SHOP_TASTE_RATIO_MIN_LOGS, type ShopTasteSummary } from "../domain/shopTaste"
 import { colors, line, radii, spacing, usePalette, useTasteAxisPalette } from "../theme"
 import { AppText } from "./ui"
 
@@ -17,6 +17,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 /**
  * 가게 상세의 "이 가게의 맛"(사용자 결정, 2026.10.20). 라멘로그 상세의 오각형과 겹치지 않게
  * 여러 사람의 기록을 "또 가고 싶은가"로 먼저 말한다: 재방문 의향 원 + 네 칸(많이 먹은 메뉴 · 육수 · 면 · 토핑).
+ * 기록이 SHOP_TASTE_RATIO_MIN_LOGS개보다 적으면 원(비율)을 그리지 않고 사람 수 문장만 쓴다. 2명 중 2명을 100%로 크게 쓰면 과장이라서다.
  * 카드 안에 카드를 넣지 않으려고 네 칸은 면이 아니라 가는 선으로 나눈다.
  * `play`가 처음 true가 될 때 원이 차오르고 칸이 차례로 나온다. 그 전에는 자리만 잡아 둔다.
  */
@@ -27,6 +28,7 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
   const progress = useSharedValue(reducedMotion ? 1 : 0)
   const played = useRef(false)
   const { count, revisit } = summary
+  const showRatio = count >= SHOP_TASTE_RATIO_MIN_LOGS
   const share = revisit.often / count
   const percent = Math.round(share * 100)
 
@@ -48,14 +50,15 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
     revisit.sometimes > 0 ? `가끔 생각남 ${revisit.sometimes}명` : null,
     revisit.once > 0 ? `한 번이면 충분 ${revisit.once}명` : null,
   ].filter(Boolean).join(" · ")
-  const headline = revisit.often > 0 ? `${count}명 중 ${revisit.often}명이 또 가고 싶대요` : `${count}명 모두 한 번쯤 가 볼 만하대요`
+  const headline = revisitHeadlineOf(summary)
+  const sampleNote = showRatio ? null : `기록이 ${SHOP_TASTE_RATIO_MIN_LOGS}개 이상 쌓이면 비율로 보여드려요`
   const cells = [
     { label: "많이 먹은 메뉴", value: summary.topMenuCount > 1 ? `${summary.topMenu} · ${summary.topMenuCount}명` : summary.topMenu },
     { label: "육수", value: summary.broth },
     { label: "면", value: summary.noodle },
     { label: "토핑", value: summary.topping },
   ]
-  const label = `이 가게의 맛. 공개 라멘로그 ${count}개. 또 갈래요 ${percent}%, ${headline.replace("\n", " ")}${rest ? `, ${rest}` : ""}. ${cells.map((cell) => `${cell.label} ${cell.value}`).join(", ")}`
+  const label = `이 가게의 맛. 공개 라멘로그 ${count}개. ${showRatio ? `또 갈래요 ${percent}%, ` : ""}${headline}${rest ? `, ${rest}` : ""}${sampleNote ? `. ${sampleNote}` : ""}. ${cells.map((cell) => `${cell.label} ${cell.value}`).join(", ")}`
 
   return (
     <View accessibilityLabel={label} accessibilityRole="text" accessible style={[styles.card, style]}>
@@ -65,31 +68,34 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
           <AppText capScale tone="muted" variant="meta">{`공개 라멘로그 ${count}개`}</AppText>
         </View>
         <View style={styles.revisit}>
-          <View style={styles.ring}>
-            <Svg height={RING} width={RING}>
-              <Circle cx={RING / 2} cy={RING / 2} fill="none" r={RADIUS} stroke={palette.secondary} strokeWidth={STROKE} />
-              <AnimatedCircle
-                animatedProps={ringProps}
-                cx={RING / 2}
-                cy={RING / 2}
-                fill="none"
-                r={RADIUS}
-                rotation={-90}
-                origin={`${RING / 2}, ${RING / 2}`}
-                stroke={axis.satisfaction}
-                strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-                strokeLinecap="round"
-                strokeWidth={STROKE}
-              />
-            </Svg>
-            <View style={styles.ringCenter}>
-              <AppText capScale style={styles.ringValue} variant="sectionTitle">{`${percent}%`}</AppText>
-              <AppText capScale tone="muted" variant="meta">또 갈래요</AppText>
+          {showRatio ? (
+            <View style={styles.ring}>
+              <Svg height={RING} width={RING}>
+                <Circle cx={RING / 2} cy={RING / 2} fill="none" r={RADIUS} stroke={palette.secondary} strokeWidth={STROKE} />
+                <AnimatedCircle
+                  animatedProps={ringProps}
+                  cx={RING / 2}
+                  cy={RING / 2}
+                  fill="none"
+                  r={RADIUS}
+                  rotation={-90}
+                  origin={`${RING / 2}, ${RING / 2}`}
+                  stroke={axis.satisfaction}
+                  strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                  strokeLinecap="round"
+                  strokeWidth={STROKE}
+                />
+              </Svg>
+              <View style={styles.ringCenter}>
+                <AppText capScale style={styles.ringValue} variant="sectionTitle">{`${percent}%`}</AppText>
+                <AppText capScale tone="muted" variant="meta">또 갈래요</AppText>
+              </View>
             </View>
-          </View>
+          ) : null}
           <Reveal from={0.15} progress={progress} style={styles.revisitText} to={0.6}>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} variant="cardTitle">{headline}</AppText>
             {rest ? <AppText capScale style={[styles.rest, styles.center]} tone="muted" variant="meta">{rest}</AppText> : null}
+            {sampleNote ? <AppText capScale lineBreakStrategyIOS="hangul-word" style={[styles.rest, styles.center]} tone="muted" variant="meta">{sampleNote}</AppText> : null}
           </Reveal>
         </View>
         <View style={styles.grid}>

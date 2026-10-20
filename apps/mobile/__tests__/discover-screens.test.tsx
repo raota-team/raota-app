@@ -20,6 +20,8 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: jest.fn(() => mockParams),
 }))
 
+jest.mock("expo-router/react-navigation", () => ({ usePreventRemove: jest.fn() }))
+
 jest.mock("lucide-react-native", () => {
   const React = require("react") as typeof import("react")
   const { View } = require("react-native") as typeof import("react-native")
@@ -62,6 +64,7 @@ jest.mock("@/src/data/fixtures", () => {
 
 const { router } = jest.requireMock("expo-router") as { router: Record<string, jest.Mock> }
 const { track } = jest.requireMock("@/src/analytics") as { track: jest.Mock }
+const { usePreventRemove } = jest.requireMock("expo-router/react-navigation") as { usePreventRemove: jest.Mock }
 
 function repository(guest = false): RaotaRepository {
   const state = createInitialPersistedState()
@@ -89,6 +92,10 @@ async function renderScreen(element: ReactElement, guest = false) {
 
 const INITIAL = createInitialPersistedState()
 const NICKNAME = INITIAL.user?.nickname ?? ""
+// 데모 계정의 그릇은 공유 원장(DEMO_BOWLS)에 앱에서 남긴 기록을 더한 것이다(마이 화면과 같은 수)
+const MY_BOWL_COUNT =
+  jest.requireActual<typeof SharedModule>("@raota/shared").DEMO_BOWLS.length +
+  INITIAL.logs.filter((log) => log.author.id === INITIAL.user?.id).length
 
 afterEach(() => {
   jest.useRealTimers()
@@ -163,7 +170,9 @@ describe("shop detail", () => {
     expect(view.queryByText(/일치도/)).toBeNull()
     expect(view.queryByText(/전화번호/)).toBeNull()
     // 공개 라멘로그의 실제 평가가 있을 때만 "이 가게의 맛"(재방문 의향 + 네 칸)을 보여 준다.
-    expect(view.getByRole("text", { name: /^이 가게의 맛\. 공개 라멘로그 2개\. 또 갈래요 \d+%.*많이 먹은 메뉴 .*육수 .*면 .*토핑 / })).toBeTruthy()
+    // 기록이 5개보다 적으면 비율(원) 대신 사람 수 문장과 안내만 읽는다
+    expect(view.getByRole("text", { name: /^이 가게의 맛\. 공개 라멘로그 2개\. 2명 (모두|중 \d명이) .*기록이 5개 이상 쌓이면 비율로 보여드려요\. 많이 먹은 메뉴 .*육수 .*면 .*토핑 / })).toBeTruthy()
+    expect(view.queryByText("또 갈래요")).toBeNull()
     expect(track).toHaveBeenCalledWith("shop_viewed", { shopId: "2" })
   })
 
@@ -335,7 +344,7 @@ describe("AI curator", () => {
     expect(view.getByText("추가 조건")).toBeTruthy()
     expect(view.getByText("자주 찾는 조건")).toBeTruthy()
     expect(view.queryAllByText("—")).toHaveLength(0)
-    expect(view.getByRole("button", { name: "웨이팅 적은 곳 추가" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "지금 영업 중인 곳 추가" })).toBeTruthy()
     // 고른 조건 네 칸은 값이 길어져도 같은 높이를 지켜 아래 질문이 밀리지 않는다. 전체 값은 묶음 라벨이 읽어 준다
     const cellHeights = ["국물", "상황", "중요", "추가"].map((label) => StyleSheet.flatten(view.getByTestId(`ai-condition-${label}`).props.style).height)
     expect(typeof cellHeights[0]).toBe("number")
@@ -386,6 +395,9 @@ describe("AI curator", () => {
     const resultTypeTag = view.getByRole("text", { name: "라멘 종류 돈코츠" })
     expect(StyleSheet.flatten(resultTypeTag.props.style).backgroundColor).toEqual(colors.photoPill)
     expect(StyleSheet.flatten(within(resultTypeTag).getByText("돈코츠").props.style).color).toEqual(colors.onPhotoPill)
+    // 기록이 있는 회원은 랭킹에 내 기록의 취향 리포트가 들어가고, 그 사실을 실제 그릇 수로 알린다
+    expect(MY_BOWL_COUNT).toBeGreaterThan(0)
+    expect(view.getByText(`내 기록 ${MY_BOWL_COUNT}그릇의 취향을 반영했어요`)).toBeTruthy()
     expect(view.queryByText(/%/)).toBeNull()
     expect(view.getByRole("button", { name: "이 가게 기록하기" })).toBeTruthy()
 
@@ -394,6 +406,53 @@ describe("AI curator", () => {
     // 상세에 다녀와도 결과는 이 화면 상태에 그대로 남는다
     expect(view.getByText(/^하쿠텐/)).toBeTruthy()
     jest.useRealTimers()
+  })
+
+  it("keeps the soup pick in the result, steps back on swipe and shows the next candidate on restart", async () => {
+    jest.useFakeTimers()
+    const view = await renderScreen(<AIRecommendScreen />)
+    await view.findByText("1 / 4")
+    // 1단계에서는 스와이프로 평소처럼 나간다
+    expect(usePreventRemove.mock.calls.at(-1)?.[0]).toBe(false)
+    await fireEvent.press(view.getByRole("radio", { name: "쇼유, 간장 타레" }))
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
+    await fireEvent.press(view.getByRole("radio", { name: "혼밥하기 좋은 곳, 혼자 편하게" }))
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
+    expect(view.getByText("3 / 4")).toBeTruthy()
+
+    // 2~4단계의 스와이프 뒤로 가기는 플로우를 나가지 않고 한 단계만 올라간다(고른 답은 남는다)
+    const [preventing, onPrevented] = usePreventRemove.mock.calls.at(-1) as [boolean, (event: unknown) => void]
+    expect(preventing).toBe(true)
+    await act(async () => {
+      onPrevented({ data: { action: { type: "GO_BACK" } } })
+    })
+    expect(view.getByText("2 / 4")).toBeTruthy()
+    expect(view.getByRole("radio", { name: "혼밥하기 좋은 곳, 혼자 편하게", checked: true })).toBeTruthy()
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
+    await fireEvent.press(view.getByRole("radio", { name: "깔끔하고 깊은 감칠맛, 청탕 · 맑은 국물" }))
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
+
+    // 대조할 수 없는 조건은 자주 찾는 조건으로 내놓지 않는다
+    for (const unmatchable of ["국물이 덜 짠 곳", "주차 가능한 곳", "매운맛 조절 가능한 곳", "웨이팅 적은 곳"]) {
+      expect(view.queryByRole("button", { name: `${unmatchable} 추가` })).toBeNull()
+    }
+    await fireEvent.press(view.getByRole("button", { name: "AI 맞춤 추천받기" }))
+    await fireEvent.press(view.getByRole("button", { name: "추천 바로 보기" }))
+
+    // 쇼유를 고르면 쇼유 매장이 있는 한 다른 종류가 나오지 않는다. 사진 위 표시와 조건 줄이 같은 이름을 쓴다
+    expect(view.getByRole("text", { name: "라멘 종류 쇼유" })).toBeTruthy()
+    expect(view.getByText(/^쇼유 계보 \d+곳 중에서 골랐어요$/)).toBeTruthy()
+    await fireEvent.press(view.getByRole("button", { name: "매장 상세 보기" }))
+    const firstId = router.push.mock.calls.at(-1)?.[0].params.shopId
+
+    // 다시 추천받기는 같은 답으로 다음 순위 후보를 보여 준다
+    await fireEvent.press(view.getByRole("button", { name: "다시 추천받기" }))
+    expect(view.getByText(`오늘 ${NICKNAME}님을 위한 라멘집`)).toBeTruthy()
+    expect(view.getByRole("text", { name: "라멘 종류 쇼유" })).toBeTruthy()
+    await fireEvent.press(view.getByRole("button", { name: "매장 상세 보기" }))
+    const secondId = router.push.mock.calls.at(-1)?.[0].params.shopId
+    expect(secondId).toBeTruthy()
+    expect(secondId).not.toBe(firstId)
   })
 
   it("lets guests see today's pick immediately when the local result is ready", async () => {
@@ -410,6 +469,8 @@ describe("AI curator", () => {
     // 결과가 준비됐으므로 발권 연출을 기다리지 않고 곧바로 볼 수 있다
     await fireEvent.press(view.getByRole("button", { name: "추천 바로 보기" }))
     expect(view.getByText("오늘의 추천")).toBeTruthy()
+    // 기록이 없는 비회원에게는 취향을 반영했다고 말하지 않는다
+    expect(view.queryByText(/그릇의 취향을 반영했어요/)).toBeNull()
     jest.useRealTimers()
     await fireEvent.press(view.getByRole("button", { name: "이 가게 기록하기" }))
     expect(router.push).toHaveBeenCalledWith("/auth/login")

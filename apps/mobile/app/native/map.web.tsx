@@ -458,7 +458,7 @@ function ListRow({ shop }: { shop: MapShop }) {
   )
 }
 
-export function ShopListView({ filters, notice }: { filters: MapFilters; notice?: ReactElement | null }) {
+export function ShopListView({ filters, notice, onRetry }: { filters: MapFilters; notice?: ReactElement | null; onRetry?: () => void }) {
   return (
     <FlatList
       ListEmptyComponent={
@@ -466,8 +466,11 @@ export function ShopListView({ filters, notice }: { filters: MapFilters; notice?
           <LoadingState label="라멘집을 불러오는 중…" />
         ) : (
           <EmptyState
+            // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
+            actionLabel={filters.error && filters.remote ? "다시 불러오기" : undefined}
             description={filters.error ? "잠시 후 다시 열어 주세요." : "다른 매장명이나 라멘 종류로 찾아보세요."}
             icon={<Search color={colors.inkSub} size={24} />}
+            onAction={onRetry}
             title={filters.error ? "라멘집을 불러오지 못했어요" : "검색 결과가 없어요"}
           />
         )
@@ -575,12 +578,19 @@ export function MapClusterPin({ count }: { count: number }) {
 
 /** Expo 웹 미리보기: Apple 지도는 iOS에만 있으므로 같은 검색·필터와 목록만 보여준다 */
 export default function WebMapScreen() {
+  const [retryKey, setRetryKey] = useState(0)
+  return <WebMapBody key={retryKey} onRetry={() => setRetryKey((key) => key + 1)} />
+}
+
+/** 실패한 서버 읽기는 캐시하지 않으므로 새 key로 다시 올리면 실패한 요청만 다시 보낸다. refetch가 생기면 그것으로 바꾼다 */
+function WebMapBody({ onRetry }: { onRetry: () => void }) {
   const filters = useMapFilters(null)
   return (
     <View style={styles.root}>
       <MapHeader filters={filters} viewMode="list" />
       <ShopListView
         filters={filters}
+        onRetry={onRetry}
         notice={<LocationNotice message="지도와 현재 위치는 iOS 앱에서 Apple 지도로 보여드려요. 여기서는 목록으로 볼 수 있어요." />}
       />
     </View>

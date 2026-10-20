@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   Pressable,
   ScrollView,
@@ -11,6 +11,7 @@ import {
 } from "react-native"
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
 import { Image } from "expo-image"
+import { ArrowRight } from "lucide-react-native"
 
 import {
   MENU_CATEGORY_NAMES,
@@ -91,6 +92,10 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   const [width, setWidth] = useState(windowWidth)
   const [page, setPage] = useState(0)
   const palette = usePalette()
+  const reduceMotion = useReducedMotion()
+  const track = useRef<ScrollView>(null)
+  /** 넘겨 보기로 옮기는 중인 장. 미끄러지는 동안 지나는 위치가 점을 앞 장으로 되돌리지 않게 도착할 때까지 붙잡는다 */
+  const target = useRef<number | null>(null)
 
   const ranked = MENU_CATEGORY_NAMES.filter((name) => typeCounts[name] > 0).sort((a, b) => typeCounts[b] - typeCounts[a])
   const [top, ...rest] = ranked
@@ -149,7 +154,22 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (interval <= 0) return
     const next = Math.min(slides.length - 1, Math.max(0, Math.round(event.nativeEvent.contentOffset.x / interval)))
+    if (target.current !== null) {
+      if (next !== target.current) return
+      target.current = null
+    }
     if (next !== page) setPage(next)
+  }
+
+  const last = page >= slides.length - 1
+  // 옆으로 넘기는 몸짓을 모르는 사람도 다음 장이 있다는 걸 알도록 My 감정서와 같은 "넘겨 보기 →"를 둔다.
+  // 동작 줄이기를 켠 사람에게는 미끄러지지 않고 바로 다음 장으로 바뀐다
+  const advance = () => {
+    if (last || interval <= 0) return
+    const next = page + 1
+    track.current?.scrollTo({ x: next * interval, animated: !reduceMotion })
+    target.current = next
+    setPage(next)
   }
 
   // 국물 점 테두리는 카드 면(ink)과 반대색으로 둘러야 같은 계열 국물 색이 면에 묻히지 않는다.
@@ -159,11 +179,15 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   return (
     <View onLayout={onLayout}>
       <ScrollView
+        ref={track}
         contentContainerStyle={styles.track}
         decelerationRate="fast"
         disableIntervalMomentum
         horizontal
         onScroll={onScroll}
+        onScrollBeginDrag={() => {
+          target.current = null
+        }}
         scrollEventThrottle={16}
         showsHorizontalScrollIndicator={false}
         snapToAlignment="start"
@@ -173,10 +197,32 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
           <StorySlide bowlEdge={bowlEdge} first={index === 0} key={slide.key} slide={slide} width={cardWidth} />
         ))}
       </ScrollView>
-      <View accessibilityLabel={`${page + 1} / ${slides.length}`} accessibilityRole="text" accessible style={styles.dots}>
-        {slides.map((slide, index) => (
-          <View key={slide.key} style={[styles.dot, index === page && styles.dotActive]} />
-        ))}
+      <View style={styles.foot}>
+        {/* 점은 그림일 뿐이고 몇 번째 장인지는 옆 글자가 읽어 준다 */}
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.dots}>
+          {slides.map((slide, index) => (
+            <View key={slide.key} style={[styles.dot, index === page && styles.dotActive]} />
+          ))}
+        </View>
+        <View style={styles.cue}>
+          <AppText capScale style={styles.tabular} tone="muted" variant="meta">
+            {page + 1} / {slides.length}
+            {last ? "" : " · "}
+          </AppText>
+          {last ? null : (
+            <Pressable
+              accessibilityLabel="다음 장 넘겨 보기"
+              accessibilityRole="button"
+              hitSlop={12}
+              onPress={advance}
+              style={({ pressed }) => [styles.more, pressed && styles.pressed]}
+              testID="taste-story-next"
+            >
+              <AppText capScale style={styles.moreText} variant="meta">넘겨 보기</AppText>
+              <ArrowRight color={palette.ink} size={14} />
+            </Pressable>
+          )}
+        </View>
       </View>
     </View>
   )
@@ -322,7 +368,14 @@ const styles = StyleSheet.create({
   share: { borderRadius: radii.pill, borderWidth: 1, borderColor: colors.soupEdge },
   bowls: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1, marginTop: "auto", paddingTop: spacing.x3 },
   bowl: { width: BOWL_DOT, height: BOWL_DOT, borderRadius: radii.pill, borderWidth: 1 },
-  dots: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: spacing.x1, marginTop: spacing.x3, minHeight: 6 },
-  dot: { width: 6, height: 6, borderRadius: radii.pill, backgroundColor: colors.secondary },
+  // 점 줄과 넘겨 보기 줄은 한 줄로 높이를 고정해 마지막 장에서 화살표가 빠져도 아래가 움직이지 않는다
+  foot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing.x3, paddingHorizontal: spacing.gutter, minHeight: 20 },
+  dots: { flexDirection: "row", alignItems: "center", gap: spacing.x1, minHeight: 6 },
+  // 꺼진 점은 바탕(canvas)에 묻히지 않도록 secondary가 아니라 outline 회색으로 둔다. 다크 모드에서도 한 단 밝게 보인다
+  dot: { width: 6, height: 6, borderRadius: radii.pill, backgroundColor: colors.outline },
   dotActive: { width: 16, backgroundColor: colors.ink },
+  cue: { flexDirection: "row", alignItems: "center" },
+  tabular: { fontVariant: ["tabular-nums"] },
+  more: { flexDirection: "row", alignItems: "center", gap: spacing.x0_5 },
+  moreText: { fontWeight: "700", color: colors.ink },
 })

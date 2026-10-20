@@ -1,68 +1,68 @@
-import { router, useFocusEffect } from "expo-router"
-import { Check, Search, Soup } from "lucide-react-native"
-import { useCallback, useMemo, useRef, useState } from "react"
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type ListRenderItem } from "react-native"
+import { FlashList, type FlashListRef, type ListRenderItem } from "@shopify/flash-list"
+import { useFocusEffect } from "expo-router"
+import { Check, Soup } from "lucide-react-native"
+import { useCallback, useRef, useState } from "react"
+import { Modal, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import type { RamenLog } from "@raota/shared"
 import { track } from "@/src/analytics"
+import { isRemote } from "@/src/api/config"
 import { LoungeLogCard } from "@/src/components/LoungeLog"
-import { AppText, Chip, EmptyState, Header, IconButton, LoadingState } from "@/src/components/ui"
+import { AppText, Chip, EmptyState, Header, LoadingState } from "@/src/components/ui"
 import { useLoungeLogs } from "@/src/data/hooks"
-import { LOUNGE_ALL_TYPES, LOUNGE_PAGE_SIZE, LOUNGE_SORTS, LOUNGE_TYPE_FILTERS, photosOf, type LoungeSort } from "@/src/domain/lounge"
+import { LOUNGE_ALL_TYPES, LOUNGE_PAGE_SIZE, LOUNGE_SORTS, LOUNGE_TYPE_FILTERS, type LoungeSort } from "@/src/domain/lounge"
 import { colors, radii, shadows, spacing, touchTarget } from "@/src/theme"
 
 /*
- * 공개 라멘로그를 독립된 두 열에 번갈아 쌓아 사진 높이를 살린다.
+ * 공개 라멘로그를 두 열 masonry로 쌓아 사진 높이를 살린다.
+ * FlashList가 실제 높이를 재서 각 기록을 더 짧은 열에 넣고, 화면 밖 핀은 내려 메모리를 아낀다.
  * 정렬·종류를 바꿔도 원본 순서와 페이지네이션은 데이터 훅이 담당한다.
  */
-const COLUMNS = [0, 1]
 const SORT_MENU_WIDTH = 136
-const SORT_OPTIONS: ReadonlyArray<{ value: LoungeSort | null; label: string }> = [
-  { value: null, label: LOUNGE_ALL_TYPES },
-  ...LOUNGE_SORTS,
-]
+const DEFAULT_SORT: LoungeSort = "latest"
+
+const keyOfLog = (log: RamenLog) => log.id
+
+interface LoungeBodyProps {
+  type: string
+  sort: LoungeSort
+  setType(next: string): void
+  setSort(next: LoungeSort): void
+  onRetry(): void
+}
 
 export default function LoungeScreen() {
-  const insets = useSafeAreaInsets()
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+  // 고른 종류·정렬은 다시 불러와도 그대로 두고, 피드 부분만 새 key로 다시 마운트한다.
   const [type, setType] = useState(LOUNGE_ALL_TYPES)
-  // '전체'는 최신순을 그대로 쓰되, 사용자가 직접 정렬을 고른 상태와 구분한다.
-  const [sortChoice, setSortChoice] = useState<LoungeSort | null>(null)
-  const [menuPosition, setMenuPosition] = useState<{ left: number; top: number } | null>(null)
-  const feed = useLoungeLogs({ type, sort: sortChoice ?? "latest" })
-  const listRef = useRef<FlatList<number>>(null)
-  const sortChipRef = useRef<View>(null)
-  // 핀터레스트처럼 각 기록을 지금 더 짧은 열에 넣는다. 번갈아 넣으면 열이 맞춰지고 글만 있는 칸이 한쪽에 몰린다.
-  // 높이는 사진 높이(긴 칸 250 · 짧은 칸 180)와 글 길이로 어림한다.
-  const columns = useMemo(() => {
-    // batchIndex: 한 번에 받은 묶음 안의 순서. 새로 받은 핀이 피드 순서대로 차례로 떠오르게 한다
-    const result: Array<Array<{ log: (typeof feed.data)[number]; tall: boolean; batchIndex: number }>> = [[], []]
-    const heights = [0, 0]
-    for (const [index, log] of feed.data.entries()) {
-      const hasPhoto = photosOf(log).length > 0
-      // 숫자로 바꾸면 BIGINT ID가 반올림돼 핀 높이 배치가 달라진다.
-      const tall = BigInt(log.id) % 3n !== 0n
-      const noteLines = Math.min(5, Math.ceil((log.note.trim() || log.menuName).length / 14))
-      const estimate = (hasPhoto ? (tall ? 250 : 180) : 28 + noteLines * 19) + 64
-      const target = heights[0] <= heights[1] ? 0 : 1
-      result[target].push({ log, tall, batchIndex: index % LOUNGE_PAGE_SIZE })
-      heights[target] += estimate
-    }
-    return result
-  }, [feed.data])
-
+  const [sort, setSort] = useState<LoungeSort>(DEFAULT_SORT)
+  // 데이터 훅에 refetch가 없어서, 첫 쪽 읽기가 실패하면 다시 마운트해 처음부터 다시 읽는다(실패한 요청은 캐시에 남지 않는다).
+  // 훅에 refetch가 생기면 이 key 대신 그 함수를 부르면 된다.
+  const [retryKey, setRetryKey] = useState(0)
+  const retry = useCallback(() => setRetryKey((key) => key + 1), [])
+  // 다시 불러오기로 피드를 다시 마운트해도 방문은 한 번만 센다
   useFocusEffect(
     useCallback(() => {
       track("lounge_viewed")
     }, []),
   )
+  return <LoungeBody key={retryKey} onRetry={retry} setSort={setSort} setType={setType} sort={sort} type={type} />
+}
+
+function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) {
+  const insets = useSafeAreaInsets()
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions()
+  const [menuPosition, setMenuPosition] = useState<{ left: number; top: number } | null>(null)
+  const feed = useLoungeLogs({ type, sort })
+  const listRef = useRef<FlashListRef<RamenLog>>(null)
+  const sortChipRef = useRef<View>(null)
 
   const changeType = (next: string) => {
     setType(next)
     listRef.current?.scrollToOffset({ offset: 0, animated: false })
   }
-  const changeSort = (next: LoungeSort | null) => {
-    setSortChoice(next)
+  const changeSort = (next: LoungeSort) => {
+    setSort(next)
     setMenuPosition(null)
     listRef.current?.scrollToOffset({ offset: 0, animated: false })
   }
@@ -75,28 +75,46 @@ export default function LoungeScreen() {
     })
   }
 
-  // 이 피드에서 이미 떠오른 카드는 열을 옮겨도 다시 떠오르지 않게 피드를 구분한다
-  const feedKey = `${type}:${sortChoice ?? "latest"}`
-  const renderItem = useCallback<ListRenderItem<number>>(
-    ({ item }) => (
-      <View style={styles.column} testID={`lounge-column-${item}`}>
-        {columns[item].map(({ log, tall, batchIndex }) => (
-          <LoungeLogCard batchIndex={batchIndex} feedKey={feedKey} key={log.id} log={log} tall={tall} />
-        ))}
+  // 이 피드에서 이미 떠오른 카드는 스크롤로 다시 마운트돼도 다시 떠오르지 않게 피드를 구분한다
+  const feedKey = `${type}:${sort}`
+  const renderItem = useCallback<ListRenderItem<RamenLog>>(
+    ({ item, index }) => (
+      // 각 칸의 좌우 4pt가 모여 열 사이 8pt가 된다. 위아래 간격도 칸 안에서 준다
+      <View style={styles.cell} testID={`lounge-cell-${index}`}>
+        {/* 재활용 칸에 다른 기록이 오면 새로 마운트해, 카드가 앞 기록의 '처음 봄' 상태를 물려받지 않게 한다 */}
+        <LoungeLogCard
+          batchIndex={index % LOUNGE_PAGE_SIZE}
+          feedKey={feedKey}
+          key={item.id}
+          log={item}
+          // 숫자로 바꾸면 BIGINT ID가 반올림돼 핀 높이가 달라진다.
+          tall={BigInt(item.id) % 3n !== 0n}
+        />
       </View>
     ),
-    [columns, feedKey],
+    [feedKey],
   )
 
   const filtered = type !== LOUNGE_ALL_TYPES
   const empty = feed.isLoading ? (
     <LoadingState label="라멘로그를 불러오는 중…" />
   ) : feed.error ? (
-    <EmptyState
-      description="잠시 후 라운지를 다시 열어 주세요."
-      icon={<Soup color={colors.textMuted} size={32} />}
-      title="라멘로그를 불러오지 못했어요"
-    />
+    // 서버에서 읽을 때만 다시 불러올 수 있다. 기기 저장소 오류는 다시 읽어도 같아서 안내만 한다
+    isRemote("lounge") ? (
+      <EmptyState
+        actionLabel="다시 불러오기"
+        description="연결을 확인하고 다시 불러와 주세요."
+        icon={<Soup color={colors.textMuted} size={32} />}
+        onAction={onRetry}
+        title="라멘로그를 불러오지 못했어요"
+      />
+    ) : (
+      <EmptyState
+        description="잠시 후 라운지를 다시 열어 주세요."
+        icon={<Soup color={colors.textMuted} size={32} />}
+        title="라멘로그를 불러오지 못했어요"
+      />
+    )
   ) : filtered ? (
     <EmptyState
       actionLabel="전체 보기"
@@ -113,21 +131,11 @@ export default function LoungeScreen() {
     />
   )
 
-  const sortLabel = SORT_OPTIONS.find((option) => option.value === sortChoice)?.label ?? LOUNGE_ALL_TYPES
+  const sortLabel = LOUNGE_SORTS.find((option) => option.value === sort)?.label ?? LOUNGE_SORTS[0].label
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <Header
-        large
-        right={
-          <IconButton
-            accessibilityLabel="라멘집 검색"
-            icon={<Search color={colors.ink} size={20} />}
-            onPress={() => router.navigate("/native/map")}
-          />
-        }
-        title="라운지"
-      />
+      <Header large title="라운지" />
       <ScrollView
         accessibilityLabel="정렬 및 라멘 종류"
         contentContainerStyle={styles.chips}
@@ -136,12 +144,13 @@ export default function LoungeScreen() {
         style={styles.chipBar}
       >
         <View collapsable={false} ref={sortChipRef}>
+          {/* 기본 최신순일 때는 비선택, 사용자가 다른 정렬을 고르면 선택 상태로 구분한다 */}
           <Chip
             accessibilityHint="누르면 정렬 메뉴가 열려요"
             accessibilityLabel={`정렬, ${sortLabel}`}
             label={`${sortLabel} ▾`}
             onPress={openSortMenu}
-            selected={sortChoice !== null}
+            selected={sort !== DEFAULT_SORT}
             style={styles.sortChip}
           />
         </View>
@@ -155,17 +164,15 @@ export default function LoungeScreen() {
           />
         ))}
       </ScrollView>
-      <FlatList
+      <FlashList
         ListEmptyComponent={empty}
         ListFooterComponent={feed.error && feed.data.length ? (
           <EmptyState actionLabel="다시 불러오기" onAction={feed.loadMore} title="다음 라멘로그를 불러오지 못했어요" />
         ) : feed.hasMore && feed.isLoading ? <LoadingState label="더 불러오는 중…" /> : null}
-        columnWrapperStyle={styles.columns}
         contentContainerStyle={styles.listContent}
-        data={feed.data.length ? COLUMNS : []}
-        extraData={columns}
-        initialNumToRender={2}
-        keyExtractor={String}
+        data={feed.data}
+        keyExtractor={keyOfLog}
+        masonry
         numColumns={2}
         onEndReached={() => {
           if (feed.hasMore && !feed.isLoading && !feed.error) feed.loadMore()
@@ -181,18 +188,18 @@ export default function LoungeScreen() {
           <Pressable accessibilityLabel="정렬 메뉴 닫기" accessibilityRole="button" onPress={() => setMenuPosition(null)} style={StyleSheet.absoluteFill} testID="lounge-sort-dismiss" />
           {menuPosition ? (
             <View accessibilityViewIsModal onAccessibilityEscape={() => setMenuPosition(null)} style={[styles.sortMenu, { left: menuPosition.left, top: menuPosition.top, maxHeight: windowHeight - menuPosition.top - spacing.gutter }]} testID="lounge-sort-menu">
-              {SORT_OPTIONS.map((option) => (
+              {LOUNGE_SORTS.map((option) => (
                 <Pressable
                   accessibilityLabel={option.label}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: sortChoice === option.value }}
-                  key={option.label}
+                  accessibilityState={{ selected: sort === option.value }}
+                  key={option.value}
                   onPress={() => changeSort(option.value)}
                   style={({ pressed }) => [styles.sortOption, pressed && styles.sortOptionPressed]}
                 >
                   <AppText variant="button">{option.label}</AppText>
                   <View style={styles.sortCheck}>
-                    {sortChoice === option.value ? <Check color={colors.ink} size={18} strokeWidth={2.5} /> : null}
+                    {sort === option.value ? <Check color={colors.ink} size={18} strokeWidth={2.5} /> : null}
                   </View>
                 </Pressable>
               ))}
@@ -211,9 +218,9 @@ const styles = StyleSheet.create({
   sortChip: { width: 88, paddingHorizontal: spacing.x3 },
   chips: { gap: spacing.grid, alignItems: "center", paddingHorizontal: spacing.gutter, paddingVertical: spacing.x2 },
   // 필터 행 아래 12pt, 마지막 핀 아래에는 탭 바 위 여유를 둔다.
-  listContent: { flexGrow: 1, paddingHorizontal: spacing.gutter, paddingTop: spacing.x3, paddingBottom: spacing.x8 },
-  columns: { gap: spacing.grid, alignItems: "flex-start" },
-  column: { flex: 1, gap: spacing.x3_5, minWidth: 0 },
+  // 칸마다 좌우 4pt를 주므로 바깥 여백은 그만큼 줄여 화면 가장자리는 gutter를 지킨다.
+  listContent: { flexGrow: 1, paddingHorizontal: spacing.gutter - spacing.grid / 2, paddingTop: spacing.x3, paddingBottom: spacing.x8 - spacing.x3_5 },
+  cell: { paddingHorizontal: spacing.grid / 2, paddingBottom: spacing.x3_5 },
   menuOverlay: { flex: 1 },
   sortMenu: {
     position: "absolute",

@@ -11,6 +11,7 @@ import OnboardingScreen from "@/app/(flows)/auth/onboarding"
 import NewRecordScreen from "@/app/(flows)/record/new"
 import { RamenTypeTag, ScoreSegment, SoupDot } from "@/src/components/ui"
 import { TasteFingerprint } from "@/src/components/TasteFingerprint"
+import { ShopTasteCard } from "@/src/components/ShopTasteCard"
 import SelectShopScreen from "@/app/(flows)/record/select-shop"
 
 jest.mock("expo-router", () => {
@@ -175,18 +176,32 @@ describe("shared taste marks", () => {
     expect(view.queryByLabelText("돈코츠")).toBeNull()
   })
 
-  it("announces the taste fingerprint as one readable set of axes", async () => {
+  it("announces the taste fingerprint as one readable set of axes, highlighting only quality axes", async () => {
     const view = await render(
       <TasteFingerprint
         meta="회원 23명의 기록"
         rows={[
           { key: "satisfaction", label: "만족도", value: 4.3, text: "4.3" },
-          { key: "brothDensity", label: "육수 농도", value: 4, text: "진한 편" },
+          // 육수 농도는 스타일 축이라 더 높아도 강조하지 않는다
+          { key: "brothDensity", label: "육수 농도", value: 4.8, text: "진한 편" },
+          { key: "topping", label: "토핑", value: 4.3, text: "4.3" },
         ]}
       />,
     )
 
-    expect(view.getByLabelText("맛 지문. 회원 23명의 기록. 만족도 4.3, 육수 농도 진한 편")).toBeTruthy()
+    expect(view.getByLabelText("맛 지문. 회원 23명의 기록. 만족도 4.3, 육수 농도 진한 편, 토핑 4.3. 가장 높은 평가 만족도, 토핑")).toBeTruthy()
+  })
+
+  it("shows the revisit ratio ring only once a shop has five rated logs", async () => {
+    const summary = { revisit: { often: 2, sometimes: 0, once: 0 }, topMenu: "특제 쇼유", topMenuCount: 2, broth: "진한 편", noodle: "중간", topping: "보통" }
+    const view = await render(
+      <>
+        <ShopTasteCard summary={{ ...summary, count: 2 }} />
+        <ShopTasteCard summary={{ ...summary, count: 5, revisit: { often: 4, sometimes: 1, once: 0 } }} />
+      </>,
+    )
+    expect(view.getByRole("text", { name: /^이 가게의 맛\. 공개 라멘로그 2개\. 2명 모두 또 가고 싶대요\. 기록이 5개 이상 쌓이면 비율로 보여드려요\. 많이 먹은 메뉴 / })).toBeTruthy()
+    expect(view.getByRole("text", { name: /^이 가게의 맛\. 공개 라멘로그 5개\. 또 갈래요 80%, 5명 중 4명이 또 가고 싶대요, 가끔 생각남 1명\. 많이 먹은 메뉴 / })).toBeTruthy()
   })
 })
 

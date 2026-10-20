@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as Haptics from "expo-haptics"
 import * as ImagePicker from "expo-image-picker"
-import { ArrowRight, Bookmark, ChartColumnStacked, ChevronRight, MapPin, Search, Settings } from "lucide-react-native"
+import { ArrowRight, Bookmark, ChartColumnStacked, ChevronRight, MapPin, Pencil, Search, Settings } from "lucide-react-native"
 import {
   Alert,
   Linking,
@@ -22,6 +22,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import {
   MENU_CATEGORY_NAMES,
   RAMEN_ACTIVITY_LEVELS,
+  getRamenActivityLevel,
   menuCategoryOf,
   seoulToday,
   typeCountsOf,
@@ -34,9 +35,7 @@ import {
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, BottomSheet, Button, Chip, EmptyState, Tag, Toast } from "@/src/components/ui"
 import {
-  useActivityLevel,
   useBookmarkedShops,
-  useBowlCount,
   useLongestStreak,
   useMyBowls,
   useMyLogs,
@@ -181,11 +180,13 @@ function MemberView() {
   const { height: windowHeight } = useWindowDimensions()
   const focused = useIsFocused()
   const { currentUser: user, actions } = useRaota()
-  const { data: recordCount } = useBowlCount()
   const { data: bowls } = useMyBowls()
+  // 한 화면의 숫자는 하나의 원천에서 센다. 프로필 카운터(visitedCount)는 캘린더·최근 기록·리포트가 쓰는
+  // 그릇 목록과 어긋날 수 있어(42 대 43), 머리글·탭·등급까지 모두 그릇 목록 길이로 맞춘다
+  const recordCount = bowls.length
   const { data: visits } = useVisitedShops()
   const { data: streak } = useLongestStreak()
-  const { data: level } = useActivityLevel()
+  const level = getRamenActivityLevel(recordCount)
   const { data: identity } = useTasteIdentity()
   const { data: myLogs } = useMyLogs()
   const { data: saved } = useBookmarkedShops()
@@ -403,8 +404,9 @@ function MemberView() {
               onPress={openProfileEditor}
               style={styles.avatarBadgeHit}
             >
+              {/* 설정 톱니와 헷갈리지 않게 프로필 편집은 연필로 둔다 */}
               <View style={styles.avatarBadge}>
-                <Settings color={colors.ink} size={16} />
+                <Pencil color={colors.ink} size={16} />
               </View>
             </Pressable>
           </View>

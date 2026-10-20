@@ -335,8 +335,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  stampTitle: { fontSize: 25, lineHeight: 28, fontWeight: "700", letterSpacing: 0.5 },
-  stampDate: { fontVariant: ["tabular-nums"] },
+  // 도장은 두 모드 모두 흰 면 위라 다크용 밝은 빨강(brandText) 대신 테두리와 같은 brand를 쓴다
+  stampTitle: { fontSize: 25, lineHeight: 28, fontWeight: "700", letterSpacing: 0.5, color: colors.brand },
+  stampDate: { fontVariant: ["tabular-nums"], color: colors.brand },
   scoreRow: { flexDirection: "row", paddingHorizontal: spacing.x3, paddingTop: spacing.x4, paddingBottom: spacing.x4 },
   scoreColumn: { flex: 1, minWidth: 0, alignItems: "center", gap: spacing.x0_5 },
   scoreValue: { fontWeight: "700", fontVariant: ["tabular-nums"], fontSize: 20, lineHeight: 24 },

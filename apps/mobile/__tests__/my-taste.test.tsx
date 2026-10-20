@@ -124,6 +124,21 @@ describe("my screen (demo account)", () => {
     expect(router.push).toHaveBeenCalledWith("/taste")
   })
 
+  it("counts every number on My from the bowl ledger even when the profile counter lags", async () => {
+    const state = createInitialPersistedState()
+    // 프로필 카운터는 42인데 그릇 목록은 앱 기록 하나가 더해져 43그릇이다
+    state.user = { ...state.user!, visitedCount: 42 }
+    state.logs.push({ ...state.logs[0], id: "904", author: { ...state.logs[0].author, id: state.user!.id }, visitedAt: "2026. 10. 15" })
+    const view = await renderScreen(<MyScreen />, state)
+
+    expect(await view.findByLabelText("총 라멘로그 43그릇")).toBeTruthy()
+    expect(view.getByRole("tab", { name: "라멘로그 43" })).toBeTruthy()
+    expect(view.getByText("43그릇을 기록했어요")).toBeTruthy()
+    expect(view.getByText("총 43그릇")).toBeTruthy()
+    expect(view.getByRole("button", { name: "다음 등급까지 7그릇" })).toBeTruthy()
+    expect(view.queryByText(/(^|\D)42그릇/)).toBeNull()
+  })
+
   it("edits the status and photo together, then can remove the photo", async () => {
     imagePicker.requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true })
     imagePicker.launchImageLibraryAsync.mockResolvedValue({
@@ -179,6 +194,10 @@ describe("my screen (demo account)", () => {
   it("shows the highest level without a next target", async () => {
     const state = createInitialPersistedState()
     state.user = { ...state.user!, visitedCount: 100 }
+    // 등급은 그릇 목록 길이로 정한다. 데모 원장 42그릇에 앱 기록 58개를 더해 100그릇을 채운다
+    for (let index = 0; index < 58; index++) {
+      state.logs.push({ ...state.logs[0], id: `max-${index}`, author: { ...state.logs[0].author, id: state.user!.id }, visitedAt: "2026. 10. 15" })
+    }
     const view = await renderScreen(<MyScreen />, state)
     await view.findByText("뿡")
     expect(view.getByRole("button", { name: "최고 등급이에요" })).toBeTruthy()
@@ -345,7 +364,7 @@ describe("taste report", () => {
     expect(await view.findByText("진한 돈골파")).toBeTruthy()
     expect(view.getByLabelText("돈코츠 14그릇, 33%")).toBeTruthy()
     expect(view.getByLabelText(/^나의 취향\. 진한 육수에 단단한 면\. 진한 돈골파 · #진한 육수 #단단한 면/)).toBeTruthy()
-    expect(view.getByLabelText("1 / 4")).toBeTruthy()
+    expect(view.getByText(/^1 \/ 4/)).toBeTruthy()
     expect(view.getByText("자주 간 라멘집")).toBeTruthy()
     expect(view.getByText(/숙주와 양배추를 센 불에 볶아 올려서/)).toBeTruthy()
     expect(view.getByText("별점 5")).toBeTruthy()
@@ -355,13 +374,27 @@ describe("taste report", () => {
     expect(router.push).toHaveBeenCalledWith({ pathname: "/shop/[shopId]", params: { shopId: expect.any(String) } })
   })
 
-  it("keeps recomputing available only from the full report", async () => {
+  it("cues the hidden story cards and advances one card per tap", async () => {
     const view = await renderScreen(<TasteReportScreen />)
     await view.findByText("진한 돈골파")
-    await fireEvent.press(view.getByRole("button", { name: "최근 기록으로 다시 정리" }))
-    expect(view.getByText("라멘 취향 감정서")).toBeTruthy()
-    await fireEvent.press(view.getByRole("button", { name: "리포트 바로 보기" }))
-    expect(view.getByText("종류별로 먹은 라멘")).toBeTruthy()
+
+    for (const page of [2, 3, 4]) {
+      await fireEvent.press(view.getByRole("button", { name: "다음 장 넘겨 보기" }))
+      expect(view.getByText(new RegExp(`^${page} / 4`))).toBeTruthy()
+    }
+    // 마지막 장에서는 더 넘길 곳이 없으니 화살표 버튼이 사라지고 쪽수만 남는다
+    expect(view.queryByRole("button", { name: "다음 장 넘겨 보기" })).toBeNull()
+    expect(view.getByText("4 / 4")).toBeTruthy()
+  })
+
+  it("ends the report on sharing instead of recomputing", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: Share.dismissedAction })
+    const view = await renderScreen(<TasteReportScreen />)
+    await view.findByText("진한 돈골파")
+
+    expect(view.queryByRole("button", { name: "최근 기록으로 다시 정리" })).toBeNull()
+    await fireEvent.press(view.getByRole("button", { name: "리포트 공유하기" }))
+    expect(share).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("진한 돈골파") }))
   })
 
   it("closes quietly when the share sheet is dismissed", async () => {
@@ -503,8 +536,10 @@ describe("monthly taste", () => {
       expect.objectContaining({ selected: true }),
     )
     expect(view.getByText("맑은 시오파")).toBeTruthy()
-    expect(view.getByText("지난달과 달라진 메뉴")).toBeTruthy()
-    expect(within(view.getByLabelText("2026년 8월 라멘 종류별 그릇 수와 비율")).getAllByText(/%p|—/).length).toBeGreaterThan(0)
+    expect(view.getByText("지난달과 달라진 종류")).toBeTruthy()
+    expect(within(view.getByLabelText("2026년 8월 라멘 종류별 그릇 수와 비율")).getAllByText(/%p/).length).toBeGreaterThan(0)
+    // 변화 없는 칸은 비워 두고 "—"로 채우지 않는다
+    expect(view.queryAllByText("—")).toHaveLength(0)
     await fireEvent.press(view.getByRole("tab", { name: "2026년 7월" }))
     expect(view.getByText("7월의 취향")).toBeTruthy()
     await fireEvent.press(view.getByRole("tab", { name: "2026년 6월" }))

@@ -15,3 +15,12 @@ jest.mock("react-native-reanimated", () => ({
   ...(require("react-native-reanimated/mock") as object),
   useReducedMotion: () => false,
 }))
+
+// 테스트 환경에는 레이아웃 측정이 없어 FlashList가 칸을 그리지 못한다. 고정 크기로 재게 한다.
+// (라이브러리의 jestSetup.js는 2.x에서 없어진 RecyclerView export를 찾아 쓰지 못한다)
+jest.mock("@shopify/flash-list/dist/recyclerview/utils/measureLayout", () => ({
+  ...jest.requireActual("@shopify/flash-list/dist/recyclerview/utils/measureLayout"),
+  measureParentSize: () => ({ x: 0, y: 0, width: 390, height: 844 }),
+  measureFirstChildLayout: () => ({ x: 0, y: 0, width: 390, height: 844 }),
+  measureItemLayout: () => ({ x: 0, y: 0, width: 195, height: 100 }),
+}))
