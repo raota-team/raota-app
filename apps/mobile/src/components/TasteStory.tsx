@@ -10,6 +10,8 @@ import {
   type NativeSyntheticEvent,
 } from "react-native"
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
+import { Image } from "expo-image"
+import Svg, { Path } from "react-native-svg"
 
 import {
   MENU_CATEGORY_NAMES,
@@ -27,8 +29,13 @@ const REVEAL_EASE = Easing.bezier(0.22, 1, 0.36, 1)
 /** 첫 장 그릇 점은 최근 15그릇만. 한 줄에 들어가는 수라서 줄바꿈으로 높이가 달라지지 않는다 */
 const MAX_BOWL_DOTS = 15
 const BOWL_DOT = 12
-/** 장마다 글 양이 달라도 카드 높이가 같아야 넘길 때 아래가 출렁이지 않는다 */
-const SLIDE_MIN_HEIGHT = 216
+/**
+ * 장마다 글 양이 달라도 카드 높이가 같아야 넘길 때 아래가 출렁이지 않는다. 가로 줄의 카드는 가장 큰 장에 맞춰 늘어나므로
+ * 최소 높이는 글과 그림이 들어갈 만큼만 둔다(너무 크면 빈 면이 남는다)
+ */
+const SLIDE_MIN_HEIGHT = 168
+const ART = 64
+const BOWL_PATH = "M3 9H33C33 18.5 26.3 26 18 26C9.7 26 3 18.5 3 9Z"
 
 /**
  * 평균 점수를 육수·면 한 마디로 읽는다. 가게 상세 "이 가게의 맛"(src/domain/shopTaste.ts)과 같은 기준:
@@ -52,6 +59,12 @@ interface Slide {
   sub: string[]
   dark?: boolean
   bowls?: string[]
+  /** 국물 종류별 몫(한 줄 막대) */
+  shares?: Array<{ name: string; count: number }>
+  /** 오른쪽 아래 그림: 그 국물 색 그릇 */
+  bowlArt?: string
+  /** 오른쪽 아래 그림: 단골집 사진 */
+  photo?: string
   onPress?: () => void
 }
 
@@ -100,6 +113,7 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
       kicker: "가장 많이 먹은 국물",
       big: [`${top} `, { accent: `${typeCounts[top]}그릇` }],
       sub: rest.length ? [rest.map((name) => `${name} ${typeCounts[name]}`).join(" · ")] : [],
+      shares: ranked.map((name) => ({ name, count: typeCounts[name] })),
     })
   }
   slides.push({
@@ -107,6 +121,7 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
     kicker: "나의 취향",
     big: [{ accent: broth }, "에\n", { accent: noodle }],
     sub: [identity.title, ...(identity.tags.length ? [identity.tags.map((tag) => `#${tag}`).join(" ")] : [])],
+    bowlArt: top,
   })
   if (favorite) {
     slides.push({
@@ -114,6 +129,7 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
       kicker: "단골집",
       big: [`${favorite.name}에\n`, { accent: `${favorite.visitCount}번` }, " 갔어요"],
       sub: runnerUp ? [`그다음은 ${runnerUp.name} ${runnerUp.visitCount}번`] : [],
+      photo: favorite.photo || undefined,
       onPress: onOpenFavorite,
     })
   }
@@ -151,7 +167,7 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
         snapToInterval={interval}
       >
         {slides.map((slide, index) => (
-          <StorySlide bowlEdge={bowlEdge} first={index === 0} key={slide.key} slide={slide} width={cardWidth} />
+          <StorySlide bowlEdge={bowlEdge} first={index === 0} key={slide.key} slide={slide} soupEdge={palette.soupEdge} width={cardWidth} />
         ))}
       </ScrollView>
       <View accessibilityLabel={`${page + 1} / ${slides.length}`} accessibilityRole="text" accessible style={styles.dots}>
@@ -163,33 +179,55 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   )
 }
 
-function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: number; first: boolean; bowlEdge: string }) {
+function StorySlide({ slide, width, first, bowlEdge, soupEdge }: { slide: Slide; width: number; first: boolean; bowlEdge: string; soupEdge: string }) {
   const tone = slide.dark ? "onInk" : "ink"
   const subTone = slide.dark ? "onInk" : "sub"
   const bigText = slide.big.map((part) => (typeof part === "string" ? part : part.accent)).join("")
   const label = [slide.kicker, bigText.replace(/\n/g, " "), slide.sub.join(" · ")].filter(Boolean).join(". ")
+  const total = slide.shares?.reduce((sum, share) => sum + share.count, 0) ?? 0
   const content = (
     <>
-      <AppText capScale style={[styles.kicker, slide.dark ? styles.dim : null]} tone={slide.dark ? "onInk" : "muted"} variant="secondary">
-        {slide.kicker}
-      </AppText>
-      <BigText animate={first}>
-        <AppText lineBreakStrategyIOS="hangul-word" style={styles.big} tone={tone} variant="headline">
-          {slide.big.map((part, index) =>
-            typeof part === "string" ? part : <AppText key={index} style={[styles.big, styles.accent]} variant="headline">{part.accent}</AppText>,
-          )}
-        </AppText>
-      </BigText>
-      {slide.sub.length ? (
-        <AppText lineBreakStrategyIOS="hangul-word" style={[styles.sub, slide.dark ? styles.dim : null]} tone={subTone} variant="secondary">
-          {slide.sub.map((part, index) => (
-            // 조각마다 따로 둔 글씨라 정체성 이름("진한 돈골파")을 그대로 찾을 수 있다
-            <Fragment key={index}>
-              {index > 0 ? " · " : null}
-              <AppText tone={subTone} variant="secondary">{part}</AppText>
-            </Fragment>
-          ))}
-        </AppText>
+      <View style={styles.head}>
+        <View style={styles.text}>
+          <AppText capScale style={[styles.kicker, slide.dark ? styles.dim : null]} tone={slide.dark ? "onInk" : "muted"} variant="secondary">
+            {slide.kicker}
+          </AppText>
+          <BigText animate={first}>
+            <AppText lineBreakStrategyIOS="hangul-word" style={styles.big} tone={tone} variant="headline">
+              {slide.big.map((part, index) =>
+                typeof part === "string" ? part : <AppText key={index} style={[styles.big, styles.accent]} variant="headline">{part.accent}</AppText>,
+              )}
+            </AppText>
+          </BigText>
+          {slide.sub.length ? (
+            <AppText lineBreakStrategyIOS="hangul-word" style={[styles.sub, slide.dark ? styles.dim : null]} tone={subTone} variant="secondary">
+              {slide.sub.map((part, index) => (
+                // 조각마다 따로 둔 글씨라 정체성 이름("진한 돈골파")을 그대로 찾을 수 있다
+                <Fragment key={index}>
+                  {index > 0 ? " · " : null}
+                  <AppText tone={subTone} variant="secondary">{part}</AppText>
+                </Fragment>
+              ))}
+            </AppText>
+          ) : null}
+        </View>
+        {slide.bowlArt ? (
+          // 가장 많이 먹은 국물 색으로 채운 그릇. 취향 문장 옆에서 "어떤 국물의 사람인지"를 색으로 한 번 더 말한다
+          <Svg height={ART * (28 / 36)} viewBox="0 0 36 28" width={ART}>
+            <Path d={BOWL_PATH} fill={soupColorOf(slide.bowlArt)} stroke={soupEdge} strokeWidth={1} />
+          </Svg>
+        ) : null}
+        {slide.photo ? <Image contentFit="cover" source={{ uri: slide.photo }} style={styles.photo} transition={150} /> : null}
+      </View>
+      {slide.shares && total > 0 ? (
+        // 국물별 몫을 한 줄로 이어 붙인 막대. 손잡이 없는 비율 띠라 슬라이더로 읽히지 않는다
+        <View style={styles.footer}>
+          <View style={styles.shares}>
+            {slide.shares.map((share) => (
+              <View key={share.name} style={[styles.share, { flex: share.count, backgroundColor: soupColorOf(share.name) }]} />
+            ))}
+          </View>
+        </View>
       ) : null}
       {slide.bowls?.length ? (
         <View style={styles.bowls}>
@@ -252,6 +290,12 @@ const styles = StyleSheet.create({
   big: { fontWeight: "700" },
   accent: { color: tasteAxis.satisfaction },
   sub: { marginTop: spacing.x1_5 },
+  head: { flexDirection: "row", alignItems: "flex-start", gap: spacing.x3 },
+  text: { flex: 1 },
+  photo: { width: ART, height: ART, borderRadius: radii.sm, backgroundColor: colors.secondary },
+  footer: { marginTop: "auto", paddingTop: spacing.x3 },
+  shares: { flexDirection: "row", gap: 2, height: 10 },
+  share: { borderRadius: radii.pill, borderWidth: 1, borderColor: colors.soupEdge },
   bowls: { flexDirection: "row", flexWrap: "wrap", gap: spacing.x1, marginTop: "auto", paddingTop: spacing.x3 },
   bowl: { width: BOWL_DOT, height: BOWL_DOT, borderRadius: radii.pill, borderWidth: 1 },
   dots: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: spacing.x1, marginTop: spacing.x3, minHeight: 6 },
