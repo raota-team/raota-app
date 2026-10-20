@@ -162,8 +162,8 @@ describe("shop detail", () => {
     expect(view.getByText("영업시간 정보가 아직 없어요")).toBeTruthy()
     expect(view.queryByText(/일치도/)).toBeNull()
     expect(view.queryByText(/전화번호/)).toBeNull()
-    // 공개 라멘로그의 실제 5축 평가가 있을 때만 접근 가능한 맛 지문을 표시한다.
-    expect(view.getByRole("text", { name: /^맛 지문\. 공개 라멘로그 2개 기준\. 만족도 4\.5, 육수 농도 4\.0/ }).props.accessibilityLabel).toContain("재방문 4.0")
+    // 공개 라멘로그의 실제 평가가 있을 때만 "이 가게의 맛"을 한 문장과 근거 칩으로 보여 준다.
+    expect(view.getByRole("text", { name: /^이 가게의 맛\. 공개 라멘로그 2개\. .*만족도 4\.5\./ })).toBeTruthy()
     expect(track).toHaveBeenCalledWith("shop_viewed", { shopId: "2" })
   })
 

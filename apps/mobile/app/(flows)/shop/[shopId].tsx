@@ -17,16 +17,17 @@ import Animated, { Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, 
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Svg, { Path } from "react-native-svg"
 
-import { EMPTY_PROFILE, TASTE_AXES, mergeProfile, type Shop, type ShopCatalogItem } from "@raota/shared"
+import type { Shop, ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { PhotoViewer } from "@/src/components/PhotoViewer"
-import { TasteFingerprint } from "@/src/components/TasteFingerprint"
+import { ShopTasteCard } from "@/src/components/ShopTasteCard"
 import { EdgeBackZone } from "@/src/components/EdgeBackZone"
 import { AppText, BottomSheet, Button, EmptyState, Header, IconButton, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
 import { useBookmarkedShops, useShop, useShops } from "@/src/data/hooks"
 import { naverMapLinks } from "@/src/domain/naverMap"
 import { isLogVisibleTo } from "@/src/domain/lounge"
+import { shopTasteSummaryOf } from "@/src/domain/shopTaste"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, radii, spacing, touchTarget } from "@/src/theme"
 
@@ -34,8 +35,8 @@ const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요�
 const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
 /** 하단 고정 바 높이(버튼 48 + 위아래 여백)만큼 토스트를 띄운다 */
 const TOAST_OFFSET = 88
-/** 맛 지문 카드 윗변에서 이만큼(제목 + 오각형 윗부분) 보이면 펼친다 */
-const FINGERPRINT_REVEAL_DEPTH = 140
+/** 이 가게의 맛 카드 윗변에서 이만큼(제목 + 첫 문장) 보이면 떠오르게 한다 */
+const FINGERPRINT_REVEAL_DEPTH = 120
 const SAVE_EASE = Easing.bezier(0.22, 1, 0.36, 1)
 
 type DetailShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec" | "lastOrder">>
@@ -176,23 +177,12 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     { label: "육수 추가", value: shop.servicePerks?.soupRefill },
     { label: "양념", value: shop.servicePerks?.condiments },
   ].filter((perk): perk is { label: string; value: string } => Boolean(perk.value))
-  /** 가게별 5축 평균은 원장에 없으므로 이 화면에서 볼 수 있는 공개 라멘로그의 실제 평가만 모은다. */
+  /** 가게별 맛 모음은 원장에 없으므로 이 화면에서 볼 수 있는 공개 라멘로그의 실제 평가만 모은다. */
   const shopTaste = useMemo(() => {
     const viewer = { userId: currentUser?.id ?? null, hiddenAuthorIds: state.hiddenAuthorIds, reports: state.contentReports }
     const publicLogs = shopsQuery.remote ? [] : state.logs.filter((log) => log.shop.id === shop.id && log.isPublic && isLogVisibleTo(log, viewer))
-    return mergeProfile(EMPTY_PROFILE, publicLogs)
+    return shopTasteSummaryOf(publicLogs)
   }, [currentUser?.id, shop.id, shopsQuery.remote, state.contentReports, state.hiddenAuthorIds, state.logs])
-  const tasteRows = useMemo(
-    () => shopTaste.count
-      ? TASTE_AXES.map(({ key, label }) => ({
-          key,
-          label: key === "satisfaction" ? "만족도" : key === "revisit" ? "재방문" : label,
-          value: shopTaste.scores[key],
-          text: shopTaste.scores[key].toFixed(1),
-        }))
-      : [],
-    [shopTaste],
-  )
   /** 같은 종류의 실제 매장 두 곳. 도보 시간 데이터는 없으므로 시간은 추정하지 않는다. */
   const similarShops = useMemo(
     () => nearbyShops
@@ -496,8 +486,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           </View>
         ) : null}
 
-        {/* 맛 지문은 소개 아래에 둔다. 스크롤해서 화면에 들어오는 순간 펼쳐지게 위치를 잰다 */}
-        {shopTaste.count > 0 ? (
+        {/* 이 가게의 맛은 소개 아래에 둔다. 스크롤해서 화면에 들어오는 순간 떠오르게 위치를 잰다 */}
+        {shopTaste ? (
           <View
             onLayout={({ nativeEvent }) => {
               fingerprintTop.current = nativeEvent.layout.y
@@ -505,7 +495,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             }}
             style={styles.fingerprint}
           >
-            <TasteFingerprint meta={`공개 라멘로그 ${shopTaste.count}개 기준`} play={fingerprintPlay} rows={tasteRows} />
+            <ShopTasteCard play={fingerprintPlay} summary={shopTaste} />
           </View>
         ) : null}
 

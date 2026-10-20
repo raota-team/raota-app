@@ -1,6 +1,7 @@
-import type { CreateRamenLogInput, Shop } from "@raota/shared"
+import type { CreateRamenLogInput, RamenLog, Shop } from "@raota/shared"
 
-import { INITIAL_TASTE_REPORTS, SHOPS } from "@/src/data/fixtures"
+import { INITIAL_LOGS, INITIAL_TASTE_REPORTS, SHOPS } from "@/src/data/fixtures"
+import { shopTasteSummaryOf } from "@/src/domain/shopTaste"
 import {
   calculateMapClusters,
   filterAndSortShops,
@@ -28,6 +29,35 @@ const validRecord: CreateRamenLogInput = {
   revisit: "자주 감",
   isPublic: true,
 }
+
+describe("이 가게의 맛 요약", () => {
+  const logWith = (scores: RamenLog["scores"], revisit: RamenLog["revisit"]): RamenLog => ({ ...INITIAL_LOGS[0], scores, revisit })
+
+  it("follows where most logs lean and counts each chip's share", () => {
+    const summary = shopTasteSummaryOf([
+      logWith({ satisfaction: 5, brothDensity: 5, noodleFirmness: 4, topping: 4, revisit: 5 }, "자주 감"),
+      logWith({ satisfaction: 4, brothDensity: 4, noodleFirmness: 2, topping: 3, revisit: 3 }, "가끔 생각남"),
+      logWith({ satisfaction: 4, brothDensity: 2, noodleFirmness: 4, topping: 4, revisit: 5 }, "자주 감"),
+    ])
+    expect(summary).toMatchObject({
+      count: 3,
+      broth: "진한 육수",
+      noodle: "단단한 면",
+      closing: "또 찾는 사람이 많은 집",
+      satisfaction: 4.3,
+    })
+    expect(summary?.chips).toEqual([
+      { label: "#진한 육수", value: "67%" },
+      { label: "#단단한 면", value: "67%" },
+      { label: "#토핑 훌륭", value: "67%" },
+      { label: "#또 갈래요", value: "67%" },
+    ])
+  })
+
+  it("says nothing when no log has scores", () => {
+    expect(shopTasteSummaryOf([{ ...INITIAL_LOGS[0], scores: undefined }])).toBeNull()
+  })
+})
 
 describe("record validation", () => {
   it("accepts a complete record DTO", () => {
