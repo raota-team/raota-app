@@ -161,6 +161,10 @@ describe("record tab action", () => {
     }
     await fireEvent.press(view.getByRole("button", { name: label }))
     expect(track).toHaveBeenCalledWith("record_started", { mode, source: "tab" })
+    // 메뉴가 다 내려가기 전에는 다음 화면을 열지 않는다(모달끼리 엉키지 않게)
+    expect(router.push).not.toHaveBeenCalled()
+    // 메뉴가 내려간 신호(onDismiss)가 테스트 환경엔 없으니 대체 시간 뒤 한 번 열리는지 본다
+    await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1), { timeout: 2000 })
     expect(router.push).toHaveBeenCalledWith({
       pathname: "/record/select-shop",
       params: { mode, source: "tab" },

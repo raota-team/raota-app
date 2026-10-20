@@ -35,6 +35,8 @@ jest.mock("expo-router", () => {
   }
 })
 
+jest.mock("expo-router/react-navigation", () => ({ usePreventRemove: jest.fn() }))
+
 jest.mock("react-native-worklets", () => require("react-native-worklets/src/mock"))
 jest.mock("react-native-reanimated", () => {
   const mock = require("react-native-reanimated/mock")
@@ -354,27 +356,27 @@ describe("record screens", () => {
     const expoRouter = jest.requireMock("expo-router") as {
       useNavigation: jest.Mock
     }
-    let beforeRemove: ((event: unknown) => void) | undefined
+    const { usePreventRemove } = jest.requireMock("expo-router/react-navigation") as {
+      usePreventRemove: jest.Mock
+    }
     const dispatch = jest.fn()
     expoRouter.useNavigation.mockReturnValue({
-      addListener: jest.fn((_name: string, listener: (event: unknown) => void) => {
-        beforeRemove = listener
-        return jest.fn()
-      }),
+      addListener: jest.fn(() => jest.fn()),
       dispatch,
     })
     const view = await renderWithStore(<NewRecordScreen />)
 
     await fireEvent.changeText(await view.findByLabelText("먹은 메뉴"), "시오")
-    const preventDefault = jest.fn()
+    const [preventing, onPrevented] = usePreventRemove.mock.calls.at(-1) as [boolean, (event: unknown) => void]
+    expect(preventing).toBe(true)
     const action = { type: "GO_BACK" }
     await act(async () => {
-      beforeRemove?.({ preventDefault, data: { action } })
+      onPrevented({ data: { action } })
     })
 
-    expect(preventDefault).toHaveBeenCalled()
     expect(view.getByText("작성을 그만둘까요?")).toBeTruthy()
     await fireEvent.press(view.getByRole("button", { name: "나가기" }))
+    expect(usePreventRemove.mock.calls.at(-1)?.[0]).toBe(false)
     expect(dispatch).toHaveBeenCalledWith(action)
   })
 

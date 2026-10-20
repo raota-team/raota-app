@@ -75,15 +75,17 @@ export default function LoungeScreen() {
     })
   }
 
+  // 이 피드에서 이미 떠오른 카드는 열을 옮겨도 다시 떠오르지 않게 피드를 구분한다
+  const feedKey = `${type}:${sortChoice ?? "latest"}`
   const renderItem = useCallback<ListRenderItem<number>>(
     ({ item }) => (
       <View style={styles.column} testID={`lounge-column-${item}`}>
         {columns[item].map(({ log, tall, batchIndex }) => (
-          <LoungeLogCard batchIndex={batchIndex} key={log.id} log={log} tall={tall} />
+          <LoungeLogCard batchIndex={batchIndex} feedKey={feedKey} key={log.id} log={log} tall={tall} />
         ))}
       </View>
     ),
-    [columns],
+    [columns, feedKey],
   )
 
   const filtered = type !== LOUNGE_ALL_TYPES

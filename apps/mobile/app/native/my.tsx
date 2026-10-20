@@ -1019,7 +1019,7 @@ function ProfileAvatar({ uri, size }: { uri: string | null; size: number }) {
   )
 }
 
-/** 숫자만 갱신하고 최종 자릿수는 처음부터 비워 둔다. */
+/** 숫자만 갱신하고 최종 자릿수만큼만 자리를 잡아 둔다. 자릿수를 더 잡으면 작은 수 앞이 비어 보인다. */
 function BowlCountNumber({ count, target }: { count: SharedValue<number>; target: number }) {
   const [displayed, setDisplayed] = useState(() => Math.round(count.value))
   useAnimatedReaction(
@@ -1033,7 +1033,7 @@ function BowlCountNumber({ count, target }: { count: SharedValue<number>; target
   return (
     <View style={styles.countSlot}>
       <AppText accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.statValue, styles.tabular, styles.invisible]} variant="secondary">
-        {"8".repeat(Math.max(3, String(target).length))}
+        {"8".repeat(String(target).length)}
       </AppText>
       <AppText style={[styles.statValue, styles.tabular, styles.countOverlay]} variant="secondary">{displayed}</AppText>
     </View>
@@ -1057,13 +1057,17 @@ function AnimatedBowlDot({
 }) {
   const scale = useSharedValue(initiallyHidden ? 0 : 1)
   const previousRun = useRef(run)
+  // 숨긴 채 마운트된 점은 재생이 건너뛰어져도 반드시 다시 보여야 한다.
+  const awaitingReveal = useRef(initiallyHidden)
 
   useEffect(() => {
     if (reducedMotion) {
       scale.value = 1
       previousRun.current = run
+      awaitingReveal.current = false
     } else if (run !== previousRun.current) {
       previousRun.current = run
+      awaitingReveal.current = false
       scale.value = 0
       // 점이 많아도 마지막 점까지 1초 안에 들어오게 간격만 좁힌다.
       const delay = index * Math.min(18, 560 / Math.max(1, total - 1))
@@ -1071,8 +1075,12 @@ function AnimatedBowlDot({
         withTiming(1.3, { duration: 120, easing: REVEAL_EASE }),
         withSpring(1, { duration: 220, dampingRatio: 0.68 }),
       ))
+    } else if (awaitingReveal.current && !initiallyHidden) {
+      // 같은 그릇 수라 연출을 건너뛴 경우: 재생 없이 그대로 보인다.
+      awaitingReveal.current = false
+      scale.value = 1
     }
-  }, [index, reducedMotion, run, scale, total])
+  }, [index, initiallyHidden, reducedMotion, run, scale, total])
 
   useEffect(() => () => cancelAnimation(scale), [scale])
 
@@ -1115,20 +1123,27 @@ function MyTasteTicket({
       {populated.length ? (
         <>
           <View accessibilityLabel={`그릇 감정서. ${populated.map((type) => `${type} ${groups[type]}그릇`).join(", ")}`} accessible style={styles.bowlDots}>
-            {bowls.map((_, index) => {
-              const bowl = bowls[bowls.length - 1 - index]
-              return (
-                <AnimatedBowlDot
-                  index={index}
-                  initiallyHidden={initiallyHidden}
-                  key={`${bowl.date}-${bowl.shop}-${bowl.menu}-${index}`}
-                  reducedMotion={reducedMotion}
-                  run={dotRun}
-                  total={bowls.length}
-                  type={menuCategoryOf(bowl.type)}
-                />
-              )
-            })}
+            {(() => {
+              // 위치 대신 그릇 자체로 키를 잡아, 중간 기록이 지워져도 뒤의 점이 다시 마운트되지 않게 한다.
+              const seen = new Map<string, number>()
+              return bowls.map((_, index) => {
+                const bowl = bowls[bowls.length - 1 - index]
+                const base = `${bowl.date}-${bowl.shop}-${bowl.menu}`
+                const nth = seen.get(base) ?? 0
+                seen.set(base, nth + 1)
+                return (
+                  <AnimatedBowlDot
+                    index={index}
+                    initiallyHidden={initiallyHidden}
+                    key={`${base}-${nth}`}
+                    reducedMotion={reducedMotion}
+                    run={dotRun}
+                    total={bowls.length}
+                    type={menuCategoryOf(bowl.type)}
+                  />
+                )
+              })
+            })()}
           </View>
           <AppText capScale tone="muted" variant="meta">{populated.map((type) => `${type} ${groups[type]}`).join(" · ")}</AppText>
         </>

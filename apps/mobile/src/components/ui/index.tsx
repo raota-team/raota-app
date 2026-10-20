@@ -46,29 +46,37 @@ const AnimatedPressable = Reanimated.createAnimatedComponent(Pressable)
 const SELECTION_EASE = MotionEasing.bezier(0.22, 1, 0.36, 1)
 
 /** 고른 면·글씨는 색만 바꾸고, 눌림은 레이아웃 대신 시각적 크기로 돌려준다. */
-function useSelectableMotion(selected: boolean) {
+function useSelectableMotion(selected: boolean, disabled = false) {
   const palette = usePalette()
   const reducedMotion = useReducedMotion()
   const selection = useSharedValue(selected ? 1 : 0)
   const pressScale = useSharedValue(1)
+  // 동작 줄이기에서는 크기 변화 대신 즉시 바뀌는 투명도로 눌림을 알린다.
+  const pressOpacity = useSharedValue(1)
 
   useEffect(() => {
     selection.value = reducedMotion ? (selected ? 1 : 0) : withTiming(selected ? 1 : 0, { duration: 200, easing: SELECTION_EASE })
     if (reducedMotion) pressScale.value = 1
-  }, [selected, reducedMotion, selection, pressScale])
+    else pressOpacity.value = 1
+  }, [selected, reducedMotion, selection, pressScale, pressOpacity])
 
+  // 애니메이션 스타일이 정적 투명도를 덮으므로 비활성 투명도도 여기서 함께 곱한다.
+  const restOpacity = disabled ? Number(styles.disabled.opacity) : 1
   const containerStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(selection.value, [0, 1], [palette.canvasSoft, palette.selected]),
+    opacity: restOpacity * pressOpacity.value,
     transform: [{ scale: pressScale.value }],
-  }), [palette])
+  }), [palette, restOpacity])
   const textStyle = useAnimatedStyle(() => ({
     color: interpolateColor(selection.value, [0, 1], [palette.ink, palette.onSelected]),
   }), [palette])
 
   const pressIn = () => {
-    if (!reducedMotion) pressScale.value = withTiming(0.97, { duration: 120 })
+    if (reducedMotion) pressOpacity.value = 0.6
+    else pressScale.value = withTiming(0.97, { duration: 120 })
   }
   const pressOut = () => {
+    pressOpacity.value = 1
     pressScale.value = reducedMotion ? 1 : withTiming(1, { duration: 180, easing: SELECTION_EASE })
   }
 
@@ -433,7 +441,7 @@ export function Chip({
   onPressOut,
   ...props
 }: ChipProps) {
-  const motion = useSelectableMotion(selected)
+  const motion = useSelectableMotion(selected, Boolean(disabled))
   return (
     <AnimatedPressable
       accessibilityLabel={accessibilityLabel}

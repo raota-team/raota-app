@@ -2,7 +2,7 @@ import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { router } from "expo-router"
 import { ChevronLeft, EyeOff, Flag, Heart, Images, MoreHorizontal } from "lucide-react-native"
-import { memo, useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import {
   ActionSheetIOS,
   Platform,
@@ -234,15 +234,33 @@ export function LogNote({ note, numberOfLines }: { note: string; numberOfLines?:
 // 피드 카드
 // ---------------------------------------------------------------------------
 
+/*
+ * 피드(종류+정렬)마다 이미 보여 준 기록. 사용자를 숨겨 열 배치가 바뀌면 카드가 다른 열로 옮겨 가며
+ * 다시 마운트되는데, 그때 떠오르는 효과를 또 틀지 않으려고 화면 밖(모듈)에 둔다.
+ */
+const shownLogsByFeed = new Map<string, Set<string>>()
+
 export interface LoungeLogCardProps {
   log: RamenLog
   tall: boolean
+  /** 지금 피드의 종류+정렬. 이 피드에서 처음 보는 카드만 떠오른다 */
+  feedKey: string
   batchIndex?: number
 }
 
 /** 공개 기록은 사진(또는 인용문)과 한 줄·작성자만 먼저 보여 준다. 공감·댓글·신고는 상세에 있다. */
-export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, batchIndex = 0 }: LoungeLogCardProps) {
+export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, batchIndex = 0 }: LoungeLogCardProps) {
   const reducedMotion = useReducedMotion()
+  // 마운트할 때 한 번만 정한다. entering은 처음 그릴 때만 쓰인다
+  const [isNew] = useState(() => !shownLogsByFeed.get(feedKey)?.has(log.id))
+  useEffect(() => {
+    let shown = shownLogsByFeed.get(feedKey)
+    if (!shown) {
+      shown = new Set()
+      shownLogsByFeed.set(feedKey, shown)
+    }
+    shown.add(log.id)
+  }, [feedKey, log.id])
   const photos = photosOf(log)
   const summary = compactTasteSummary(log)
   const bodyLabel = [
@@ -254,7 +272,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, batchIndex
 
   return (
     <Animated.View
-      entering={reducedMotion
+      entering={reducedMotion || !isNew
         ? undefined
         : FadeInUp.duration(450)
             .delay(Math.min(Math.max(batchIndex, 0) * 50, 400))
@@ -310,8 +328,11 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
   const { width } = useWindowDimensions()
   const pageWidth = width - 16
   const [index, setIndex] = useState(0)
-  const [viewing, setViewing] = useState<{ index: number; origin: { x: number; y: number; width: number; height: number } | null } | null>(null)
+  /** released: 흐려지며 닫는 중이라 원래 사진을 다시 보인다 */
+  const [viewing, setViewing] = useState<{ index: number; origin: { x: number; y: number; width: number; height: number } | null; released?: boolean } | null>(null)
   const photoRefs = useRef<Array<View | null>>([])
+  const pagerRef = useRef<ScrollView>(null)
+  const reducedMotion = useReducedMotion()
   if (photos.length === 0) {
     return (
       <View style={styles.noPhotoHeader}>
@@ -330,6 +351,7 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
         horizontal
         onMomentumScrollEnd={onEnd}
         pagingEnabled
+        ref={pagerRef}
         showsHorizontalScrollIndicator={false}
       >
         {photos.map((uri, photoIndex) => (
@@ -349,8 +371,9 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
               })
             }}
             ref={(node) => { photoRefs.current[photoIndex] = node }}
-            // 커지는 사진이 원래 자리에 겹쳐 두 장으로 보이지 않게, 크게 보는 동안 원래 사진은 비운다
-            style={viewing?.index === photoIndex && viewing.origin ? styles.hiddenSource : undefined}
+            // 커지는 사진이 원래 자리에 겹쳐 두 장으로 보이지 않게, 크게 보는 동안 원래 사진은 비운다.
+            // 동작 줄이기에선 줄어드는 전환이 없고, 흐려지며 닫힐 땐 그 뒤로 사진이 비쳐야 해서 비우지 않는다
+            style={viewing?.index === photoIndex && viewing.origin && !viewing.released && !reducedMotion ? styles.hiddenSource : undefined}
           >
             <ResilientUriImage
               accessibilityLabel={`${menuName} 사진 ${photoIndex + 1}`}
@@ -369,7 +392,20 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
         </View>
       ) : null}
       {viewing !== null ? (
-        <PhotoViewer index={viewing.index} label={`${menuName} 사진`} onClose={() => setViewing(null)} origin={viewing.origin} photos={photos} />
+        <PhotoViewer
+          index={viewing.index}
+          label={`${menuName} 사진`}
+          onClose={() => setViewing(null)}
+          onFadeClose={() => setViewing((current) => current && { ...current, released: true })}
+          // 크게 보며 넘긴 사진으로 원래 넘기기와 번호도 옮겨 두어, 닫을 때 같은 사진 자리로 줄어들게 한다
+          onIndexChange={(next) => {
+            pagerRef.current?.scrollTo({ x: next * pageWidth, animated: false })
+            setIndex(next)
+            setViewing((current) => current && { ...current, index: next })
+          }}
+          origin={viewing.origin}
+          photos={photos}
+        />
       ) : null}
     </View>
   )

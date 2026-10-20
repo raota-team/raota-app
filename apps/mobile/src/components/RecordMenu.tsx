@@ -72,6 +72,9 @@ interface RecordMenuProps {
   onClose: () => void
 }
 
+/** iOS 모달 onDismiss를 기다리는 최대 시간. 시스템 내림 애니메이션보다 넉넉히 길다 */
+const DISMISS_FALLBACK_MS = 600
+
 /** 기록 방법은 탭이 아니라 시트로 고르고, 탭 자리의 닫기 버튼만 시트 위에 남긴다. */
 export function RecordMenu({ visible, onClose }: RecordMenuProps) {
   const insets = useSafeAreaInsets()
@@ -80,9 +83,22 @@ export function RecordMenu({ visible, onClose }: RecordMenuProps) {
   const [sheetMeasured, setSheetMeasured] = useState(false)
   const visibleRef = useRef(visible)
   visibleRef.current = visible
-  const finishClose = useCallback(() => {
-    if (!visibleRef.current) setMounted(false)
+  // 고른 기록 방법은 메뉴 모달이 다 내려간 뒤에 연다. RN 모달이 떠 있는 채로 네이티브 모달을 올리면
+  // react-native-screens가 이 모달을 시스템 애니메이션으로 먼저 끌어내린다
+  const chosenMode = useRef<RecordMode | null>(null)
+  const openChosen = useCallback(() => {
+    const mode = chosenMode.current
+    chosenMode.current = null
+    if (mode) router.push({ pathname: "/record/select-shop", params: { mode, source: "tab" } })
   }, [])
+  const finishClose = useCallback(() => {
+    if (visibleRef.current) return
+    setMounted(false)
+    // iOS는 모달이 실제로 내려간 뒤 onDismiss에서 연다. 안드로이드에는 onDismiss가 없다.
+    // onDismiss가 오지 않는 경우(모달이 이미 내려가 있던 경우 등)에도 멈추지 않게 잠시 뒤 한 번 더 시도한다. openChosen은 한 번만 연다
+    if (Platform.OS !== "ios") openChosen()
+    else setTimeout(openChosen, DISMISS_FALLBACK_MS)
+  }, [openChosen])
   const progress = useSharedValue(0)
   const rotation = useSharedValue(0)
   const sheetHeight = useSharedValue(0)
@@ -98,10 +114,14 @@ export function RecordMenu({ visible, onClose }: RecordMenuProps) {
   }), [reducedMotion, visible])
 
   useEffect(() => {
-    if (visible) setMounted(true)
+    if (visible) {
+      setMounted(true)
+      // 닫히다 다시 열리면 닫기 콜백이 오지 않으므로 지난 선택을 버린다
+      chosenMode.current = null
+    }
     if (reducedMotion) {
       rotation.value = visible ? 45 : 0
-      if (!visible) setMounted(false)
+      if (!visible) finishClose()
       return
     }
     rotation.value = withTiming(visible ? 45 : 0, { duration: 300, easing: SPRING }, (finished) => {
@@ -121,14 +141,23 @@ export function RecordMenu({ visible, onClose }: RecordMenuProps) {
   }, [progress, reducedMotion, sheetMeasured, visible])
 
   const choose = (mode: RecordMode) => {
-    onClose()
+    // 닫히는 중에 한 번 더 누르면 가게 고르기가 두 번 쌓인다
+    if (!visibleRef.current || chosenMode.current) return
+    chosenMode.current = mode
     track("record_started", { mode, source: "tab" })
-    router.push({ pathname: "/record/select-shop", params: { mode, source: "tab" } })
+    onClose()
   }
 
-  if (!mounted) return null
   return (
-    <Modal animationType="none" onRequestClose={onClose} presentationStyle="overFullScreen" statusBarTranslucent transparent visible>
+    <Modal
+      animationType="none"
+      onDismiss={openChosen}
+      onRequestClose={onClose}
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
+      transparent
+      visible={mounted}
+    >
       <View accessibilityViewIsModal style={styles.modalRoot}>
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable accessibilityLabel="기록 방법 선택 닫기" accessibilityRole="button" onPress={onClose} style={styles.fill} />

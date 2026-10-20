@@ -12,7 +12,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from "react-native-reanimated"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import {
   CURRENT_MONTH_ID,
@@ -37,6 +37,9 @@ import { useMonthlyReports, useMyBowls } from "@/src/data"
 import { colors, line, radii, soupColorOf, spacing, typography } from "@/src/theme"
 
 /* 월별 취향 변화: 달 선택 → 취향 요약 → 지난달과 비교하는 분포 → 변화 표 → 자주 간 곳. */
+
+/** Header 기본 높이(56pt). 가장자리 띠가 헤더 뒤로가기 버튼을 덮지 않게 그 아래에서 시작한다 */
+const HEADER_HEIGHT = 56
 
 type MonthItem = PastReportItem | CurrentMonthReport
 
@@ -244,6 +247,7 @@ export function MonthlyTasteView({ initialSelectedId }: { initialSelectedId?: st
   }, [])
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/native/my"))
+  const insets = useSafeAreaInsets()
 
   const includeYear = Boolean(
     previous && selected && Math.floor(reportMonthIndex(previous) / 12) !== Math.floor(reportMonthIndex(selected) / 12),
@@ -279,7 +283,7 @@ export function MonthlyTasteView({ initialSelectedId }: { initialSelectedId?: st
           </View>
         </ScrollView>
       )}
-      <EdgeBackZone />
+      <EdgeBackZone top={insets.top + HEADER_HEIGHT} />
     </SafeAreaView>
   )
 }

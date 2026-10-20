@@ -34,8 +34,6 @@ const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요�
 const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
 /** 하단 고정 바 높이(버튼 48 + 위아래 여백)만큼 토스트를 띄운다 */
 const TOAST_OFFSET = 88
-/** 화면 아래 하단 고정 바에 가려지는 높이. 이만큼 위에 들어와야 보인다고 친다 */
-const FINGERPRINT_REVEAL_INSET = TOAST_OFFSET
 /** 맛 지문 카드 윗변에서 이만큼(제목 + 오각형 윗부분) 보이면 펼친다 */
 const FINGERPRINT_REVEAL_DEPTH = 140
 const SAVE_EASE = Easing.bezier(0.22, 1, 0.36, 1)
@@ -111,7 +109,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const compact = width < 360
   /*
    * 맛 지문은 처음부터 펼쳐 두지 않고, 카드의 오각형 부분이 화면 아래쪽에 들어오면 한 번 펼친다.
-   * 하단 고정 버튼 줄에 가려지는 높이만큼 덜 보이는 것으로 친다.
+   * 하단 고정 바는 스크롤 영역 밖(형제)이라 스크롤 높이가 이미 바를 뺀 값이다. 따로 빼면 두 번 빠진다.
    */
   const [fingerprintPlay, setFingerprintPlay] = useState(false)
   const fingerprintTop = useRef<number | null>(null)
@@ -119,7 +117,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const scrollY = useRef(0)
   const revealFingerprint = () => {
     if (fingerprintPlay || fingerprintTop.current === null || viewportHeight.current === 0) return
-    if (scrollY.current + viewportHeight.current - FINGERPRINT_REVEAL_INSET >= fingerprintTop.current + FINGERPRINT_REVEAL_DEPTH) setFingerprintPlay(true)
+    if (scrollY.current + viewportHeight.current >= fingerprintTop.current + FINGERPRINT_REVEAL_DEPTH) setFingerprintPlay(true)
   }
   const { currentUser, actions, state } = useRaota()
   const bookmarked = useBookmarkedShops()
@@ -127,10 +125,11 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const nearbyShops = shopsQuery.data as DetailShop[]
   const [hoursOpen, setHoursOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
-  /** 크게 보고 있는 사진과 그 자리를 닫을 때까지 보관한다. */
+  /** 크게 보고 있는 사진과 그 자리를 닫을 때까지 보관한다. released: 흐려지며 닫는 중이라 원래 사진을 다시 보인다 */
   const [viewingPhoto, setViewingPhoto] = useState<{
     index: number
     origin: { x: number; y: number; width: number; height: number } | null
+    released?: boolean
   } | null>(null)
   const [photoIndex, setPhotoIndex] = useState(0)
   const galleryRef = useRef<ScrollView>(null)
@@ -365,8 +364,9 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                     })
                   }}
                   ref={(node) => { photoRefs.current[index] = node }}
-                  // 커지는 사진이 원래 자리에 겹쳐 두 장으로 보이지 않게, 크게 보는 동안 원래 사진은 비운다
-                  style={viewingPhoto?.index === index && viewingPhoto.origin ? styles.hiddenSource : undefined}
+                  // 커지는 사진이 원래 자리에 겹쳐 두 장으로 보이지 않게, 크게 보는 동안 원래 사진은 비운다.
+                  // 동작 줄이기에선 줄어드는 전환이 없고, 흐려지며 닫힐 땐 그 뒤로 사진이 비쳐야 해서 비우지 않는다
+                  style={viewingPhoto?.index === index && viewingPhoto.origin && !viewingPhoto.released && !reducedMotion ? styles.hiddenSource : undefined}
                 >
                   <ResilientUriImage
                     accessibilityLabel={`${shop.name} 사진 ${index + 1}`}
@@ -415,6 +415,13 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             index={viewingPhoto.index}
             label={`${shop.name} 사진`}
             onClose={() => setViewingPhoto(null)}
+            onFadeClose={() => setViewingPhoto((viewing) => viewing && { ...viewing, released: true })}
+            // 크게 보며 넘긴 사진으로 원래 갤러리도 옮겨 두어, 닫을 때 같은 사진 자리로 줄어들게 한다
+            onIndexChange={(next) => {
+              galleryRef.current?.scrollTo({ x: next * (width - 16), animated: false })
+              setPhotoIndex(next)
+              setViewingPhoto((viewing) => viewing && { ...viewing, index: next })
+            }}
             origin={viewingPhoto.origin}
             originRadius={radii.lg}
             photos={photos}

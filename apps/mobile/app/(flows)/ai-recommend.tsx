@@ -123,6 +123,8 @@ function useChoiceMotion(selected: boolean) {
   const reducedMotion = useReducedMotion()
   const selection = useSharedValue(selected ? 1 : 0)
   const scale = useSharedValue(1)
+  // 동작 줄이기에서는 크기 변화 대신 즉시 바뀌는 투명도로 눌림을 알린다(공용 칩과 같은 규칙)
+  const pressOpacity = useSharedValue(1)
 
   useEffect(() => {
     selection.value = reducedMotion ? (selected ? 1 : 0) : withTiming(selected ? 1 : 0, { duration: 200, easing: CHOICE_EASE })
@@ -132,6 +134,7 @@ function useChoiceMotion(selected: boolean) {
   const containerStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(selection.value, [0, 1], [palette.canvasSoft, palette.selected]),
     transform: [{ scale: scale.value }],
+    opacity: pressOpacity.value,
   }), [palette])
   const textStyle = useAnimatedStyle(() => ({
     color: interpolateColor(selection.value, [0, 1], [palette.ink, palette.onSelected]),
@@ -142,9 +145,11 @@ function useChoiceMotion(selected: boolean) {
   }), [palette])
 
   const pressIn = () => {
-    if (!reducedMotion) scale.value = withTiming(0.97, { duration: 120 })
+    if (reducedMotion) pressOpacity.value = 0.6
+    else scale.value = withTiming(0.97, { duration: 120 })
   }
   const pressOut = () => {
+    pressOpacity.value = 1
     scale.value = reducedMotion ? 1 : withTiming(1, { duration: 180, easing: CHOICE_EASE })
   }
 

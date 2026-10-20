@@ -32,13 +32,17 @@ const DISPLAY_TIMEOUT = 160
 
 export interface PhotoViewerProps {
   photos: string[]
-  /** 열 때 보여 줄 사진. null이면 닫혀 있다 */
+  /** 보여 줄 사진. null이면 닫혀 있다. 열린 뒤 바뀌어도 넘겨 보기 목록은 다시 옮기지 않는다 */
   index: number | null
   /** 누른 사진의 화면 좌표. 없으면 페이드로 연다 */
   origin?: { x: number; y: number; width: number; height: number } | null
   originRadius?: number
   label: string
   onClose: () => void
+  /** 넘겨 보다 멈춘 사진. 부르는 쪽이 원래 갤러리를 맞추고 이 번호를 index로 다시 넘긴다 */
+  onIndexChange?: (index: number) => void
+  /** 원래 자리로 줄지 않고 흐려지며 닫기 시작할 때. 숨겨 둔 원래 사진을 다시 보이게 한다 */
+  onFadeClose?: () => void
 }
 
 /**
@@ -49,7 +53,7 @@ export interface PhotoViewerProps {
  * 끝 틀의 비율이 사진 비율과 같아서 cover가 곧 contain이 되므로, 사진 두 장을 겹쳐 바꾸지 않아도 된다.
  * 끊김을 줄이려고 (1) 사진이 그려진 뒤에 출발하고 (2) 넘겨 보기 목록은 전환이 끝난 뒤에 붙인다.
  */
-export function PhotoViewer({ photos, index, label, onClose, origin, originRadius = radii.sm }: PhotoViewerProps) {
+export function PhotoViewer({ photos, index, label, onClose, onIndexChange, onFadeClose, origin, originRadius = radii.sm }: PhotoViewerProps) {
   const { width, height } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const reducedMotion = useReducedMotion()
@@ -59,13 +63,16 @@ export function PhotoViewer({ photos, index, label, onClose, origin, originRadiu
   const [phase, setPhase] = useState<"opening" | "open" | "closing">("opening")
   const [aspect, setAspect] = useState(FALLBACK_ASPECT)
   const started = useRef(false)
-  const progress = useSharedValue(0)
-  const fade = useSharedValue(1)
-  /** 전환용 사진 층과 넘겨 보기 목록 중 무엇을 보일지. 둘을 잠깐 겹쳐 두어 바뀌는 순간 깜빡이지 않게 한다 */
-  const layerOn = useSharedValue(1)
-  const pagerOn = useSharedValue(hasOriginInitial(origin, reducedMotion) ? 0 : 1)
   const visible = index !== null
   const hasOrigin = !!origin && origin.width > 0 && origin.height > 0 && !reducedMotion
+  // 동작 줄이기에서는 처음부터 검은 바탕을 깔아, 그 틈에 원래 화면(비워 둔 자리)이 비치지 않게 한다
+  const progress = useSharedValue(reducedMotion ? 1 : 0)
+  const fade = useSharedValue(1)
+  /** 끌어 내려 닫을 때 손을 뗀 자리에서 이어 내려가는 거리 */
+  const drop = useSharedValue(0)
+  /** 전환용 사진 층과 넘겨 보기 목록 중 무엇을 보일지. 둘을 잠깐 겹쳐 두어 바뀌는 순간 깜빡이지 않게 한다 */
+  const layerOn = useSharedValue(hasOrigin ? 1 : 0)
+  const pagerOn = useSharedValue(hasOrigin ? 0 : 1)
 
   // 끝 틀: 화면 폭에 맞춘 contain 크기, 세로 가운데
   const fitWidth = Math.min(width, height * aspect)
@@ -79,13 +86,14 @@ export function PhotoViewer({ photos, index, label, onClose, origin, originRadiu
     return {
       opacity: fade.value * layerOn.value,
       left: from.x + (to.x - from.x) * t,
-      top: from.y + (to.y - from.y) * t,
+      top: from.y + (to.y - from.y) * t + drop.value,
       width: from.w + (to.w - from.w) * t,
       height: from.h + (to.h - from.h) * t,
       borderRadius: originRadius * (1 - t),
     }
   }, [from.x, from.y, from.w, from.h, to.x, to.y, to.w, to.h, originRadius])
-  const pagerStyle = useAnimatedStyle(() => ({ opacity: fade.value * pagerOn.value }))
+  // 원래 자리가 없으면 목록이 바탕과 함께 떠오른다(바탕 없이 사진만 먼저 뜨지 않게)
+  const pagerStyle = useAnimatedStyle(() => ({ opacity: fade.value * pagerOn.value * (hasOrigin ? 1 : progress.value) }), [hasOrigin])
   const controlsStyle = useAnimatedStyle(() => ({ opacity: phase === "open" ? withTiming(1, { duration: 160 }) : withTiming(0, { duration: 100 }) }), [phase])
 
   const finishOpen = () => {
@@ -109,14 +117,24 @@ export function PhotoViewer({ photos, index, label, onClose, origin, originRadiu
     })
   }
 
-  // 사진이 그려졌다는 신호(onDisplay)가 안 오더라도 잠깐 뒤에는 연다
+  // 원래 자리가 없으면 기다릴 그림이 없으니 바로 열고, 있으면 사진이 그려졌다는 신호(onDisplay)가 안 오더라도 잠깐 뒤에는 연다
   useEffect(() => {
     if (!visible) return
+    if (!hasOrigin) {
+      start()
+      return
+    }
     const timer = setTimeout(start, DISPLAY_TIMEOUT)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible])
 
+  const fadeOut = () => {
+    onFadeClose?.()
+    fade.value = withTiming(0, { duration: 200, easing: PHOTO_EASE }, (finished) => {
+      if (finished) runOnJS(onClose)()
+    })
+  }
   const dismiss = () => {
     if (phase === "closing") return
     setPhase("closing")
@@ -132,13 +150,34 @@ export function PhotoViewer({ photos, index, label, onClose, origin, originRadiu
         if (finished) runOnJS(onClose)()
       })
     } else {
-      fade.value = withTiming(0, { duration: 200, easing: PHOTO_EASE }, (finished) => {
-        if (finished) runOnJS(onClose)()
-      })
+      fadeOut()
     }
   }
+  /** 끌어 내려 닫기: 가운데로 되돌리지 않고, 손을 뗀 자리에서 그대로 더 내려가며 흐려진다 */
+  const pullDismiss = (pull: number) => {
+    if (phase === "closing") return
+    setPhase("closing")
+    if (reducedMotion) {
+      onClose()
+      return
+    }
+    onFadeClose?.()
+    if (current === index) {
+      // 목록은 손을 떼면 제자리로 튕겨 돌아가므로, 같은 사진을 그린 전환 층을 손 뗀 자리에 놓고 바꿔 쥔다
+      drop.value = pull
+      layerOn.value = 1
+      pagerOn.value = 0
+      drop.value = withTiming(pull + height * 0.3, { duration: 240, easing: PHOTO_EASE })
+    }
+    fade.value = withTiming(0, { duration: 240, easing: PHOTO_EASE }, (finished) => {
+      if (finished) runOnJS(onClose)()
+    })
+  }
   const onPageEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setCurrent(Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width)))
+    const next = Math.min(Math.max(0, photos.length - 1), Math.max(0, Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width))))
+    if (next === current) return
+    setCurrent(next)
+    onIndexChange?.(next)
   }
 
   // 목록은 전환이 끝난 뒤에 붙인다(전환 중에 큰 사진 여러 장을 같이 그리면 끊긴다)
@@ -163,7 +202,7 @@ export function PhotoViewer({ photos, index, label, onClose, origin, originRadiu
                 <ZoomablePhoto
                   height={height}
                   label={`${label} ${itemIndex + 1}`}
-                  onClose={dismiss}
+                  onPullClose={pullDismiss}
                   onZoomChange={setZoomed}
                   uri={item}
                   width={width}
@@ -174,7 +213,8 @@ export function PhotoViewer({ photos, index, label, onClose, origin, originRadiu
             />
           </Animated.View>
         ) : null}
-        {hasOrigin ? (
+        {/* 원래 자리가 없어도 끌어 내려 닫을 때 쥘 수 있게 늘 그려 둔다(평소엔 투명) */}
+        {visible ? (
           <Animated.View pointerEvents="none" style={[styles.layer, layerStyle]}>
             <Image
               cachePolicy="memory-disk"
@@ -204,23 +244,20 @@ export function PhotoViewer({ photos, index, label, onClose, origin, originRadiu
   )
 }
 
-function hasOriginInitial(origin: PhotoViewerProps["origin"], reducedMotion: boolean) {
-  return !!origin && origin.width > 0 && origin.height > 0 && !reducedMotion
-}
-
 function ZoomablePhoto({
   uri,
   label,
   width,
   height,
-  onClose,
+  onPullClose,
   onZoomChange,
 }: {
   uri: string
   label: string
   width: number
   height: number
-  onClose: () => void
+  /** 손을 뗄 때 끌어 내린 거리(pt) */
+  onPullClose: (pull: number) => void
   onZoomChange: (zoomed: boolean) => void
 }) {
   const scrollRef = useRef<ScrollView>(null)
@@ -260,7 +297,8 @@ function ZoomablePhoto({
         zoomScale.current = scale
       }}
       onScrollEndDrag={({ nativeEvent }) => {
-        if (zoomScale.current <= 1.01 && nativeEvent.contentOffset.y < -DISMISS_PULL) onClose()
+        const pull = -nativeEvent.contentOffset.y
+        if (zoomScale.current <= 1.01 && pull > DISMISS_PULL) onPullClose(pull)
       }}
       ref={scrollRef}
       scrollEventThrottle={16}

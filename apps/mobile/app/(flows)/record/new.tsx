@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics"
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams, useNavigation } from "expo-router"
+import { usePreventRemove, type NavigationAction } from "expo-router/react-navigation"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as ImagePicker from "expo-image-picker"
@@ -22,9 +23,10 @@ import {
   TextInput,
   View,
   findNodeHandle,
+  useColorScheme,
 } from "react-native"
 import { useReducedMotion } from "react-native-reanimated"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import {
   RAMEN_TYPES,
@@ -71,6 +73,12 @@ import { colors, line, maxFontScale, pressFade, radii, spacing, touchTarget, typ
 type ScoreAxisKey = Exclude<TasteAxisKey, "revisit">
 type FieldKey = "shop" | "menu" | "ramenType" | "visitedAt" | "note" | TasteAxisKey
 type MissingField = { key: FieldKey; label: string; kind: "text" | "choice" }
+type LeaveIntent =
+  | { kind: "action"; action: NavigationAction }
+  | { kind: "back" }
+  | { kind: "complete"; logId: string }
+/** 헤더 높이. 가장자리 뒤로 쓸기 띠를 헤더 아래에서 시작해 뒤로가기 버튼을 덮지 않는다 */
+const FLOW_HEADER_HEIGHT = 52
 /** Validation reports required fields by domain order; focus follows their position on this screen. */
 const FIELD_POSITION: Record<FieldKey, number> = {
   shop: 0,
@@ -262,8 +270,11 @@ export default function NewRecordScreen() {
   const navigation = useNavigation()
   const { state, isHydrated, currentUser, actions } = useRaota()
   const reduceMotion = useReducedMotion()
+  const insets = useSafeAreaInsets()
   // 날짜 선택기는 hex 문자열만 받는다
   const palette = usePalette()
+  // 어두운 모드의 ink(흰색)를 강조색으로 쓰면 iOS가 오늘 날짜를 흰 원 위 흰 글씨로 그린다
+  const pickerAccent = useColorScheme() === "dark" ? palette.brand : palette.ink
   const initialShopId = typeof shopId === "string" && shopId.length > 0 ? shopId : null
   const selectedShopId = state.recordDraft?.shopId ?? initialShopId
   const shop = useShop(selectedShopId).data
@@ -286,9 +297,12 @@ export default function NewRecordScreen() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [leaveVisible, setLeaveVisible] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  // 나가기가 허락된 뒤의 이동. 상태여야 usePreventRemove가 네이티브 스와이프 차단까지 풀고 나서 이동한다
+  const [leaving, setLeaving] = useState<LeaveIntent | null>(null)
 
-  const allowLeave = useRef(false)
-  const pendingLeave = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null)
+  // 상태는 다음 렌더까지 바뀌지 않아 빠른 두 번 탭이 둘 다 통과한다. 저장은 ref로 한 번만 받는다
+  const savingRef = useRef(false)
+  const pendingLeave = useRef<NavigationAction | null>(null)
   const previousShopId = useRef(selectedShopId)
   const scrollRef = useRef<ScrollView>(null)
   const contentRef = useRef<View>(null)
@@ -382,41 +396,51 @@ export default function NewRecordScreen() {
     note.length > 0 ||
     selectedTagCount > 0 ||
     isPublic
-  const dirtyRef = useRef(isDirty)
-  dirtyRef.current = isDirty
+  const preventLeave = isDirty && !leaving
+  const preventLeaveRef = useRef(preventLeave)
+  preventLeaveRef.current = preventLeave
 
-  // 뒤로가기 버튼과 가장자리 스와이프 모두 여기서 가로챈다. 저장에 성공한 뒤의 이동은 막지 않는다.
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
-      if (allowLeave.current || !dirtyRef.current) {
-        actions.clearRecordDraft()
-        return
-      }
-      event.preventDefault()
-      pendingLeave.current = event.data.action
-      setLeaveVisible(true)
-    })
-    return unsubscribe
-  }, [actions.clearRecordDraft, navigation])
+  // beforeRemove만으로는 iOS 가장자리 스와이프가 막히지 않는다. usePreventRemove는 네이티브 제스처도 막는다.
+  usePreventRemove(preventLeave, ({ data }) => {
+    pendingLeave.current = data.action
+    setLeaveVisible(true)
+  })
 
-  // 입력을 고치면 지난 저장 실패 안내를 거둔다.
-  useEffect(() => {
-    setSaveError(null)
-  }, [shop?.id, menuName, ramenType, visitedAt, scores, revisit, photos, note, tasteNotes, isPublic])
+  // 막지 않고 떠날 때는 초안을 비운다
+  useEffect(
+    () =>
+      navigation.addListener("beforeRemove", () => {
+        if (!preventLeaveRef.current) actions.clearRecordDraft()
+      }),
+    [actions.clearRecordDraft, navigation],
+  )
 
   const goBack = () => {
     if (router.canGoBack()) router.back()
     else router.replace("/native")
   }
 
+  // 막기가 풀린 렌더 뒤에 이동해야 다시 가로채이지 않는다
+  useEffect(() => {
+    if (!leaving) return
+    if (leaving.kind === "complete") router.replace({ pathname: "/record/complete", params: { logId: leaving.logId } })
+    else if (leaving.kind === "action") navigation.dispatch(leaving.action)
+    else goBack()
+    // 이동은 leaving이 정해질 때 한 번만 한다(goBack·navigation이 새로 와도 다시 이동하지 않는다)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaving])
+
+  // 입력을 고치면 지난 저장 실패 안내를 거둔다.
+  useEffect(() => {
+    setSaveError(null)
+  }, [shop?.id, menuName, ramenType, visitedAt, scores, revisit, photos, note, tasteNotes, isPublic])
+
   const confirmLeave = () => {
     setLeaveVisible(false)
-    allowLeave.current = true
     actions.clearRecordDraft()
     const action = pendingLeave.current
     pendingLeave.current = null
-    if (action) navigation.dispatch(action)
-    else goBack()
+    setLeaving(action ? { kind: "action", action } : { kind: "back" })
   }
 
   const fieldTarget = (key: FieldKey): View | TextInput | null => {
@@ -466,7 +490,7 @@ export default function NewRecordScreen() {
   }
 
   const save = async () => {
-    if (saving) return
+    if (savingRef.current || leaving) return
     if (!isComplete || !shop || !revisit) {
       setAttempted(true)
       AccessibilityInfo.announceForAccessibility?.(hint)
@@ -495,15 +519,17 @@ export default function NewRecordScreen() {
       revisit,
       isPublic,
     }
+    savingRef.current = true
     setSaving(true)
     setSaveError(null)
     try {
       const log = await actions.createLog(input)
       track("record_saved", { hasPhoto: photos.length > 0, scoresComplete: true })
-      allowLeave.current = true
       actions.clearRecordDraft()
-      router.replace({ pathname: "/record/complete", params: { logId: log.id } })
+      // 성공 뒤에는 화면이 떠날 때까지 저장을 다시 받지 않는다
+      setLeaving({ kind: "complete", logId: log.id })
     } catch (error) {
+      savingRef.current = false
       const message =
         error instanceof Error && error.message ? error.message : "연결을 확인한 뒤 다시 시도해주세요."
       setSaveError(message)
@@ -791,9 +817,9 @@ export default function NewRecordScreen() {
                   </AppText>
                   <CalendarDays color={colors.textMuted} size={18} />
                 </Pressable>
+                {/* 안드로이드 대화상자는 accentColor를 받지 않고 앱의 네이티브 테마 색으로 그린다 */}
                 {isDatePickerOpen && Platform.OS !== "ios" ? (
                   <DateTimePicker
-                    accentColor={palette.ink}
                     display="default"
                     locale="ko-KR"
                     maximumDate={today}
@@ -1003,7 +1029,7 @@ export default function NewRecordScreen() {
                 </Pressable>
               </View>
               <DateTimePicker
-                accentColor={palette.ink}
+                accentColor={pickerAccent}
                 display="inline"
                 locale="ko-KR"
                 maximumDate={today}
@@ -1017,7 +1043,7 @@ export default function NewRecordScreen() {
           </View>
         </Modal>
       ) : null}
-      <EdgeBackZone />
+      <EdgeBackZone top={insets.top + FLOW_HEADER_HEIGHT} />
     </SafeAreaView>
   )
 }
@@ -1027,7 +1053,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   flexShrink: { flex: 1, minWidth: 0 },
   hiddenHint: { opacity: 0 },
-  flowHeader: { minHeight: 52 },
+  flowHeader: { minHeight: FLOW_HEADER_HEIGHT },
   navTitle: { fontSize: 18, lineHeight: 24 },
   slip: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4 },
   // 사진 칸은 오른쪽 두 입력칸(가게 · 먹은 메뉴)의 위아래 끝에 맞춰 늘어난다
