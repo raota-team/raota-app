@@ -137,6 +137,9 @@ function HydratedNavigation() {
           contentStyle: { backgroundColor: colors.canvas },
           animation: "slide_from_right",
           gestureEnabled: true,
+          // 웹 뒤로 가기처럼 화면 어디서 오른쪽으로 밀어도 뒤로 간다(iOS 26부터는 기본, 그 전 iOS도 맞춘다).
+          // 옆으로 넘기는 영역의 첫 장에서 민 경우는 modules/back-swipe가 이 제스처에 넘겨준다
+          fullScreenGestureEnabled: true,
         }}
       >
         <Stack.Screen name="index" />

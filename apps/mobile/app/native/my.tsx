@@ -29,11 +29,9 @@ import {
   type Shop,
   type ShopVisit,
   type TasteIdentity,
-  type TasteScores,
   type RamenLog,
 } from "@raota/shared"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { tasteLeanWords } from "@/src/components/TasteStory"
 import { AppText, BottomSheet, Button, Chip, EmptyState, Tag, Toast } from "@/src/components/ui"
 import {
   useActivityLevel,
@@ -44,7 +42,6 @@ import {
   useMyLogs,
   useLocalShops,
   useTasteIdentity,
-  useTasteProfile,
   useMonthlyReports,
   useVisitedShops,
 } from "@/src/data"
@@ -190,7 +187,6 @@ function MemberView() {
   const { data: streak } = useLongestStreak()
   const { data: level } = useActivityLevel()
   const { data: identity } = useTasteIdentity()
-  const { data: taste } = useTasteProfile()
   const { data: myLogs } = useMyLogs()
   const { data: saved } = useBookmarkedShops()
   const { data: shops } = useLocalShops()
@@ -486,7 +482,6 @@ function MemberView() {
                 onOpen={() => router.push("/taste")}
                 onStart={() => router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })}
                 recordCount={recordCount}
-                scores={taste.profile.scores}
                 visits={visits}
               />
               <MonthlyTasteEntry onOpen={() => router.push("/taste/archive")} />
@@ -965,14 +960,13 @@ function ProfileAvatar({ uri, size }: { uri: string | null; size: number }) {
 }
 
 /**
- * 리포트 이야기 카드의 세 장(국물 · 취향 · 단골집)을 한 줄씩 미리 보여 준다.
- * 국물 색 점은 바로 아래 종류별 사진 보드와 겹쳐서 뺐다(사용자 결정, 2026.10.20).
+ * 리포트 이야기 카드의 첫 장(검은 카드)을 겹친 카드 묶음으로 엿보이게 하고, 누르면 그 이야기로 들어간다
+ * (사용자 결정, 2026.10.20 · 방안 B). 국물 색 점은 바로 아래 종류별 사진 보드와 겹쳐서 뺐다.
  */
 function MyTasteTicket({
   bowls,
   identity,
   recordCount,
-  scores,
   visits,
   onOpen,
   onStart,
@@ -980,48 +974,47 @@ function MyTasteTicket({
   bowls: DemoBowl[]
   identity: TasteIdentity
   recordCount: number
-  scores: TasteScores
   visits: ShopVisit[]
   onOpen: () => void
   onStart: () => void
 }) {
-  const groups = typeCountsOf(bowls)
-  const top = MENU_CATEGORY_NAMES.filter((type) => groups[type] > 0).sort((a, b) => groups[b] - groups[a])[0]
-  const { broth, noodle } = tasteLeanWords(scores)
-  const favorite = visits[0]
-  const cells = top
-    ? [
-        { label: "많이 먹은 국물", value: `${top} ${groups[top]}그릇` },
-        { label: "나의 취향", value: `${broth}에 ${noodle}` },
-        ...(favorite ? [{ label: "단골집", value: `${favorite.name} ${favorite.visitCount}번` }] : []),
-      ]
-    : []
-  return (
-    <View style={styles.reportTicket} testID="my-report-ticket">
-      <View style={styles.ticketHead}>
+  if (!recordCount) {
+    return (
+      <View style={styles.reportTicket} testID="my-report-ticket">
         <AppText accessibilityRole="header" style={styles.ticketTitle} variant="sectionTitle">{identity.title}</AppText>
-        <AppText capScale style={styles.tabular} tone="muted" variant="meta">종합 감정 · {recordCount}그릇</AppText>
-      </View>
-      {cells.length ? (
-        <View accessibilityLabel={`리포트 미리 보기. ${cells.map((cell) => `${cell.label} ${cell.value}`).join(", ")}`} accessible style={styles.previewRow}>
-          {cells.map((cell, index) => (
-            <View key={cell.label} style={[styles.previewCell, index > 0 && styles.previewDivider]}>
-              <AppText capScale numberOfLines={1} tone="muted" variant="meta">{cell.label}</AppText>
-              <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} variant="bodyStrong">{cell.value}</AppText>
-            </View>
-          ))}
-        </View>
-      ) : (
         <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">{identity.description}</AppText>
-      )}
-      <Button
-        fullWidth
-        onPress={recordCount ? onOpen : onStart}
-        rightIcon={<ArrowRight color={colors.ink} size={16} />}
-        title={recordCount ? "종합 리포트 보기" : "첫 그릇 기록하기"}
-        variant="secondary"
-      />
-    </View>
+        <Button fullWidth onPress={onStart} rightIcon={<ArrowRight color={colors.ink} size={16} />} title="첫 그릇 기록하기" variant="secondary" />
+      </View>
+    )
+  }
+  const groups = typeCountsOf(bowls)
+  // 리포트 이야기 장 수와 맞춘다: 그릇 수 · 취향은 늘 있고, 국물 장과 단골집 장은 데이터가 있을 때만
+  const pages = 2 + (MENU_CATEGORY_NAMES.some((type) => groups[type] > 0) ? 1 : 0) + (visits.length ? 1 : 0)
+  return (
+    <Pressable
+      accessibilityLabel={`종합 리포트 보기. ${identity.title}, ${recordCount}그릇을 기록했어요, ${visits.length}곳을 다녔어요. ${pages}장 이야기`}
+      accessibilityRole="button"
+      onPress={onOpen}
+      style={({ pressed }) => [styles.deckWrap, pressed && styles.deckPressed]}
+      testID="my-report-ticket"
+    >
+      <View style={styles.deck}>
+        <View style={[styles.deckCard, styles.deckBack2]} />
+        <View style={[styles.deckCard, styles.deckBack1]} />
+        <View style={[styles.deckCard, styles.deckFront]}>
+          <AppText capScale style={styles.deckDim} tone="onInk" variant="secondary">{identity.title} · 지금까지</AppText>
+          <AppText lineBreakStrategyIOS="hangul-word" style={[styles.deckBig, styles.tabular]} tone="onInk" variant="headline">{recordCount}그릇을 기록했어요</AppText>
+          <AppText capScale style={styles.deckDim} tone="onInk" variant="secondary">{visits.length}곳을 다녔어요</AppText>
+        </View>
+      </View>
+      <View style={styles.deckFoot}>
+        <AppText capScale tone="muted" variant="meta">{pages}장 이야기</AppText>
+        <View style={styles.deckMore}>
+          <AppText capScale style={styles.deckMoreText} variant="meta">넘겨 보기</AppText>
+          <ArrowRight color={colors.ink} size={14} />
+        </View>
+      </View>
+    </Pressable>
   )
 }
 
@@ -1259,12 +1252,20 @@ const styles = StyleSheet.create({
   segmentLabel: { fontSize: 16, lineHeight: 22 },
   segmentActive: { borderBottomColor: colors.ink },
   reportTicket: { padding: spacing.x4, borderRadius: radii.sm, backgroundColor: colors.canvasSoft, gap: spacing.x3 },
-  ticketHead: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: spacing.x1 },
   ticketTitle: { flexShrink: 1 },
-  previewRow: { flexDirection: "row", paddingVertical: spacing.x1 },
-  previewCell: { flex: 1, gap: spacing.x1, paddingRight: spacing.x3 },
-  // 칸 사이는 카드 안에 카드를 두지 않고 세로 실선 하나로만 나눈다
-  previewDivider: { paddingLeft: spacing.x3, borderLeftWidth: line.hair, borderLeftColor: colors.border },
+  deckWrap: { gap: spacing.x2 },
+  deckPressed: { opacity: 0.8 },
+  // 뒤의 두 장은 앞장 오른쪽으로 비어져 나와 "넘겨 볼 카드가 더 있다"만 말한다. 앞장이 높이를 정한다
+  deck: { paddingRight: spacing.x7 },
+  deckCard: { borderRadius: radii.lg },
+  deckBack2: { position: "absolute", top: spacing.x4, bottom: spacing.x4, right: 0, left: "40%", backgroundColor: colors.secondary },
+  deckBack1: { position: "absolute", top: spacing.x2, bottom: spacing.x2, right: spacing.x3_5, left: "30%", backgroundColor: colors.canvasSoft, borderWidth: line.hair, borderColor: colors.border },
+  deckFront: { padding: spacing.x5, gap: spacing.x1, backgroundColor: colors.ink },
+  deckDim: { opacity: 0.7 },
+  deckBig: { fontWeight: "700" },
+  deckFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingRight: spacing.x7 },
+  deckMore: { flexDirection: "row", alignItems: "center", gap: spacing.x0_5 },
+  deckMoreText: { fontWeight: "700", color: colors.ink },
   boards: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.x2, rowGap: spacing.x4, marginHorizontal: -spacing.x1 },
   board: { width: "48%", flexGrow: 1, maxWidth: "49%" },
   collage: { height: 116, flexDirection: "row", gap: 2, borderRadius: radii.sm, backgroundColor: colors.canvasSoft, overflow: "hidden" },

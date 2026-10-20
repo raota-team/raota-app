@@ -29,7 +29,8 @@ export default function FlowLayout() {
   }, [blocked, pathname])
 
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", contentStyle: { backgroundColor: colors.canvas } }}>
+    // 화면 어디서나 밀어 뒤로 가기: 루트 스택(app/_layout.tsx)과 같은 설정
+    <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", fullScreenGestureEnabled: true, contentStyle: { backgroundColor: colors.canvas } }}>
       <Stack.Screen
         name="record/select-shop"
         options={{
