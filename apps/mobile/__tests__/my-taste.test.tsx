@@ -118,7 +118,7 @@ describe("my screen (demo account)", () => {
     expect(view.getByText("42그릇을 기록했어요")).toBeTruthy()
     expect(view.getByText("4장 이야기")).toBeTruthy()
     expect(view.queryByText(/^이번 달 \d+그릇$/)).toBeNull()
-    expect(view.queryByRole("button", { name: "최근 기록으로 다시 정리" })).toBeNull()
+    expect(view.queryByRole("button", { name: "리포트 다시 뽑기" })).toBeNull()
 
     await fireEvent.press(view.getByRole("button", { name: /^종합 리포트 보기\. 진한 돈골파, 42그릇을 기록했어요/ }))
     expect(router.push).toHaveBeenCalledWith("/taste")
@@ -351,7 +351,7 @@ describe("my screen (demo account)", () => {
     expect(view.getByText("아직 기록이 없어요")).toBeTruthy()
     expect(view.queryByText("진한 돈골파")).toBeNull()
     expect(view.queryByText(/그릇을 기록했어요$/)).toBeNull()
-    expect(view.queryByRole("button", { name: "최근 기록으로 다시 정리" })).toBeNull()
+    expect(view.queryByRole("button", { name: "리포트 다시 뽑기" })).toBeNull()
     await fireEvent.press(view.getAllByRole("button", { name: "첫 그릇 기록하기" })[0])
     expect(router.push).toHaveBeenCalledWith({ pathname: "/record/select-shop", params: { mode: "nearby" } })
   })
@@ -387,14 +387,14 @@ describe("taste report", () => {
     expect(view.getByText("4 / 4")).toBeTruthy()
   })
 
-  it("ends the report on sharing instead of recomputing", async () => {
-    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: Share.dismissedAction })
+  it("ends the report on drawing it again, with sharing only in the header", async () => {
     const view = await renderScreen(<TasteReportScreen />)
     await view.findByText("진한 돈골파")
 
-    expect(view.queryByRole("button", { name: "최근 기록으로 다시 정리" })).toBeNull()
-    await fireEvent.press(view.getByRole("button", { name: "리포트 공유하기" }))
-    expect(share).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("진한 돈골파") }))
+    // 공유는 헤더 하나뿐이다. 끝에 같은 공유 버튼을 또 두지 않는다
+    expect(view.queryByRole("button", { name: "리포트 공유하기" })).toBeNull()
+    await fireEvent.press(view.getByRole("button", { name: "리포트 다시 뽑기" }))
+    expect(view.getByTestId("report-bowl-grid")).toBeTruthy()
   })
 
   it("closes quietly when the share sheet is dismissed", async () => {

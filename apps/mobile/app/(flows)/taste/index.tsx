@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
-import { ArrowRight, Share2 } from "lucide-react-native"
+import { ArrowRight, RotateCw, Share2 } from "lucide-react-native"
 import { AccessibilityInfo, Platform, Pressable, ScrollView, Share, StyleSheet, View, findNodeHandle, useWindowDimensions } from "react-native"
 import Animated, {
   Easing,
@@ -528,6 +528,11 @@ export default function TasteReportScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: false })
   }
 
+  const restart = () => {
+    setToast(null)
+    setGenerating(true)
+  }
+
   const shareText = [
     `라오타 취향 리포트${currentUser?.nickname ? ` · ${currentUser.nickname}` : ""}`,
     identity.title,
@@ -761,13 +766,14 @@ export default function TasteReportScreen() {
                 </View>
               ) : null}
 
-              {/* 다 읽은 끝에는 다시 정리(같은 수치를 다시 훑기)보다 남에게 보여 주는 쪽이 할 일이다. 헤더 공유와 같은 동작이다 */}
+              {/* 공유는 오른쪽 위 헤더에 있다. 끝에는 그릇을 처음부터 다시 채워 리포트를 새로 뽑는 버튼만 둔다(사용자 결정 2026.10.20) */}
               <View style={[styles.block, styles.bottom]}>
                 <Button
                   fullWidth
-                  leftIcon={<Share2 color={colors.onDark} size={16} />}
-                  onPress={handleShare}
-                  title="리포트 공유하기"
+                  leftIcon={<RotateCw color={colors.ink} size={16} />}
+                  onPress={restart}
+                  title="리포트 다시 뽑기"
+                  variant="secondary"
                 />
               </View>
             </>
