@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics"
 import { router } from "expo-router"
-import { ArrowRight, ChevronRight } from "lucide-react-native"
+import { ArrowRight, Check, ChevronRight } from "lucide-react-native"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   AccessibilityInfo,
@@ -24,7 +24,7 @@ import { useLocalShops } from "@/src/data/hooks"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { matchesShopRamenType } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, maxFontScale, radii, soupColorOf, spacing, tasteAxis, touchTarget, typography, usePalette } from "@/src/theme"
+import { colors, line, maxFontScale, radii, soupColorOf, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
 /** 식권 자판기 버튼이 눌려 들어가는 깊이 */
 const BUTTON_SINK = 2
@@ -252,8 +252,8 @@ function QuickPromptTile({ text, added, onPress }: { text: string; added: boolea
 }
 
 /**
- * 식권 자판기 버튼(사용자 결정 2026.10.20 · 방안 C, 번호는 빼기로). 오른쪽 위 작은 불빛이 있고, 누르면 2pt 눌려 들어가며
- * 고르면 눌린 채 불이 켜진다. 버튼 아래 2pt 턱은 테두리가 아니라 면 한 장(secondary)이다
+ * 식권 자판기 버튼(사용자 결정 2026.10.20 · 방안 C, 번호는 빼고 고른 표시는 체크로). 누르면 2pt 눌려 들어가며
+ * 고르면 눌린 채 오른쪽 위에 흰 동그라미 체크가 붙는다. 버튼 아래 2pt 턱은 테두리가 아니라 면 한 장(secondary)이다
  */
 function TicketButton({
   label,
@@ -281,10 +281,11 @@ function TicketButton({
         onPressOut={motion.pressOut}
         style={[styles.ticketButton, motion.containerStyle]}
       >
-        <View style={styles.lampWrap}>
-          {selected ? <View style={styles.lampGlow} /> : null}
-          <View style={[styles.lamp, selected && styles.lampOn]} />
-        </View>
+        {selected ? (
+          <View style={styles.checkBadge}>
+            <Check color={colors.ink} size={14} strokeWidth={3} />
+          </View>
+        ) : null}
         <Animated.Text lineBreakStrategyIOS="hangul-word" style={[typography.cardTitle, motion.textStyle]}>
           {label}
         </Animated.Text>
@@ -1056,11 +1057,7 @@ const styles = StyleSheet.create({
   // 버튼 아래로 2pt 비어져 나온 턱. 버튼이 눌려 내려오면 가려진다
   ticketButtonLip: { position: "absolute", top: BUTTON_SINK, left: 0, right: 0, bottom: 0, borderRadius: radii.sm, backgroundColor: colors.secondary },
   ticketButton: { minHeight: 104, padding: spacing.x3, paddingRight: spacing.x7, borderRadius: radii.sm, justifyContent: "flex-end", gap: spacing.x0_5 },
-  lampWrap: { position: "absolute", top: spacing.x2, right: spacing.x2, width: 18, height: 18, alignItems: "center", justifyContent: "center" },
-  // 켜진 불빛 둘레의 옅은 번짐. 같은 파랑을 25%로 깐다
-  lampGlow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: radii.pill, backgroundColor: tasteAxis.satisfaction, opacity: 0.25 },
-  lamp: { width: 10, height: 10, borderRadius: radii.pill, backgroundColor: colors.secondary },
-  lampOn: { backgroundColor: tasteAxis.satisfaction },
+  checkBadge: { position: "absolute", top: spacing.x2, right: spacing.x2, width: 24, height: 24, borderRadius: radii.pill, alignItems: "center", justifyContent: "center", backgroundColor: colors.canvas },
   soupSwatch: { height: 6, marginTop: spacing.x2, marginRight: -spacing.x4, borderRadius: radii.pill, borderWidth: line.hair, borderColor: colors.soupEdge },
   optionSub: { marginTop: spacing.x0_5 },
 
