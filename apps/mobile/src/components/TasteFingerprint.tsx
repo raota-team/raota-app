@@ -139,9 +139,8 @@ export function TasteFingerprint({ title = "맛 지문", meta, rows, style, play
   const cx = width / 2
   const cy = 134
   const ratios = rows.map((row) => Math.max(1, Math.min(5, row.value)) / 5)
-  // 가장 높은 축 하나만 강조한다. 같은 점수가 여럿이면 TASTE_AXES 순서의 첫 축, 모든 축이 같으면 강조하지 않는다
+  // 가장 높은 점수의 축을 파랗게 강조한다. 같은 점수는 같은 색이어야 해서 최고점이 여럿이면 모두 강조한다
   const top = Math.max(...rows.map((row) => row.value))
-  const topKey = rows.some((row) => row.value !== top) ? rows.find((row) => row.value === top)?.key : undefined
   const ringColors = [palette.secondaryPressed, palette.border, palette.secondary]
   const reducedMotion = useReducedMotion()
   const revealed = useRef(false)
@@ -211,7 +210,7 @@ export function TasteFingerprint({ title = "맛 지문", meta, rows, style, play
                   mutedColor={palette.textMuted}
                   radius={radius}
                   row={row}
-                  strong={row.key === topKey}
+                  strong={row.value === top}
                 />
               ))}
             </>
