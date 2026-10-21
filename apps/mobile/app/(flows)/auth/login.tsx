@@ -1,10 +1,19 @@
-import { useState, type ReactElement } from "react"
+import { useEffect, useState, type ReactElement } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import * as Haptics from "expo-haptics"
 import { Image, Platform, Pressable, ScrollView, StyleSheet, View, useColorScheme, useWindowDimensions, type ColorValue } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg"
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated"
 
 import { track } from "@/src/analytics"
 import { isApiError } from "@/src/api/client"
@@ -56,7 +65,52 @@ const COLLAGE_PHOTOS = [
   "https://images.unsplash.com/photo-1533787761082-492a5b83e614?w=290&h=320&fit=crop&auto=format&q=80",
   "https://images.unsplash.com/photo-1780822734757-e45178b6b79c?w=290&h=380&fit=crop&auto=format&q=80",
 ]
-const COLLAGE_COLUMNS = [[0, 1], [2, 3], [4, 5]] as const
+const COLLAGE_GAP = 6
+/**
+ * 열마다 사진 순서·높이·속도를 다르게 해 같은 사진이 옆 열과 나란히 지나가지 않게 한다. 한 바퀴 높이는 화면 콜라주(최대 312)보다
+ * 길어야 끊김 없이 이어진다.
+ */
+const COLLAGE_COLUMNS = [
+  { photos: [0, 3, 4], heights: [165, 200, 180], durationMs: 26_000 },
+  { photos: [2, 5, 1], heights: [215, 170, 190], durationMs: 34_000 },
+  { photos: [4, 1, 2], heights: [185, 200, 165], durationMs: 30_000 },
+] as const
+
+/** 사진 열 하나가 천천히 아래로 흐른다. 같은 묶음을 두 번 쌓아 한 묶음 높이만큼 내려가면 처음으로 돌아가 이음매가 보이지 않는다 */
+function CollageColumn({ column, index }: { column: (typeof COLLAGE_COLUMNS)[number]; index: number }) {
+  const reducedMotion = useReducedMotion()
+  const cycle = column.heights.reduce((sum, height) => sum + height + COLLAGE_GAP, 0)
+  const offset = useSharedValue(-cycle)
+
+  useEffect(() => {
+    if (reducedMotion) {
+      offset.value = -cycle
+      return
+    }
+    offset.value = -cycle
+    offset.value = withRepeat(withTiming(0, { duration: column.durationMs, easing: Easing.linear }), -1, false)
+    return () => cancelAnimation(offset)
+  }, [column.durationMs, cycle, offset, reducedMotion])
+
+  const flow = useAnimatedStyle(() => ({ transform: [{ translateY: offset.value }] }))
+
+  return (
+    <View style={[styles.collageColumn, index === 1 && styles.collageColumnMiddle, index === 2 && styles.collageColumnLast]}>
+      <Animated.View style={[styles.collageStack, flow]}>
+        {[0, 1].map((copy) =>
+          column.photos.map((photo, order) => (
+            <ResilientUriImage
+              accessibilityLabel="라멘 사진"
+              key={`${copy}-${order}`}
+              style={[styles.collagePhoto, { height: column.heights[order] }]}
+              uri={COLLAGE_PHOTOS[photo]}
+            />
+          )),
+        )}
+      </Animated.View>
+    </View>
+  )
+}
 
 function RamenCollage({ height }: { height: number }) {
   const { paper } = usePalette()
@@ -66,20 +120,8 @@ function RamenCollage({ height }: { height: number }) {
       importantForAccessibility="no-hide-descendants"
       style={[styles.collage, { height }]}
     >
-      {COLLAGE_COLUMNS.map((photos, column) => (
-        <View
-          key={column}
-          style={[styles.collageColumn, column === 1 && styles.collageColumnMiddle, column === 2 && styles.collageColumnLast]}
-        >
-          {photos.map((photo, index) => (
-            <ResilientUriImage
-              accessibilityLabel="라멘 사진"
-              key={`${column}-${index}`}
-              style={[styles.collagePhoto, { height: column === 1 && index === 0 ? 215 : column === 2 && index === 1 ? 200 : 165 }]}
-              uri={COLLAGE_PHOTOS[photo]}
-            />
-          ))}
-        </View>
+      {COLLAGE_COLUMNS.map((column, index) => (
+        <CollageColumn column={column} index={index} key={index} />
       ))}
       <Svg height={130} pointerEvents="none" style={styles.collageFade} width="100%">
         <Defs>
@@ -241,6 +283,16 @@ export default function LoginScreen() {
       track("login", { provider, signup })
       afterLogin(!member.onboardingCompleted, member.consentRequired)
     } catch (error) {
+      // 제공자 SDK 오류인지 서버 거절인지 가려야 고칠 수 있다. 토큰 같은 자격 증명은 남기지 않는다
+      if (__DEV__ && !(error instanceof SocialSignInCancelled)) {
+        const sdkCode = error && typeof error === "object" && "code" in error ? error.code : undefined
+        const detail = isApiError(error)
+          ? { kind: "server", status: error.status, code: error.code, message: error.message }
+          : error instanceof Error
+            ? { kind: "sdk", name: error.name, code: sdkCode, message: error.message }
+            : { kind: "unknown", value: String(error) }
+        console.warn("[login] failed", provider, JSON.stringify(detail))
+      }
       setToast(
         error instanceof SocialSignInCancelled
           ? { message: "로그인을 취소했어요.", critical: false }
@@ -348,7 +400,8 @@ const styles = StyleSheet.create({
   // 약관 줄의 paddingBottom(16)과 더해 홈 인디케이터 위 32pt
   content: { flexGrow: 1, paddingBottom: spacing.x4 },
   collage: { flexDirection: "row", gap: 6, marginHorizontal: 10, overflow: "hidden", borderRadius: radii.sm },
-  collageColumn: { flex: 1, gap: 6 },
+  collageColumn: { flex: 1, overflow: "hidden" },
+  collageStack: { gap: COLLAGE_GAP },
   collageColumnMiddle: { marginTop: -36 },
   collageColumnLast: { marginTop: -14 },
   collagePhoto: { width: "100%", borderRadius: radii.sm },
