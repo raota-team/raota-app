@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar"
 import { AccessibilityInfo, ScrollView, StyleSheet, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 
+import { isApiError } from "@/src/api/client"
 import { ConsentChecklist, NO_CONSENTS, type ConsentValues } from "@/src/components/ConsentChecklist"
 import { AppText, Button, Header, StickyActionBar, Toast } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
