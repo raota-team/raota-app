@@ -8,6 +8,27 @@ jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage)
 // expo-secure-store는 불러오는 순간 네이티브 모듈을 찾는다. 메모리 대체본(__mocks__)으로 바꿔 둔다
 jest.mock("expo-secure-store")
 
+// 소셜 로그인 SDK는 네이티브 모듈이다. 스토어가 로그아웃 때 부르므로 모든 테스트에 대체본을 깐다.
+// 로그인 흐름을 보는 테스트는 src/auth/social을 직접 mock한다
+jest.mock("@react-native-kakao/core", () => ({ initializeKakaoSDK: jest.fn(async () => undefined) }))
+jest.mock("@react-native-kakao/user", () => ({
+  login: jest.fn(async () => ({ accessToken: "kakao-access-token" })),
+  logout: jest.fn(async () => undefined),
+}))
+jest.mock("@react-native-google-signin/google-signin", () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    signIn: jest.fn(async () => ({ type: "success", data: { idToken: "google-id-token" } })),
+    signOut: jest.fn(async () => null),
+  },
+  isErrorWithCode: jest.fn(() => false),
+  statusCodes: { SIGN_IN_CANCELLED: "SIGN_IN_CANCELLED" },
+}))
+jest.mock("expo-apple-authentication", () => ({
+  AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
+  signInAsync: jest.fn(async () => ({ identityToken: "apple-id-token", authorizationCode: "apple-code" })),
+}))
+
 // 공용 부품(칩, 시트, 사진 등)이 Reanimated로 움직이므로 모든 테스트에 기본 대체본을 깐다.
 // 동작 줄이기·타이밍을 따로 봐야 하는 테스트는 파일 안에서 다시 mock해 덮어쓴다
 jest.mock("react-native-worklets", () => require("react-native-worklets/src/mock"))
