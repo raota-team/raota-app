@@ -32,6 +32,19 @@ const DEFAULT_REGION: Region = {
   longitudeDelta: 0.032,
 }
 
+/** 내 위치를 보여 줄 때의 확대 수준(동네 몇 블록) */
+const USER_SPAN = { latitudeDelta: 0.012, longitudeDelta: 0.01 }
+/**
+ * 지도를 처음 그리기 전에 내 위치를 기다리는 최대 시간. 마지막으로 알던 위치는 보통 바로 오지만,
+ * 기기에 기록이 없으면 GPS를 기다리느라 늦어진다. 그때는 기본 지역으로 그린 뒤 위치가 오면 옮긴다.
+ */
+const START_LOCATION_WAIT = 1200
+/**
+ * 이 앱이 켜져 있는 동안 마지막으로 본 내 위치. 탭을 다시 열거나 다시 불러오기로 화면을 새로 올려도
+ * 망원·합정에서 출발했다가 옮겨 가지 않고 처음부터 내 위치에서 시작한다.
+ */
+let rememberedUserRegion: Region | null = null
+
 /**
  * 고른 핀의 zIndex. Apple 지도는 누른 자리에서 가장 가까운 핀을 스스로 "선택"하고,
  * react-native-maps는 그 핀의 zIndex에 999를 더해 올린다. 옆 핀을 누르다 스치면 그 핀이
@@ -62,7 +75,9 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   const insets = useSafeAreaInsets()
   const mapRef = useRef<MapView>(null)
   const [viewMode, setViewMode] = useState<"map" | "list">("map")
-  const [region, setRegion] = useState<Region>(DEFAULT_REGION)
+  const [region, setRegion] = useState<Region>(rememberedUserRegion ?? DEFAULT_REGION)
+  // 처음 들어올 때는 시작 위치(내 위치)가 정해진 뒤에 지도를 그린다. 기본 지역에서 출발해 미끄러지듯 옮겨 가지 않게
+  const [startResolved, setStartResolved] = useState(rememberedUserRegion !== null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("loading")
   const [origin, setOrigin] = useState<Coordinate | null>(null)
@@ -75,35 +90,58 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   const [trackingPins, setTrackingPins] = useState(true)
   const filters = useMapFilters(origin)
 
+  // 지도를 이미 그렸는지. 그린 뒤에는 시작 위치(initialRegion)를 바꿔도 소용없어 대신 카메라를 옮긴다
+  const startResolvedRef = useRef(startResolved)
   useEffect(() => {
     let mounted = true
+    const resolveStart = () => {
+      startResolvedRef.current = true
+      setStartResolved(true)
+    }
+    // 위치가 늦으면 기다리지 않고 지도를 먼저 그린다(위치가 오면 아래 centeredOnUser가 옮긴다)
+    const giveUp = setTimeout(() => {
+      if (mounted) resolveStart()
+    }, START_LOCATION_WAIT)
+    const startAt = (coords: Coordinate) => {
+      const userRegion = { ...coords, ...USER_SPAN }
+      rememberedUserRegion = userRegion
+      setOrigin(coords)
+      // 지도를 아직 그리기 전이면 시작 위치 자체를 내 위치로 둔다
+      if (!startResolvedRef.current) setRegion(userRegion)
+      resolveStart()
+    }
     ;(async () => {
       let permission: Location.LocationPermissionResponse
       try {
         permission = await Location.requestForegroundPermissionsAsync()
       } catch {
-        if (mounted) setLocationStatus("denied")
+        if (mounted) {
+          setLocationStatus("denied")
+          resolveStart()
+        }
         return
       }
       if (!mounted) return
       if (permission.status !== "granted") {
         setLocationStatus("denied")
+        resolveStart()
         return
       }
       setLocationStatus("granted")
-      // 마지막으로 알던 위치로 먼저 옮기고, 정확한 위치가 오면 거리만 다시 계산한다.
+      // 마지막으로 알던 위치로 먼저 시작하고, 정확한 위치가 오면 거리와 위치를 다시 맞춘다.
       // 위치를 못 잡은 건(GPS 시간 초과 등) 권한 문제가 아니라서 "설정 열기" 안내를 띄우지 않는다.
       try {
         const last = await Location.getLastKnownPositionAsync()
-        if (mounted && last) setOrigin({ latitude: last.coords.latitude, longitude: last.coords.longitude })
+        if (mounted && last) startAt({ latitude: last.coords.latitude, longitude: last.coords.longitude })
         const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-        if (mounted) setOrigin({ latitude: current.coords.latitude, longitude: current.coords.longitude })
+        if (mounted) startAt({ latitude: current.coords.latitude, longitude: current.coords.longitude })
       } catch {
-        // 기본 지역을 그대로 보여 준다
+        if (mounted) resolveStart()
       }
     })()
     return () => {
       mounted = false
+      clearTimeout(giveUp)
     }
   }, [])
 
@@ -209,6 +247,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
     <View style={styles.root}>
       {viewMode === "map" ? (
         <View style={styles.mapArea} testID="map-surface">
+            {startResolved ? (
             <MapView
               accessibilityLabel="라멘집 지도"
               // 목록에서 돌아와 다시 그려질 때 보던 자리(내 위치 포함)를 그대로 잇는다
@@ -269,6 +308,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                 )
               })}
             </MapView>
+            ) : null}
             <MapHeader
               filters={filters}
               onHeight={setHeaderHeight}
@@ -295,9 +335,12 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                 </View>
               ) : null}
             </View>
-            <View pointerEvents="box-none" style={styles.quickViewWrap}>
-              <QuickView shop={selected} />
-            </View>
+            {/* 서버에서 매장을 받는 동안에는 "조건에 맞는 라멘집이 없어요"를 띄우지 않는다(지도 위에 떠 있는 카드라 자리는 밀리지 않는다) */}
+            {selected || !filters.isLoading ? (
+              <View pointerEvents="box-none" style={styles.quickViewWrap}>
+                <QuickView shop={selected} />
+              </View>
+            ) : null}
           </View>
       ) : (
         <View style={styles.flex}>
