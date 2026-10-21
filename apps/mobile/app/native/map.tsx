@@ -31,6 +31,8 @@ const DEFAULT_REGION: Region = {
   latitudeDelta: 0.032,
   longitudeDelta: 0.032,
 }
+/** 지도 카메라 이동 시간(ms). 핀 고르기·묶음 확대·내 위치로 가기 모두 이 박자로 짧게 옮긴다 */
+const CAMERA_MS = 220
 
 /** 내 위치를 보여 줄 때의 확대 수준(동네 몇 블록) */
 const USER_SPAN = { latitudeDelta: 0.012, longitudeDelta: 0.01 }
@@ -150,7 +152,14 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   const markerShops = useMemo(() => filtered.filter((shop) => shop.lat && shop.lng), [filtered])
   const selectedInList = filtered.find((shop) => shop.id === selectedId)
   const selectedShop = useShop(selectedInList ? null : selectedId).data
-  const selected = selectedInList ?? selectedShop ?? markerShops[0] ?? null
+  // 처음에는 아무 가게도 고르지 않는다. 핀을 눌러야 고르고, 카드의 ✕나 지도 빈 곳을 누르면 풀린다(사용자 결정 2026.10.21)
+  const selected = selectedInList ?? selectedShop ?? null
+  // 검색·필터로 고른 가게가 목록에서 빠지면 고른 것도 푼다(지도에 없는 가게 카드가 남지 않게).
+  // 원장에 없어 따로 불러온 가게(가게 상세의 "지도에서 보기")는 목록에 없으니 건드리지 않는다
+  useEffect(() => {
+    if (!selectedId || selectedInList) return
+    if (filters.allShops.some((shop) => shop.id === selectedId)) setSelectedId(null)
+  }, [filters.allShops, selectedId, selectedInList])
   const clusters = useMemo(() => calculateMapClusters(markerShops, region), [markerShops, region])
 
   // 핀이 바뀌면 잠깐 다시 그리게 두고(로고가 실릴 시간) 곧 고정한다.
@@ -167,7 +176,8 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   }, [clusters, selectedId, trackPinsBriefly])
   useEffect(() => () => cancelSettle.current(), [])
 
-  const animateTo = (target: Region) => mapRef.current?.animateToRegion(target, reducedMotion ? 0 : 350)
+  // 카메라 이동은 짧게(빠릿하게). 동작 줄이기에서는 바로 옮긴다
+  const animateTo = (target: Region) => mapRef.current?.animateToRegion(target, reducedMotion ? 0 : CAMERA_MS)
 
   const goToUser = () => {
     if (!origin) {
@@ -254,7 +264,11 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
               initialRegion={region}
               mapType="mutedStandard"
               onMapReady={flushFocus}
-              onPress={() => Keyboard.dismiss()}
+              onPress={(event) => {
+                Keyboard.dismiss()
+                // 핀을 누를 때도 지도 onPress가 함께 온다. 그때는 고른 것을 풀지 않는다
+                if (event.nativeEvent.action !== "marker-press") setSelectedId(null)
+              }}
               onRegionChangeComplete={setRegion}
               ref={mapRef}
               rotateEnabled={false}
@@ -335,10 +349,17 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                 </View>
               ) : null}
             </View>
-            {/* 서버에서 매장을 받는 동안에는 "조건에 맞는 라멘집이 없어요"를 띄우지 않는다(지도 위에 떠 있는 카드라 자리는 밀리지 않는다) */}
-            {selected || !filters.isLoading ? (
+            {/*
+              카드는 고른 가게가 있을 때만 띄운다. 조건에 맞는 가게가 하나도 없을 때만 "없어요" 카드를 띄우고,
+              서버에서 매장을 받는 동안에는 띄우지 않는다(지도 위에 떠 있는 카드라 자리는 밀리지 않는다)
+            */}
+            {selected ? (
               <View pointerEvents="box-none" style={styles.quickViewWrap}>
-                <QuickView shop={selected} />
+                <QuickView onClose={() => setSelectedId(null)} shop={selected} />
+              </View>
+            ) : !filters.isLoading && markerShops.length === 0 ? (
+              <View pointerEvents="box-none" style={styles.quickViewWrap}>
+                <QuickView shop={null} />
               </View>
             ) : null}
           </View>

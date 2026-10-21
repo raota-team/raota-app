@@ -123,13 +123,16 @@ describe("map location permission states", () => {
       await view.findByText("위치 권한이 없어 망원·합정 일대를 보여드려요."),
     ).toBeTruthy()
     expect(view.getByRole("button", { name: "설정 열기" })).toBeTruthy()
-    // 거절해도 기본 지역의 지도와 지도 위 퀵뷰는 그대로 쓴다
+    // 거절해도 기본 지역의 지도는 그대로 쓴다. 처음에는 아무 가게도 고르지 않아 카드가 없다
     expect(view.getByTestId("apple-map").props.accessibilityState.selected).toBe(false)
-    expect(await view.findByRole("button", { name: /매장 상세 보기/ })).toBeTruthy()
-    expect(within(view.getByTestId("map-surface")).getByRole("button", { name: /매장 상세 보기/ })).toBeTruthy()
-    const selectedPin = await view.findByTestId("selected-map-pin")
-    const regularPin = view.getAllByTestId("unselected-map-pin")[0]
+    const regularPin = (await view.findAllByTestId("unselected-map-pin"))[0]
+    expect(view.queryByTestId("selected-map-pin")).toBeNull()
+    expect(view.queryByRole("button", { name: /매장 상세 보기/ })).toBeNull()
     expect(within(regularPin).queryByTestId("map-pin-label")).toBeNull()
+    // 핀을 누르면 고르고 카드가 뜬다. 카드의 ✕로 다시 풀 수 있다
+    await fireEvent.press(regularPin.parent!)
+    const selectedPin = view.getByTestId("selected-map-pin")
+    expect(within(view.getByTestId("map-surface")).getByRole("button", { name: /매장 상세 보기/ })).toBeTruthy()
     expect(within(selectedPin).getByTestId("map-pin-label")).toBeTruthy()
     expect(within(selectedPin).getByTestId("map-pin-logo")).toBeTruthy()
     // 핀이 선택되지 않았을 때도 원을 감싼 탭 영역은 최소 44pt이다.
@@ -137,6 +140,9 @@ describe("map location permission states", () => {
     expect(StyleSheet.flatten(regularPin.props.style).height).toBeGreaterThanOrEqual(44)
     expect(StyleSheet.flatten(selectedPin.props.style).height).toBeGreaterThanOrEqual(44)
     expect(StyleSheet.flatten(view.getByRole("button", { name: "기본 지역으로 이동" }).props.style).height).toBeGreaterThanOrEqual(44)
+    await fireEvent.press(view.getByRole("button", { name: "선택 해제" }))
+    expect(view.queryByTestId("selected-map-pin")).toBeNull()
+    expect(view.queryByRole("button", { name: /매장 상세 보기/ })).toBeNull()
   })
 
   it("reveals only the selected shop name and updates its quick view when a pin is pressed", async () => {
@@ -227,6 +233,7 @@ describe("map location permission states", () => {
     expect(StyleSheet.flatten(openFilter.props.style).height).toBe(40)
     expect(StyleSheet.flatten(view.getByRole("button", { name: /메뉴 필터/ }).props.style).height).toBe(40)
     expect(StyleSheet.flatten(view.getByTestId("map-open-lamp").props.style).backgroundColor).toEqual(colors.open)
+    await fireEvent.press(view.getByLabelText("멘야준"))
     const quickView = await view.findByRole("button", { name: /매장 상세 보기/ })
     expect(StyleSheet.flatten(within(quickView).getByTestId("map-open-status-lamp").props.style).backgroundColor).toEqual(colors.open)
     expect(StyleSheet.flatten(within(quickView).getByText("영업 중").props.style).color).toEqual(colors.open)

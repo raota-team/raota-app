@@ -362,7 +362,7 @@ export function MapHeader({
 // 하단 퀵뷰(지도에서 고른 매장)
 // ---------------------------------------------------------------------------
 
-export function QuickView({ shop }: { shop: MapShop | null }) {
+export function QuickView({ shop, onClose }: { shop: MapShop | null; onClose?: () => void }) {
   if (!shop) {
     return (
       <View accessibilityLiveRegion="polite" style={[styles.quickView, styles.quickEmpty]}>
@@ -377,6 +377,8 @@ export function QuickView({ shop }: { shop: MapShop | null }) {
   }
   const status = statusOf(shop)
   return (
+    // ✕는 카드 버튼 안이 아니라 옆에 둔다. 버튼 안에 넣으면 VoiceOver가 카드 하나로 묶어 ✕에 닿지 못한다
+    <View>
     <Pressable
       accessibilityHint="매장 상세로 이동해요"
       accessibilityLabel={`${shopLabel(shop)}${shop.style ? `, ${shop.style}` : ""}${shop.spec ? `, ${shop.spec}` : ""}${shop.lastOrder ? `, 라스트오더 ${shop.lastOrder}` : ""}, 매장 상세 보기`}
@@ -385,7 +387,7 @@ export function QuickView({ shop }: { shop: MapShop | null }) {
       style={({ pressed }) => [styles.quickView, styles.quickRow, pressed && styles.pressedWash]}
     >
       <ResilientUriImage accessibilityLabel="" style={styles.quickPhoto} uri={shop.photos[0]} />
-      <View style={styles.flexBody}>
+      <View style={[styles.flexBody, onClose ? styles.quickBodyBesideClose : null]}>
         <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.shopTitle} variant="cardTitle">
           {shop.name}
           {shop.branch ? <AppText style={styles.shopBranch} tone="muted" variant="cardTitle">{` · ${shop.branch}`}</AppText> : null}
@@ -411,6 +413,19 @@ export function QuickView({ shop }: { shop: MapShop | null }) {
         </View>
       </View>
     </Pressable>
+      {onClose ? (
+        // 고른 가게를 풀어 지도만 보게 한다
+        <Pressable
+          accessibilityLabel="선택 해제"
+          accessibilityRole="button"
+          hitSlop={spacing.x2}
+          onPress={onClose}
+          style={({ pressed }) => [styles.quickClose, pressed && styles.pressedWash]}
+        >
+          <X color={colors.inkSub} size={16} />
+        </Pressable>
+      ) : null}
+    </View>
   )
 }
 
@@ -751,6 +766,10 @@ const styles = StyleSheet.create({
   },
   quickEmpty: { paddingVertical: spacing.x4, justifyContent: "center" },
   quickRow: { flexDirection: "row", alignItems: "center", gap: spacing.x3_5 },
+  // 카드 오른쪽 위 ✕. 32pt 원에 hitSlop 8을 더해 44pt를 맞춘다
+  quickClose: { position: "absolute", top: spacing.x2, right: spacing.x2, width: 32, height: 32, borderRadius: radii.pill, alignItems: "center", justifyContent: "center", backgroundColor: colors.canvasSoft },
+  // 가게 이름이 ✕ 밑으로 들어가지 않게 그만큼 비켜 둔다
+  quickBodyBesideClose: { paddingRight: spacing.x7 },
   quickPhoto: { width: 84, height: 84, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
   shopTitle: { flexShrink: 1, fontWeight: "700" },
   shopBranch: { fontWeight: "400" },
