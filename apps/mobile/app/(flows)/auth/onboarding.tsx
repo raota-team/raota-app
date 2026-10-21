@@ -1,10 +1,10 @@
-import { useRef, useState, type ReactNode } from "react"
+import { useRef, useState } from "react"
 import { router } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import * as Haptics from "expo-haptics"
 import * as ImagePicker from "expo-image-picker"
 import { Image } from "expo-image"
-import { Check, ChevronRight, MapPin, Soup, Sparkles, UserRound, X, type LucideIcon } from "lucide-react-native"
+import { ChevronRight, MapPin, Soup, Sparkles, UserRound, X, type LucideIcon } from "lucide-react-native"
 import {
   AccessibilityInfo,
   Alert,
@@ -22,8 +22,11 @@ import { SafeAreaView } from "react-native-safe-area-context"
 
 import { MONTHLY_REPORT_TARGET, RAMEN_TYPES, type UserProfile } from "@raota/shared"
 import { track } from "@/src/analytics"
-import PolicySheet, { type PolicyType } from "@/src/components/PolicySheet"
+import { isApiError } from "@/src/api/client"
+import { CONSENT_REQUIRED_ERROR, ConsentChecklist, NO_CONSENTS, type ConsentValues } from "@/src/components/ConsentChecklist"
 import { AppText, Button, Chip, ConfirmDialog, Header, StickyActionBar } from "@/src/components/ui"
+import { useNicknameAvailability } from "@/src/data"
+import { OnboardingProfileUpdateError } from "@/src/data/remote"
 import { NICKNAME_MAX, NICKNAME_MIN, NICKNAME_REQUIRED_ERROR, validateNickname } from "@/src/domain/nickname"
 import { ONBOARDING_PROMPT_DELAY, useRecordReminderPrompt } from "@/src/notifications"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -31,12 +34,15 @@ import { colors, line, pressFade, radii, spacing, touchTarget, typography } from
 
 /*
  * 회원가입: 닉네임 → 선호 스타일 → 약관 → 선택 입력(소개·사진).
- * 약관 "보기"는 PolicySheet로 열고, "확인하고 동의"를 누르면 그 항목이 체크된다.
+ * 약관 목록은 약관 다시 동의 화면과 같은 ConsentChecklist를 쓴다.
+ * 서버 회원(auth remote)이면 닉네임 중복을 입력이 멈춘 뒤 확인하고, 가입은 PUT /members/me/onboarding으로 끝낸다.
+ * 가입은 됐는데 선택 프로필(소개·스타일·사진)만 못 올렸으면, 다시 누를 때 가입은 건너뛰고 프로필만 저장한다.
  */
 
 const BIO_MAX = 60
-const AGREEMENT_REQUIRED_ERROR = "필수 약관 두 가지에 동의해야 가입할 수 있어요."
-const PROFILE_SAVE_ERROR = "프로필을 저장하지 못했어요. 잠시 후 다시 시도해 주세요."
+const SIGNUP_SAVE_ERROR = "가입하지 못했어요. 잠시 후 다시 시도해 주세요."
+const PROFILE_SAVE_ERROR = "가입은 됐지만 소개·사진을 저장하지 못했어요. 다시 누르면 그것만 저장해요."
+const NICKNAME_TAKEN_ERROR = "이미 사용 중인 닉네임이에요. 다른 닉네임을 적어 주세요."
 
 /** 설정 화면과 같은 종류를 저장한다. 칩에는 짧은 이름만 쓴다. */
 const RAMEN_STYLE_OPTIONS = RAMEN_TYPES
@@ -52,37 +58,6 @@ function success() {
   if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined)
 }
 
-/** 동의 행 전체를 44pt 터치 영역으로 만들고 상태를 원형 체크에 표시한다 */
-function CheckRow({
-  checked,
-  onChange,
-  label,
-  children,
-  strong = false,
-}: {
-  checked: boolean
-  onChange: (next: boolean) => void
-  label: string
-  children: ReactNode
-  strong?: boolean
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      onPress={() => onChange(!checked)}
-      style={({ pressed }) => [styles.checkRow, pressed && styles.pressedWash]}
-    >
-      <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
-        {checked ? <Check color={colors.onSelected} size={14} strokeWidth={3} /> : null}
-      </View>
-      <AppText style={[styles.checkLabel, strong && styles.checkStrong]} tone={strong ? "ink" : "sub"} variant={strong ? "cardTitle" : "secondary"}>
-        {children}
-      </AppText>
-    </Pressable>
-  )
-}
 function CharacterCount({ value, max, prefix = "" }: { value: number; max: number; prefix?: string }) {
   return (
     <View style={styles.counterSlot}>
@@ -104,14 +79,15 @@ export default function OnboardingScreen() {
   const [showMoreStyles, setShowMoreStyles] = useState(false)
   const [favorite, setFavorite] = useState<string | null>(null)
   const [bio, setBio] = useState("")
-  const [agreeTerms, setAgreeTerms] = useState(false)
-  const [agreePrivacy, setAgreePrivacy] = useState(false)
-  const [agreeMarketing, setAgreeMarketing] = useState(false)
-  const [policy, setPolicy] = useState<PolicyType | null>(null)
+  const [consents, setConsents] = useState<ConsentValues>(NO_CONSENTS)
   const [attempted, setAttempted] = useState(false)
+  /** 서버가 409로 거절한 닉네임(대소문자 무시 값) */
+  const [rejectedNickname, setRejectedNickname] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [registered, setRegistered] = useState<UserProfile | null>(null)
+  /** 가입은 끝났고 선택 프로필 저장만 다시 하면 된다 */
+  const [profileRetry, setProfileRetry] = useState(false)
 
   /*
    * 알림은 가입을 마친 뒤 한 번 묻는다. 거절하거나 나중에 끄고 싶으면 설정(마이 > 톱니)에서 관리한다.
@@ -123,18 +99,12 @@ export default function OnboardingScreen() {
   const nicknameRef = useRef<TextInput>(null)
   const nicknameBlockY = useRef(0)
 
-  // TODO(API): isRemote("member")일 때만 유효한 닉네임을 디바운스해 remoteReads.nicknameAvailability로 확인한다.
   const nicknameValidation = validateNickname(nickname)
-  const nicknameError = nicknameValidation.error
+  const availability = useNicknameAvailability(nicknameValidation.normalized, !nicknameValidation.error)
+  const nicknameTaken = availability === "taken" || rejectedNickname === nicknameValidation.normalized
+  const nicknameError = nicknameValidation.error ?? (nicknameTaken ? NICKNAME_TAKEN_ERROR : null)
   const showNicknameError = Boolean(nicknameError) && (attempted || nickname.length > 0)
-  const agreementError = attempted && (!agreeTerms || !agreePrivacy) ? AGREEMENT_REQUIRED_ERROR : null
-  const allAgreed = agreeTerms && agreePrivacy && agreeMarketing
-
-  const toggleAll = (next: boolean) => {
-    setAgreeTerms(next)
-    setAgreePrivacy(next)
-    setAgreeMarketing(next)
-  }
+  const nicknameNote = availability === "available" ? "사용할 수 있는 닉네임이에요." : `한글, 영문, 숫자, 밑줄 ${NICKNAME_MIN}~${NICKNAME_MAX}자`
 
   const pickAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -173,28 +143,41 @@ export default function OnboardingScreen() {
       focusNickname()
       return
     }
-    if (!agreeTerms || !agreePrivacy) {
-      AccessibilityInfo.announceForAccessibility?.("필수 약관 두 가지에 동의해야 가입할 수 있어요.")
+    if (!consents.terms || !consents.privacy) {
+      AccessibilityInfo.announceForAccessibility?.(CONSENT_REQUIRED_ERROR)
       return
     }
     const displayNickname = nicknameValidation.display
+    const extras = {
+      avatar,
+      bio: bio.trim() || undefined,
+      ...(favorite ? { favoriteRamenType: favorite } : {}),
+    }
     setSaving(true)
     setSaveError(null)
     try {
-      // TODO(API): remoteWrites.completeOnboarding({ nickname, consents, profile })로 교체한다.
-      // PATCH만 실패했다면 이미 가입됐으므로 PUT을 다시 보내지 않고 프로필만 재시도한다.
-      const profile = await actions.completeOnboarding({
-        name: displayNickname,
-        nickname: displayNickname,
-        avatar,
-        bio: bio.trim() || undefined,
-        ...(favorite ? { favoriteRamenType: favorite } : {}),
-      })
-      track("sign_up", { hasPhoto: Boolean(avatar), marketing: agreeMarketing, hasFavorite: Boolean(favorite) })
+      // 앞선 시도에서 가입은 끝났고 선택 프로필만 남았으면 가입을 다시 보내지 않는다
+      const profile =
+        profileRetry && currentUser
+          ? ((await actions.updateProfile(extras)) ?? currentUser)
+          : await actions.completeOnboarding(
+              { name: displayNickname, nickname: displayNickname, ...extras },
+              { marketing: consents.marketing },
+            )
+      track("sign_up", { hasPhoto: Boolean(avatar), marketing: consents.marketing, hasFavorite: Boolean(favorite) })
       success()
       setRegistered(profile)
-    } catch {
-      setSaveError(PROFILE_SAVE_ERROR)
+    } catch (error) {
+      if (error instanceof OnboardingProfileUpdateError) {
+        setProfileRetry(true)
+        setSaveError(PROFILE_SAVE_ERROR)
+      } else if (isApiError(error, "CONFLICT")) {
+        // 닉네임 충돌(이미 가입된 경우는 스토어가 회원을 다시 읽어 성공으로 처리한다)
+        setRejectedNickname(nicknameValidation.normalized)
+        focusNickname()
+      } else {
+        setSaveError(profileRetry ? PROFILE_SAVE_ERROR : SIGNUP_SAVE_ERROR)
+      }
     } finally {
       setSaving(false)
     }
@@ -340,7 +323,7 @@ export default function OnboardingScreen() {
                 tone={showNicknameError ? "critical" : "sub"}
                 variant="secondary"
               >
-                {showNicknameError ? nicknameError : `한글, 영문, 숫자, 밑줄 ${NICKNAME_MIN}~${NICKNAME_MAX}자`}
+                {showNicknameError ? nicknameError : nicknameNote}
               </AppText>
             </View>
           </View>
@@ -372,65 +355,7 @@ export default function OnboardingScreen() {
           </View>
 
           {/* 약관 */}
-          <View style={styles.terms}>
-            <View style={styles.termsAll}>
-              <CheckRow checked={allAgreed} label="약관 전체 동의" onChange={toggleAll} strong>
-                약관 전체 동의
-              </CheckRow>
-            </View>
-            <View style={styles.termRow}>
-              <CheckRow checked={agreeTerms} label="필수, 서비스 이용약관 동의" onChange={setAgreeTerms}>
-                <AppText style={styles.bold} tone="sub" variant="meta">
-                  [필수]
-                </AppText>{" "}
-                서비스 이용약관 동의
-              </CheckRow>
-              <Pressable
-                accessibilityLabel="서비스 이용약관 보기"
-                accessibilityRole="button"
-                onPress={() => setPolicy("terms")}
-                style={({ pressed }) => [styles.viewLink, pressed && styles.pressedWash]}
-              >
-                <AppText capScale tone="muted" variant="meta">
-                  보기
-                </AppText>
-              </Pressable>
-            </View>
-            <View style={styles.termRow}>
-              <CheckRow checked={agreePrivacy} label="필수, 개인정보 수집 및 이용 동의" onChange={setAgreePrivacy}>
-                <AppText style={styles.bold} tone="sub" variant="meta">
-                  [필수]
-                </AppText>{" "}
-                개인정보 수집 및 이용 동의
-              </CheckRow>
-              <Pressable
-                accessibilityLabel="개인정보 수집 및 이용 동의 보기"
-                accessibilityRole="button"
-                onPress={() => setPolicy("privacy")}
-                style={({ pressed }) => [styles.viewLink, pressed && styles.pressedWash]}
-              >
-                <AppText capScale tone="muted" variant="meta">
-                  보기
-                </AppText>
-              </Pressable>
-            </View>
-            <CheckRow checked={agreeMarketing} label="선택, 라멘 추천 및 소식 수신 동의" onChange={setAgreeMarketing}>
-              <AppText style={styles.bold} tone="sub" variant="meta">
-                [선택]
-              </AppText>{" "}
-              라멘 추천 및 소식 수신 동의
-            </CheckRow>
-            <AppText
-              accessibilityElementsHidden={!agreementError}
-              accessibilityLiveRegion={agreementError ? "polite" : undefined}
-              importantForAccessibility={agreementError ? "auto" : "no-hide-descendants"}
-              style={!agreementError && styles.hiddenFeedback}
-              tone="critical"
-              variant="secondary"
-            >
-              {AGREEMENT_REQUIRED_ERROR}
-            </AppText>
-          </View>
+          <ConsentChecklist onChange={setConsents} showError={attempted} value={consents} />
 
           {/* 한줄 소개(선택) */}
           <View style={styles.field}>
@@ -486,7 +411,7 @@ export default function OnboardingScreen() {
             tone="critical"
             variant="secondary"
           >
-            {PROFILE_SAVE_ERROR}
+            {saveError ?? PROFILE_SAVE_ERROR}
           </AppText>
 
         </ScrollView>
@@ -501,23 +426,6 @@ export default function OnboardingScreen() {
         </StickyActionBar>
       </KeyboardAvoidingView>
 
-      <PolicySheet
-        footer={
-          <Button
-            fullWidth
-            onPress={() => {
-              if (policy === "terms") setAgreeTerms(true)
-              if (policy === "privacy") setAgreePrivacy(true)
-              setPolicy(null)
-            }}
-            title="확인하고 동의"
-            variant="secondary"
-          />
-        }
-        onClose={() => setPolicy(null)}
-        title={policy === "privacy" ? "개인정보 수집 및 이용 동의" : policy === "terms" ? "서비스 이용약관" : undefined}
-        type={policy}
-      />
     </SafeAreaView>
   )
 }
@@ -528,15 +436,12 @@ const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1, minWidth: 0 },
   fill: { width: "100%", height: "100%" },
   center: { textAlign: "center" },
-  bold: { fontWeight: "700" },
   tabular: { fontVariant: ["tabular-nums"] },
   counterSlot: { position: "relative" },
   counterValue: { position: "absolute", top: 0, right: 0 },
   hiddenFeedback: { opacity: 0 },
   noteSlot: { position: "relative" },
   noteValue: { position: "absolute", top: 0, left: 0, right: 0 },
-  // 흰 행과 링크를 누르면 면색이 바뀌고, 사진만 투명도가 바뀐다
-  pressedWash: { backgroundColor: colors.surfacePressed },
   content: {
     paddingHorizontal: 20,
     paddingTop: spacing.x4,
@@ -574,32 +479,6 @@ const styles = StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   styleChip: { height: 44 },
   moreStyles: { minHeight: touchTarget, alignSelf: "flex-start", justifyContent: "center" },
-  terms: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.x4, marginTop: spacing.x4 },
-  termsAll: { borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 4 },
-  termRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2 },
-  checkRow: { flex: 1, minHeight: touchTarget, flexDirection: "row", alignItems: "center", gap: spacing.x2_5 },
-  // 체크는 선택 면으로 채워 빨간 주요 행동과 경쟁하지 않는다.
-  checkBox: {
-    width: 22,
-    height: 22,
-    borderRadius: radii.pill,
-    borderWidth: line.hair,
-    borderColor: colors.outline,
-    backgroundColor: colors.canvas,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkBoxOn: { backgroundColor: colors.selected, borderColor: colors.selected },
-  checkLabel: { flexShrink: 1, minWidth: 0, fontSize: 13, lineHeight: 18 },
-  checkStrong: { fontSize: 15, lineHeight: 20, fontWeight: "700" },
-  viewLink: {
-    minHeight: touchTarget,
-    minWidth: touchTarget,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.x2,
-    borderRadius: radii.sm,
-  },
   doneContent: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x6, paddingBottom: spacing.x8 },
   doneHead: { alignItems: "center", gap: spacing.x1 },
   doneAvatar: {

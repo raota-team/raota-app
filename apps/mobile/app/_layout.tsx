@@ -126,6 +126,10 @@ function HydratedNavigation() {
   if (isNativeRoute && currentUser && !state.onboardingCompleted && !isOnboardingRoute) {
     return <Redirect href="/auth/onboarding" />
   }
+  // 현재 약관에 다시 동의해야 하는 서버 회원은 동의 화면을 먼저 거친다(로그아웃은 동의 화면에서 할 수 있다)
+  if (isNativeRoute && currentUser && state.consentRequired) {
+    return <Redirect href="/auth/consent" />
+  }
 
   return (
     <View style={styles.navigationRoot}>

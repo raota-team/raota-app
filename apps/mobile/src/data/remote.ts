@@ -9,8 +9,10 @@ import type {
   RamenLogComment,
   Shop,
 } from "@raota/shared"
+import { legalDocumentVersion } from "@raota/shared"
 
 import {
+  authApi,
   fileApi,
   fingerprintOf,
   idempotencyOutbox,
@@ -21,6 +23,7 @@ import {
   recommendationApi,
   shopApi,
   subscribeSessionEnded,
+  tokenStore,
   toAppBowls,
   toAppMember,
   toAppRamenLog,
@@ -31,9 +34,12 @@ import {
   toUpdateMemberBody,
   revisitCountOf,
   type AppMember,
+  type ConsentDecision,
   type CreateRamenLogRequest,
   type CursorPage,
   type LoungeSortParam,
+  type MemberMe,
+  type OauthLoginRequest,
   type OnboardingRequest,
   type RamenLogSummary,
   type ReportReason,
@@ -43,8 +49,9 @@ import {
 import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
 
 /**
- * 서버 읽기/쓰기 함수. 공개 매장·라운지 읽기는 src/data/hooks.ts에서 연결하고,
- * 기본값(mock)에서는 로컬 스토어만 사용한다. 로그인·쓰기 경로는 아직 연결하지 않았다.
+ * 서버 읽기/쓰기 함수. 공개 매장·라운지 읽기는 src/data/hooks.ts에서, 계정(로그인·온보딩·약관 동의·
+ * 내 정보·로그아웃·탈퇴)은 스토어 actions(src/state/RaotaStore.tsx)에서 연결한다.
+ * 기본값(mock)에서는 로컬 스토어만 사용한다.
  *
  * 현재 연결된 hook ↔ 함수 ↔ 서버 경로
  * - useShops             → remoteReads.shops             GET /shops (커서)
@@ -54,8 +61,18 @@ import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
  * - useLoungeLogs        → remoteReads.loungeLogs        GET /ramen-logs (커서)
  * - useLoungeLog         → remoteReads.loungeLog         GET /ramen-logs/{id}
  * - 댓글 다음 쪽         → remoteReads.loungeLogComments GET /ramen-logs/{id}/comments (커서)
+ * - useNicknameAvailability → remoteReads.nicknameAvailability GET /members/nickname-availability (member)
  *
- * 회원 기록·찜·AI 추천·쓰기 API는 화면/스토어에 연결하지 않았다.
+ * 스토어 actions ↔ 함수 ↔ 서버 경로(auth, 내 정보 수정은 member)
+ * - 앱 시작               → remoteReads.restoreSession     GET /members/me (저장된 토큰이 있을 때)
+ * - signIn                → remoteWrites.signIn            POST /auth/oauth/login
+ * - completeOnboarding    → remoteWrites.completeOnboarding PUT /members/me/onboarding (+ PATCH /members/me)
+ * - agreeToConsents       → remoteWrites.agreeToConsents   PUT /members/me/consents
+ * - updateProfile         → remoteWrites.updateProfile     PATCH /members/me (member)
+ * - logout                → remoteWrites.signOut           POST /auth/logout
+ * - withdraw              → remoteWrites.withdraw          POST /members/me/withdrawal
+ *
+ * 회원 기록·찜·AI 추천·기록 쓰기 API는 화면/스토어에 연결하지 않았다.
  */
 
 export interface RemotePage<T> {
@@ -202,6 +219,15 @@ export const remoteReads = {
   },
 
   /**
+   * 저장된 토큰으로 로그인 상태를 되살린다. 토큰이 없으면 null.
+   * 온보딩 중인 회원은 내 기록 요약을 읽을 수 없으므로(403) 회원 정보만 읽는다.
+   */
+  async restoreSession(): Promise<AppMember | null> {
+    if (!(await tokenStore.get())) return null
+    return remoteReads.me(false)
+  },
+
+  /**
    * 내 계정. 재방문 그릇 수는 서버에 필드가 없어 내 기록 요약에서 센다.
    * 요약까지 받고 싶지 않으면 withRevisitCount를 false로 둔다.
    */
@@ -250,9 +276,67 @@ export class OnboardingProfileUpdateError extends Error {
   }
 }
 
+/**
+ * 지금 앱이 보여주는 약관·처리방침 버전에 대한 동의. 필수 둘은 항상 동의로 보낸다(서버는 철회를 받지 않는다).
+ * 마케팅 수신은 따로 문서가 없어 수신 동의 문구가 있는 개인정보처리방침의 버전을 쓴다.
+ */
+export function currentConsentDecisions(marketing: boolean): ConsentDecision[] {
+  const privacyVersion = legalDocumentVersion("privacy")
+  return [
+    { type: "TERMS", documentVersion: legalDocumentVersion("terms"), granted: true },
+    { type: "PRIVACY", documentVersion: privacyVersion, granted: true },
+    { type: "MARKETING", documentVersion: privacyVersion, granted: marketing },
+  ]
+}
+
+/**
+ * 온보딩 PUT. 같은 요청을 다시 보내 409가 오면 회원을 다시 읽는다.
+ * 이미 ACTIVE면 앞선 요청이 성공한 것이니 그 회원으로 이어 가고, 아니면 닉네임 충돌이니 오류를 그대로 올린다.
+ */
+async function onboardOnce(body: OnboardingRequest): Promise<MemberMe> {
+  try {
+    return await memberApi.onboarding(body)
+  } catch (error) {
+    if (!isApiError(error, "CONFLICT")) throw error
+    const current = await memberApi.me()
+    if (current.status !== "ACTIVE") throw error
+    return current
+  }
+}
+
 export const remoteWrites = {
+  /** 제공자 자격 증명으로 로그인한다. 토큰은 authApi가 키체인에 넣는다 */
+  async signIn(credential: OauthLoginRequest): Promise<AppMember> {
+    const result = await authApi.oauthLogin(credential)
+    return toAppMember(result.member)
+  },
+
+  /** 서버 로그아웃. 실패해도 기기의 토큰은 지워진다(authApi.logout) */
+  async signOut(): Promise<void> {
+    await authApi.logout()
+  },
+
+  /**
+   * 기기에 남은 계정 흔적을 지운다: 토큰과 그 계정이 보내다 만 요청(아웃박스).
+   * 세션이 끝났거나 로그아웃·탈퇴한 뒤에 부른다. 여러 번 불러도 된다.
+   */
+  async forgetAccount(accountId: string | null): Promise<void> {
+    await Promise.all([tokenStore.clear(), accountId ? idempotencyOutbox.clearAccount(accountId) : undefined])
+  },
+
+  /** 탈퇴 요청. 확인 문구는 앱이 채운다. 서버가 모든 토큰을 끊으므로 기기 토큰도 지운다 */
+  async withdraw(): Promise<void> {
+    await memberApi.withdraw({ reasonCode: "OTHER", confirmation: "WITHDRAW" })
+    await tokenStore.clear()
+  },
+
+  /** 현재 약관·처리방침 동의(웹에서 옮긴 회원, 문서 개정 뒤) */
+  async agreeToConsents(marketing: boolean): Promise<AppMember> {
+    return toAppMember(await memberApi.consents({ consents: currentConsentDecisions(marketing) }))
+  },
+
   async completeOnboarding({ nickname, consents, profile }: CompleteOnboardingInput): Promise<AppMember> {
-    const member = toAppMember(await memberApi.onboarding({ nickname, consents }))
+    const member = toAppMember(await onboardOnce({ nickname, consents }))
     const extras: ProfileUpdateInput = {}
     if (profile?.favoriteRamenType) extras.favoriteRamenType = profile.favoriteRamenType
     if (profile?.bio?.trim()) extras.bio = profile.bio.trim()

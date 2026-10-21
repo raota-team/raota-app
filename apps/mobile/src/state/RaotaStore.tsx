@@ -43,6 +43,16 @@ import {
   type RaotaRepository,
 } from "../repository"
 import { track } from "../analytics"
+import { isRemote } from "../api/config"
+import type { AppMember, OauthLoginRequest } from "../api"
+import { signOutSocialProviders } from "../auth/social"
+import {
+  currentConsentDecisions,
+  OnboardingProfileUpdateError,
+  remoteReads,
+  remoteWrites,
+  subscribeSessionEndedToLogout,
+} from "../data/remote"
 import { validateRecordDraft } from "../domain/record"
 import { isValidLogComment } from "../domain/lounge"
 import { compareShopIds } from "../domain/shops"
@@ -63,6 +73,11 @@ export interface RaotaState extends PersistedAppStateV1 {
   hydrationStatus: HydrationStatus
   storageError: string | null
   recordDraft: PendingRecordDraft | null
+  /**
+   * 서버 회원이 현재 약관·처리방침에 다시 동의해야 하는가(auth remote).
+   * 저장하지 않는다. 앱을 켤 때마다 서버 회원 정보로 다시 정한다.
+   */
+  consentRequired: boolean
 }
 
 export type RaotaAction =
@@ -80,6 +95,9 @@ export type RaotaAction =
       bookmarkedShopIds?: string[]
     }
   | { type: "COMPLETE_ONBOARDING"; payload: UserProfile }
+  /** 서버 회원으로 로그인했거나 회원 정보를 다시 읽었다(auth remote) */
+  | { type: "MEMBER_SIGNED_IN"; payload: AppMember }
+  | { type: "CONSENTS_AGREED" }
   | { type: "LOGOUT" }
   | { type: "WITHDRAW"; payload: PersistedAppStateV1 }
   | { type: "UPDATE_PROFILE"; payload: ProfileUpdateInput }
@@ -123,6 +141,7 @@ export function createInitialRaotaState(): RaotaState {
     hydrationStatus: "loading",
     storageError: null,
     recordDraft: null,
+    consentRequired: false,
   }
 }
 
@@ -182,6 +201,7 @@ export function raotaReducer(
         hydrationStatus: "ready",
         storageError: null,
         recordDraft: null,
+        consentRequired: false,
       }
     case "STORAGE_ERROR":
       return {
@@ -213,10 +233,23 @@ export function raotaReducer(
       }
     case "COMPLETE_ONBOARDING":
       return { ...state, user: action.payload, onboardingCompleted: true }
+    case "MEMBER_SIGNED_IN":
+      return {
+        ...state,
+        user: action.payload.profile,
+        onboardingCompleted: action.payload.onboardingCompleted,
+        consentRequired: action.payload.consentRequired,
+        // 다른 계정이면 이 기기에 남은 앞 계정의 찜 목록을 넘겨받지 않는다
+        bookmarkedShopIds:
+          state.user?.id === action.payload.profile.id ? state.bookmarkedShopIds : [],
+      }
+    case "CONSENTS_AGREED":
+      return { ...state, consentRequired: false }
     case "LOGOUT":
       return {
         ...state,
         user: state.user ? { ...state.user, isLoggedIn: false } : null,
+        consentRequired: false,
       }
     case "WITHDRAW":
       return {
@@ -224,6 +257,7 @@ export function raotaReducer(
         hydrationStatus: "ready",
         storageError: null,
         recordDraft: null,
+        consentRequired: false,
       }
     case "UPDATE_PROFILE":
       if (!state.user) return state
@@ -621,10 +655,29 @@ export interface ReportContentInput {
   reason: ContentReportReason
 }
 
+export interface CompleteOnboardingOptions {
+  /** [선택] 라멘 추천 및 소식 수신 동의 */
+  marketing?: boolean
+}
+
 export interface RaotaActions {
+  /** 기기 안 로그인(mock). provider가 없으면 데모 계정 */
   login(input?: LoginInput): UserProfile
-  completeOnboarding(input?: ProfileUpdateInput): Promise<UserProfile>
+  /**
+   * 서버 로그인(auth remote). 제공자 자격 증명으로 로그인하고 회원 상태(온보딩·약관 동의 필요 여부)를 돌려준다.
+   * 화면은 결과로 온보딩·동의·원래 화면 중 어디로 갈지 정한다.
+   */
+  signIn(credential: OauthLoginRequest): Promise<AppMember>
+  /**
+   * 가입 마무리(닉네임·약관·선택 프로필). auth remote면 서버 온보딩을 부른다.
+   * 가입은 됐지만 선택 프로필만 못 올렸으면 OnboardingProfileUpdateError를 던진다(이때 계정은 이미 가입 완료 상태다).
+   */
+  completeOnboarding(input?: ProfileUpdateInput, options?: CompleteOnboardingOptions): Promise<UserProfile>
+  /** 현재 약관·처리방침 동의(웹에서 옮긴 회원, 문서 개정 뒤) */
+  agreeToConsents(marketing: boolean): Promise<void>
+  /** 로그아웃. auth remote면 서버에도 알리지만, 실패해도 기기에서는 로그아웃한다 */
   logout(): void
+  /** 탈퇴. auth remote면 서버 탈퇴가 성공해야 기기 데이터를 지운다(실패하면 던진다) */
   withdraw(): Promise<void>
   updateProfile(input: ProfileUpdateInput): Promise<UserProfile | null>
   startRecordDraft(shopId?: string | null): void
@@ -753,8 +806,59 @@ export function RaotaProvider({
     })
   }, [persistedState, repository, state.hydrationStatus])
 
+  /** 로그아웃·세션 종료 뒤 서버 계정 흔적(토큰·보내다 만 요청·제공자 SDK 로그인)을 지운다 */
+  const forgetRemoteAccount = useCallback((accountId: string | null) => {
+    void remoteWrites.forgetAccount(accountId).catch(() => undefined)
+    void signOutSocialProviders()
+  }, [])
+
+  // 세션 종료 알림은 렌더와 무관하게 오므로 지금 로그인한 계정 id를 ref로 들고 있는다
+  const signedInAccountId = useRef<string | null>(null)
+  useEffect(() => {
+    signedInAccountId.current = state.user?.isLoggedIn ? state.user.id : null
+  }, [state.user])
+
+  /*
+   * 서버 세션(auth remote).
+   * - 다른 기기에서 로그아웃·탈퇴했거나 재발급이 거절되면 클라이언트가 토큰을 지우고 알린다 → 기기에서도 로그아웃
+   * - 앱을 켜면 저장된 토큰으로 회원 정보를 다시 읽는다. 토큰이 없으면(예: mock으로 쓰던 기기) 로그아웃 상태로 시작한다.
+   *   연결 오류면 저장된 화면 상태를 그대로 두고, 세션이 끝난 경우는 위 알림이 처리한다
+   */
+  useEffect(() => {
+    if (!isRemote("auth")) return
+    return subscribeSessionEndedToLogout(() => {
+      const accountId = signedInAccountId.current
+      dispatch({ type: "LOGOUT" })
+      forgetRemoteAccount(accountId)
+    })
+  }, [forgetRemoteAccount])
+
+  const sessionRestored = useRef(false)
+  useEffect(() => {
+    if (state.hydrationStatus !== "ready" || sessionRestored.current || !isRemote("auth")) return
+    sessionRestored.current = true
+    remoteReads
+      .restoreSession()
+      .then((member) => dispatch(member ? { type: "MEMBER_SIGNED_IN", payload: member } : { type: "LOGOUT" }))
+      .catch(() => undefined)
+  }, [state.hydrationStatus])
+
+  const signIn = useCallback(async (credential: OauthLoginRequest): Promise<AppMember> => {
+    const member = await remoteWrites.signIn(credential)
+    dispatch({ type: "MEMBER_SIGNED_IN", payload: member })
+    return member
+  }, [])
+
+  const agreeToConsents = useCallback(async (marketing: boolean): Promise<void> => {
+    if (!isRemote("auth")) {
+      dispatch({ type: "CONSENTS_AGREED" })
+      return
+    }
+    dispatch({ type: "MEMBER_SIGNED_IN", payload: await remoteWrites.agreeToConsents(marketing) })
+  }, [])
+
   /**
-   * 서버 인증(#44) 전의 기기 안 로그인.
+   * 기기 안 로그인(mock. auth remote에서는 signIn을 쓰고, 이 함수는 개발 빌드의 데모 계정만 쓴다).
    * - provider 없음: 데모 계정 체험. 항상 데모 계정(42그릇)으로 들어가고 찜 목록도 데모 기준으로 돌린다.
    * - provider 있음(apple·kakao·google): 로그인 수단마다 기기 안 고정 id(local-<provider>)를 쓴다.
    *   처음이면 0그릇·빈 찜 목록으로 시작하고 온보딩을 거친다. 같은 수단으로 다시 로그인하면 이전 기록이 돌아온다.
@@ -803,7 +907,24 @@ export function RaotaProvider({
   )
 
   const completeOnboarding = useCallback(
-    async (input: ProfileUpdateInput = {}): Promise<UserProfile> => {
+    async (input: ProfileUpdateInput = {}, options: CompleteOnboardingOptions = {}): Promise<UserProfile> => {
+      if (isRemote("auth")) {
+        try {
+          const member = await remoteWrites.completeOnboarding({
+            nickname: input.nickname ?? "",
+            consents: currentConsentDecisions(options.marketing ?? false),
+            profile: { bio: input.bio, favoriteRamenType: input.favoriteRamenType, avatar: input.avatar },
+          })
+          dispatch({ type: "MEMBER_SIGNED_IN", payload: member })
+          return member.profile
+        } catch (error) {
+          // 가입은 끝났다. 화면이 온보딩을 다시 보내지 않고 프로필만 다시 저장하게 계정 상태를 먼저 맞춘다
+          if (error instanceof OnboardingProfileUpdateError) {
+            dispatch({ type: "MEMBER_SIGNED_IN", payload: error.member })
+          }
+          throw error
+        }
+      }
       const previousAvatar = state.user?.avatar
       const durableAvatar =
         typeof input.avatar === "string" && input.avatar !== state.user?.avatar
@@ -833,9 +954,23 @@ export function RaotaProvider({
     [login, state.user],
   )
 
-  const logout = useCallback(() => dispatch({ type: "LOGOUT" }), [])
+  const logout = useCallback(() => {
+    const accountId = state.user?.isLoggedIn ? state.user.id : null
+    dispatch({ type: "LOGOUT" })
+    if (!isRemote("auth")) return
+    // 서버에 refresh 토큰 폐기를 알린다. 네트워크가 안 돼도 기기 토큰은 지운다(authApi.logout)
+    void remoteWrites
+      .signOut()
+      .catch(() => undefined)
+      .finally(() => forgetRemoteAccount(accountId))
+  }, [forgetRemoteAccount, state.user])
 
   const withdraw = useCallback(async () => {
+    if (isRemote("auth")) {
+      const accountId = state.user?.isLoggedIn ? state.user.id : null
+      await remoteWrites.withdraw()
+      forgetRemoteAccount(accountId)
+    }
     let cleanupError: string | null = null
     const cleanupResults = await Promise.allSettled([
       clearPersistedMediaDirectory(),
@@ -850,11 +985,23 @@ export function RaotaProvider({
     dispatch({ type: "WITHDRAW", payload: createWithdrawnState() })
     if (cleanupError)
       dispatch({ type: "STORAGE_ERROR", payload: cleanupError })
-  }, [repository])
+  }, [forgetRemoteAccount, repository, state.user])
 
   const updateProfile = useCallback(
     async (input: ProfileUpdateInput): Promise<UserProfile | null> => {
       if (!state.user) return null
+      // 서버 회원(auth·member remote): 사진은 올린 주소로, 지운 값은 빈 문자열로 보낸다. 서버가 돌려준 값으로 맞춘다
+      if (isRemote("auth") && isRemote("member")) {
+        const { profile } = await remoteWrites.updateProfile(input)
+        const changes: ProfileUpdateInput = {
+          email: profile.email,
+          avatar: profile.avatar,
+          bio: profile.bio,
+          favoriteRamenType: profile.favoriteRamenType,
+        }
+        dispatch({ type: "UPDATE_PROFILE", payload: changes })
+        return { ...state.user, ...changes }
+      }
       const previousAvatar = state.user.avatar
       const nextAvatar =
         input.avatar && input.avatar !== previousAvatar
@@ -1195,7 +1342,9 @@ export function RaotaProvider({
   const actions = useMemo<RaotaActions>(
     () => ({
       login,
+      signIn,
       completeOnboarding,
+      agreeToConsents,
       logout,
       withdraw,
       updateProfile,
@@ -1224,6 +1373,7 @@ export function RaotaProvider({
     [
       addComment,
       addLogComment,
+      agreeToConsents,
       clearRecordDraft,
       completeOnboarding,
       createLog,
@@ -1239,6 +1389,7 @@ export function RaotaProvider({
       refreshTasteReport,
       reportContent,
       selectRecordDraftShop,
+      signIn,
       startRecordDraft,
       toggleBookmark,
       toggleLogLike,

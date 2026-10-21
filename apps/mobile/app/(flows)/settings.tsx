@@ -62,9 +62,14 @@ export default function SettingsScreen() {
 
   const saveStyle = async (style: string) => {
     haptic()
-    await actions.updateProfile({ favoriteRamenType: style })
-    setSheet(null)
-    setToast(`선호 스타일을 '${style}'로 바꿨어요`)
+    try {
+      await actions.updateProfile({ favoriteRamenType: style })
+      setToast(`선호 스타일을 '${style}'로 바꿨어요`)
+    } catch {
+      setToast("선호 스타일을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.")
+    } finally {
+      setSheet(null)
+    }
   }
 
   const saveEmail = async () => {
@@ -85,10 +90,13 @@ export default function SettingsScreen() {
     }
   }
 
+  // 서버 회원이면 서버 탈퇴가 먼저 성공해야 기기 데이터를 지운다. 실패하면 계정은 그대로이고 다시 시도할 수 있다
   const withdraw = async () => {
     setBusy(true)
     try {
       await actions.withdraw()
+    } catch {
+      setToast("탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요.")
     } finally {
       setBusy(false)
       setDialog(null)

@@ -12,6 +12,15 @@ function success<T>(data: T) {
   }
 }
 
+function conflict() {
+  return {
+    status: 409,
+    ok: false,
+    headers: { get: () => null },
+    text: async () => JSON.stringify({ success: false, error: { code: "CONFLICT", message: "충돌" } }),
+  }
+}
+
 const wireShop = {
   id: "7",
   name: "하쿠텐",
@@ -216,6 +225,28 @@ describe("src/data/remote", () => {
 
     expect(error).toBeInstanceOf(OnboardingProfileUpdateError)
     expect(error).toMatchObject({ onboardingCompleted: true, member: { onboardingCompleted: true, profile: { nickname: "라멘러버" } } })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("온보딩 재제출이 409면 회원을 다시 읽고, 이미 가입됐으면 그 회원으로 이어 간다", async () => {
+    await tokenStore.set({ accessToken: "a1", refreshToken: "r1" })
+    fetchMock.mockResolvedValueOnce(conflict()).mockResolvedValueOnce(success(wireMember))
+
+    const member = await remoteWrites.completeOnboarding(onboarding)
+
+    expect(member).toMatchObject({ onboardingCompleted: true, profile: { id: "77" } })
+    const [meUrl, me] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect(meUrl).toMatch(/\/members\/me$/)
+    expect(me.method).toBe("GET")
+  })
+
+  it("409인데 아직 온보딩 중이면 닉네임 충돌이라 오류를 그대로 올린다", async () => {
+    await tokenStore.set({ accessToken: "a1", refreshToken: "r1" })
+    fetchMock
+      .mockResolvedValueOnce(conflict())
+      .mockResolvedValueOnce(success({ ...wireMember, status: "ONBOARDING", nickname: null, onboardingCompletedAt: null }))
+
+    await expect(remoteWrites.completeOnboarding(onboarding)).rejects.toMatchObject({ status: 409, code: "CONFLICT" })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 

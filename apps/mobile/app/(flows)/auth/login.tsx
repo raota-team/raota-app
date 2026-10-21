@@ -1,4 +1,4 @@
-import { type ReactElement } from "react"
+import { useState, type ReactElement } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import * as Haptics from "expo-haptics"
@@ -6,10 +6,12 @@ import { Image, Platform, Pressable, ScrollView, StyleSheet, View, useColorSchem
 import { SafeAreaView } from "react-native-safe-area-context"
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg"
 
-import type { AuthProvider } from "@raota/shared"
 import { track } from "@/src/analytics"
+import { isApiError } from "@/src/api/client"
+import { isRemote } from "@/src/api/config"
+import { availableSocialProviders, socialCredential, SocialSignInCancelled, type SocialProvider } from "@/src/auth/social"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText } from "@/src/components/ui"
+import { AppText, Toast } from "@/src/components/ui"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, pressFade, radii, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
@@ -18,13 +20,22 @@ import { colors, line, pressFade, radii, spacing, touchTarget, typography, usePa
  * MVP 로그인 수단은 Apple · 카카오 · Google 세 가지다.
  * params.mode === "signup"(마이·홈의 "회원가입")이면 같은 화면을 가입 흐름으로 보여준다:
  * 간편 로그인으로 계정을 만든 뒤 바로 온보딩(닉네임·약관)으로 간다.
- * 데모 계정(42그릇) 버튼은 두지 않는다. 개발 빌드에서만 로고를 길게 누르면 들어간다.
- * 지금은 인증 API가 없어 actions.login({ provider })로 기기 안에서만 로그인한다.
- * TODO(#44): Apple은 expo-apple-authentication의 signInAsync, 카카오·Google은 각 SDK로 토큰을 받아
- *   서버 #44(소셜 로그인)에 보내고, 응답의 사용자·신규 여부로 온보딩 이동을 정한다.
+ * 데모 계정(42그릇) 버튼은 두지 않는다. 개발 빌드(mock)에서만 로고를 길게 누르면 들어간다.
+ *
+ * - auth remote: 제공자 SDK(src/auth/social)로 자격 증명을 받아 서버에 로그인한다. 키가 없는 제공자 버튼은 숨긴다.
+ *   회원 상태로 다음 화면을 정한다: 온보딩 전이면 온보딩, 약관 다시 동의가 필요하면 동의 화면, 아니면 가려던 곳.
+ * - mock(기본): actions.login({ provider })로 기기 안에서만 로그인한다.
  */
 
-type SocialProvider = Extract<AuthProvider, "apple" | "kakao" | "google">
+const LOGIN_FAILED = "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+const LOGIN_OFFLINE = "인터넷 연결을 확인하고 다시 시도해 주세요."
+const LOGIN_UNAVAILABLE_ACCOUNT = "이 계정으로는 로그인할 수 없어요. 탈퇴한 계정은 30일이 지나야 다시 가입할 수 있어요."
+
+function loginErrorMessage(error: unknown): string {
+  if (!isApiError(error)) return LOGIN_FAILED
+  if (error.isOffline) return LOGIN_OFFLINE
+  return error.code === "UNAUTHORIZED" ? LOGIN_UNAVAILABLE_ACCOUNT : LOGIN_FAILED
+}
 
 /** 제공자 브랜드 가이드가 정한 색. RAOTA 토큰 밖의 예외라 이 화면에만 둔다 */
 const PROVIDER_BRAND = {
@@ -135,7 +146,7 @@ const PROVIDERS: Array<{ id: SocialProvider; label: string; Mark: (props: { colo
   { id: "google", label: "Google로 계속하기", Mark: GoogleMark },
 ]
 
-function ProviderButton({ id, label, Mark, onPress }: (typeof PROVIDERS)[number] & { onPress: () => void }) {
+function ProviderButton({ id, label, Mark, onPress, disabled }: (typeof PROVIDERS)[number] & { onPress: () => void; disabled: boolean }) {
   const scheme = useColorScheme()
   const darkApple = id === "apple" && Platform.OS === "ios" && scheme === "dark"
   const textColor = id === "apple" ? (darkApple ? colors.black : colors.white) : id === "kakao" ? PROVIDER_BRAND.kakaoLabel : colors.black
@@ -143,6 +154,8 @@ function ProviderButton({ id, label, Mark, onPress }: (typeof PROVIDERS)[number]
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.provider,
@@ -184,23 +197,34 @@ export default function LoginScreen() {
   const signup = params.mode === "signup"
   const { state, currentUser, actions } = useRaota()
   const { height } = useWindowDimensions()
+  const remoteAuth = isRemote("auth")
+  const providers = remoteAuth ? PROVIDERS.filter(({ id }) => availableSocialProviders().includes(id)) : PROVIDERS
+  const [pending, setPending] = useState<SocialProvider | null>(null)
+  const [toast, setToast] = useState<{ message: string; critical: boolean } | null>(null)
 
   const leave = () => {
     if (router.canGoBack()) router.back()
     else router.replace("/native")
   }
 
-  // newAccount: 이 기기에서 처음 쓰는 계정이면 온보딩을 거친다. 로그인 직후의 state는 아직 이전 값이라 결과로 판단한다
-  const afterLogin = (newAccount: boolean) => {
+  /*
+   * 로그인 직후의 state는 아직 이전 값이라 결과로 판단한다.
+   * needsOnboarding: 닉네임·약관 전(서버 ONBOARDING, mock에서는 이 기기에서 처음 쓰는 계정이거나 가입 흐름)
+   * needsConsent: 현재 약관·처리방침에 다시 동의해야 하는 서버 회원
+   */
+  const afterLogin = (needsOnboarding: boolean, needsConsent = false) => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined)
-    // 가입 흐름이거나 새 계정이면 곧바로 닉네임·약관 단계로 간다
-    if (signup || newAccount) {
+    if (needsOnboarding) {
       router.replace("/auth/onboarding")
       return
     }
+    const next = typeof params.next === "string" && params.next.startsWith("/") && !params.next.startsWith("/auth") ? params.next : null
+    if (needsConsent) {
+      router.replace({ pathname: "/auth/consent", params: next ? { next } : {} })
+      return
+    }
     // 가드에 막혀 들어왔다면 열려던 화면으로 보낸다. back으로는 갈 수 없다 — 가드가 replace로 지웠다
-    const next = params.next
-    if (typeof next === "string" && next.startsWith("/") && !next.startsWith("/auth")) {
+    if (next) {
       router.replace(next as Parameters<typeof router.replace>[0])
       return
     }
@@ -208,12 +232,35 @@ export default function LoginScreen() {
     leave()
   }
 
+  const remoteLogin = async (provider: SocialProvider) => {
+    if (pending) return
+    setPending(provider)
+    setToast(null)
+    try {
+      const member = await actions.signIn(await socialCredential(provider))
+      track("login", { provider, signup })
+      afterLogin(!member.onboardingCompleted, member.consentRequired)
+    } catch (error) {
+      setToast(
+        error instanceof SocialSignInCancelled
+          ? { message: "로그인을 취소했어요.", critical: false }
+          : { message: loginErrorMessage(error), critical: true },
+      )
+    } finally {
+      setPending(null)
+    }
+  }
+
   const socialLogin = (provider: SocialProvider) => {
-    // TODO(#44): 실제 인증으로 교체. 지금은 기기 안 더미 로그인
+    if (remoteAuth) {
+      void remoteLogin(provider)
+      return
+    }
     const previousUserId = state.user?.id
     const profile = actions.login({ provider })
     track("login", { provider, signup })
-    afterLogin(profile.id !== previousUserId)
+    // 가입 흐름이거나 새 계정이면 곧바로 닉네임·약관 단계로 간다
+    afterLogin(signup || profile.id !== previousUserId)
   }
 
   // 개발 빌드 전용: provider 없이 login()을 부르면 데모 계정(42그릇)으로 들어간다. 리포트·월별 화면 확인용
@@ -238,7 +285,7 @@ export default function LoginScreen() {
           <Pressable
             accessible={false}
             delayLongPress={800}
-            disabled={!__DEV__}
+            disabled={!__DEV__ || remoteAuth}
             onLongPress={demoLogin}
           >
             <Image
@@ -257,8 +304,13 @@ export default function LoginScreen() {
           </AppText>
         </View>
         <View style={styles.providers}>
-          {PROVIDERS.map((provider) => (
-            <ProviderButton key={provider.id} {...provider} onPress={() => socialLogin(provider.id)} />
+          {providers.map((provider) => (
+            <ProviderButton
+              disabled={pending !== null}
+              key={provider.id}
+              {...provider}
+              onPress={() => socialLogin(provider.id)}
+            />
           ))}
         </View>
         <Pressable
@@ -281,6 +333,12 @@ export default function LoginScreen() {
           </View>
         </View>
       </ScrollView>
+      <Toast
+        message={toast?.message ?? ""}
+        onDismiss={() => setToast(null)}
+        variant={toast?.critical ? "critical" : "neutral"}
+        visible={Boolean(toast)}
+      />
     </SafeAreaView>
   )
 }

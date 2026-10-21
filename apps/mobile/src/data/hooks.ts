@@ -485,3 +485,45 @@ export function useLoungeLog(logId: string | null | undefined): LoungeLogQuery {
       }
     : { data: local, ...status, hasMoreComments: false, loadMoreComments: () => undefined }
 }
+
+// ---------------------------------------------------------------------------
+// 계정
+// ---------------------------------------------------------------------------
+
+export type NicknameAvailability = "unchecked" | "checking" | "available" | "taken"
+
+/** 입력이 멈춘 뒤 서버에 물어보기까지 기다리는 시간 */
+export const NICKNAME_CHECK_DELAY_MS = 400
+
+/**
+ * 닉네임 중복 확인(서버 회원일 때만). 형식이 맞는 닉네임만 입력이 멈춘 뒤 한 번 묻는다.
+ * mock이거나 형식 오류가 있거나 확인에 실패하면 "unchecked"다. 최종 판단은 가입 요청의 409가 한다.
+ * normalized는 서버와 같은 대소문자 무시 값이라, 대소문자만 바꿔 쓰면 다시 묻지 않는다.
+ */
+export function useNicknameAvailability(normalized: string, valid: boolean): NicknameAvailability {
+  const enabled = valid && isRemote("auth") && isRemote("member")
+  const [result, setResult] = useState<{ nickname: string; status: NicknameAvailability } | null>(null)
+
+  useEffect(() => {
+    if (!enabled) return
+    let active = true
+    const timer = setTimeout(() => {
+      setResult({ nickname: normalized, status: "checking" })
+      remoteReads
+        .nicknameAvailability(normalized)
+        .then((available) => {
+          if (active) setResult({ nickname: normalized, status: available ? "available" : "taken" })
+        })
+        .catch(() => {
+          if (active) setResult({ nickname: normalized, status: "unchecked" })
+        })
+    }, NICKNAME_CHECK_DELAY_MS)
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [enabled, normalized])
+
+  if (!enabled || result?.nickname !== normalized) return "unchecked"
+  return result.status
+}
