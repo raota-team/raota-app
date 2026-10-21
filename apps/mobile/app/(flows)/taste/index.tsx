@@ -431,6 +431,7 @@ function TasteTower({ bowlHeight, bowlWidth, gap, highlightAt, left, plan, reduc
           coveredAt={bowl.coveredAt}
           dropAt={bowl.dropAt}
           height={bowlHeight}
+          key={bowl.order}
           left={left}
           level={bowl.level}
           order={bowl.order}
