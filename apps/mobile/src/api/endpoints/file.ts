@@ -97,7 +97,8 @@ export function createFileApi(client: ApiClient = apiClient) {
 
     /**
      * 기기에 있는 사진들을 올리고 주소를 순서대로 돌려준다.
-     * 한 장이라도 실패하면 오류를 낸다(이미 올라간 파일은 서버가 정리한다).
+     * 한 장이라도 실패하면 오류를 낸다. 이미 올라간 사진이 기록·프로필에 연결되지 않으면
+     * 서버가 매일 새벽 정리 작업에서 올린 지 7일이 지난 것을 지운다(앱이 따로 지우지 않는다).
      */
     async uploadImages(purpose: UploadPurpose, uris: readonly string[]): Promise<string[]> {
       if (uris.length === 0) return []
