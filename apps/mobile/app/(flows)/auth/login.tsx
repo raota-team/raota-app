@@ -67,13 +67,13 @@ const COLLAGE_PHOTOS = [
 ]
 const COLLAGE_GAP = 6
 /**
- * 열마다 사진 순서·높이·속도를 다르게 해 같은 사진이 옆 열과 나란히 지나가지 않게 한다. 한 바퀴 높이는 화면 콜라주(최대 312)보다
- * 길어야 끊김 없이 이어진다.
+ * 열마다 다른 사진 두 장씩 써서 같은 사진이 옆 열과 나란히 지나가지 않게 하고, 높이·속도도 달리한다.
+ * 한 바퀴 높이는 화면 콜라주(최대 312 + 열 어긋남 36)보다 길어야 끊김 없이 이어진다.
  */
 const COLLAGE_COLUMNS = [
-  { photos: [0, 3, 4], heights: [165, 200, 180], durationMs: 26_000 },
-  { photos: [2, 5, 1], heights: [215, 170, 190], durationMs: 34_000 },
-  { photos: [4, 1, 2], heights: [185, 200, 165], durationMs: 30_000 },
+  { photos: [0, 3], heights: [190, 210], durationMs: 22_000 },
+  { photos: [2, 5], heights: [225, 185], durationMs: 28_000 },
+  { photos: [4, 1], heights: [200, 215], durationMs: 25_000 },
 ] as const
 
 /** 사진 열 하나가 천천히 아래로 흐른다. 같은 묶음을 두 번 쌓아 한 묶음 높이만큼 내려가면 처음으로 돌아가 이음매가 보이지 않는다 */
