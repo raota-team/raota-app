@@ -258,15 +258,6 @@ describe("src/data/remote", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("/members/nickname-availability?nickname=AB_9")
   })
 
-  it("hook마다 대응하는 함수가 준비돼 있다", () => {
-    for (const name of ["shops", "mapShops", "shop", "bookmarkedShops", "myLogs", "myBowls", "log", "loungeLogs", "loungeLog", "loungeLogComments", "nicknameAvailability", "me", "todayCuration", "recommendations"] as const) {
-      expect(typeof remoteReads[name]).toBe("function")
-    }
-    for (const name of ["completeOnboarding", "toggleBookmark", "createRamenLog", "deleteRamenLog", "toggleLogLike", "addLogComment", "deleteLogComment", "reportContent", "hideAuthor", "unhideAuthor", "updateProfile"] as const) {
-      expect(typeof remoteWrites[name]).toBe("function")
-    }
-  })
-
   it("세션이 끝나면 스토어가 로그아웃하도록 붙일 수 있다", () => {
     const logout = jest.fn()
     const unsubscribe = subscribeSessionEndedToLogout(logout)

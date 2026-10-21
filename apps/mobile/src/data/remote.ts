@@ -12,11 +12,13 @@ import type {
 import { legalDocumentVersion } from "@raota/shared"
 
 import {
+  applyTasteNoteDefinitions,
   authApi,
   fileApi,
   fingerprintOf,
   idempotencyOutbox,
   isApiError,
+  isPermanentFailure,
   loungeApi,
   memberApi,
   ramenLogApi,
@@ -25,6 +27,7 @@ import {
   subscribeSessionEnded,
   tokenStore,
   toAppBowls,
+  toAppLedgerLog,
   toAppMember,
   toAppRamenLog,
   toAppRamenLogComment,
@@ -33,6 +36,7 @@ import {
   toCreateRamenLogBody,
   toUpdateMemberBody,
   revisitCountOf,
+  WITHDRAWN_AUTHOR_NAME,
   type AppMember,
   type ConsentDecision,
   type CreateRamenLogRequest,
@@ -41,38 +45,55 @@ import {
   type MemberMe,
   type OauthLoginRequest,
   type OnboardingRequest,
+  type RamenLogDetail,
   type RamenLogSummary,
   type ReportReason,
   type ShopListParams,
   type ShopMapParams,
+  type ShopSummary,
+  type TasteNoteField,
 } from "../api"
-import { LOUNGE_ALL_TYPES, type LoungeSort } from "../domain/lounge"
+import { LOUNGE_ALL_TYPES, type HiddenAuthor, type LoungeSort } from "../domain/lounge"
 
 /**
- * 서버 읽기/쓰기 함수. 공개 매장·라운지 읽기는 src/data/hooks.ts에서, 계정(로그인·온보딩·약관 동의·
- * 내 정보·로그아웃·탈퇴)은 스토어 actions(src/state/RaotaStore.tsx)에서 연결한다.
- * 기본값(mock)에서는 로컬 스토어만 사용한다.
+ * 서버 읽기/쓰기 함수. 공개 읽기는 src/data/hooks.ts에서, 계정과 회원 데이터·쓰기는
+ * 스토어 actions(src/state/RaotaStore.tsx)에서 연결한다. 기본값(mock)에서는 로컬 스토어만 사용한다.
+ * 괄호는 도메인 스위치(src/api/config.ts). "+auth"는 auth도 remote여야 서버로 간다(토큰 없이 부르지 않는다).
  *
- * 현재 연결된 hook ↔ 함수 ↔ 서버 경로
- * - useShops             → remoteReads.shops             GET /shops (커서)
- * - useMapShops          → remoteReads.mapShops          GET /shops/map (전체 매장)
- * - useShop              → remoteReads.shop              GET /shops/{id}
- * - useTodayCuration     → remoteReads.todayCuration     GET /curations/today
- * - useLoungeLogs        → remoteReads.loungeLogs        GET /ramen-logs (커서)
- * - useLoungeLog         → remoteReads.loungeLog         GET /ramen-logs/{id}
- * - 댓글 다음 쪽         → remoteReads.loungeLogComments GET /ramen-logs/{id}/comments (커서)
+ * hook ↔ 함수 ↔ 서버 경로
+ * - useShops             → remoteReads.shops             GET /shops (커서, shops)
+ * - useMapShops          → remoteReads.mapShops          GET /shops/map (shops)
+ * - useShop              → remoteReads.shop              GET /shops/{id} (shops, 로그인했으면 찜 여부 포함)
+ * - useTodayCuration     → remoteReads.todayCuration     GET /curations/today (shops)
+ * - useLoungeLogs        → remoteReads.loungeLogs        GET /ramen-logs (커서, lounge)
+ * - useLoungeLog         → remoteReads.loungeLog         GET /ramen-logs/{id} (lounge)
+ * - 댓글 다음 쪽         → remoteReads.loungeLogComments GET /ramen-logs/{id}/comments (커서, lounge)
+ * - useLog               → remoteReads.log               GET /ramen-logs/{id} (ramenLogs, 내 목록에 없을 때)
+ * - useTasteNoteFields   → remoteReads.tasteNoteFields   GET /taste-note-definitions (ramenLogs)
  * - useNicknameAvailability → remoteReads.nicknameAvailability GET /members/nickname-availability (member)
+ * - AI 추천 화면         → remoteReads.recommendations   POST /ai/recommendations (recommendations)
  *
- * 스토어 actions ↔ 함수 ↔ 서버 경로(auth, 내 정보 수정은 member)
- * - 앱 시작               → remoteReads.restoreSession     GET /members/me (저장된 토큰이 있을 때)
- * - signIn                → remoteWrites.signIn            POST /auth/oauth/login
+ * 스토어 actions ↔ 함수 ↔ 서버 경로
+ * - 앱 시작               → remoteReads.restoreSession     GET /members/me (auth, 저장된 토큰이 있을 때)
+ * - 회원 데이터(로그인 뒤) → remoteReads.myLedger           GET /members/me/ramen-logs/summary (ramenLogs)
+ *                        → remoteReads.myLogs             GET /members/me/ramen-logs (커서, ramenLogs)
+ *                        → remoteReads.bookmarkedShops    GET /members/me/bookmarked-shops (shops+auth)
+ *                        → remoteReads.blockedMembers     GET /members/me/blocks (lounge+auth)
+ * - signIn                → remoteWrites.signIn            POST /auth/oauth/login (auth)
  * - completeOnboarding    → remoteWrites.completeOnboarding PUT /members/me/onboarding (+ PATCH /members/me)
  * - agreeToConsents       → remoteWrites.agreeToConsents   PUT /members/me/consents
  * - updateProfile         → remoteWrites.updateProfile     PATCH /members/me (member)
  * - logout                → remoteWrites.signOut           POST /auth/logout
  * - withdraw              → remoteWrites.withdraw          POST /members/me/withdrawal
- *
- * 회원 기록·찜·AI 추천·기록 쓰기 API는 화면/스토어에 연결하지 않았다.
+ * - toggleBookmark        → remoteWrites.toggleBookmark    PUT|DELETE /shops/{id}/bookmark (shops+auth)
+ * - createLog             → remoteWrites.createRamenLog    POST /files/upload-tickets → 저장소 업로드 → POST /ramen-logs (ramenLogs)
+ * - updateLog             → remoteWrites.updateRamenLog    PATCH /ramen-logs/{id} (ramenLogs)
+ * - deleteLog             → remoteWrites.deleteRamenLog    DELETE /ramen-logs/{id} (ramenLogs)
+ * - toggleLogLike         → remoteWrites.toggleLogLike     PUT|DELETE /ramen-logs/{id}/like (lounge+auth)
+ * - addLogComment         → remoteWrites.addLogComment     POST /ramen-logs/{id}/comments (lounge+auth)
+ * - deleteLogComment      → remoteWrites.deleteLogComment  DELETE /ramen-log-comments/{id} (lounge+auth)
+ * - reportContent         → remoteWrites.reportContent     POST /reports (lounge+auth)
+ * - hideAuthor·unhideAuthor → remoteWrites.hideAuthor·unhideAuthor PUT|DELETE /members/{id}/block (lounge+auth)
  */
 
 export interface RemotePage<T> {
@@ -84,6 +105,24 @@ export interface RemotePage<T> {
 function toPage<TWire, TApp>(page: CursorPage<TWire>, map: (item: TWire) => TApp): RemotePage<TApp> {
   return { items: (page.items ?? []).map(map), nextCursor: page.nextCursor ?? null, hasNext: Boolean(page.hasNext) }
 }
+
+/** 내 기록 한 쪽(서버 최대 50) */
+export const MY_LOG_PAGE_SIZE = 50
+const BOOKMARK_PAGE_SIZE = 50
+/** 찜 목록을 끝까지 읽되, 커서가 끝나지 않는 서버를 만나도 멈추게 */
+const MAX_BOOKMARK_PAGE_READS = 40
+
+/** 내 기록 요약(GET /members/me/ramen-logs/summary)을 화면 계산용으로 바꾼 값 */
+export interface RemoteLedger {
+  /** 캘린더·방문 매장·월별 분포용 그릇(최신순) */
+  bowls: DemoBowl[]
+  /** 취향·리포트 계산용 기록(사진·메모·맛 태그 없음) */
+  logs: RamenLog[]
+  /** 재방문 의사가 있는 그릇 수(프로필) */
+  revisitCount: number
+}
+
+let tasteNoteFieldsRequest: Promise<TasteNoteField[]> | null = null
 
 /** 서버가 숨긴 항목만 읽힌 페이지도 다음 커서로 몇 묶음 더 찾아본다. */
 const MAX_FILTERED_PAGE_READS = 5
@@ -156,23 +195,61 @@ export const remoteReads = {
     return detail ? toAppShopDetail(detail) : null
   },
 
-  async bookmarkedShops(cursor?: string | null): Promise<RemotePage<Shop>> {
-    return toPage(await memberApi.bookmarkedShops({ cursor }), toAppShopSummary)
+  /** 찜한 매장 전부(최근 찜한 순). 내 찜 화면은 검색·개수를 보여주므로 끝까지 읽는다 */
+  async bookmarkedShops(): Promise<Shop[]> {
+    const shops: Shop[] = []
+    let cursor: string | null = null
+    for (let reads = 0; reads < MAX_BOOKMARK_PAGE_READS; reads++) {
+      const page: CursorPage<ShopSummary> = await memberApi.bookmarkedShops({ cursor, size: BOOKMARK_PAGE_SIZE })
+      shops.push(...(page.items ?? []).map(toAppShopSummary))
+      if (!page.hasNext || !page.nextCursor || page.nextCursor === cursor) break
+      cursor = page.nextCursor
+    }
+    return shops
   },
 
-  /** 내 기록(방문일 최신순) */
-  async myLogs(cursor?: string | null, size?: number): Promise<RemotePage<RamenLog>> {
+  /** 내 기록(방문일 최신순, 비공개 포함). 사진·메모가 있는 목록이다 */
+  async myLogs(cursor?: string | null, size = MY_LOG_PAGE_SIZE): Promise<RemotePage<RamenLog>> {
     return toPage(await memberApi.myRamenLogs({ cursor, size }), (log: RamenLogSummary) => toAppRamenLog(log))
   },
 
-  /** 내가 먹은 모든 그릇(최신순). 캘린더·방문 매장·월별 분포가 이 목록에서 나온다 */
-  async myBowls(): Promise<DemoBowl[]> {
-    return toAppBowls(await memberApi.myRamenLogSummary())
+  /**
+   * 내가 먹은 모든 그릇(최신 2000개, 페이지 없음). 캘린더·방문 매장·월별·취향 계산이 이 목록 하나에서 나온다.
+   * 웹에서 옮겨 온 기록(점수 없음)도 들어 있다.
+   */
+  async myLedger(): Promise<RemoteLedger> {
+    const items = await memberApi.myRamenLogSummary()
+    return { bowls: toAppBowls(items), logs: items.map(toAppLedgerLog), revisitCount: revisitCountOf(items) }
   },
 
+  /** 기록 하나(내 비공개 기록도 토큰이 있으면 읽힌다). 없으면 null */
   async log(logId: string): Promise<RamenLog | null> {
     const detail = await orNull(ramenLogApi.get(logId))
     return detail ? toAppRamenLog(detail) : null
+  },
+
+  /** 내가 숨긴(차단한) 사람들. 최근에 숨긴 순 */
+  async blockedMembers(): Promise<HiddenAuthor[]> {
+    return (await memberApi.blocks()).map((member) => ({
+      id: member.id,
+      name: member.nickname ?? WITHDRAWN_AUTHOR_NAME,
+      avatar: member.avatarUrl ?? null,
+    }))
+  },
+
+  /**
+   * 맛 노트 보기(서버가 정한 코드·이름표). 한 번 읽어 앱 변환표에 적용하고 그 보기를 돌려준다.
+   * 실패하면 다음에 다시 읽는다(그동안은 앱에 넣어 둔 같은 목록을 쓴다).
+   */
+  tasteNoteFields(): Promise<TasteNoteField[]> {
+    tasteNoteFieldsRequest ??= ramenLogApi
+      .tasteNoteDefinitions()
+      .then(applyTasteNoteDefinitions)
+      .catch((error: unknown) => {
+        tasteNoteFieldsRequest = null
+        throw error
+      })
+    return tasteNoteFieldsRequest
   },
 
   /** 라운지 피드. 차단·신고로 빈 쪽이 오면 다음 커서를 이어 읽는다 */
@@ -258,8 +335,39 @@ export const remoteReads = {
 } as const
 
 export interface CreateRamenLogOptions {
-  /** 로그인한 계정 id. 주면 실패한 저장을 같은 Idempotency-Key로 다시 보낼 수 있다 */
+  /** 로그인한 계정 id. 주면 보낸 요청을 아웃박스에 남겨 실패한 저장을 같은 키로 다시 보낼 수 있다 */
   accountId?: string
+  /** 초안 키 = Idempotency-Key. 한 초안은 몇 번을 다시 저장해도(내용을 고쳐도) 같은 키를 쓴다 */
+  draftKey: string
+}
+
+export interface CreateCommentOptions {
+  /** 로그인한 계정 id. 주면 실패한 댓글을 같은 Idempotency-Key로 다시 보낼 수 있다 */
+  accountId?: string
+}
+
+/**
+ * 다시 보낸 요청이 "이미 처리됨"이었다(#60). 서버에 이미 반영됐거나 대상이 사라졌으니
+ * 화면은 실패로 다루지 말고 최신 상태를 다시 읽는다.
+ * - 기록 저장 409: 이 초안 키로 만든 기록을 이미 지웠다
+ * - 댓글 409: 이 키로 단 댓글을 이미 지웠다
+ */
+export class AlreadyHandledError extends Error {
+  constructor(message: string, readonly cause: unknown) {
+    super(message)
+    this.name = "AlreadyHandledError"
+  }
+}
+
+/** 화면에 보여줄 쓰기 실패 문구. 서버 문구가 있으면 쓰고, 연결 문제는 앱 문구로 바꾼다 */
+export function writeErrorMessage(error: unknown, fallback: string): string {
+  if (!isApiError(error)) return error instanceof Error && error.message ? error.message : fallback
+  if (error.isOffline) return "연결을 확인한 뒤 다시 시도해 주세요."
+  if (error.status === 401) return "로그인이 끝났어요. 다시 로그인해 주세요."
+  if (error.code === "RATE_LIMITED" || error.code === "VALIDATION_ERROR") return error.message || fallback
+  if (error.code === "RESOURCE_NOT_FOUND") return "이미 삭제됐거나 볼 수 없는 글이에요."
+  if (error.code === "FORBIDDEN") return "내가 쓴 글만 고치거나 지울 수 있어요."
+  return fallback
 }
 
 export interface CompleteOnboardingInput extends OnboardingRequest {
@@ -350,31 +458,67 @@ export const remoteWrites = {
     }
   },
 
+  /** 찜·찜 해제. 둘 다 여러 번 보내도 결과가 같다 */
   async toggleBookmark(shopId: string, saved: boolean): Promise<void> {
     await (saved ? shopApi.bookmark(shopId) : shopApi.removeBookmark(shopId))
   },
 
   /**
-   * 기록 저장: 사진 업로드 → 생성.
-   * 지문(fingerprint)은 사진을 올리기 전 입력으로 만든다. 그래야 재시도할 때
-   * 이미 올린 사진을 다시 올리지 않고, 아웃박스에 남은 본문과 키를 그대로 쓴다.
+   * 기록 저장: (아직 안 올린) 사진 업로드 → 생성. Idempotency-Key는 초안 키다.
+   * - 다시 저장하면 같은 키로 보내고, 이미 올린 사진은 다시 올리지 않는다
+   * - 앞선 요청이 서버에 닿았으면 서버는 그때 만든 기록을 돌려준다. 그 뒤에 고친 내용은 PATCH로 맞춘다
+   * - 409(이 키로 만든 기록을 이미 지웠다)는 AlreadyHandledError
    */
-  async createRamenLog(input: CreateRamenLogInput, options: CreateRamenLogOptions = {}): Promise<RamenLog> {
-    const fingerprint = fingerprintOf({ operation: "CREATE_RAMEN_LOG", input })
-    const pending = options.accountId
-      ? await idempotencyOutbox.find(options.accountId, "CREATE_RAMEN_LOG", fingerprint)
-      : null
+  async createRamenLog(input: CreateRamenLogInput, { accountId, draftKey }: CreateRamenLogOptions): Promise<RamenLog> {
+    const pending = accountId ? await idempotencyOutbox.find(accountId, "CREATE_RAMEN_LOG", draftKey) : null
+    const photos = input.photos ?? []
+    const uploads = await uploadNewPhotos(photos, pending?.uploads)
+    const body = toCreateRamenLogBody(input, { imageUrls: photos.map((uri) => uploads[uri] ?? uri) })
+    if (accountId) {
+      if (pending) await idempotencyOutbox.revise(pending.key, { body, uploads })
+      else {
+        await idempotencyOutbox.begin({
+          accountId,
+          operation: "CREATE_RAMEN_LOG",
+          path: "/ramen-logs",
+          fingerprint: draftKey,
+          key: draftKey,
+          body,
+          uploads,
+        })
+      }
+    }
 
-    const body: CreateRamenLogRequest = pending
-      ? (pending.body as CreateRamenLogRequest)
-      : toCreateRamenLogBody(input, { imageUrls: await fileApi.uploadImages("RAMEN_LOG", input.photos ?? []) })
-
-    const detail = await ramenLogApi.create(body, { accountId: options.accountId, fingerprint })
+    let detail: RamenLogDetail
+    try {
+      detail = await ramenLogApi.create(body, { idempotencyKey: pending?.key ?? draftKey })
+      if (pending && differsFromDetail(body, detail)) {
+        const { shopId: _shopId, ...changes } = body
+        detail = await ramenLogApi.update(detail.id, changes)
+      }
+    } catch (error) {
+      const handled = isApiError(error, "CONFLICT")
+      if (accountId && (handled || isPermanentFailure(error))) await idempotencyOutbox.complete(pending?.key ?? draftKey)
+      if (handled) throw new AlreadyHandledError("이 기록은 이미 저장했다가 지웠어요. 다시 저장하면 새 기록으로 남겨요.", error)
+      throw error
+    }
+    if (accountId) await idempotencyOutbox.complete(pending?.key ?? draftKey)
     return toAppRamenLog(detail)
   },
 
+  /** 기록 고치기(가게는 바꿀 수 없다). 새로 고른 사진만 올리고, 이미 올라간 사진 주소는 그대로 보낸다 */
+  async updateRamenLog(logId: string, input: CreateRamenLogInput): Promise<RamenLog> {
+    const photos = input.photos ?? []
+    const uploads = await uploadNewPhotos(photos)
+    const { shopId: _shopId, ...changes } = toCreateRamenLogBody(input, {
+      imageUrls: photos.map((uri) => uploads[uri] ?? uri),
+    })
+    return toAppRamenLog(await ramenLogApi.update(logId, changes))
+  },
+
+  /** 기록 삭제. 이미 지운 기록(404)은 처리된 것으로 본다 */
   async deleteRamenLog(logId: string): Promise<void> {
-    await ramenLogApi.remove(logId)
+    await orNull(ramenLogApi.remove(logId))
   },
 
   /** 공감. 서버가 바뀐 공감 수를 돌려주므로 화면은 그 값으로 맞춘다 */
@@ -382,22 +526,28 @@ export const remoteWrites = {
     return liked ? loungeApi.like(logId) : loungeApi.unlike(logId)
   },
 
-  /** 댓글 작성(답글은 없다) */
+  /** 댓글 작성(답글은 없다). 409(이 키로 단 댓글을 이미 지웠다)는 AlreadyHandledError */
   async addLogComment(
     logId: string,
     input: CreateRamenLogCommentInput,
-    options: CreateRamenLogOptions = {},
+    options: CreateCommentOptions = {},
   ): Promise<RamenLogComment> {
     const body = { content: input.content.trim() }
-    const comment = await loungeApi.createComment(logId, body, {
-      accountId: options.accountId,
-      fingerprint: fingerprintOf({ operation: "CREATE_COMMENT", logId, body }),
-    })
-    return toAppRamenLogComment(comment)
+    try {
+      const comment = await loungeApi.createComment(logId, body, {
+        accountId: options.accountId,
+        fingerprint: fingerprintOf({ operation: "CREATE_COMMENT", logId, body }),
+      })
+      return toAppRamenLogComment(comment)
+    } catch (error) {
+      if (isApiError(error, "CONFLICT")) throw new AlreadyHandledError("이미 처리된 댓글이에요. 댓글을 새로 불러왔어요.", error)
+      throw error
+    }
   },
 
+  /** 내 댓글 삭제. 이미 지운 댓글(404)은 처리된 것으로 본다 */
   async deleteLogComment(commentId: string): Promise<void> {
-    await loungeApi.deleteComment(commentId)
+    await orNull(loungeApi.deleteComment(commentId))
   },
 
   /** 신고. 같은 대상을 다시 신고해도 성공이다 */
@@ -422,18 +572,57 @@ export const remoteWrites = {
     await loungeApi.unblock(authorId)
   },
 
-  /** 내가 숨긴 사람들 */
-  async hiddenAuthorIds(): Promise<string[]> {
-    const blocks = await loungeApi.myBlocks()
-    return blocks.map((member) => member.id)
-  },
-
   /** 프로필 수정. 사진은 먼저 올리고 주소를 보낸다 */
   async updateProfile(input: ProfileUpdateInput): Promise<AppMember> {
     const avatarUrl = await uploadedAvatarUrl(input)
     return toAppMember(await memberApi.updateMe(toUpdateMemberBody(input, avatarUrl)))
   },
 } as const
+
+/** 아직 올리지 않은 기기 사진만 올린다. 이미 올린 사진(이전 시도)과 서버 주소는 그대로 둔다. 기기 URI → 올린 주소 */
+async function uploadNewPhotos(photos: readonly string[], uploaded: Record<string, string> = {}): Promise<Record<string, string>> {
+  const kept = Object.fromEntries(photos.filter((uri) => uploaded[uri]).map((uri) => [uri, uploaded[uri]]))
+  const fresh = photos.filter((uri) => !kept[uri] && !/^https?:\/\//i.test(uri))
+  const urls = await fileApi.uploadImages("RAMEN_LOG", fresh)
+  fresh.forEach((uri, index) => {
+    kept[uri] = urls[index]
+  })
+  return kept
+}
+
+/** 같은 키로 다시 보냈을 때 서버가 돌려준 기록이 이번 본문과 다른가(앞선 시도의 내용이 저장돼 있다) */
+function differsFromDetail(body: CreateRamenLogRequest, detail: RamenLogDetail): boolean {
+  const sent = {
+    visitedAt: body.visitedAt,
+    menuName: body.menuName,
+    ramenType: body.ramenType,
+    scores: body.scores,
+    revisitIntention: body.revisitIntention,
+    note: body.note,
+    tasteNoteCodes: [...body.tasteNoteCodes].sort(),
+    visibility: body.visibility,
+    imageUrls: body.imageUrls,
+  }
+  const saved = {
+    visitedAt: detail.visitedAt,
+    menuName: detail.menuName,
+    ramenType: detail.ramenType,
+    scores: detail.scores
+      ? {
+          satisfaction: detail.scores.satisfaction,
+          brothDensity: detail.scores.brothDensity,
+          noodleFirmness: detail.scores.noodleFirmness,
+          topping: detail.scores.topping,
+        }
+      : null,
+    revisitIntention: detail.revisitIntention,
+    note: detail.note ?? "",
+    tasteNoteCodes: [...(detail.tasteNoteCodes ?? [])].sort(),
+    visibility: detail.visibility,
+    imageUrls: detail.imageUrls ?? [],
+  }
+  return fingerprintOf(sent) !== fingerprintOf(saved)
+}
 
 /** 고른 사진은 업로드하고, URL은 그대로 보내며, 삭제는 서버에 빈 문자열로 보낸다 */
 async function uploadedAvatarUrl(input: ProfileUpdateInput): Promise<string | null | undefined> {

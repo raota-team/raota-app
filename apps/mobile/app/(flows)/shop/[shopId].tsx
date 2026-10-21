@@ -25,7 +25,7 @@ import { ShopTasteCard } from "@/src/components/ShopTasteCard"
 import { EdgeBackZone } from "@/src/components/EdgeBackZone"
 import { AppText, BottomSheet, Button, EmptyState, Header, IconButton, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
 import { isRemote } from "@/src/api/config"
-import { useBookmarkedShops, useShop, useShops } from "@/src/data/hooks"
+import { useShop, useShops } from "@/src/data/hooks"
 import { naverMapLinks } from "@/src/domain/naverMap"
 import { isLogVisibleTo } from "@/src/domain/lounge"
 import { shopTasteSummaryOf } from "@/src/domain/shopTaste"
@@ -132,8 +132,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     if (fingerprintPlay || fingerprintTop.current === null || viewportHeight.current === 0) return
     if (scrollY.current + viewportHeight.current >= fingerprintTop.current + FINGERPRINT_REVEAL_DEPTH) setFingerprintPlay(true)
   }
-  const { currentUser, actions, state } = useRaota()
-  const bookmarked = useBookmarkedShops()
+  const { currentUser, actions, state, isShopBookmarked } = useRaota()
   const shopsQuery = useShops()
   const nearbyShops = shopsQuery.data as DetailShop[]
   const [hoursOpen, setHoursOpen] = useState(false)
@@ -161,7 +160,9 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const [toast, setToast] = useState<string | null>(null)
 
   const loggedIn = Boolean(currentUser?.isLoggedIn)
-  const saved = loggedIn && (shopsQuery.remote ? state.bookmarkedShopIds.includes(shop.id) : bookmarked.data.some((item) => item.id === shop.id))
+  const saved = loggedIn ? isShopBookmarked(shop) : false
+  /** 찜 요청이 끝나기 전에 다시 누르면 무시한다. 스토어가 먼저 바꿔 두므로 화면은 바로 바뀐다 */
+  const savePending = useRef(false)
 
   useEffect(() => {
     track("shop_viewed", { shopId: shop.id })
@@ -206,14 +207,15 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
 
   const requireLogin = () => router.push("/auth/login")
 
-  const toggleSave = () => {
+  const toggleSave = async () => {
     if (!loggedIn) {
       requireLogin()
       return
     }
+    if (savePending.current) return
+    savePending.current = true
     const next = !saved
-    actions.toggleBookmark(shop.id)
-    track("bookmark_toggled", { shopId: shop.id, saved: next })
+    const request = actions.toggleBookmark(shop)
     if (next && !reducedMotion) {
       // 같은 44pt 자리 안에서만 하트와 파문이 커져 옆 버튼을 밀지 않는다.
       heartScale.value = 1
@@ -235,8 +237,23 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
       ringOpacity.value = 0
     }
     if (next) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined)
-    setToastSaved(next)
-    setToast(next ? "가고 싶은 라멘집에 저장했어요" : "가고 싶어요에서 뺐어요")
+    try {
+      await request
+      track("bookmark_toggled", { shopId: shop.id, saved: next })
+      setToastSaved(next)
+      setToast(next ? "가고 싶은 라멘집에 저장했어요" : "가고 싶어요에서 뺐어요")
+    } catch (error) {
+      // 스토어가 되돌려 두었으므로 하트 애니메이션만 정리하고 이유를 알린다
+      cancelAnimation(heartScale)
+      cancelAnimation(ringScale)
+      cancelAnimation(ringOpacity)
+      heartScale.value = 1
+      ringOpacity.value = 0
+      setToastSaved(false)
+      setToast(error instanceof Error ? error.message : "찜을 바꾸지 못했어요. 다시 시도해 주세요.")
+    } finally {
+      savePending.current = false
+    }
   }
 
   const startRecord = () => {

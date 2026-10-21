@@ -31,7 +31,7 @@ describe("raotaReducer", () => {
     const state = createInitialRaotaState()
     const started = raotaReducer(state, {
       type: "START_RECORD_DRAFT",
-      payload: null,
+      payload: { shopId: null, key: "draft-1" },
     })
     const selected = raotaReducer(started, {
       type: "SELECT_RECORD_DRAFT_SHOP",
@@ -39,8 +39,8 @@ describe("raotaReducer", () => {
     })
     const cleared = raotaReducer(selected, { type: "CLEAR_RECORD_DRAFT" })
 
-    expect(started.recordDraft).toEqual({ shopId: null })
-    expect(selected.recordDraft).toEqual({ shopId: "3" })
+    expect(started.recordDraft).toEqual({ shopId: null, key: "draft-1" })
+    expect(selected.recordDraft).toEqual({ shopId: "3", key: "draft-1" })
     expect(cleared.recordDraft).toBeNull()
   })
 

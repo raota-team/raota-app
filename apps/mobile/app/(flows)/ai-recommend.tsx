@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics"
+import * as Location from "expo-location"
 import { router } from "expo-router"
 import { usePreventRemove } from "expo-router/react-navigation"
 import { ArrowRight, Check, ChevronRight } from "lucide-react-native"
@@ -19,9 +20,13 @@ import type { Edge } from "react-native-safe-area-context"
 
 import { type Shop, type ShopCatalogItem, type TasteReport } from "@raota/shared"
 import { track } from "@/src/analytics"
+import { isApiError } from "@/src/api/client"
+import { isRemote } from "@/src/api/config"
+import type { RecommendationRequest } from "@/src/api/types"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, Button, Header, Screen, StickyActionBar, TicketCut } from "@/src/components/ui"
+import { AppText, Button, Header, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
 import { useLocalShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
+import { remoteReads } from "@/src/data/remote"
 import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
 import { curatorTasteReport } from "@/src/domain/curatorTaste"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -85,6 +90,9 @@ const STUB_HOLD = 900
 const TICKET_SETTLE = 900
 const RESULT_HOLD = 2000
 const PROMPT_MAX_LENGTH = 200
+/** 서버 추천을 만들지 못해 인기순으로 대신 보여 줄 때 */
+const POPULAR_FALLBACK_NOTE = "지금은 AI 추천을 만들 수 없어 인기 라멘집을 보여드려요"
+const RATE_LIMITED_MESSAGE = "잠시 후 다시 시도해 주세요"
 
 interface Inputs {
   soupId: string
@@ -109,6 +117,8 @@ interface Curation extends Candidate {
   conditions: Condition[]
   /** 조건으로 고르지 못해 인기·거리순으로 대신 골랐는지 */
   fallback: boolean
+  /** 대신 고른 이유. 없으면 로컬 인기·거리순 안내를 쓴다 */
+  fallbackNote?: string
   /** "다시 추천받기"가 차례로 보여 줄 후보(순위순). 지금 보이는 것은 candidates[index] */
   candidates: Candidate[]
   index: number
@@ -334,11 +344,16 @@ const hasAnyKey = (shop: CuratorShop, keys: string[]) => keys.some((key) => shop
 const byPopularity = (a: CuratorShop, b: CuratorShop) =>
   b.reviewCount - a.reviewCount || b.rating - a.rating || a.distanceM - b.distanceM
 
+/** 고른 국물과 맞은 매장은 종류도 고른 이름으로 적는다(사진 위 표시·식권·조건 줄이 같은 말을 쓴다) */
+function candidateFor(shop: CuratorShop, soup: (typeof SOUP_OPTIONS)[number]): Candidate {
+  return { shop, typeLabel: matchesSoupChoice(shop, soup.label, soup.keys) ? soup.label : shopSoupLabel(shop) }
+}
+
 /**
  * 선택한 조건을 원장과 실제로 대조해 후보를 좁히고(웹 AIRecommendScreen과 같은 규칙),
  * 남은 후보 안에서 src/domain/ai-recommendation 랭킹(내 취향 포함)으로 순서를 매긴다.
  * 대조할 정보가 없는 조건은 applied=false("참고했어요")로 남긴다. 랭킹이 실패하거나 후보가 없으면 인기·거리순으로 대신한다.
- * 서버 추천(#46)이 붙으면 이 함수만 바꾼다.
+ * 서버 추천(#46)을 쓰는 빌드에서는 curateRemote가 대신한다.
  */
 function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null): Curation | null {
   const all = shops.filter((shop) => shop.lat && shop.lng)
@@ -410,8 +425,6 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
     )
   }
 
-  // 고른 국물과 맞은 매장은 종류도 고른 이름으로 적는다(사진 위 표시·식권·조건 줄이 같은 말을 쓴다)
-  const candidate = (shop: CuratorShop): Candidate => ({ shop, typeLabel: soupMatches(shop) ? soup.label : shopSoupLabel(shop) })
   let ranked: CuratorShop[] = []
   if (byDistance) {
     ranked = [...pool].sort((a, b) => a.distanceM - b.distanceM || byPopularity(a, b))
@@ -433,14 +446,77 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
     }
   }
   if (ranked.length) {
-    const candidates = ranked.map(candidate)
+    const candidates = ranked.map((shop) => candidateFor(shop, soup))
     return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
   }
 
-  const fallbackCandidates = [...all].sort(byPopularity).map(candidate)
+  const fallbackCandidates = [...all].sort(byPopularity).map((shop) => candidateFor(shop, soup))
   return fallbackCandidates.length
     ? { ...fallbackCandidates[0], conditions, fallback: true, candidates: fallbackCandidates, index: 0 }
     : null
+}
+
+/**
+ * 서버 추천(#46). 고른 조건을 짧은 이름 그대로 보내고, 위치 권한이 이미 있을 때만 좌표를 함께 보낸다.
+ * 서버가 추천을 만들지 못하면(503·연결 실패 등) 서버 인기순으로 대신한다. 로컬 원장은 서버 매장과 id가 달라 쓰지 않는다.
+ * 요청이 너무 잦으면(429) 대신 고르지 않고 오류를 그대로 던진다.
+ */
+async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise<Curation | null> {
+  const soup = SOUP_OPTIONS.find((option) => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
+  const request: RecommendationRequest = {
+    soup: soup.label,
+    mood: MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label,
+    priority: PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label,
+    text: inputs.prompt.trim() || undefined,
+    ...(origin ?? {}),
+  }
+  try {
+    const { shops, appliedConditions } = await remoteReads.recommendations(request)
+    if (shops.length) {
+      const candidates = shops.map((shop) => candidateFor(shop, soup))
+      // 서버가 준 조건은 화면에 그대로 보여주는 말이라 덧붙이는 설명 없이 이름만 쓴다
+      const conditions = appliedConditions.map((label) => ({ label, applied: true, note: "" }))
+      return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
+    }
+  } catch (error) {
+    if (isApiError(error, "RATE_LIMITED")) throw error
+  }
+  try {
+    const popular = await remoteReads.shops({ sort: "POPULAR", size: 6 })
+    const candidates = popular.items.map((shop) => candidateFor(shop, soup))
+    return candidates.length
+      ? { ...candidates[0], conditions: [], fallback: true, fallbackNote: POPULAR_FALLBACK_NOTE, candidates, index: 0 }
+      : null
+  } catch {
+    return null
+  }
+}
+
+type Coordinates = { latitude: number; longitude: number }
+
+/** 위치 권한이 이미 있을 때만 위치를 읽는다(홈과 같은 규칙, 여기서 권한을 묻지 않는다) */
+function useKnownLocation() {
+  const [origin, setOrigin] = useState<Coordinates | null>(null)
+  useEffect(() => {
+    if (Platform.OS === "web") return
+    let mounted = true
+    ;(async () => {
+      try {
+        const permission = await Location.getForegroundPermissionsAsync()
+        if (permission.status !== "granted") return
+        const position =
+          (await Location.getLastKnownPositionAsync()) ??
+          (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
+        if (mounted && position) setOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude })
+      } catch {
+        // 위치를 못 읽으면 좌표 없이 추천받는다
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+  return origin
 }
 
 /** 스크린리더 포커스를 새 제목으로 옮긴다 */
@@ -479,6 +555,13 @@ export default function AIRecommendScreen() {
 
   const loggedIn = Boolean(currentUser?.isLoggedIn)
   const nickname = loggedIn ? currentUser?.nickname : null
+  // 서버 추천은 회원 토큰이 있어야 부를 수 있다(auth가 서버일 때만 켜진다)
+  const remoteCurator = isRemote("recommendations")
+  const origin = useKnownLocation()
+  // 추천 요청은 비용이 들어 한 번 누를 때 한 번만 보낸다. 상태 갱신 전에 다시 눌러도 막도록 ref로 잠근다
+  const requestingRef = useRef(false)
+  const [requesting, setRequesting] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
   // 내 그릇 목록(데모 원장 + 앱 기록)으로 취향을 계산한다. 비회원·기록 없음이면 null
   const taste = useMemo(
     () => (loggedIn ? curatorTasteReport(bowls.data, tasteProfile.data.profile, shopsQuery.data) : null),
@@ -503,14 +586,35 @@ export default function AIRecommendScreen() {
     if (key !== "prompt") void Haptics.selectionAsync().catch(() => undefined)
   }
 
-  const startAnalysis = () => {
+  const startAnalysis = async () => {
+    if (remoteCurator && !loggedIn) {
+      router.push("/auth/login")
+      return
+    }
+    if (requestingRef.current) return
     track("ai_recommend_requested", {
       soup: inputs.soupId,
       mood: inputs.moodId,
       priority: inputs.priorityId,
       hasPrompt: inputs.prompt.trim().length > 0,
     })
-    const next = curate(shopsQuery.data as CuratorShop[], inputs, taste)
+    let next: Curation | null
+    if (remoteCurator) {
+      requestingRef.current = true
+      setRequesting(true)
+      try {
+        next = await curateRemote(inputs, origin)
+      } catch {
+        // curateRemote는 요청이 너무 잦을 때(429)만 던진다. 대신 고르지 않고 지금 단계에 머문다
+        setToast(RATE_LIMITED_MESSAGE)
+        return
+      } finally {
+        requestingRef.current = false
+        setRequesting(false)
+      }
+    } else {
+      next = curate(shopsQuery.data as CuratorShop[], inputs, taste)
+    }
     setCuration(next)
     // Reduce Motion이면 연출 없이 바로 결과를 보여준다
     setStep(next && !reducedMotion ? "loading" : "result")
@@ -755,20 +859,20 @@ export default function AIRecommendScreen() {
               </View>
             </View>
 
-            {result.conditions.length ? (
+            {result.conditions.length || result.fallbackNote ? (
               <View style={styles.conditions}>
                 <AppText accessibilityRole="header" style={styles.conditionsTitle} variant="sectionTitle">
                   추천에 쓴 조건
                 </AppText>
                 {result.fallback ? (
                   <AppText lineBreakStrategyIOS="hangul-word" style={styles.fallbackNote} tone="sub" variant="secondary">
-                    라멘로그가 많이 쌓인 가까운 곳 중에서 골라 봤어요.
+                    {result.fallbackNote ?? "라멘로그가 많이 쌓인 가까운 곳 중에서 골라 봤어요."}
                   </AppText>
                 ) : null}
                 {result.conditions.map((condition) => (
                   <View
                     accessible
-                    accessibilityLabel={`${condition.label}, ${condition.applied ? "반영했어요" : "참고했어요"}. ${condition.note}`}
+                    accessibilityLabel={`${condition.label}, ${condition.applied ? "반영했어요" : "참고했어요"}${condition.note ? `. ${condition.note}` : ""}`}
                     key={condition.label}
                     style={styles.condition}
                   >
@@ -776,9 +880,12 @@ export default function AIRecommendScreen() {
                       <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionLabel} variant="bodyStrong">
                         {condition.label}
                       </AppText>
-                      <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionNote} tone="sub" variant="secondary">
-                        {condition.note}
-                      </AppText>
+                      {/* 서버가 준 조건은 이름만 있다 */}
+                      {condition.note ? (
+                        <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionNote} tone="sub" variant="secondary">
+                          {condition.note}
+                        </AppText>
+                      ) : null}
                     </View>
                   </View>
                 ))}
@@ -798,12 +905,13 @@ export default function AIRecommendScreen() {
       {numericStep ? (
         <StickyActionBar>
           {numericStep > 1 ? (
-            <Button fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="secondary" />
+            <Button disabled={requesting} fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="secondary" />
           ) : null}
           <Button
             accessibilityHint={stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
             disabled={!stepAnswered}
-            onPress={() => (numericStep === 4 ? startAnalysis() : setStep((numericStep + 1) as Step))}
+            loading={numericStep === 4 && requesting}
+            onPress={() => (numericStep === 4 ? void startAnalysis() : setStep((numericStep + 1) as Step))}
             rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
             style={[styles.primaryCta, ctaSize]}
             title={numericStep === 4 ? "AI 맞춤 추천받기" : stepAnswered ? "다음" : numericStep === 1 ? "국물을 골라주세요" : numericStep === 2 ? "상황을 골라주세요" : "중요한 요소를 골라주세요"}
@@ -828,6 +936,7 @@ export default function AIRecommendScreen() {
           />
         </StickyActionBar>
       ) : null}
+      <Toast message={toast ?? ""} onDismiss={() => setToast(null)} style={{ bottom: ctaSize.minHeight + spacing.x6 }} visible={Boolean(toast)} />
     </Screen>
   )
 }

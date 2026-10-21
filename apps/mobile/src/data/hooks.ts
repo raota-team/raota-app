@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   DEMO_BASE_PROFILE,
   DEMO_BOWLS,
@@ -13,6 +13,7 @@ import {
   mergeProfile,
   monthKeyOfDate,
   seoulToday,
+  pastReportsFromBowls,
   profileDelta,
   shopVisitsOf,
   tasteIdentity,
@@ -29,18 +30,20 @@ import {
   type TasteScores,
 } from "@raota/shared"
 
-import { isRemote, type ShopListParams, type ShopMapParams } from "../api"
+import { currentTasteNoteFields, isRemote, isRemoteWithAccount, type ShopListParams, type ShopMapParams, type TasteNoteField } from "../api"
 import { remoteReads, type RemoteLoungeLogDetail, type RemotePage } from "./remote"
+import { remoteCache } from "./remoteCache"
 
 import {
   LOUNGE_PAGE_SIZE,
   isLogVisibleTo,
   selectLoungeLogs,
   selectVisibleComments,
+  type HiddenAuthor,
   type LoungeSort,
   type LoungeViewer,
 } from "../domain/lounge"
-import { useRaota } from "../state/RaotaStore"
+import { useRaota, type RemoteAccountState } from "../state/RaotaStore"
 
 /**
  * 화면이 쓰는 데이터 입구. mock에서는 기존 로컬 스토어를, 공개 도메인의 remote에서는
@@ -59,17 +62,23 @@ function useQueryState(): Pick<Query<unknown>, "isLoading" | "error"> {
 }
 
 type RemoteResult<T> = Query<T> & { key: string | null }
-type CacheEntry = { value: unknown } | { promise: Promise<unknown> }
-const remoteCache = new Map<string, CacheEntry>()
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "데이터를 불러오지 못했어요"
 }
 
-/** 첫 응답을 공유하며 동일 키의 동시 요청을 합친다. 실패한 요청은 캐시하지 않는다. */
+function useCacheVersion(): number {
+  return useSyncExternalStore(remoteCache.subscribe, remoteCache.version, remoteCache.version)
+}
+
+/**
+ * 첫 응답을 공유하며 동일 키의 동시 요청을 합친다. 실패한 요청은 캐시하지 않는다.
+ * 쓰기 뒤에 응답이 버려지면(remoteCache.invalidate) 보던 값을 그대로 둔 채 다시 읽는다.
+ */
 function useRemoteResult<T>(key: string | null, empty: T, read: () => Promise<T>): RemoteResult<T> {
   const readRef = useRef(read)
   readRef.current = read
+  const version = useCacheVersion()
   const [result, setResult] = useState<RemoteResult<T>>(() => {
     const cached = key ? remoteCache.get(key) : undefined
     return { key, data: cached && "value" in cached ? cached.value as T : empty, isLoading: Boolean(key && !(cached && "value" in cached)), error: null }
@@ -80,27 +89,33 @@ function useRemoteResult<T>(key: string | null, empty: T, read: () => Promise<T>
     let active = true
     const entry = remoteCache.get(key)
     if (entry && "value" in entry) {
-      setResult({ key, data: entry.value as T, isLoading: false, error: null })
+      const value = entry.value as T
+      setResult((previous) =>
+        previous.key === key && previous.data === value && !previous.isLoading && !previous.error
+          ? previous
+          : { key, data: value, isLoading: false, error: null },
+      )
     } else {
-      setResult({ key, data: empty, isLoading: true, error: null })
-      let promise = entry && "promise" in entry ? entry.promise as Promise<T> : null
-      if (!promise) {
-        promise = readRef.current()
-        remoteCache.set(key, { promise })
-        void promise.then(
-          (value) => remoteCache.set(key, { value }),
-          () => remoteCache.delete(key),
-        )
-      }
-      void promise.then(
+      // 같은 키를 다시 읽을 때는 보던 값을 그대로 보여준다
+      setResult((previous) =>
+        previous.key === key && !previous.isLoading && !previous.error ? previous : { key, data: empty, isLoading: true, error: null },
+      )
+      void remoteCache.load(key, readRef.current).then(
         (data) => { if (active) setResult({ key, data, isLoading: false, error: null }) },
-        (cause) => { if (active) setResult({ key, data: empty, isLoading: false, error: errorMessage(cause) }) },
+        (cause) => {
+          if (!active) return
+          setResult((previous) =>
+            previous.key === key && !previous.isLoading
+              ? previous
+              : { key, data: empty, isLoading: false, error: errorMessage(cause) },
+          )
+        },
       )
     }
     return () => { active = false }
-    // read/empty can be recreated during rendering; only the key identifies a request.
+    // read/empty can be recreated during rendering; the key and cache version identify a request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key])
+  }, [key, version])
 
   return result.key === key ? result : { key, data: empty, isLoading: Boolean(key), error: null }
 }
@@ -110,12 +125,17 @@ interface RemotePaging<T> extends Query<T[]> {
   loadMore(): void
 }
 
-/** 커서의 첫 응답은 공유하고, 이어지는 페이지는 이 화면이 필요할 때만 불러온다. */
+/**
+ * 커서의 첫 응답은 공유하고, 이어지는 페이지는 이 화면이 필요할 때만 불러온다.
+ * 첫 응답이 버려지면(쓰기 뒤 invalidate) 이어 읽은 페이지도 버리고 첫 쪽부터 다시 이어 읽는다.
+ */
 function useRemoteContinuation<T extends { id: string }>(
-  key: string | null,
+  cacheKey: string | null,
   first: Query<RemotePage<T>>,
   read: (cursor: string) => Promise<RemotePage<T>>,
 ): RemotePaging<T> {
+  useCacheVersion()
+  const key = cacheKey === null ? null : `${cacheKey}#${remoteCache.generationOf(cacheKey)}`
   const readRef = useRef(read)
   readRef.current = read
   const [extra, setExtra] = useState<{ key: string | null; pages: RemotePage<T>[]; loading: boolean; error: string | null }>({
@@ -220,25 +240,66 @@ export function useShop(shopId: string | null | undefined): Query<Shop | null> {
   return remote ? result : { data: shopId ? (getShop(shopId) ?? null) : null, ...status }
 }
 
-/** 찜한 매장 */
+/** 서버 회원 데이터를 아직 읽는 중인가(처음 한 번). 다시 읽는 동안은 보던 값을 그대로 쓴다 */
+function accountQueryState(account: RemoteAccountState, loaded: boolean): Pick<Query<unknown>, "isLoading" | "error"> {
+  return { isLoading: !loaded && (account.status === "idle" || account.status === "loading"), error: loaded ? null : account.error }
+}
+
+/** 찜한 매장. 서버 회원이면 GET /members/me/bookmarked-shops에 이번에 누른 찜을 반영한 목록 */
 export function useBookmarkedShops(): Query<Shop[]> {
-  const { bookmarkedShops } = useRaota()
+  const { bookmarkedShops, currentUser, state } = useRaota()
   const status = useQueryState()
+  if (isRemoteWithAccount("shops") && currentUser) {
+    return { data: bookmarkedShops, ...accountQueryState(state.account, state.account.bookmarks !== null) }
+  }
   return { data: bookmarkedShops, ...status }
 }
 
-/** 로그인한 사용자가 남긴 기록(최신순). 비회원이면 빈 배열 */
-export function useMyLogs(): Query<RamenLog[]> {
-  const { userLogs } = useRaota()
-  const status = useQueryState()
-  return { data: userLogs, ...status }
+function withLikes(log: RamenLog, account: RemoteAccountState): RamenLog {
+  const like = account.likes[log.id]
+  return like ? { ...log, isLiked: like.isLiked, likes: like.likes } : log
 }
 
-/** 기록 하나 */
-export function useLog(logId: string | null | undefined): Query<RamenLog | null> {
-  const { getLog } = useRaota()
+export interface MyLogsQuery extends Query<RamenLog[]> {
+  /** 서버 회원이면 다음 쪽이 남았는가 */
+  hasMore: boolean
+  loadMore(): void
+}
+
+/** 로그인한 사용자가 남긴 기록(최신순, 사진·메모 포함). 서버 회원이면 GET /members/me/ramen-logs. 비회원이면 빈 배열 */
+export function useMyLogs(): MyLogsQuery {
+  const { userLogs, currentUser, state, actions } = useRaota()
   const status = useQueryState()
-  return { data: logId ? (getLog(logId) ?? null) : null, ...status }
+  const remote = isRemote("ramenLogs") && Boolean(currentUser)
+  const { account } = state
+  const data = useMemo(
+    () =>
+      remote
+        ? (account.logs ?? [])
+            .filter((log) => !account.deletedLogIds.includes(log.id))
+            .map((log) => withLikes(account.savedLogs[log.id] ?? log, account))
+        : userLogs,
+    [account, remote, userLogs],
+  )
+  const { loadMoreMyLogs } = actions
+  const loadMore = useCallback(() => void loadMoreMyLogs().catch(() => undefined), [loadMoreMyLogs])
+  return remote
+    ? { data, ...accountQueryState(account, account.logs !== null), hasMore: Boolean(account.logsCursor), loadMore }
+    : { data, ...status, hasMore: false, loadMore: () => undefined }
+}
+
+/** 기록 하나. 서버 회원이면 내 기록 목록에 없을 때 GET /ramen-logs/{id}로 읽는다(내 비공개 기록 포함) */
+export function useLog(logId: string | null | undefined): Query<RamenLog | null> {
+  const { getLog, currentUser, state } = useRaota()
+  const status = useQueryState()
+  const remote = isRemote("ramenLogs") && Boolean(currentUser)
+  const known = logId ? getLog(logId) : undefined
+  const deleted = Boolean(logId && state.account.deletedLogIds.includes(logId))
+  const fetched = useRemoteResult(remote && logId && !known && !deleted ? `log:${logId}` : null, null as RamenLog | null, () => remoteReads.log(logId!))
+  if (!remote) return { data: known ?? null, ...status }
+  if (deleted) return { data: null, isLoading: false, error: null }
+  const log = known ?? fetched.data
+  return { ...fetched, data: log ? withLikes(log, state.account) : null }
 }
 
 /** 누적 그릇 수. 비회원은 0 */
@@ -311,18 +372,22 @@ export function useTasteProfile(excludeLogId?: string | null): Query<TasteProfil
  * 캘린더, 연속 기록, 방문 매장, 월별 분포가 모두 이 목록에서 나온다.
  */
 export function useMyBowls(): Query<DemoBowl[]> {
-  const { currentUser, userLogs } = useRaota()
+  const { currentUser, userLogs, state } = useRaota()
   const status = useQueryState()
+  const remote = isRemote("ramenLogs") && Boolean(currentUser)
+  const ledger = state.account.ledger
   const data = useMemo(
     () =>
-      derived(userLogs, `bowls:${currentUser?.id ?? ""}`, () => {
-        if (!currentUser) return []
-        const base = currentUser.id === DEMO_USER.id ? DEMO_BOWLS : []
-        return [...base, ...bowlsFromLogs(userLogs)].sort((a, b) => b.date.localeCompare(a.date))
-      }),
-    [currentUser, userLogs],
+      remote
+        ? (ledger?.bowls ?? [])
+        : derived(userLogs, `bowls:${currentUser?.id ?? ""}`, () => {
+            if (!currentUser) return []
+            const base = currentUser.id === DEMO_USER.id ? DEMO_BOWLS : []
+            return [...base, ...bowlsFromLogs(userLogs)].sort((a, b) => b.date.localeCompare(a.date))
+          }),
+    [currentUser, ledger, remote, userLogs],
   )
-  return { data, ...status }
+  return remote ? { data, ...accountQueryState(state.account, ledger !== null) } : { data, ...status }
 }
 
 /** 방문 매장(방문 많은 순). visitCount 합계는 누적 그릇 수와 같다 */
@@ -357,21 +422,25 @@ export interface MonthlyReportsData {
   current: CurrentMonthReport | null
 }
 
-/** 월별 취향 변화. 지난 달은 원장 리포트, 이번 달은 실제 기록에서 계산한다 */
+/**
+ * 월별 취향 변화. 지난 달은 원장 리포트(데모 계정) 또는 서버 기록 요약으로 만든 리포트(서버 회원),
+ * 이번 달은 실제 기록에서 계산한다
+ */
 export function useMonthlyReports(now = new Date()): Query<MonthlyReportsData> {
   const { currentUser, userLogs } = useRaota()
   const bowls = useMyBowls()
+  const remote = isRemote("ramenLogs") && Boolean(currentUser)
   const data = useMemo(() => {
-    const isDemo = currentUser?.id === DEMO_USER.id
+    const isDemo = !remote && currentUser?.id === DEMO_USER.id
     const counts: Record<string, number> = {}
     for (const bowl of bowls.data) counts[monthKeyOfDate(bowl.date)] = (counts[monthKeyOfDate(bowl.date)] ?? 0) + 1
     return {
-      past: isDemo ? PAST_REPORTS : [],
+      past: remote ? pastReportsFromBowls(bowls.data, now) : isDemo ? PAST_REPORTS : [],
       current: currentMonthReport(counts, userLogs, isDemo ? DEMO_BOWLS : [], now),
     }
     // now는 화면을 여는 시점 기준으로 충분하다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bowls.data, currentUser?.id, userLogs])
+  }, [bowls.data, currentUser?.id, remote, userLogs])
   return { ...bowls, data }
 }
 
@@ -386,14 +455,33 @@ export function useActivityLevel(): Query<ReturnType<typeof getRamenActivityLeve
 // 라운지(라멘로그 피드)
 // ---------------------------------------------------------------------------
 
-/** 지금 보는 사람 기준의 숨김·신고 목록 */
+/**
+ * 지금 보는 사람 기준의 숨김·신고 목록. 서버 회원이면 서버 차단 목록과 이번 로그인에서 신고한 대상
+ * (서버는 다음 응답부터 빼고 주지만, 이미 받은 목록에서도 바로 감춘다)
+ */
 function useLoungeViewer(): LoungeViewer {
   const { currentUser, state } = useRaota()
   const userId = currentUser?.id ?? null
+  const remote = isRemoteWithAccount("lounge") && Boolean(currentUser)
+  const { hiddenAuthors, reports } = state.account
   return useMemo(
-    () => ({ userId, hiddenAuthorIds: state.hiddenAuthorIds, reports: state.contentReports }),
-    [state.contentReports, state.hiddenAuthorIds, userId],
+    () =>
+      remote
+        ? { userId, hiddenAuthorIds: (hiddenAuthors ?? []).map((author) => author.id), reports }
+        : { userId, hiddenAuthorIds: state.hiddenAuthorIds, reports: state.contentReports },
+    [hiddenAuthors, remote, reports, state.contentReports, state.hiddenAuthorIds, userId],
   )
+}
+
+/** 서버에서 읽은 기록에 이번 로그인에서 한 일(공감·고친 내용)을 덧씌운다 */
+function useAccountLogOverlay(): (log: RamenLog) => RamenLog {
+  const { state } = useRaota()
+  const { account } = state
+  return useCallback((log: RamenLog) => {
+    const saved = account.savedLogs[log.id]
+    const merged = saved ? { ...log, ...saved, comments: log.comments, commentsNextCursor: log.commentsNextCursor } : log
+    return withLikes(merged, account)
+  }, [account])
 }
 
 export interface LoungeFeedOptions {
@@ -416,6 +504,7 @@ export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: Loung
   const { state } = useRaota()
   const status = useQueryState()
   const viewer = useLoungeViewer()
+  const overlay = useAccountLogOverlay()
   const remote = isRemote("lounge")
   const remoteKey = remote ? `lounge:${type}|${sort}|${pageSize}` : null
   const first = useRemoteResult(remoteKey, EMPTY_PAGE as RemotePage<RamenLog>, () => remoteReads.loungeLogs({ type, sort, size: pageSize }))
@@ -428,6 +517,18 @@ export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: Loung
     })),
     [remote, sort, state.logs, type, viewer],
   )
+  // 서버 피드: 방금 숨긴 사람·신고한 글·지운 기록·비공개로 바꾼 기록은 다시 읽기 전에도 뺀다
+  const { deletedLogIds } = state.account
+  const remoteData = useMemo(
+    () =>
+      remote
+        ? pages.data
+            .filter((log) => !deletedLogIds.includes(log.id))
+            .map(overlay)
+            .filter((log) => log.isPublic && isLogVisibleTo(log, viewer))
+        : [],
+    [deletedLogIds, overlay, pages.data, remote, viewer],
+  )
   const key = `${type}|${sort}`
   const [paging, setPaging] = useState({ key, count: pageSize })
   const count = paging.key === key ? paging.count : pageSize
@@ -437,7 +538,7 @@ export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: Loung
 
   const data = useMemo(() => all.slice(0, count), [all, count])
   return remote
-    ? { ...pages, total: pages.data.length }
+    ? { ...pages, data: remoteData, total: remoteData.length }
     : { data, ...status, total: all.length, hasMore: all.length > count, loadMore }
 }
 
@@ -455,9 +556,10 @@ export interface LoungeLogQuery extends Query<LoungeLogDetail | null> {
 
 /** 상세의 댓글 미리보기를 먼저 쓰고 스크롤할 때만 다음 댓글 페이지를 읽는다. */
 export function useLoungeLog(logId: string | null | undefined): LoungeLogQuery {
-  const { getLog } = useRaota()
+  const { state } = useRaota()
   const status = useQueryState()
   const viewer = useLoungeViewer()
+  const overlay = useAccountLogOverlay()
   const remote = isRemote("lounge")
   const key = remote && logId ? `lounge:detail:${logId}` : null
   const detail = useRemoteResult(key, null as RemoteLoungeLogDetail | null, () => remoteReads.loungeLog(logId!))
@@ -469,21 +571,66 @@ export function useLoungeLog(logId: string | null | undefined): LoungeLogQuery {
     error: detail.error,
   }
   const comments = useRemoteContinuation(key, firstComments, (cursor) => remoteReads.loungeLogComments(logId!, cursor))
-  const log = logId ? getLog(logId) : undefined
+  const log = logId ? state.logs.find((item) => item.id === logId) : undefined
   const local = useMemo(() => {
     if (!log || !isLogVisibleTo(log, viewer)) return null
     const visibleComments = selectVisibleComments(log, viewer)
     return { log, comments: visibleComments, commentCount: visibleComments.length }
   }, [log, viewer])
+  const { addedComments, deletedCommentIds, deletedLogIds } = state.account
+  const remoteData = useMemo(() => {
+    if (!detail.data || !logId || deletedLogIds.includes(logId)) return null
+    const shown = overlay(detail.data.log)
+    if (!isLogVisibleTo(shown, viewer)) return null
+    // 방금 단 댓글은 다시 읽은 목록에 아직 없으면 끝에 붙이고, 지운 댓글은 뺀다
+    const loadedIds = new Set(comments.data.map((comment) => comment.id))
+    const merged = [...comments.data, ...(addedComments[logId] ?? []).filter((comment) => !loadedIds.has(comment.id))]
+    const visible = selectVisibleComments({ ...shown, comments: merged.filter((comment) => !deletedCommentIds.includes(comment.id)) }, viewer)
+    return { log: shown, comments: visible, commentCount: detail.data.commentCount }
+  }, [addedComments, comments.data, deletedCommentIds, deletedLogIds, detail.data, logId, overlay, viewer])
   return remote
     ? {
-        data: detail.data ? { log: detail.data.log, comments: comments.data, commentCount: detail.data.commentCount } : null,
+        data: remoteData,
         isLoading: detail.isLoading || comments.isLoading,
         error: detail.error ?? comments.error,
         hasMoreComments: comments.hasMore,
         loadMoreComments: comments.loadMore,
       }
     : { data: local, ...status, hasMoreComments: false, loadMoreComments: () => undefined }
+}
+
+/**
+ * 내가 숨긴 사람들(설정의 "숨긴 사용자"). 서버 회원이면 GET /members/me/blocks,
+ * 기기 안 계정이면 숨긴 id를 이 기기의 라멘로그·댓글 글쓴이 이름으로 보여준다
+ */
+export function useHiddenAuthors(): Query<HiddenAuthor[]> {
+  const { currentUser, state } = useRaota()
+  const status = useQueryState()
+  const remote = isRemoteWithAccount("lounge") && Boolean(currentUser)
+  const local = useMemo(() => {
+    if (remote) return []
+    const authors = new Map<string, HiddenAuthor>()
+    for (const log of state.logs) {
+      for (const author of [log.author, ...(log.comments ?? []).map((comment) => comment.author)]) {
+        if (author.id && !authors.has(author.id)) authors.set(author.id, { id: author.id, name: author.name, avatar: author.avatar ?? null })
+      }
+    }
+    return state.hiddenAuthorIds.map((id) => authors.get(id) ?? { id, name: "알 수 없는 사용자", avatar: null })
+  }, [remote, state.hiddenAuthorIds, state.logs])
+  if (!currentUser) return { data: [], ...status }
+  return remote
+    ? { data: state.account.hiddenAuthors ?? [], ...accountQueryState(state.account, state.account.hiddenAuthors !== null) }
+    : { data: local, ...status }
+}
+
+/**
+ * 기록 화면의 맛 노트 보기. 서버 기록(ramenLogs remote)이면 서버 정의(GET /taste-note-definitions)를 기준으로 하고,
+ * 읽기 전이나 실패하면 앱에 넣어 둔 같은 목록을 쓴다
+ */
+export function useTasteNoteFields(): TasteNoteField[] {
+  const remote = isRemote("ramenLogs")
+  const fields = useRemoteResult(remote ? "taste-note-definitions" : null, currentTasteNoteFields(), remoteReads.tasteNoteFields)
+  return remote ? fields.data : currentTasteNoteFields()
 }
 
 // ---------------------------------------------------------------------------

@@ -268,11 +268,11 @@ describe("내 기록 요약", () => {
     },
   ]
 
-  it("캘린더·방문 매장이 쓰는 그릇 목록(최신순)으로 바꾼다", () => {
+  it("캘린더·방문 매장이 쓰는 그릇 목록(최신순)으로 바꾸고, 기록 상세로 열 수 있게 기록·매장 id를 남긴다", () => {
     expect(toAppBowls(items)).toEqual([
-      { date: "2026-09-18", shop: "멘야준", type: "쇼유", menu: "특제 쇼유", scores: items[1].scores },
-      { date: "2026-09-10", shop: "하쿠텐", type: "돈코츠", menu: "이에케 라멘", scores: items[0].scores },
-      { date: "2026-09-01", shop: "멘야준", type: "미소", menu: "미소 라멘" },
+      { date: "2026-09-18", shop: "멘야준", type: "쇼유", menu: "특제 쇼유", scores: items[1].scores, logId: "2", shopId: "1" },
+      { date: "2026-09-10", shop: "하쿠텐", type: "돈코츠", menu: "이에케 라멘", scores: items[0].scores, logId: "1", shopId: "7" },
+      { date: "2026-09-01", shop: "멘야준", type: "미소", menu: "미소 라멘", logId: "3", shopId: "1" },
     ])
   })
 

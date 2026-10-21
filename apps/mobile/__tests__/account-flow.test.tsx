@@ -18,10 +18,14 @@ import OnboardingScreen from "@/app/(flows)/auth/onboarding"
  * 서버는 fetch를 경로별로 흉내 낸다. 토큰·아웃박스는 실제 구현(메모리 키체인·AsyncStorage 대체본)을 쓴다.
  */
 
-jest.mock("@/src/api/config", () => ({
-  ...jest.requireActual("@/src/api/config"),
-  isRemote: jest.fn(() => true),
-}))
+jest.mock("@/src/api/config", () => {
+  const isRemote = jest.fn((_domain: string) => true)
+  return {
+    ...jest.requireActual("@/src/api/config"),
+    isRemote,
+    isRemoteWithAccount: jest.fn((domain: string) => isRemote(domain) && isRemote("auth")),
+  }
+})
 
 jest.mock("@/src/auth/social", () => {
   class SocialSignInCancelled extends Error {}

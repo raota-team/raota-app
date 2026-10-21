@@ -6,7 +6,7 @@ import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as ImagePicker from "expo-image-picker"
 import DateTimePicker from "@react-native-community/datetimepicker"
-import { CalendarDays, Camera, ChevronDown, ChevronRight, ChevronUp, LogIn, X } from "lucide-react-native"
+import { CalendarDays, Camera, ChevronDown, ChevronRight, ChevronUp, FileX, LogIn, X } from "lucide-react-native"
 import {
   AccessibilityInfo,
   ActionSheetIOS,
@@ -33,7 +33,6 @@ import {
   REVISIT_OPTIONS,
   REVISIT_SCORE,
   TASTE_AXES,
-  TASTE_FIELDS,
   type CreateRamenLogInput,
   type RevisitOption,
   type Shop,
@@ -44,7 +43,7 @@ import {
   type TasteScores,
 } from "@raota/shared"
 import { track } from "@/src/analytics"
-import { useShop, useShops } from "@/src/data"
+import { useLog, useShop, useShops, useTasteNoteFields } from "@/src/data"
 import {
   RECORD_NOTE_MAX_LENGTH,
   missingScoreAxes,
@@ -134,6 +133,35 @@ function formatDate(date: Date) {
 
 function formatDateLabel(date: Date) {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAYS[date.getDay()]})`
+}
+
+/** "YYYY-MM-DD"를 그날의 로컬 날짜로 읽는다. 읽지 못하면 null */
+function parseDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (!match) return null
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+type FormValues = {
+  menuName: string
+  ramenType: string
+  visitedAt: string
+  scores: Partial<Record<ScoreAxisKey, number>>
+  revisit: RevisitOption | null
+  photos: string[]
+  note: string
+  tasteNotes: TasteNotes
+  isPublic: boolean
+}
+
+/** 기록 고치기에서 입력이 불러온 값과 달라졌는지 비교하는 값. 점수와 태그는 키 순서를 고정한다 */
+function formSignature({ scores, tasteNotes, ...rest }: FormValues): string {
+  return JSON.stringify({
+    ...rest,
+    scores: SCORE_AXES.map(({ key }) => scores[key] ?? null),
+    tasteNotes: (Object.keys(EMPTY_TASTE_NOTES) as TasteNoteKey[]).map((key) => tasteNotes[key] ?? []),
+  })
 }
 
 
@@ -266,7 +294,7 @@ const RecordScore = forwardRef<View, {
 })
 
 export default function NewRecordScreen() {
-  const { shopId } = useLocalSearchParams<{ shopId?: string }>()
+  const { shopId, logId } = useLocalSearchParams<{ shopId?: string; logId?: string }>()
   const navigation = useNavigation()
   const { state, isHydrated, currentUser, actions } = useRaota()
   const reduceMotion = useReducedMotion()
@@ -276,10 +304,18 @@ export default function NewRecordScreen() {
   // 어두운 모드의 ink(흰색)를 강조색으로 쓰면 iOS가 오늘 날짜를 흰 원 위 흰 글씨로 그린다
   const pickerAccent = useColorScheme() === "dark" ? palette.brand : palette.ink
   const initialShopId = typeof shopId === "string" && shopId.length > 0 ? shopId : null
-  const selectedShopId = state.recordDraft?.shopId ?? initialShopId
-  const shop = useShop(selectedShopId).data
+  // logId가 오면 내 기록 고치기다. 가게는 바꿀 수 없고 새 기록 초안도 쓰지 않는다
+  const editLogId = typeof logId === "string" && logId.length > 0 ? logId : null
+  const isEdit = editLogId !== null
+  const editQuery = useLog(editLogId)
+  const editLog = editQuery.data
+  const canEdit = Boolean(editLog && currentUser && editLog.author.id === currentUser.id)
+  const selectedShopId = isEdit ? null : (state.recordDraft?.shopId ?? initialShopId)
+  const catalogShop = useShop(selectedShopId).data
+  const shop: { id: string; name: string; branch?: string } | null = isEdit ? (editLog?.shop ?? null) : catalogShop
   const shops = useShops().data
-  const shopStyle = styleOf(shop)
+  const shopStyle = styleOf(catalogShop)
+  const tasteFields = useTasteNoteFields()
 
   const today = useRef(new Date()).current
   const [menuName, setMenuName] = useState("")
@@ -299,6 +335,8 @@ export default function NewRecordScreen() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   // 나가기가 허락된 뒤의 이동. 상태여야 usePreventRemove가 네이티브 스와이프 차단까지 풀고 나서 이동한다
   const [leaving, setLeaving] = useState<LeaveIntent | null>(null)
+  // 고치기에서 처음 불러온 입력. 채우기 전에는 null이고, 이것과 달라졌을 때만 나가기를 막는다
+  const [editBaseline, setEditBaseline] = useState<string | null>(null)
 
   // 상태는 다음 렌더까지 바뀌지 않아 빠른 두 번 탭이 둘 다 통과한다. 저장은 ref로 한 번만 받는다
   const savingRef = useRef(false)
@@ -316,7 +354,40 @@ export default function NewRecordScreen() {
 
   const visitedAt = formatDate(visitDate)
   const trimmedMenu = menuName.trim()
-  const selectedTagCount = TASTE_FIELDS.reduce((sum, field) => sum + tasteNotes[field.key].length, 0)
+  const selectedTagCount = tasteFields.reduce((sum, field) => sum + (tasteNotes[field.key]?.length ?? 0), 0)
+
+  // 고칠 기록은 한 번만 채운다. 5축 도입 전 기록처럼 점수가 없으면 새 기록처럼 직접 고르게 둔다
+  useEffect(() => {
+    if (!editLog || !canEdit || editBaseline !== null) return
+    const filled: FormValues = {
+      menuName: editLog.menuName,
+      ramenType: editLog.ramenType,
+      visitedAt: formatDate(parseDate(editLog.visitedAt) ?? today),
+      scores: editLog.scores
+        ? {
+            satisfaction: editLog.scores.satisfaction,
+            brothDensity: editLog.scores.brothDensity,
+            noodleFirmness: editLog.scores.noodleFirmness,
+            topping: editLog.scores.topping,
+          }
+        : {},
+      revisit: editLog.revisit ?? null,
+      photos: (editLog.photos ?? (editLog.imageUrl ? [editLog.imageUrl] : [])).slice(0, RECORD_PHOTO_MAX),
+      note: editLog.note ?? "",
+      tasteNotes: { ...EMPTY_TASTE_NOTES, ...editLog.tasteNotes },
+      isPublic: editLog.isPublic,
+    }
+    setMenuName(filled.menuName)
+    setRamenType(filled.ramenType)
+    setVisitDate(parseDate(editLog.visitedAt) ?? today)
+    setScores(filled.scores)
+    setRevisit(filled.revisit)
+    setPhotos(filled.photos)
+    setNote(filled.note)
+    setTasteNotes(filled.tasteNotes)
+    setIsPublic(filled.isPublic)
+    setEditBaseline(formSignature(filled))
+  }, [canEdit, editBaseline, editLog, today])
 
   // 불러온 상세 값이 있으면 처음부터 보여 준다. 새 기록의 빈 상세는 접어 둔다.
   useEffect(() => {
@@ -324,8 +395,9 @@ export default function NewRecordScreen() {
   }, [photos, note, selectedTagCount])
 
   useEffect(() => {
+    if (isEdit) return
     actions.startRecordDraft(initialShopId)
-  }, [actions.startRecordDraft, initialShopId])
+  }, [actions.startRecordDraft, initialShopId, isEdit])
 
   // "변경"으로 가게를 바꾸면 그 가게의 대표 스타일이 목록과 맞을 때만 종류를 다시 고른다.
   useEffect(() => {
@@ -350,7 +422,8 @@ export default function NewRecordScreen() {
   }
   const validShopIds = useMemo(() => shops.map((item) => item.id), [shops])
   const missingAxes = new Set(missingScoreAxes(draft))
-  const missing: MissingField[] = validateRecordDraft(draft, { validShopIds, now: new Date() }).flatMap(
+  // 고치기에서는 가게가 기록에 고정이라 매장 목록과 맞춰 보지 않는다
+  const missing: MissingField[] = validateRecordDraft(draft, { validShopIds: isEdit ? undefined : validShopIds, now: new Date() }).flatMap(
     (error): MissingField[] => {
       switch (error.field) {
         case "shopId":
@@ -385,17 +458,19 @@ export default function NewRecordScreen() {
   })()
 
   const baselineRamenType = inferRamenType(shopStyle)
-  const isDirty =
-    selectedShopId !== initialShopId ||
-    menuName.length > 0 ||
-    ramenType !== baselineRamenType ||
-    visitedAt !== formatDate(today) ||
-    Object.keys(scores).length > 0 ||
-    revisit !== null ||
-    photos.length > 0 ||
-    note.length > 0 ||
-    selectedTagCount > 0 ||
-    isPublic
+  const isDirty = isEdit
+    ? editBaseline !== null &&
+      formSignature({ menuName, ramenType, visitedAt, scores, revisit, photos, note, tasteNotes, isPublic }) !== editBaseline
+    : selectedShopId !== initialShopId ||
+      menuName.length > 0 ||
+      ramenType !== baselineRamenType ||
+      visitedAt !== formatDate(today) ||
+      Object.keys(scores).length > 0 ||
+      revisit !== null ||
+      photos.length > 0 ||
+      note.length > 0 ||
+      selectedTagCount > 0 ||
+      isPublic
   const preventLeave = isDirty && !leaving
   const preventLeaveRef = useRef(preventLeave)
   preventLeaveRef.current = preventLeave
@@ -406,14 +481,13 @@ export default function NewRecordScreen() {
     setLeaveVisible(true)
   })
 
-  // 막지 않고 떠날 때는 초안을 비운다
-  useEffect(
-    () =>
-      navigation.addListener("beforeRemove", () => {
-        if (!preventLeaveRef.current) actions.clearRecordDraft()
-      }),
-    [actions.clearRecordDraft, navigation],
-  )
+  // 막지 않고 떠날 때는 초안을 비운다. 고치기는 초안을 쓰지 않는다
+  useEffect(() => {
+    if (isEdit) return
+    return navigation.addListener("beforeRemove", () => {
+      if (!preventLeaveRef.current) actions.clearRecordDraft()
+    })
+  }, [actions.clearRecordDraft, isEdit, navigation])
 
   const goBack = () => {
     if (router.canGoBack()) router.back()
@@ -437,7 +511,7 @@ export default function NewRecordScreen() {
 
   const confirmLeave = () => {
     setLeaveVisible(false)
-    actions.clearRecordDraft()
+    if (!isEdit) actions.clearRecordDraft()
     const action = pendingLeave.current
     pendingLeave.current = null
     setLeaving(action ? { kind: "action", action } : { kind: "back" })
@@ -523,6 +597,12 @@ export default function NewRecordScreen() {
     setSaving(true)
     setSaveError(null)
     try {
+      if (editLogId) {
+        await actions.updateLog(editLogId, input)
+        // 성공 뒤에는 화면이 떠날 때까지 저장을 다시 받지 않는다
+        setLeaving({ kind: "back" })
+        return
+      }
       const log = await actions.createLog(input)
       track("record_saved", { hasPhoto: photos.length > 0, scoresComplete: true })
       actions.clearRecordDraft()
@@ -622,7 +702,7 @@ export default function NewRecordScreen() {
     return (
       <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.screen}>
         <StatusBar style="auto" />
-        <Header backLabel="뒤로가기" onBack={goBack} title="라멘 기록하기" />
+        <Header backLabel="뒤로가기" onBack={goBack} title={isEdit ? "기록 고치기" : "라멘 기록하기"} />
         <EmptyState
           actionLabel="로그인하기"
           description="기록은 계정에 저장돼요. 로그인하면 취향 리포트도 함께 쌓여요."
@@ -635,12 +715,51 @@ export default function NewRecordScreen() {
     )
   }
 
+  if (isEdit && !canEdit) {
+    if (editQuery.isLoading) {
+      return (
+        <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.screen}>
+          <LoadingState fullScreen label="기록을 불러오는 중…" />
+        </SafeAreaView>
+      )
+    }
+    return (
+      <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.screen}>
+        <StatusBar style="auto" />
+        <Header backLabel="뒤로가기" onBack={goBack} title="기록 고치기" />
+        <EmptyState
+          actionLabel="돌아가기"
+          description={
+            editLog
+              ? "내가 남긴 기록만 고칠 수 있어요."
+              : editQuery.error
+                ? "연결을 확인한 뒤 다시 시도해주세요."
+                : "지워졌거나 볼 수 없는 기록이에요."
+          }
+          icon={<FileX color={colors.textMuted} size={32} />}
+          onAction={goBack}
+          style={styles.flex}
+          title={editLog ? "고칠 수 없는 기록이에요" : editQuery.error ? "기록을 불러오지 못했어요" : "기록을 찾을 수 없어요"}
+        />
+      </SafeAreaView>
+    )
+  }
+
+  // 불러온 값을 채우기 전에는 빈 입력을 보여 주지 않는다
+  if (isEdit && editBaseline === null) {
+    return (
+      <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.screen}>
+        <LoadingState fullScreen label="기록을 불러오는 중…" />
+      </SafeAreaView>
+    )
+  }
+
   const inputStyle = (invalid: boolean) => [styles.input, invalid && styles.inputInvalid]
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.screen}>
       <StatusBar style="auto" />
-      <Header align="center" backLabel="뒤로가기" onBack={goBack} style={styles.flowHeader} title="라멘 기록하기" titleStyle={styles.navTitle} />
+      <Header align="center" backLabel="뒤로가기" onBack={goBack} style={styles.flowHeader} title={isEdit ? "기록 고치기" : "라멘 기록하기"} titleStyle={styles.navTitle} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
         <ScrollView
           keyboardDismissMode="interactive"
@@ -677,21 +796,35 @@ export default function NewRecordScreen() {
                 <View style={styles.introInputs}>
                   <View style={[styles.field, styles.introShopField]}>
                     <AppText style={styles.label} variant="bodyStrong">가게</AppText>
-                    <Pressable
-                      accessibilityHint="기록할 가게를 다시 골라요"
-                      accessibilityLabel={
-                        shop ? `가게, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}. 변경` : "가게를 골라주세요"
-                      }
-                      accessibilityRole="button"
-                      onPress={() => router.push({ pathname: "/record/select-shop" })}
-                      ref={shopRef}
-                      style={({ pressed }) => [styles.shopField, isMissing("shop") && styles.inputInvalid, pressed && styles.pressed]}
-                    >
-                      <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.flexShrink} tone={shop ? "ink" : "muted"} variant="body">
-                        {shop ? `${shop.name}${shop.branch ? ` · ${shop.branch}` : ""}` : "가게를 골라주세요"}
-                      </AppText>
-                      <ChevronRight color={colors.textMuted} size={18} />
-                    </Pressable>
+                    {isEdit ? (
+                      // 고치기에서는 가게를 바꿀 수 없다
+                      <View
+                        accessibilityLabel={shop ? `가게, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}` : "가게"}
+                        accessible
+                        ref={shopRef}
+                        style={styles.shopField}
+                      >
+                        <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.flexShrink} tone="ink" variant="body">
+                          {shop ? `${shop.name}${shop.branch ? ` · ${shop.branch}` : ""}` : ""}
+                        </AppText>
+                      </View>
+                    ) : (
+                      <Pressable
+                        accessibilityHint="기록할 가게를 다시 골라요"
+                        accessibilityLabel={
+                          shop ? `가게, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}. 변경` : "가게를 골라주세요"
+                        }
+                        accessibilityRole="button"
+                        onPress={() => router.push({ pathname: "/record/select-shop" })}
+                        ref={shopRef}
+                        style={({ pressed }) => [styles.shopField, isMissing("shop") && styles.inputInvalid, pressed && styles.pressed]}
+                      >
+                        <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.flexShrink} tone={shop ? "ink" : "muted"} variant="body">
+                          {shop ? `${shop.name}${shop.branch ? ` · ${shop.branch}` : ""}` : "가게를 골라주세요"}
+                        </AppText>
+                        <ChevronRight color={colors.textMuted} size={18} />
+                      </Pressable>
+                    )}
                   </View>
                   <View style={[styles.field, styles.introMenuField]}>
                     <View style={styles.labelRow}>
@@ -859,7 +992,7 @@ export default function NewRecordScreen() {
                 title="맛 태그"
               />
               <View style={styles.tagsPanel}>
-                {TASTE_FIELDS.map((field) => (
+                {tasteFields.map((field) => (
                   <View key={field.key}>
                     <AppText style={styles.tagLabel} variant="bodyStrong">
                       {field.label}
@@ -985,7 +1118,11 @@ export default function NewRecordScreen() {
           {/* 미완성이어도 저장을 누르면 빠진 첫 항목으로 안내한다. */}
           <Pressable
             accessibilityHint={isComplete ? undefined : "누르면 빠진 첫 항목으로 이동해요"}
-            accessibilityLabel={saveError ? "다시 시도" : isComplete ? "기록 저장하기" : `기록 저장하기, 남은 필수 ${missing.length}개`}
+            accessibilityLabel={(() => {
+              const label = isEdit ? "고친 기록 저장하기" : "기록 저장하기"
+              if (saveError) return "다시 시도"
+              return isComplete ? label : `${label}, 남은 필수 ${missing.length}개`
+            })()}
             accessibilityRole="button"
             accessibilityState={{ busy: saving }}
             onPress={() => void save()}
@@ -993,23 +1130,23 @@ export default function NewRecordScreen() {
           >
             {saving ? <ActivityIndicator color={colors.onDark} size="small" style={styles.saveSpinner} /> : null}
             <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.saveText} tone="onDark" variant="secondary">
-              {saving ? "저장 중…" : saveError ? "다시 시도" : "저장"}
+              {saving ? "저장 중…" : saveError ? "다시 시도" : isEdit ? "저장하기" : "저장"}
             </AppText>
           </Pressable>
         </StickyActionBar>
       </KeyboardAvoidingView>
 
       <ConfirmDialog
-        cancelLabel="계속 작성"
+        cancelLabel={isEdit ? "계속 고치기" : "계속 작성"}
         confirmLabel="나가기"
         destructive
-        message="작성 중인 기록이 있어요. 지금까지 고른 평가와 사진은 저장되지 않아요."
+        message={isEdit ? "고친 내용이 있어요. 나가면 바뀐 내용은 저장되지 않아요." : "작성 중인 기록이 있어요. 지금까지 고른 평가와 사진은 저장되지 않아요."}
         onCancel={() => {
           pendingLeave.current = null
           setLeaveVisible(false)
         }}
         onConfirm={confirmLeave}
-        title="작성을 그만둘까요?"
+        title={isEdit ? "고치기를 그만둘까요?" : "작성을 그만둘까요?"}
         visible={leaveVisible}
       />
       {Platform.OS === "ios" ? (

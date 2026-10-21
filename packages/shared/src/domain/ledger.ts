@@ -24,6 +24,10 @@ export interface DemoBowl {
   menu: string
   /** 기록 요약의 5축 평가. 옛 기록에는 없다. */
   scores?: TasteScores
+  /** 서버 기록에서 온 그릇이면 그 기록 id(기록 상세로 연다) */
+  logId?: string
+  /** 서버 기록에서 온 그릇이면 매장 id(이름이 같은 지점을 가른다) */
+  shopId?: string
 }
 
 const bowl = (date: string, shop: string, type: string, menu: string): DemoBowl => ({ date, shop, type, menu })

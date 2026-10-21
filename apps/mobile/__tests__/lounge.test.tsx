@@ -39,10 +39,14 @@ jest.mock("lucide-react-native", () => {
   })
 })
 // 서버에서 읽은 상세(remote)를 흉내 낼 때만 켠다. 기본은 기기 저장소 모드
-jest.mock("@/src/api/config", () => ({
-  ...jest.requireActual("@/src/api/config"),
-  isRemote: jest.fn(() => false),
-}))
+jest.mock("@/src/api/config", () => {
+  const isRemote = jest.fn((_domain: string) => false)
+  return {
+    ...jest.requireActual("@/src/api/config"),
+    isRemote,
+    isRemoteWithAccount: jest.fn((domain: string) => isRemote(domain) && isRemote("auth")),
+  }
+})
 jest.mock("@/src/data/remote", () => {
   const actual = jest.requireActual("@/src/data/remote")
   return { ...actual, remoteReads: { ...actual.remoteReads, loungeLog: jest.fn() } }
@@ -476,13 +480,13 @@ describe("라멘로그 상세", () => {
   })
 
   it("lets the owner delete their own log after confirming, then leaves the screen", async () => {
-    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(0))
+    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(1))
     useLocalSearchParams.mockReturnValue({ logId: "91" })
     const { view, repo } = await renderWith(<LogDetailScreen />, stateWithPrivateLogs())
 
     await fireEvent.press(await view.findByLabelText("내 라멘로그 메뉴"))
     expect(sheet).toHaveBeenCalledWith(
-      expect.objectContaining({ options: ["삭제", "취소"], destructiveButtonIndex: 0 }),
+      expect.objectContaining({ options: ["수정하기", "삭제하기", "취소"], destructiveButtonIndex: 1 }),
       expect.any(Function),
     )
     expect(view.getByText("이 라멘로그를 삭제할까요?")).toBeTruthy()
@@ -498,7 +502,7 @@ describe("라멘로그 상세", () => {
   })
 
   it("keeps the owner's log when the delete confirmation is cancelled", async () => {
-    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(0))
+    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(1))
     useLocalSearchParams.mockReturnValue({ logId: "91" })
     const { view } = await renderWith(<LogDetailScreen />, stateWithPrivateLogs())
 
@@ -509,7 +513,8 @@ describe("라멘로그 상세", () => {
     sheet.mockRestore()
   })
 
-  it("hides the owner menu on a server-loaded log because deleting would not reach the server", async () => {
+  it("opens the record form to edit the owner's log, also for a server-loaded log", async () => {
+    const sheet = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions").mockImplementation((_options, callback) => callback(0))
     const state = stateWithPrivateLogs()
     const mine = state.logs.find((log) => log.id === "91") as RamenLog
     isRemote.mockImplementation((domain: string) => domain === "lounge")
@@ -518,9 +523,11 @@ describe("라멘로그 상세", () => {
     try {
       const { view } = await renderWith(<LogDetailScreen />, state)
       expect(await view.findByText("내가 공개한 라멘")).toBeTruthy()
-      expect(view.queryByLabelText("내 라멘로그 메뉴")).toBeNull()
+      await fireEvent.press(view.getByLabelText("내 라멘로그 메뉴"))
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/record/new", params: { logId: "501" } })
     } finally {
       isRemote.mockImplementation(() => false)
+      sheet.mockRestore()
     }
   })
 

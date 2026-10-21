@@ -39,6 +39,13 @@ export const API_TIMEOUT_MS: number = parseTimeoutMs(process.env.EXPO_PUBLIC_API
  * 화면을 도메인 단위로 하나씩 서버로 옮기기 위한 스위치.
  * EXPO_PUBLIC_API_REMOTE_DOMAINS="shops,lounge" 처럼 적으면 그 도메인만 서버를 본다.
  * 비워 두면 remote 모드에서 전부 서버를 본다. mock 모드에서는 무엇을 적어도 전부 로컬이다.
+ *
+ * - auth: 소셜 로그인·온보딩·약관 동의·세션 복원·로그아웃·탈퇴
+ * - member: 내 정보 수정(프로필 사진 업로드)·닉네임 확인
+ * - shops: 매장 목록·지도·상세·오늘의 큐레이션(비회원도 읽는다). 찜은 auth도 켜져 있어야 서버로 간다
+ * - ramenLogs: 내 기록·요약·작성(사진 업로드)·수정·삭제·맛 노트 정의
+ * - lounge: 라운지 피드·상세·댓글 읽기(비회원도 읽는다). 공감·댓글 쓰기·신고·차단은 auth도 켜져 있어야 서버로 간다
+ * - recommendations: AI 추천
  */
 export const API_DOMAINS = [
   "auth",
@@ -46,11 +53,13 @@ export const API_DOMAINS = [
   "shops",
   "ramenLogs",
   "lounge",
-  "files",
   "recommendations",
 ] as const
 
 export type ApiDomain = (typeof API_DOMAINS)[number]
+
+/** 회원 토큰이 있어야만 부를 수 있는 도메인. auth가 mock이면 적어도 로컬로 돈다(토큰 없이 서버를 부르지 않게) */
+export const ACCOUNT_DOMAINS: readonly ApiDomain[] = ["member", "ramenLogs", "recommendations"]
 
 export function parseRemoteDomains(mode: ApiMode, raw: string | undefined | null): ReadonlySet<ApiDomain> {
   if (mode !== "remote") return new Set()
@@ -60,7 +69,9 @@ export function parseRemoteDomains(mode: ApiMode, raw: string | undefined | null
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean)
-  return new Set(API_DOMAINS.filter((domain) => wanted.some((item) => item.toLowerCase() === domain.toLowerCase())))
+  const domains = new Set(API_DOMAINS.filter((domain) => wanted.some((item) => item.toLowerCase() === domain.toLowerCase())))
+  if (!domains.has("auth")) for (const domain of ACCOUNT_DOMAINS) domains.delete(domain)
+  return domains
 }
 
 export const REMOTE_DOMAINS: ReadonlySet<ApiDomain> = parseRemoteDomains(
@@ -71,4 +82,12 @@ export const REMOTE_DOMAINS: ReadonlySet<ApiDomain> = parseRemoteDomains(
 /** 이 도메인을 서버에서 읽는가. 기본 빌드(mock)에서는 항상 false다 */
 export function isRemote(domain: ApiDomain): boolean {
   return REMOTE_DOMAINS.has(domain)
+}
+
+/**
+ * 이 도메인의 회원 쓰기(찜·공감·댓글·신고·차단)를 서버로 보내는가.
+ * 공개 읽기만 서버로 가는 조합(auth mock)에서는 기기 안 계정으로 로컬에서 처리한다.
+ */
+export function isRemoteWithAccount(domain: ApiDomain): boolean {
+  return isRemote(domain) && isRemote("auth")
 }

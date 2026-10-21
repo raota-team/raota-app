@@ -1,12 +1,17 @@
+import type { TasteScores } from "../types"
 import {
   MENU_CATEGORY_NAMES,
   bowlsFromLogs,
   bowlsInMonth,
   menuCategoryOf,
+  monthKeyOfDate,
+  shopVisitsOf,
   styleRowsOf,
   type BowlLogLike,
+  type DemoBowl,
   type PastReportItem,
 } from "./ledger"
+import { TASTE_AXES } from "./taste"
 
 export const MONTHLY_REPORT_TARGET = 3
 
@@ -116,6 +121,37 @@ export function currentMonthReport(
     typedCount: Math.min(recordCount, bowls.length),
     styleRows: styleRowsOf(bowls),
   }
+}
+
+/**
+ * 지난 달 리포트를 그릇 목록에서 만든다(서버 회원: 서버가 월별 리포트를 주지 않는다).
+ * 이번 달 이전에 MONTHLY_REPORT_TARGET그릇 이상 남긴 달만 만들고, 5축은 점수가 있는 그릇의 평균이다.
+ * 점수가 있는 그릇이 없는 달(웹에서 옮겨 온 옛 기록뿐인 달)은 평균을 낼 수 없어 뺀다.
+ */
+export function pastReportsFromBowls(bowls: DemoBowl[], now = new Date()): PastReportItem[] {
+  const currentKey = seoulMonthKey(now)
+  const months = [...new Set(bowls.map((bowl) => monthKeyOfDate(bowl.date)))].filter((key) => key < currentKey).sort()
+  return months.flatMap((monthKey) => {
+    const monthBowls = bowlsInMonth(bowls, monthKey)
+    const scored = monthBowls.flatMap((bowl) => (bowl.scores ? [bowl.scores] : []))
+    if (monthBowls.length < MONTHLY_REPORT_TARGET || scored.length === 0) return []
+    const scores = Object.fromEntries(
+      TASTE_AXES.map(({ key }) => [key, Math.round((scored.reduce((sum, item) => sum + item[key], 0) / scored.length) * 10) / 10]),
+    ) as TasteScores
+    const styleRows = styleRowsOf(monthBowls)
+    const top = [...styleRows].sort((a, b) => b.count - a.count)[0]
+    const [year, month] = monthKey.split('-').map(Number)
+    return [{
+      id: monthKey,
+      monthKey,
+      period: `${year}년 ${month}월`,
+      recordCount: monthBowls.length,
+      scores,
+      styleRows,
+      topShops: shopVisitsOf(monthBowls).slice(0, 3),
+      note: top ? `${top.name}를 ${top.count}그릇으로 가장 많이 먹은 달이에요.` : '',
+    }]
+  })
 }
 
 export const isPastReport = (report: DistributionSource): report is PastReportItem => 'topShops' in report

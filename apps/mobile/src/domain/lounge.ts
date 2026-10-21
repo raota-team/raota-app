@@ -46,6 +46,13 @@ export const REPORT_REASONS: Array<{ value: ContentReportReason; label: string }
   { value: "other", label: "기타" },
 ]
 
+/** 내가 숨긴(차단한) 사람. 설정의 "숨긴 사용자"에 보여준다 */
+export interface HiddenAuthor {
+  id: string
+  name: string
+  avatar: string | null
+}
+
 export interface LoungeViewer {
   /** 로그인한 사용자 id. 비회원이면 null */
   userId: string | null

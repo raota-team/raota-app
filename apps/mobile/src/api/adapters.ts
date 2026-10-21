@@ -32,6 +32,7 @@ import type {
   ServicePerk,
   ShopDetail,
   ShopSummary,
+  TasteNoteDefinitionsResponse,
   UpdateMemberRequest,
 } from "./types"
 
@@ -100,14 +101,47 @@ export function tasteNoteCodeOf(key: TasteNoteKey, index: number): string {
   return `${TASTE_CODE_PREFIX[key]}_${String(index + 1).padStart(2, "0")}`
 }
 
+export type TasteNoteField = (typeof TASTE_FIELDS)[number]
+
 const CODE_TO_NOTE = new Map<string, { key: TasteNoteKey; label: string }>()
 const NOTE_TO_CODE = new Map<string, string>()
-for (const field of TASTE_FIELDS) {
-  field.options.forEach((label, index) => {
-    const code = tasteNoteCodeOf(field.key, index)
-    CODE_TO_NOTE.set(code, { key: field.key, label })
-    NOTE_TO_CODE.set(`${field.key}:${label}`, code)
-  })
+/** 기록 화면이 보여주는 맛 노트 보기. 서버 정의를 받기 전에는 앱에 넣어 둔 목록(서버 정의 v1과 같다)이다 */
+let tasteNoteFields: TasteNoteField[] = TASTE_FIELDS
+
+function indexTasteNotes(fields: TasteNoteField[], codeOf: (key: TasteNoteKey, index: number) => string) {
+  CODE_TO_NOTE.clear()
+  NOTE_TO_CODE.clear()
+  for (const field of fields) {
+    field.options.forEach((label, index) => {
+      const code = codeOf(field.key, index)
+      CODE_TO_NOTE.set(code, { key: field.key, label })
+      NOTE_TO_CODE.set(`${field.key}:${label}`, code)
+    })
+  }
+  tasteNoteFields = fields
+}
+indexTasteNotes(TASTE_FIELDS, tasteNoteCodeOf)
+
+export function currentTasteNoteFields(): TasteNoteField[] {
+  return tasteNoteFields
+}
+
+/**
+ * 서버 맛 노트 정의(GET /taste-note-definitions)를 기준으로 삼는다. 코드 ⇄ 이름표 변환과 기록 화면의 보기가 모두 바뀐다.
+ * 앱이 모르는 분류는 건너뛰고, 분류 이름(국물·면·간·토핑)은 서버가 주지 않아 앱 것을 쓴다.
+ */
+export function applyTasteNoteDefinitions(definitions: TasteNoteDefinitionsResponse): TasteNoteField[] {
+  const codes = new Map<string, string>()
+  const fields: TasteNoteField[] = []
+  for (const group of definitions.groups ?? []) {
+    const field = TASTE_FIELDS.find(({ key }) => TASTE_CODE_PREFIX[key] === group.category)
+    if (!field || !group.notes?.length) continue
+    fields.push({ key: field.key, label: field.label, options: group.notes.map((note) => note.label) })
+    group.notes.forEach((note, index) => codes.set(`${field.key}:${index}`, note.code))
+  }
+  if (fields.length === 0) return tasteNoteFields
+  indexTasteNotes(fields, (key, index) => codes.get(`${key}:${index}`) ?? tasteNoteCodeOf(key, index))
+  return fields
 }
 
 function emptyTasteNotes(): TasteNotes {
@@ -128,7 +162,7 @@ export function toAppTasteNotes(codes: readonly string[] | null | undefined): Ta
 export function toTasteNoteCodes(notes: TasteNotes | null | undefined): string[] {
   if (!notes) return []
   const codes: string[] = []
-  for (const field of TASTE_FIELDS) {
+  for (const field of tasteNoteFields) {
     for (const label of notes[field.key] ?? []) {
       const code = NOTE_TO_CODE.get(`${field.key}:${label}`)
       if (code && !codes.includes(code)) codes.push(code)
@@ -288,6 +322,8 @@ export function toAppBowl(item: RamenLogSummaryItem): DemoBowl {
     shop: item.shop.name,
     type: item.ramenType,
     menu: item.menuName,
+    logId: item.id,
+    shopId: item.shop.id,
   }
   if (item.scores) bowl.scores = item.scores
   return bowl
@@ -295,6 +331,32 @@ export function toAppBowl(item: RamenLogSummaryItem): DemoBowl {
 
 export function toAppBowls(items: readonly RamenLogSummaryItem[]): DemoBowl[] {
   return items.map(toAppBowl).sort((a, b) => b.date.localeCompare(a.date))
+}
+
+/**
+ * 내 기록 요약 한 줄 → 취향·리포트 계산에 쓰는 기록.
+ * 요약에는 사진·메모·맛 태그·공개 범위가 없어 비워 둔다. 화면에 보여줄 기록은 목록·상세 응답을 쓴다.
+ */
+export function toAppLedgerLog(item: RamenLogSummaryItem): RamenLog {
+  const revisit = revisitFromScore(item.scores?.revisit)
+  return {
+    id: item.id,
+    author: { name: "", level: "" },
+    shop: { id: item.shop.id, name: item.shop.name, branch: item.shop.branchName ?? undefined },
+    menuName: item.menuName,
+    ramenType: item.ramenType,
+    visitedAt: item.visitedAt,
+    imageUrl: null,
+    photos: [],
+    note: "",
+    tasteNotes: emptyTasteNotes(),
+    scores: toAppScores(item.scores, revisit),
+    revisit,
+    likes: 0,
+    isLiked: false,
+    isPublic: false,
+    createdAt: item.visitedAt,
+  }
 }
 
 /** 재방문 의사가 있는 그릇 수(프로필의 "다시 갈 집"). 서버에 필드가 없어 요약 목록에서 센다 */

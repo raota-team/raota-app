@@ -119,6 +119,7 @@ export default function SettingsScreen() {
             value={user.email || "등록된 이메일 없음"}
           />
           <AccountRow label="선호 스타일" onChange={() => setSheet("style")} value={user.favoriteRamenType || "아직 안 정했어요"} />
+          <LinkRow label="숨긴 사용자" onPress={() => router.push("/hidden-authors")} />
         </Group>
         {reminders.supported ? (
           <Group title="알림">

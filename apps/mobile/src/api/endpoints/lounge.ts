@@ -2,7 +2,6 @@ import { apiClient, type ApiClient } from "../client"
 import { sendIdempotent } from "../outbox"
 import type { IdempotentCreateOptions } from "./ramenLog"
 import type {
-  BlockedMember,
   CreateCommentRequest,
   CursorPage,
   CursorParams,
@@ -89,11 +88,6 @@ export function createLoungeApi(client: ApiClient = apiClient) {
 
     unblock(memberId: Id): Promise<void> {
       return client.delete<void>(`/members/${encodeURIComponent(memberId)}/block`)
-    },
-
-    /** 내가 차단한 사람들(기기를 바꿔도 유지된다) */
-    myBlocks(): Promise<BlockedMember[]> {
-      return client.get<BlockedMember[]>("/members/me/blocks")
     },
   } as const
 }

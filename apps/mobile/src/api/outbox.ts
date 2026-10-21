@@ -9,6 +9,9 @@ import { createIdempotencyKey, isApiError } from "./client"
  * 서버는 같은 (회원, Idempotency-Key)를 만료 없이 기억하고, 본문이 달라도 처음 결과를 돌려준다.
  * 그래서 보내기 전에 (계정, 키, 작업, 본문, 처음 보낸 시각)을 남겨 두고, 앱을 껐다 켜도 같은 키를 다시 쓴다.
  * 삭제된 기록이나 삭제·다른 기록의 댓글에 쓰인 키는 409다. 완료·로그아웃한 항목은 지운다.
+ *
+ * 라멘로그는 "초안 하나에 키 하나"다(fingerprint = 초안 키). 응답이 끊긴 뒤 내용을 고쳐 다시 저장해도
+ * 같은 키로 보내므로 기록이 두 번 생기지 않는다. 고친 본문은 revise()로 바꿔 둔다.
  */
 
 export const OUTBOX_STORAGE_KEY = "@raota/idempotency-outbox"
@@ -28,8 +31,10 @@ export interface OutboxEntry {
    * 재시도 때 사진을 다시 올리지 않고 같은 키·같은 본문으로 보낼 수 있다.
    */
   fingerprint: string
-  /** 실제로 보낸 본문. 서버는 본문을 비교하지 않으므로 재시도 때 원래 요청을 유지한다. */
+  /** 마지막으로 보낸 본문 */
   body: unknown
+  /** 이미 올린 사진(기기 URI → 올린 주소). 다시 보낼 때 같은 사진을 또 올리지 않는다 */
+  uploads?: Record<string, string>
   /** 처음 보낸 시각(ISO) */
   firstSentAt: string
 }
@@ -107,6 +112,15 @@ export class IdempotencyOutbox {
       }
       await this.write([...entries, entry])
       return entry
+    })
+  }
+
+  /** 같은 키로 다시 보낼 본문·올린 사진을 바꾼다(초안을 고쳐 다시 저장할 때). 키와 처음 보낸 시각은 그대로다 */
+  async revise(key: string, changes: Pick<OutboxEntry, "body" | "uploads">): Promise<void> {
+    await this.serialize(async () => {
+      const entries = await this.read()
+      if (!entries.some((entry) => entry.key === key)) return
+      await this.write(entries.map((entry) => (entry.key === key ? { ...entry, ...changes } : entry)))
     })
   }
 

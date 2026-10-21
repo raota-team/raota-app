@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy"
 
-import { ApiError, apiClient, type ApiClient } from "../client"
+import { ApiError, apiClient, isApiError, type ApiClient } from "../client"
 import type { UploadPurpose, UploadTicket, UploadTicketRequest, UploadTicketResponse } from "../types"
 
 /**
@@ -86,10 +86,14 @@ export function createFileApi(client: ApiClient = apiClient) {
             })
 
       if (result.status < 200 || result.status >= 300) {
+        // 저장소가 막은 경우(용량 정책 1~10MB, 서명 만료 5분)는 사진을 다시 고르게 안내한다
+        const rejected = result.status === 400 || result.status === 403 || result.status === 413
         throw new ApiError({
           status: result.status,
           code: "HTTP_ERROR",
-          message: "사진을 올리지 못했어요. 잠시 후 다시 시도해 주세요.",
+          message: rejected
+            ? "사진을 올리지 못했어요. 10MB 이하의 JPG·PNG·WEBP 사진인지 확인하고 다시 시도해 주세요."
+            : "사진을 올리지 못했어요. 잠시 후 다시 시도해 주세요.",
         })
       }
       return ticket.imageUrl
@@ -116,7 +120,21 @@ export function createFileApi(client: ApiClient = apiClient) {
         files.push({ contentType, extension: extensionOf(uri) ?? TYPE_TO_EXTENSION[contentType] })
       }
 
-      const { uploads } = await api.tickets({ purpose, files })
+      const uploads = await api.tickets({ purpose, files }).then(
+        (response) => response.uploads,
+        (error: unknown) => {
+          // 회원당 1시간에 30장(429). 서버 문구 대신 앱 말투로 바꾼다
+          if (!isApiError(error, "RATE_LIMITED")) throw error
+          throw new ApiError({
+            status: error.status,
+            code: error.code,
+            message: "사진은 1시간에 30장까지 올릴 수 있어요. 잠시 후 다시 시도해 주세요.",
+            retryAfterMs: error.retryAfterMs,
+            requestId: error.requestId,
+            cause: error,
+          })
+        },
+      )
       if (!uploads || uploads.length !== uris.length) {
         throw new ApiError({ status: 0, code: "INVALID_RESPONSE", message: "사진 업로드 주소를 받지 못했어요." })
       }

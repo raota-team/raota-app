@@ -13,7 +13,7 @@ export default function FlowLayout() {
   const segments = useSegments()
   const pathname = usePathname()
   const section = segments[1]
-  const needsAccount = section === "record" || section === "taste"
+  const needsAccount = section === "record" || section === "taste" || section === "hidden-authors"
   const blocked = needsAccount && !currentUser
   // 약관 다시 동의가 필요한 회원은 로그인·가입·동의 화면과 약관 전문만 볼 수 있다
   const needsConsent = Boolean(currentUser) && state.consentRequired && section !== "auth" && section !== "legal"

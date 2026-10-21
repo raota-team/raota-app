@@ -20,7 +20,8 @@ import {
   type ModerationTarget,
 } from "@/src/components/LoungeLog"
 import { EdgeBackZone } from "@/src/components/EdgeBackZone"
-import { AppText, Button, ConfirmDialog, EmptyState, Header, IconButton, LoadingState, Screen, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, ConfirmDialog, EmptyState, Header, IconButton, LoadingState, Screen, Toast } from "@/src/components/ui"
+import { AlreadyHandledError } from "@/src/data/remote"
 import { useLoungeLog } from "@/src/data/hooks"
 import {
   COMMENT_COUNTER_FROM,
@@ -78,27 +79,26 @@ function CommentRow({ comment, own, onMore }: { comment: RamenLogComment; own: b
           {comment.content}
         </AppText>
       </View>
-      {own ? null : (
-        <IconButton
-          accessibilityLabel={`${comment.author.name}님의 댓글 메뉴`}
-          icon={<MoreHorizontal color={colors.inkSub} size={18} />}
-          onPress={() => onMore(comment)}
-          style={styles.commentMore}
-        />
-      )}
+      <IconButton
+        accessibilityLabel={own ? "내 댓글 메뉴" : `${comment.author.name}님의 댓글 메뉴`}
+        icon={<MoreHorizontal color={colors.inkSub} size={18} />}
+        onPress={() => onMore(comment)}
+        style={styles.commentMore}
+      />
     </View>
   )
 }
 
-function CommentComposer({ logId, onPosted }: { logId: string; onPosted: () => void }) {
+function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted: () => void; onError: (message: string) => void }) {
   const { currentUser, actions } = useRaota()
   const insets = useSafeAreaInsets()
   const keyboardVisible = useKeyboardVisible()
   const [text, setText] = useState("")
   const [focused, setFocused] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [sending, setSending] = useState(false)
   const trimmed = text.trim()
-  const canSubmit = isValidLogComment(text)
+  const canSubmit = isValidLogComment(text) && !sending
   const bottom = keyboardVisible ? spacing.x2 : Math.max(insets.bottom, spacing.x3)
 
   if (!currentUser) {
@@ -115,13 +115,23 @@ function CommentComposer({ logId, onPosted }: { logId: string; onPosted: () => v
     )
   }
 
-  const submit = () => {
+  const submit = async () => {
     if (!canSubmit) return
-    // TODO(API): remoteWrites.addLogComment(logId, { content: trimmed }) — 실패하면 입력을 지우지 않는다
-    const comment = actions.addLogComment(logId, { content: trimmed })
-    if (!comment) {
-      setFailed(true)
+    setSending(true)
+    try {
+      // 실패하면 입력을 지우지 않는다
+      const comment = await actions.addLogComment(logId, { content: trimmed })
+      if (!comment) {
+        setFailed(true)
+        return
+      }
+    } catch (error) {
+      // 이미 처리된 댓글이면 목록은 스토어가 다시 읽으므로 입력만 비우고 안내한다
+      if (error instanceof AlreadyHandledError) setText("")
+      onError(error instanceof Error ? error.message : "댓글을 등록하지 못했어요. 다시 시도해 주세요.")
       return
+    } finally {
+      setSending(false)
     }
     setFailed(false)
     setText("")
@@ -203,12 +213,13 @@ function CommentComposer({ logId, onPosted }: { logId: string; onPosted: () => v
           value={text}
         />
         <Button
-          accessibilityHint={canSubmit ? undefined : trimmed ? "댓글을 2자 이상 입력해 주세요" : "내용을 입력하면 등록할 수 있어요"}
+          accessibilityHint={canSubmit || sending ? undefined : trimmed ? "댓글을 2자 이상 입력해 주세요" : "내용을 입력하면 등록할 수 있어요"}
           disabled={!canSubmit}
-          onPress={submit}
+          loading={sending}
+          onPress={() => void submit()}
           size="small"
           title="등록"
-          variant={canSubmit ? "primary" : "secondary"}
+          variant={canSubmit || sending ? "primary" : "secondary"}
         />
       </View>
     </View>
@@ -219,13 +230,16 @@ export default function LogDetailScreen() {
   const { logId } = useLocalSearchParams<{ logId?: string }>()
   const query = useLoungeLog(typeof logId === "string" && logId.length > 0 ? logId : null)
   const detail = query.data
-  const { currentUser, actions, getLog } = useRaota()
-  const like = useLikeLog()
+  const { currentUser, actions } = useRaota()
+  const { like, error: likeError, clearError: clearLikeError } = useLikeLog()
   const listRef = useRef<FlatList<RamenLogComment>>(null)
   const [outcome, setOutcome] = useState<Outcome>(null)
+  const [ownMenuOpen, setOwnMenuOpen] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [deleteFailed, setDeleteFailed] = useState(false)
+  const [confirmingComment, setConfirmingComment] = useState<RamenLogComment | null>(null)
+  const [deletingComment, setDeletingComment] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const viewerId = currentUser?.id ?? null
   const logAuthorId = detail?.log.author.id
 
@@ -247,25 +261,62 @@ export default function LogDetailScreen() {
     toastStyle: { bottom: TOAST_ABOVE_COMPOSER },
   })
 
+  const openOwnCommentMenu = useCallback((comment: RamenLogComment) => {
+    // 내 댓글의 "…"은 신고·숨기기 대신 삭제만 둔다. 액션 시트가 없으면 바로 확인 창을 연다
+    if (Platform.OS !== "ios") {
+      setConfirmingComment(comment)
+      return
+    }
+    ActionSheetIOS.showActionSheetWithOptions(
+      { title: "내 댓글", options: ["삭제하기", "취소"], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
+      (index) => {
+        if (index === 0) setConfirmingComment(comment)
+      },
+    )
+  }, [])
   const onCommentMore = useCallback(
-    (comment: RamenLogComment) =>
-      openMenu({ kind: "comment", id: comment.id, authorId: comment.author.id, authorName: comment.author.name }),
-    [openMenu],
+    (comment: RamenLogComment) => {
+      if (viewerId && comment.author.id === viewerId) {
+        openOwnCommentMenu(comment)
+        return
+      }
+      openMenu({
+        kind: "comment",
+        id: comment.id,
+        authorId: comment.author.id,
+        authorName: comment.author.name,
+        authorAvatar: comment.author.avatar ?? null,
+      })
+    },
+    [openMenu, openOwnCommentMenu, viewerId],
   )
   const renderComment = useCallback<ListRenderItem<RamenLogComment>>(
     ({ item }) => <CommentRow comment={item} onMore={onCommentMore} own={Boolean(viewerId) && item.author.id === viewerId} />,
     [onCommentMore, viewerId],
   )
 
+  const deleteOwnComment = useCallback(async () => {
+    if (!detail || !confirmingComment) return
+    setDeletingComment(true)
+    try {
+      await actions.deleteLogComment(detail.log.id, confirmingComment.id)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "댓글을 지우지 못했어요. 다시 시도해 주세요.")
+    } finally {
+      setDeletingComment(false)
+      setConfirmingComment(null)
+    }
+  }, [actions, confirmingComment, detail])
+
   const deleteOwnLog = useCallback(async () => {
     if (!detail) return
     setDeleting(true)
     try {
       await actions.deleteLog(detail.log.id)
-    } catch {
+    } catch (error) {
       setDeleting(false)
       setConfirmingDelete(false)
-      setDeleteFailed(true)
+      setNotice(error instanceof Error ? error.message : "라멘로그를 삭제하지 못했어요. 다시 시도해 주세요.")
       return
     }
     // 뒤로 가는 애니메이션 동안 "볼 수 없어요"가 비치지 않게 삭제한 결과를 먼저 남긴다
@@ -274,6 +325,27 @@ export default function LogDetailScreen() {
     setConfirmingDelete(false)
     goBack()
   }, [actions, detail])
+
+  const undoHidden = async (authorId: string) => {
+    try {
+      await actions.unhideAuthor(authorId)
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "숨김을 풀지 못했어요. 다시 시도해 주세요.")
+    }
+  }
+
+  const noticeToast = (
+    <Toast
+      message={notice ?? likeError ?? ""}
+      onDismiss={() => {
+        setNotice(null)
+        clearLikeError()
+      }}
+      style={{ bottom: TOAST_ABOVE_COMPOSER }}
+      variant="critical"
+      visible={Boolean(notice ?? likeError)}
+    />
+  )
 
   if (!detail) {
     let body = <LoadingState fullScreen label="라멘로그를 불러오는 중…" />
@@ -284,7 +356,7 @@ export default function LogDetailScreen() {
             actionLabel="되돌리기"
             description="이 사람의 라멘로그와 댓글은 라운지에 보이지 않아요."
             icon={<Soup color={colors.textMuted} size={32} />}
-            onAction={() => actions.unhideAuthor(outcome.authorId)}
+            onAction={() => void undoHidden(outcome.authorId)}
             title={`${outcome.authorName}님의 글을 숨겼어요`}
           />
         ) : outcome?.kind === "reported" ? (
@@ -318,28 +390,27 @@ export default function LogDetailScreen() {
         <Header backLabel="뒤로가기" onBack={goBack} title="라멘로그" />
         <View style={styles.flex}>{body}</View>
         {moderationElement}
+        {noticeToast}
       </Screen>
     )
   }
 
   const { log, comments } = detail
   const own = Boolean(viewerId) && log.author.id === viewerId
-  /*
-   * actions.deleteLog는 기기 저장소에 있는 기록만 지운다. 서버에서 읽은 기록(remote)은 저장소의 객체가 아니므로
-   * 삭제가 실제로 일어나지 않는다 — 가짜 삭제를 보여주지 않도록 그때는 내 기록 메뉴를 숨긴다(서버 삭제 API 연결 전까지)
-   */
-  const deletable = own && getLog(log.id) === log
-  const openLogMenu = () => openMenu({ kind: "log", id: log.id, authorId: log.author.id, authorName: log.author.name })
-  // 내 기록의 "…"은 신고·숨기기 대신 삭제만 둔다. 웹 미리보기처럼 액션 시트가 없으면 바로 확인 창을 연다
+  const openLogMenu = () =>
+    openMenu({ kind: "log", id: log.id, authorId: log.author.id, authorName: log.author.name, authorAvatar: log.author.avatar ?? null })
+  const editOwnLog = () => router.push({ pathname: "/record/new", params: { logId: log.id } })
+  // 내 기록의 "…"은 신고·숨기기 대신 수정·삭제를 둔다. 웹 미리보기처럼 액션 시트가 없으면 바텀시트로 연다
   const openOwnLogMenu = () => {
     if (Platform.OS !== "ios") {
-      setConfirmingDelete(true)
+      setOwnMenuOpen(true)
       return
     }
     ActionSheetIOS.showActionSheetWithOptions(
-      { title: "내 라멘로그", options: ["삭제", "취소"], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
+      { title: "내 라멘로그", options: ["수정하기", "삭제하기", "취소"], destructiveButtonIndex: 1, cancelButtonIndex: 2 },
       (index) => {
-        if (index === 0) setConfirmingDelete(true)
+        if (index === 0) editOwnLog()
+        if (index === 1) setConfirmingDelete(true)
       },
     )
   }
@@ -353,7 +424,7 @@ export default function LogDetailScreen() {
             첫 댓글을 남겨 대화를 시작해 보세요.
           </AppText>
         }
-        ListHeaderComponent={<LogDetailHeader commentCount={detail.commentCount} log={log} onLike={() => like(log)} onMore={deletable ? openOwnLogMenu : own ? undefined : openLogMenu} own={own} />}
+        ListHeaderComponent={<LogDetailHeader commentCount={detail.commentCount} log={log} onLike={() => void like(log)} onMore={own ? openOwnLogMenu : openLogMenu} own={own} />}
         ListFooterComponent={query.error ? (
           <EmptyState actionLabel="다시 불러오기" onAction={query.loadMoreComments} title="댓글을 불러오지 못했어요" />
         ) : query.isLoading && query.hasMoreComments ? <LoadingState label="댓글을 더 불러오는 중…" /> : null}
@@ -371,8 +442,34 @@ export default function LogDetailScreen() {
         style={styles.flex}
         testID="log-detail"
       />
-      <CommentComposer logId={log.id} onPosted={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)} />
+      <CommentComposer
+        logId={log.id}
+        onError={setNotice}
+        onPosted={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)}
+      />
       {moderationElement}
+      <BottomSheet onClose={() => setOwnMenuOpen(false)} title="내 라멘로그" visible={ownMenuOpen}>
+        <View style={styles.ownMenu}>
+          <Button
+            fullWidth
+            onPress={() => {
+              setOwnMenuOpen(false)
+              editOwnLog()
+            }}
+            title="수정하기"
+            variant="secondary"
+          />
+          <Button
+            fullWidth
+            onPress={() => {
+              setOwnMenuOpen(false)
+              setConfirmingDelete(true)
+            }}
+            title="삭제하기"
+            variant="danger"
+          />
+        </View>
+      </BottomSheet>
       <ConfirmDialog
         confirmLabel="삭제"
         destructive
@@ -383,13 +480,17 @@ export default function LogDetailScreen() {
         title="이 라멘로그를 삭제할까요?"
         visible={confirmingDelete}
       />
-      <Toast
-        message="라멘로그를 삭제하지 못했어요. 다시 시도해 주세요."
-        onDismiss={() => setDeleteFailed(false)}
-        style={{ bottom: TOAST_ABOVE_COMPOSER }}
-        variant="critical"
-        visible={deleteFailed}
+      <ConfirmDialog
+        confirmLabel="삭제"
+        destructive
+        loading={deletingComment}
+        message="삭제한 댓글은 되돌릴 수 없어요."
+        onCancel={() => setConfirmingComment(null)}
+        onConfirm={() => void deleteOwnComment()}
+        title="이 댓글을 삭제할까요?"
+        visible={Boolean(confirmingComment)}
       />
+      {noticeToast}
       <EdgeBackZone />
     </Screen>
   )
@@ -490,6 +591,7 @@ const styles = StyleSheet.create({
   commentMeta: { flexDirection: "row", alignItems: "center", gap: spacing.x2, minWidth: 0 },
   commentText: { fontSize: 14, lineHeight: 20 },
   commentMore: { marginTop: -7 },
+  ownMenu: { gap: spacing.x2 },
 
   // 댓글을 입력하는 동안에도 등록 버튼과 키보드 위 여백을 유지한다.
   composer: {

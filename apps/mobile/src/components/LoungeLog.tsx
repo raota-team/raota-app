@@ -173,11 +173,12 @@ export function LikeButton({ liked, count, onPress }: { liked: boolean; count: n
 }
 
 
-/** 공감 누르기: 비회원은 로그인으로, 공감할 때만 가벼운 햅틱 */
+/** 공감 누르기: 비회원은 로그인으로, 공감할 때만 가벼운 햅틱. 실패하면 스토어가 되돌리고 error에 문구를 남긴다 */
 export function useLikeLog() {
   const { currentUser, actions } = useRaota()
-  return useCallback(
-    (log: RamenLog) => {
+  const [error, setError] = useState<string | null>(null)
+  const like = useCallback(
+    async (log: RamenLog) => {
       if (!currentUser) {
         router.push("/auth/login")
         return
@@ -186,11 +187,16 @@ export function useLikeLog() {
         if (Platform.OS === "ios") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined)
         track("log_liked")
       }
-      // TODO(API): POST /logs/{id}/like (취소는 DELETE). 실패하면 되돌리고 토스트로 알린다
-      actions.toggleLogLike(log.id)
+      try {
+        await actions.toggleLogLike(log)
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : "공감을 반영하지 못했어요. 다시 시도해 주세요.")
+      }
     },
     [actions, currentUser],
   )
+  const clearError = useCallback(() => setError(null), [])
+  return { like, error, clearError }
 }
 
 // ---------------------------------------------------------------------------
@@ -420,6 +426,7 @@ export interface ModerationTarget {
   id: string
   authorId?: string
   authorName: string
+  authorAvatar?: string | null
 }
 
 interface ToastState {
@@ -460,12 +467,13 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
   )
 
   const hide = useCallback(
-    (target: ModerationTarget) => {
+    async (target: ModerationTarget) => {
       if (!currentUser) {
         router.push("/auth/login")
         return
       }
-      if (!target.authorId || !actions.hideAuthor(target.authorId)) {
+      const author = target.authorId ? { id: target.authorId, name: target.authorName, avatar: target.authorAvatar ?? null } : null
+      if (!author || !(await actions.hideAuthor(author))) {
         setToast({ message: "이 사용자를 숨기지 못했어요. 다시 시도해 주세요." })
         return
       }
@@ -488,7 +496,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
           },
           (index) => {
             if (index === 0) startReport(target)
-            if (index === 1) hide(target)
+            if (index === 1) void hide(target)
           },
         )
         return
@@ -498,17 +506,30 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
     [hide, startReport],
   )
 
-  const submitReport = () => {
+  const submitReport = async () => {
     if (!reportTarget || !reason) return
-    const report = actions.reportContent({ kind: reportTarget.kind, id: reportTarget.id, reason })
     const target = reportTarget
     setReportTarget(null)
-    if (!report) {
-      setToast({ message: "신고를 보내지 못했어요. 로그인 상태를 확인해 주세요." })
+    try {
+      const report = await actions.reportContent({ kind: target.kind, id: target.id, reason })
+      if (!report) {
+        setToast({ message: "신고를 보내지 못했어요. 로그인 상태를 확인해 주세요." })
+        return
+      }
+    } catch (failure) {
+      setToast({ message: failure instanceof Error ? failure.message : "신고를 보내지 못했어요. 다시 시도해 주세요." })
       return
     }
     setToast({ message: "신고를 접수했어요. 검토 후 조치할게요." })
     onReported?.(target)
+  }
+
+  const undoHide = async (authorId: string) => {
+    try {
+      await actions.unhideAuthor(authorId)
+    } catch (failure) {
+      setToast({ message: failure instanceof Error ? failure.message : "숨김을 풀지 못했어요. 다시 시도해 주세요." })
+    }
   }
 
   const menuNoun = menuTarget?.kind === "comment" ? "댓글" : "라멘로그"
@@ -536,7 +557,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
           onPress={() => {
             const target = menuTarget
             setMenuTarget(null)
-            if (target) hide(target)
+            if (target) void hide(target)
           }}
         />
       </BottomSheet>
@@ -555,7 +576,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
             >
               신고 사유를 고르면 보낼 수 있어요
             </AppText>
-            <Button disabled={!reason} fullWidth onPress={submitReport} title="신고하기" />
+            <Button disabled={!reason} fullWidth onPress={() => void submitReport()} title="신고하기" />
           </View>
         }
         onClose={() => setReportTarget(null)}
@@ -588,8 +609,9 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
         actionLabel={toast?.undoAuthorId ? "되돌리기" : undefined}
         message={toast?.message ?? ""}
         onAction={() => {
-          if (toast?.undoAuthorId) actions.unhideAuthor(toast.undoAuthorId)
+          const authorId = toast?.undoAuthorId
           setToast(null)
+          if (authorId) void undoHide(authorId)
         }}
         onDismiss={() => setToast(null)}
         style={toastStyle}

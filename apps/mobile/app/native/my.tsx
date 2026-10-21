@@ -33,7 +33,7 @@ import {
   type RamenLog,
 } from "@raota/shared"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, BottomSheet, Button, Chip, EmptyState, Tag, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, Chip, EmptyState, LoadingState, Tag, Toast } from "@/src/components/ui"
 import {
   useBookmarkedShops,
   useLongestStreak,
@@ -180,7 +180,8 @@ function MemberView() {
   const { height: windowHeight } = useWindowDimensions()
   const focused = useIsFocused()
   const { currentUser: user, actions } = useRaota()
-  const { data: bowls } = useMyBowls()
+  const bowlsQuery = useMyBowls()
+  const bowls = bowlsQuery.data
   // 한 화면의 숫자는 하나의 원천에서 센다. 프로필 카운터(visitedCount)는 캘린더·최근 기록·리포트가 쓰는
   // 그릇 목록과 어긋날 수 있어(42 대 43), 머리글·탭·등급까지 모두 그릇 목록 길이로 맞춘다
   const recordCount = bowls.length
@@ -188,8 +189,10 @@ function MemberView() {
   const { data: streak } = useLongestStreak()
   const level = getRamenActivityLevel(recordCount)
   const { data: identity } = useTasteIdentity()
-  const { data: myLogs } = useMyLogs()
-  const { data: saved } = useBookmarkedShops()
+  const myLogsQuery = useMyLogs()
+  const myLogs = myLogsQuery.data
+  const bookmarks = useBookmarkedShops()
+  const saved = bookmarks.data
   const { data: shops } = useLocalShops()
 
   const [tab, setTab] = useState<ActivityTab>("logs")
@@ -239,10 +242,26 @@ function MemberView() {
   }
 
   const recentLogs = bowls.slice(0, recentLimit).map((bowl) => {
+    if (bowl.logId) {
+      // 서버 기록: 이름이 같은 지점이 섞이지 않게 기록 id와 매장 id로 맞춘다
+      const log = myLogs.find((item) => item.id === bowl.logId)
+      const shop = (bowl.shopId ? shops.find((item) => item.id === bowl.shopId) : undefined) ?? shopByName(bowl.shop)
+      const branch = log?.shop.branch ?? myLogs.find((item) => item.shop.id === bowl.shopId)?.shop.branch ?? shop?.branch
+      return { ...bowl, shop, branch, name: bowl.shop, photo: log?.imageUrl ?? shop?.photos[0] }
+    }
     const shop = shopByName(bowl.shop)
     const log = myLogs.find((item) => item.shop.name === bowl.shop && item.menuName === bowl.menu)
-    return { ...bowl, shop, name: bowl.shop, photo: log?.imageUrl ?? shop?.photos[0] }
+    return { ...bowl, shop, branch: shop?.branch, name: bowl.shop, photo: log?.imageUrl ?? shop?.photos[0] }
   })
+  // 보이는 서버 기록의 사진이 아직 안 읽은 쪽에 있으면 내 기록 다음 쪽을 읽는다
+  const recentNeedsLogs = recentLogs.some((row) => row.logId && !myLogs.some((log) => log.id === row.logId))
+  const { hasMore: myLogsHasMore, loadMore: loadMoreMyLogs } = myLogsQuery
+  useEffect(() => {
+    if (recentNeedsLogs && myLogsHasMore) loadMoreMyLogs()
+  }, [loadMoreMyLogs, myLogs.length, myLogsHasMore, recentNeedsLogs])
+  const retryAccount = () => {
+    void actions.refreshAccount().catch(() => undefined)
+  }
 
   const filteredVisits = useMemo(() => {
     const query = visitQuery.trim().toLowerCase()
@@ -279,10 +298,14 @@ function MemberView() {
     setTab(next)
   }
 
-  const unsave = (shop: Shop) => {
+  const unsave = async (shop: Shop) => {
     haptic()
-    actions.toggleBookmark(shop.id)
-    setToast(`'${shop.name}' 저장을 해제했어요`)
+    try {
+      await actions.toggleBookmark(shop)
+      setToast(`'${shop.name}' 저장을 해제했어요`)
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "찜을 해제하지 못했어요. 다시 시도해 주세요.")
+    }
   }
   const openProfileEditor = () => {
     setDraftAvatar(user.avatar)
@@ -429,6 +452,21 @@ function MemberView() {
               </Pressable>
             )}
           </View>
+          {/* 서버에서 그릇 목록을 못 읽었으면 0그릇으로 보이지 않게 다시 불러오기를 둔다 */}
+          {bowlsQuery.error ? (
+            <Pressable
+              accessibilityLabel="기록을 불러오지 못했어요. 다시 불러오기"
+              accessibilityRole="button"
+              onPress={retryAccount}
+              style={({ pressed }) => [styles.levelProgress, pressed && styles.gradePressed]}
+            >
+              <View style={styles.levelCaption}>
+                <AppText tone="muted" variant="meta">기록을 불러오지 못했어요 · 다시 불러오기</AppText>
+                <ChevronRight color={colors.textMuted} size={14} />
+              </View>
+            </Pressable>
+          ) : (
+          <>
           <View style={styles.stats}>
             {stats.map((stat, index) => (
               <View accessibilityLabel={`${stat.label} ${stat.value}${stat.unit}`} accessible key={stat.label} style={styles.stat}>
@@ -464,6 +502,8 @@ function MemberView() {
               <ChevronRight color={colors.textMuted} size={14} />
             </View>
           </Pressable>
+          </>
+          )}
         </View>
 
         <View
@@ -614,18 +654,22 @@ function MemberView() {
                   >
                     {recentLogs.map((log, index) => (
                       <Pressable
-                        accessibilityLabel={`${log.name}${log.shop?.branch ? ` ${log.shop.branch}` : ""}, ${log.menu}, ${log.type}, ${shortDate(log.date)}`}
-                        accessibilityRole={log.shop ? "button" : "text"}
-                        disabled={!log.shop}
-                        key={`${log.date}-${log.name}-${log.menu}-${index}`}
-                        onPress={() => openShop(log.shop)}
+                        accessibilityLabel={`${log.name}${log.branch ? ` ${log.branch}` : ""}, ${log.menu}, ${log.type}, ${shortDate(log.date)}`}
+                        accessibilityRole={log.logId || log.shop ? "button" : "text"}
+                        disabled={!log.logId && !log.shop}
+                        key={log.logId ?? `${log.date}-${log.name}-${log.menu}-${index}`}
+                        onPress={() => {
+                          // 서버 기록은 그 기록 상세로, 기기 기록은 매장으로 연다
+                          if (log.logId) router.push({ pathname: "/log/[logId]", params: { logId: log.logId } })
+                          else openShop(log.shop)
+                        }}
                         style={({ pressed }) => [styles.listRow, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
                       >
                         <Thumb letter={log.name} uri={log.photo} />
                         <View style={styles.flex}>
                           <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} variant="cardTitle">
                             {log.name}
-                            {log.shop?.branch ? <AppText tone="sub" variant="secondary">{` ${log.shop.branch}`}</AppText> : null}
+                            {log.branch ? <AppText tone="sub" variant="secondary">{` ${log.branch}`}</AppText> : null}
                           </AppText>
                           <View style={styles.rowGap}>
                             {log.type ? (
@@ -642,6 +686,15 @@ function MemberView() {
                       </Pressable>
                     ))}
                   </ActivityListFrame>
+                ) : bowlsQuery.isLoading ? (
+                  <LoadingState label="기록을 불러오는 중…" />
+                ) : bowlsQuery.error ? (
+                  <EmptyState
+                    actionLabel="다시 불러오기"
+                    description="잠시 후 다시 시도해 주세요."
+                    onAction={retryAccount}
+                    title="기록을 불러오지 못했어요"
+                  />
                 ) : (
                   <EmptyState
                     actionLabel="첫 그릇 기록하기"
@@ -757,7 +810,7 @@ function MemberView() {
           {tab === "saved" ? (
             <View style={styles.infoSection}>
               <AppText accessibilityRole="header" variant="sectionTitle">
-                가고 싶은 라멘집 <AppText tone="sub" variant="sectionTitle">{saved.length}곳</AppText>
+                가고 싶은 라멘집{bookmarks.isLoading || bookmarks.error ? null : <AppText tone="sub" variant="sectionTitle"> {saved.length}곳</AppText>}
               </AppText>
               <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
                 매장 상세에서 저장한 곳이에요.
@@ -765,7 +818,17 @@ function MemberView() {
               {saved.length > 0 ? (
                 <SearchField label="저장한 라멘집 검색" onChange={(query) => { setSavedQuery(query); setSavedLimit(VISIBLE_ROWS) }} placeholder="매장, 지점, 스타일 검색" value={savedQuery} />
               ) : null}
-              {filteredSaved.length === 0 ? (
+              {saved.length === 0 && bookmarks.isLoading ? (
+                <LoadingState label="저장한 라멘집을 불러오는 중…" />
+              ) : saved.length === 0 && bookmarks.error ? (
+                <EmptyState
+                  actionLabel="다시 불러오기"
+                  description="잠시 후 다시 시도해 주세요."
+                  icon={<Bookmark color={colors.textMuted} size={24} />}
+                  onAction={retryAccount}
+                  title="저장한 라멘집을 불러오지 못했어요"
+                />
+              ) : filteredSaved.length === 0 ? (
                 <EmptyState
                   description={saved.length ? "다른 이름이나 스타일로 찾아보세요." : "매장 상세에서 저장하면 여기에 모여요."}
                   icon={<Bookmark color={colors.textMuted} size={24} />}

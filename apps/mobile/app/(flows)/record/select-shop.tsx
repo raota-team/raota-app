@@ -169,12 +169,7 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
   const searchRef = useRef<TextInput>(null)
 
   const allShops = useMemo(() => shopsQuery.data.map(toShopItem).sort(byDistance), [shopsQuery.data])
-  const savedShops = useMemo(
-    () => (shopsQuery.remote
-      ? shopsQuery.data.filter((shop) => state.bookmarkedShopIds.includes(shop.id))
-      : bookmarked.data).map(toShopItem).sort(byDistance),
-    [bookmarked.data, shopsQuery.data, shopsQuery.remote, state.bookmarkedShopIds],
-  )
+  const savedShops = useMemo(() => bookmarked.data.map(toShopItem).sort(byDistance), [bookmarked.data])
 
   // 빠른 검색어는 원장의 스타일과 동네에서만 만든다. 인기 검색어처럼 꾸미지 않는다.
   const quickKeywords = useMemo(
