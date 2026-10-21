@@ -45,7 +45,9 @@ export default function ConsentScreen() {
     try {
       await actions.agreeToConsents(consents.marketing)
       proceed()
-    } catch {
+    } catch (error) {
+      // 서버 거절인지 네트워크인지 가려야 고칠 수 있다
+      if (__DEV__) console.warn("[consent] save failed", isApiError(error) ? `${error.status} ${error.code}` : String(error))
       setToast(SAVE_ERROR)
     } finally {
       setSaving(false)
