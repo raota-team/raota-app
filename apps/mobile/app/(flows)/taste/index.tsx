@@ -66,6 +66,8 @@ const FALL_HEIGHT = 170
 const LANDING_SQUASH = 0.04
 const SQUASH_IN = 24
 const NUDGE_DURATION = 160
+/** 그릇이 아래 그릇 안에 앉을 때 좌우로 살짝 흔들렸다 자리 잡는 각도(도). 방향은 그릇마다 번갈아 바뀐다 */
+const SETTLE_TILT = 3
 const HIGHLIGHT_DELAY = 200
 const WINNER_LIFT = 4
 const LIFT_DURATION = 380
@@ -159,7 +161,12 @@ const STEAM_STROKE = 1.8
 /** 받침선 위로 그릇이 쌓이는 높이. 가장 높은 탑 위에 김이 오를 자리(TOWER_HEADROOM)를 늘 남긴다 */
 const TOWER_STAGE_HEIGHT = 252
 const TOWER_HEADROOM = 40
-const TOWER_MAX_GAP = 13
+const TOWER_MAX_GAP = 12
+/**
+ * 겹쳐 쌓인 그릇은 아래 그릇의 앞면이 위 그릇의 바닥을 가린다(그릇이 포개지는 모양).
+ * 그래서 아래층일수록 앞에 그린다. 새 그릇은 탑 뒤로 내려와 꼭대기 그릇 안에 앉는다
+ */
+const TOWER_Z_TOP = 200
 const LOADING_SHEET_MAX_WIDTH = 358
 const LOADING_TITLES = {
   drop: "그릇을 쌓고 있어요",
@@ -238,6 +245,7 @@ const TowerBowl = memo(function TowerBowl({
   dropAt,
   height,
   left,
+  level,
   order,
   reducedMotion,
   top,
@@ -248,6 +256,7 @@ const TowerBowl = memo(function TowerBowl({
   dropAt: number
   height: number
   left: number
+  level: number
   order: number
   reducedMotion: boolean
   top: number
@@ -256,11 +265,13 @@ const TowerBowl = memo(function TowerBowl({
 }) {
   const fall = useSharedValue(reducedMotion ? 1 : 0)
   const squash = useSharedValue(0)
+  const tilt = useSharedValue(0)
   const surface = useSharedValue(reducedMotion && coveredAt !== null ? 0 : 1)
   useEffect(() => {
     if (reducedMotion) {
       fall.value = 1
       squash.value = 0
+      tilt.value = 0
       surface.value = coveredAt === null ? 1 : 0
       return
     }
@@ -272,18 +283,29 @@ const TowerBowl = memo(function TowerBowl({
         withTiming(0, { duration: FALL_DURATION - FALL_IMPACT - SQUASH_IN, easing: Easing.out(Easing.quad) }),
       ),
     )
+    const lean = order % 2 === 0 ? SETTLE_TILT : -SETTLE_TILT
+    tilt.value = withDelay(
+      dropAt + FALL_IMPACT,
+      withSequence(
+        withTiming(lean, { duration: 70, easing: Easing.out(Easing.quad) }),
+        withTiming(-lean / 2, { duration: 110, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: 140, easing: Easing.out(Easing.quad) }),
+      ),
+    )
     if (coveredAt !== null) surface.value = withDelay(coveredAt, withTiming(0, { duration: 0 }))
     return () => {
       cancelAnimation(fall)
       cancelAnimation(squash)
+      cancelAnimation(tilt)
       cancelAnimation(surface)
     }
-  }, [coveredAt, dropAt, fall, reducedMotion, squash, surface])
+  }, [coveredAt, dropAt, fall, order, reducedMotion, squash, surface, tilt])
   const fallStyle = useAnimatedStyle(() => ({
     // 위에서 나타나 받침에 닿으면 살짝 눌렸다(가로 4% 넓게, 세로 4% 낮게) 돌아온다
     opacity: Math.min(1, fall.value / 0.3),
     transform: [
       { translateY: -FALL_HEIGHT * (1 - fall.value) },
+      { rotate: `${tilt.value}deg` },
       { scaleX: 1 + LANDING_SQUASH * squash.value },
       { scaleY: 1 - LANDING_SQUASH * squash.value },
     ],
@@ -291,7 +313,7 @@ const TowerBowl = memo(function TowerBowl({
   const surfaceProps = useAnimatedProps(() => ({ opacity: surface.value }))
   const soup = soupColorOf(type)
   return (
-    <Animated.View style={[styles.towerBowl, { left, top, width, height }, fallStyle]} testID={`report-bowl-${order}`}>
+    <Animated.View style={[styles.towerBowl, { left, top, width, height, zIndex: TOWER_Z_TOP - 1 - level }, fallStyle]} testID={`report-bowl-${order}`}>
       <Svg height={height} viewBox={`0 0 ${BOWL_VIEW_WIDTH} ${BOWL_VIEW_HEIGHT}`} width={width}>
         <Path
           d={BOWL_PATH}
@@ -339,7 +361,7 @@ function SteamWisp({ d, delay, height, index, left, top, width }: {
     transform: [{ translateY: 5 - 21 * rise.value }],
   }))
   return (
-    <Animated.View style={[styles.towerBowl, { left, top, width, height }, style]} testID={`report-tower-steam-${index}`}>
+    <Animated.View style={[styles.towerBowl, { left, top, width, height, zIndex: TOWER_Z_TOP }, style]} testID={`report-tower-steam-${index}`}>
       <Svg height={height} viewBox={`0 0 ${BOWL_VIEW_WIDTH} ${BOWL_VIEW_HEIGHT}`} width={width}>
         <Path d={d} fill="none" stroke={colors.outline} strokeLinecap="round" strokeWidth={STEAM_STROKE} />
       </Svg>
@@ -409,8 +431,8 @@ function TasteTower({ bowlHeight, bowlWidth, gap, highlightAt, left, plan, reduc
           coveredAt={bowl.coveredAt}
           dropAt={bowl.dropAt}
           height={bowlHeight}
-          key={bowl.order}
           left={left}
+          level={bowl.level}
           order={bowl.order}
           reducedMotion={reducedMotion}
           top={topOf(bowl.level)}
