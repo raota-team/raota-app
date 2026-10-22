@@ -8,8 +8,9 @@ import type { RecommendationRequest, RecommendationResponse, TodayCuration } fro
  */
 export function createRecommendationApi(client: ApiClient = apiClient) {
   return {
+    /** 서버가 검색을 20초까지 기다리므로 기본 15초보다 길게 기다린다. 짧으면 서버 답보다 앱 시간 초과가 먼저 난다 */
     recommend(body: RecommendationRequest): Promise<RecommendationResponse> {
-      return client.post<RecommendationResponse>("/ai/recommendations", body)
+      return client.post<RecommendationResponse>("/ai/recommendations", body, { timeoutMs: 25_000 })
     },
 
     /** 오늘의 큐레이션. 오늘 고른 매장이 없으면 null */
