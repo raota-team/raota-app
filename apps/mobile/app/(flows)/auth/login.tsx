@@ -147,11 +147,12 @@ function AppleMark({ color }: { color: ColorValue }) {
   )
 }
 
+/** 카카오 로그인 디자인 가이드의 말풍선 심볼(18×18). 예전 경로는 오른쪽 끝이 뾰족하게 꺾였다 */
 function KakaoMark() {
   return (
-    <Svg height={20} viewBox="0 0 24 24" width={20}>
+    <Svg height={20} viewBox="0 0 18 18" width={20}>
       <Path
-        d="M12 3C6.477 3 2 6.477 2 10.767c0 2.766 1.87 5.187 4.675 6.485-.205.768-.744 2.783-.852 3.203-.133.522.191.516.402.377.275-.182 4.37-2.96 5.09-3.46.88.13 1.777.195 2.685.195 5.523 0 10-3.477 10-7.767C22 6.477 17.523 3 12 3z"
+        d="M9 .6C4.029.6 0 3.712 0 7.552c0 2.389 1.558 4.494 3.932 5.745l-.999 3.648c-.088.322.28.579.563.392l4.377-2.889c.37.036.745.057 1.127.057 4.97 0 9-3.112 9-6.953C18 3.712 13.97.6 9 .6"
         fill={PROVIDER_BRAND.kakaoLabel}
       />
     </Svg>
@@ -412,7 +413,7 @@ const styles = StyleSheet.create({
   logo: { width: 60, height: 60 },
   headline: { ...typography.screenTitle, fontSize: 22, lineHeight: 28, letterSpacing: -0.6, textAlign: "center", marginTop: spacing.x3 },
   subtitle: { fontSize: 13, lineHeight: 18, textAlign: "center", marginTop: 4 },
-  providers: { gap: spacing.x4, marginTop: spacing.section, marginHorizontal: 24 },
+  providers: { gap: spacing.x4, marginTop: spacing.x12, marginHorizontal: 24 },
   provider: {
     minHeight: 48,
     borderRadius: radii.sm,

@@ -566,10 +566,7 @@ function MemberView() {
                       ))}
                     </View>
                     <ScrollView
-                      // 양 끝에 닿았을 때 캘린더가 더 끌려가며 밀리지 않게 튕김을 끈다
-                      bounces={false}
                       horizontal
-                      overScrollMode="never"
                       onContentSizeChange={() => calendarRef.current?.scrollToEnd({ animated: false })}
                       ref={calendarRef}
                       showsHorizontalScrollIndicator={false}
