@@ -15,7 +15,7 @@ import {
   findNodeHandle,
   useWindowDimensions,
 } from "react-native"
-import Animated, { Easing, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
+import Animated, { Easing, cancelAnimation, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from "react-native-reanimated"
 import type { Edge } from "react-native-safe-area-context"
 
 import { type Shop, type ShopCatalogItem, type TasteReport } from "@raota/shared"
@@ -546,8 +546,10 @@ export default function AIRecommendScreen() {
   const selectedConditions = useMemo(() => chosenConditions(inputs), [inputs])
   const [step, setStep] = useState<Step>(1)
   const [curation, setCuration] = useState<Curation | null>(null)
-  // 로컬 계산이 먼저 끝나도 식권 연출은 준비 완료 신호를 따로 기다린다.
-  const resultReady = useMemo(() => Promise.resolve(curation), [curation])
+  // 식권 연출이 기다리는 준비 신호. 서버 추천은 응답 전에 발권 화면으로 넘어가 이 약속을 기다린다
+  const [resultReady, setResultReady] = useState<Promise<Curation | null>>(() => Promise.resolve(null))
+  // 발권 화면을 나가거나 다시 요청하면 앞선 응답은 버린다
+  const requestSeq = useRef(0)
   const scrollRef = useRef<ScrollView>(null)
   const headingRef = useRef<View>(null)
   const [issueDate] = useState(() => {
@@ -573,6 +575,7 @@ export default function AIRecommendScreen() {
   // 2~4단계(와 발권 연출)에서 스와이프·하드웨어 뒤로 가기는 플로우를 나가지 않고 한 단계만 올라간다.
   // 나가면 고른 답이 전부 사라진다. 1단계와 결과 화면은 평소처럼 나간다. usePreventRemove는 iOS 네이티브 스와이프까지 막는다
   usePreventRemove(step !== 1 && step !== "result", () => {
+    if (step === "loading") requestSeq.current += 1
     setStep((current) => (current === "loading" ? 4 : typeof current === "number" && current > 1 ? ((current - 1) as Step) : current))
   })
 
@@ -588,7 +591,7 @@ export default function AIRecommendScreen() {
     if (key !== "prompt") void Haptics.selectionAsync().catch(() => undefined)
   }
 
-  const startAnalysis = async () => {
+  const startAnalysis = () => {
     if (remoteCurator && !loggedIn) {
       router.push("/auth/login")
       return
@@ -600,26 +603,44 @@ export default function AIRecommendScreen() {
       priority: inputs.priorityId,
       hasPrompt: inputs.prompt.trim().length > 0,
     })
-    let next: Curation | null
-    if (remoteCurator) {
-      requestingRef.current = true
-      setRequesting(true)
-      try {
-        next = await curateRemote(inputs, origin)
-      } catch {
-        // curateRemote는 요청이 너무 잦을 때(429)만 던진다. 대신 고르지 않고 지금 단계에 머문다
-        setToast(RATE_LIMITED_MESSAGE)
-        return
-      } finally {
+    const request = ++requestSeq.current
+    if (!remoteCurator) {
+      const next = curate(shopsQuery.data as CuratorShop[], inputs, taste)
+      setCuration(next)
+      setResultReady(Promise.resolve(next))
+      // Reduce Motion이면 연출 없이 바로 결과를 보여준다
+      setStep(next && !reducedMotion ? "loading" : "result")
+      return
+    }
+    requestingRef.current = true
+    setRequesting(true)
+    const pending = curateRemote(inputs, origin)
+    // 서버 추천은 몇 초에서 25초까지 걸린다. 버튼에서 기다리게 하지 않고 발권 화면으로 바로 넘어가 거기서 기다린다.
+    // Reduce Motion이면 연출 없이 버튼에서 기다렸다가 결과를 보여준다
+    if (!reducedMotion) {
+      setCuration(null)
+      setResultReady(pending)
+      setStep("loading")
+    }
+    pending
+      .then(
+        (next) => {
+          if (requestSeq.current !== request) return
+          setCuration(next)
+          // 추천을 하나도 못 만들었으면 식권 없이 실패 화면으로 간다
+          if (!next || reducedMotion) setStep("result")
+        },
+        () => {
+          if (requestSeq.current !== request) return
+          // curateRemote는 요청이 너무 잦을 때(429)만 던진다. 대신 고르지 않고 4단계로 돌아간다
+          setStep(4)
+          setToast(RATE_LIMITED_MESSAGE)
+        },
+      )
+      .finally(() => {
         requestingRef.current = false
         setRequesting(false)
-      }
-    } else {
-      next = curate(shopsQuery.data as CuratorShop[], inputs, taste)
-    }
-    setCuration(next)
-    // Reduce Motion이면 연출 없이 바로 결과를 보여준다
-    setStep(next && !reducedMotion ? "loading" : "result")
+      })
   }
 
   const restart = () => {
@@ -644,15 +665,18 @@ export default function AIRecommendScreen() {
     router.push({ pathname: "/record/new", params: { shopId: shop.id } })
   }
 
-  if (step === "loading" && curation) {
+  if (step === "loading") {
     return (
       <CurationLoading
         conditions={selectedConditions.filter(({ value }) => value !== "")}
-        onBack={() => setStep(4)}
+        onBack={() => {
+          requestSeq.current += 1
+          setStep(4)
+        }}
         onComplete={() => setStep("result")}
         resultReady={resultReady}
-        shop={curation.shop}
-        typeLabel={curation.typeLabel}
+        shop={curation?.shop ?? null}
+        typeLabel={curation?.typeLabel ?? ""}
       />
     )
   }
@@ -943,6 +967,34 @@ export default function AIRecommendScreen() {
   )
 }
 
+const DOT_CYCLE = 1200
+
+/** 서버 응답을 기다리는 동안 안내 문구 옆에서 차례로 밝아지는 점 세 개. 장식이라 스크린리더는 읽지 않는다 */
+function LoadingDots() {
+  const reducedMotion = useReducedMotion()
+  const progress = useSharedValue(0)
+  useEffect(() => {
+    if (reducedMotion) return
+    progress.value = withRepeat(withTiming(1, { duration: DOT_CYCLE, easing: Easing.linear }), -1, false)
+    return () => cancelAnimation(progress)
+  }, [progress, reducedMotion])
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.dots} testID="curation-loading-dots">
+      {[0, 1, 2].map((index) => <LoadingDot index={index} key={index} progress={progress} still={reducedMotion} />)}
+    </View>
+  )
+}
+
+function LoadingDot({ index, progress, still }: { index: number; progress: SharedValue<number>; still: boolean }) {
+  const style = useAnimatedStyle(() => {
+    if (still) return { opacity: 0.6 }
+    // 점마다 1/3 주기씩 늦게 밝아졌다가 흐려진다
+    const phase = (progress.value - index / 3 + 1) % 1
+    return { opacity: 0.25 + 0.75 * Math.max(0, 1 - Math.abs(phase - 0.2) * 3) }
+  })
+  return <Animated.View style={[styles.dot, style]} />
+}
+
 function RestartButton({ label = "다시 추천받기", onPress }: { label?: string; onPress: () => void }) {
   return (
     <Pressable
@@ -978,7 +1030,8 @@ function CurationLoading({
   onBack: () => void
   onComplete: () => void
   resultReady: Promise<Curation | null>
-  shop: CuratorShop
+  /** 서버 응답 전에는 null이다. 그동안은 식권 윗부분까지만 보여서 매장 칸이 비어 있어도 드러나지 않는다 */
+  shop: CuratorShop | null
   typeLabel: string
 }) {
   const { width: screenWidth } = useWindowDimensions()
@@ -1070,9 +1123,11 @@ function CurationLoading({
     return () => clearTimeout(timer)
   }, [phase, ready, reducedMotion])
 
-  const place = shop.distanceM > 0
-    ? shop.distanceM >= 1000 ? `${(shop.distanceM / 1000).toFixed(1)}km` : `${shop.distanceM}m`
-    : shop.address.trim().split(/\s+/).slice(0, 2).join(" ")
+  const place = !shop
+    ? ""
+    : shop.distanceM > 0
+      ? shop.distanceM >= 1000 ? `${(shop.distanceM / 1000).toFixed(1)}km` : `${shop.distanceM}m`
+      : shop.address.trim().split(/\s+/).slice(0, 2).join(" ")
 
   return (
     <Screen contentContainerStyle={styles.flex} edges={ALL_EDGES}>
@@ -1129,7 +1184,7 @@ function CurationLoading({
             </View>
             <View style={styles.ticketMain}>
               <AppText tone="muted" variant="meta">오늘의 한 그릇</AppText>
-              <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketName} variant="headline">{shop.name}</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketName} variant="headline">{shop?.name ?? ""}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketPlace} tone="sub" variant="secondary">
                 {[typeLabel, place].filter(Boolean).join(" · ")}
               </AppText>
@@ -1142,9 +1197,11 @@ function CurationLoading({
 
         <View style={styles.loadingActions}>
           <View accessibilityLiveRegion="polite" style={styles.statusLine}>
-            <AppText accessibilityRole="text" lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="secondary">
+            <AppText accessibilityRole="text" lineBreakStrategyIOS="hangul-word" style={styles.statusText} tone="sub" variant="secondary">
               {message}
             </AppText>
+            {/* 서버 추천은 몇 초에서 25초까지 걸려, 기다리는 동안 멈춘 화면처럼 보이지 않게 점을 움직인다 */}
+            {!ready && !failed ? <LoadingDots /> : null}
           </View>
           {phase === "error" ? (
             <Button onPress={onBack} size="small" title="추천 조건으로 돌아가기" variant="ghost" />
@@ -1353,5 +1410,8 @@ const styles = StyleSheet.create({
   ticketPlace: { marginTop: spacing.x1 },
   ticketFoot: { paddingHorizontal: spacing.x5, paddingTop: spacing.x5, paddingBottom: spacing.x5 },
   loadingActions: { alignItems: "center", gap: spacing.x1, marginTop: spacing.section },
-  statusLine: { minHeight: touchTarget, justifyContent: "center" },
+  statusLine: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.x1_5 },
+  statusText: { textAlign: "center", flexShrink: 1 },
+  dots: { flexDirection: "row", alignItems: "center", gap: 4 },
+  dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.textMuted },
 })

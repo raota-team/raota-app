@@ -4,6 +4,7 @@ import { Linking, StyleSheet } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import { createInitialPersistedState } from "@/src/data/fixtures"
+import { remoteReads } from "@/src/data/remote"
 import type * as FixturesModule from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import type * as SharedModule from "@raota/shared"
@@ -51,6 +52,14 @@ jest.mock("expo-location", () => ({
 }))
 
 jest.mock("@/src/analytics", () => ({ track: jest.fn() }))
+jest.mock("@/src/api/config", () => {
+  const isRemote = jest.fn((_domain: string) => false)
+  return {
+    ...jest.requireActual("@/src/api/config"),
+    isRemote,
+    isRemoteWithAccount: jest.fn((domain: string) => isRemote(domain) && isRemote("auth")),
+  }
+})
 
 
 // SHOP_CATALOG에는 화면 확인용 더미 상세가 덧입혀져 있다. 정보가 빈 매장의 빈 상태를 보려고
@@ -65,6 +74,7 @@ jest.mock("@/src/data/fixtures", () => {
 const { router } = jest.requireMock("expo-router") as { router: Record<string, jest.Mock> }
 const { track } = jest.requireMock("@/src/analytics") as { track: jest.Mock }
 const { usePreventRemove } = jest.requireMock("expo-router/react-navigation") as { usePreventRemove: jest.Mock }
+const { isRemote } = jest.requireMock("@/src/api/config") as { isRemote: jest.Mock }
 
 function repository(guest = false): RaotaRepository {
   const state = createInitialPersistedState()
@@ -474,5 +484,44 @@ describe("AI curator", () => {
     jest.useRealTimers()
     await fireEvent.press(view.getByRole("button", { name: "이 가게 기록하기" }))
     expect(router.push).toHaveBeenCalledWith("/auth/login")
+  })
+
+  it("moves to the ticket screen right away while the server recommendation is still on its way", async () => {
+    isRemote.mockImplementation((domain: string) => domain === "recommendations")
+    const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
+    const answer = Promise.withResolvers<{ shops: (typeof SHOPS)[number][]; appliedConditions: string[] }>()
+    const recommendations = jest
+      .spyOn(remoteReads as unknown as { recommendations: (...args: unknown[]) => Promise<unknown> }, "recommendations")
+      .mockReturnValue(answer.promise)
+    try {
+      jest.useFakeTimers()
+      const view = await renderScreen(<AIRecommendScreen />)
+      await view.findByText("1 / 4")
+      await fireEvent.press(view.getByRole("radio", { name: "쇼유, 간장 타레" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      await fireEvent.press(view.getByRole("radio", { name: "혼밥하기 좋은 곳, 혼자 편하게" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      await fireEvent.press(view.getByRole("radio", { name: "깔끔하고 깊은 감칠맛, 청탕 · 맑은 국물" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      await fireEvent.press(view.getByRole("button", { name: "AI 맞춤 추천받기" }))
+
+      // 서버가 아직 답하지 않았어도 발권 화면이 떠 있고, 결과가 없으니 건너뛰기는 아직 없다
+      expect(recommendations).toHaveBeenCalledTimes(1)
+      expect(view.getByLabelText("국물, 쇼유, 확인 중")).toBeTruthy()
+      expect(view.queryByRole("button", { name: "추천 바로 보기" })).toBeNull()
+      expect(view.getByTestId("curation-loading-dots", { includeHiddenElements: true })).toBeTruthy()
+
+      await act(async () => {
+        answer.resolve({ shops: [{ ...SHOPS[0], id: "9001", name: "서버추천라멘" }], appliedConditions: ["쇼유"] })
+      })
+      // 답이 오면 기다림 표시는 사라지고 건너뛰기가 나온다
+      expect(view.queryByTestId("curation-loading-dots", { includeHiddenElements: true })).toBeNull()
+      await fireEvent.press(view.getByRole("button", { name: "추천 바로 보기" }))
+      expect(view.getByText(`오늘 ${NICKNAME}님을 위한 라멘집`)).toBeTruthy()
+      expect(view.getAllByText(/서버추천라멘/).length).toBeGreaterThan(0)
+    } finally {
+      recommendations.mockRestore()
+      isRemote.mockImplementation(() => false)
+    }
   })
 })
