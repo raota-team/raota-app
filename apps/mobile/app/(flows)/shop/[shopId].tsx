@@ -483,12 +483,14 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           </View>
         </View>
 
-        {/* 소개 글은 원장의 AI 요약 또는 매장 설명을 그대로 쓴다. */}
+        {/* 소개 글은 원장의 AI 요약 또는 매장 설명을 그대로 쓴다.
+            서버 매장 설명은 리뷰를 AI로 요약한 글이라(aiReviewSummary는 비어 온다) 늘 "AI가 요약했어요"를 붙인다.
+            데모 원장의 설명은 사람이 쓴 글이라 AI 요약이 있을 때만 붙인다 */}
         {shop.aiSummary || shop.description ? (
           <View style={styles.intro}>
             <AppText accessibilityRole="header" style={styles.sectionTitle} variant="sectionTitle">가게 소개</AppText>
             <View style={styles.introCard} testID="shop-intro-card">
-              {shop.aiSummary ? (
+              {shop.aiSummary || isRemote("shops") ? (
                 <View accessibilityLabel="AI가 요약했어요" accessible style={styles.aiLabel}>
                   <Sparkles color={colors.ink} size={16} />
                   <AppText capScale style={styles.aiLabelText} variant="meta">AI가 요약했어요</AppText>
