@@ -46,8 +46,10 @@ const SOUP_OPTIONS = [
   { id: "ieke", label: "이에케", sub: "돈코츠쇼유", keys: ["이에케"] },
   { id: "shio", label: "시오", sub: "소금 타레", keys: ["시오"] },
   { id: "miso", label: "미소", sub: "된장 타레", keys: ["미소"] },
+  { id: "tori", label: "토리파이탄", sub: "닭백탕", keys: ["토리파이탄", "토리빠이탄", "닭백탕", "파이탄"] },
+  { id: "niboshi", label: "니보시", sub: "멸치 육수", keys: ["니보시", "멸치"] },
+  { id: "jiro", label: "지로", sub: "숙주·마늘 산더미", keys: ["지로", "지로계", "지로케"] },
   { id: "tsukemen", label: "츠케멘", sub: "찍어 먹는 면", keys: ["츠케멘"] },
-  { id: "tori", label: "토리파이탄", sub: "닭백탕", keys: ["토리파이탄", "닭백탕"] },
 ]
 
 // sub은 고르는 뜻을 풀어 쓴 말이다. 매장 정보로 거르는 조건처럼 들리게 쓰지 않는다(상황은 대조할 정보가 없어 "참고"로만 쓴다)

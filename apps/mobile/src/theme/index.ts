@@ -300,6 +300,7 @@ export const ramenHeat = [ramenHeatTones.l1, ramenHeatTones.l2, ramenHeatTones.l
  * 따뜻한 갈색끼리라 색약에서 헷갈릴 수 있어 이름과 숫자를 함께 둔다. 색만으로 종류를 말하지 않는다.
  * 색이 정해지지 않은 종류(탄탄멘, 마제소바, 아부라소바, 기타)는 soupNeutral로 칠한다.
  * 이에케는 돈코츠와 구별되는 간장빛 국물 톤을 쓴다.
+ * 토리파이탄은 돈코츠보다 밝은 상아색, 지로는 돼지 기름이 뜬 카페오레빛, 니보시는 멸치 육수의 탁한 회갈색으로 이웃 색과 밝기·채도를 벌린다.
  */
 export const soup: Readonly<Record<string, string>> = {
   돈코츠: "#E3CFA4",
@@ -307,6 +308,9 @@ export const soup: Readonly<Record<string, string>> = {
   쇼유: "#A8662C",
   시오: "#E9C24F",
   미소: "#D4733A",
+  토리파이탄: "#F3E7C9",
+  니보시: "#8F8066",
+  지로: "#C69C6D",
   츠케멘: "#5A3A22",
 }
 export const soupNeutral = "#CFCAC0"

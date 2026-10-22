@@ -2,9 +2,11 @@ import { RAMEN_TYPES, type Shop, type ShopCatalogItem, type TasteReport } from "
 
 import { compareShopIds, distanceBetweenCoordinates, matchesShopRamenType } from "./shops"
 
-/** 큐레이터가 고를 수 있는 국물 이름. 서버 분류(RAMEN_TYPES)에 토리파이탄을 더하고 "기타"는 뺀다 */
-const CURATOR_SOUP_TYPES: readonly string[] = [...RAMEN_TYPES.filter((type) => type !== "기타"), "토리파이탄"]
+/** 큐레이터가 고를 수 있는 국물 이름. 서버 분류(RAMEN_TYPES)에서 "기타"만 뺀다 */
+const CURATOR_SOUP_TYPES: readonly string[] = RAMEN_TYPES.filter((type) => type !== "기타")
 const PORK_TYPES: Record<string, true> = { 돈코츠: true, 이에케: true }
+/** 타레가 아니라 육수 재료를 말하는 종류. 옛 원장은 니보시 집을 쇼유·시오 스타일로 적어서, 대표 스타일만 보고 거르지 않는다 */
+const BROTH_BASE_TYPES: Record<string, true> = { 니보시: true }
 
 function catalogStyleType(shop: Shop): string {
   const style = (shop as Shop & Partial<Pick<ShopCatalogItem, "style">>).style
@@ -20,8 +22,8 @@ export function matchesSoupChoice(shop: Shop, soup: string, keys?: readonly stri
   if (shop.ramenTypes?.length && RAMEN_TYPES.includes(soup)) return shop.ramenTypes.includes(soup)
   const style = catalogStyleType(shop)
   const otherSoup = style !== soup && CURATOR_SOUP_TYPES.includes(style)
-  // 돈코츠와 이에케는 같은 계열이라 판단을 matchesShopRamenType에 넘긴다
-  if (otherSoup && !(PORK_TYPES[style] && PORK_TYPES[soup])) return false
+  // 돈코츠와 이에케는 같은 계열이고, 니보시는 쇼유·시오 위에 얹히는 육수라 판단을 matchesShopRamenType에 넘긴다
+  if (otherSoup && !(PORK_TYPES[style] && PORK_TYPES[soup]) && !BROTH_BASE_TYPES[soup]) return false
   return matchesShopRamenType(shop, soup, keys)
 }
 
@@ -74,8 +76,10 @@ const SOUP_SIGNALS: Record<string, string[]> = {
   이에케: ["이에케", "요코하마식", "돈코츠쇼유"],
   시오: ["시오", "소금", "유자", "청탕", "맑은"],
   미소: ["미소", "된장", "삿포로", "웍"],
+  토리파이탄: ["토리파이탄", "토리빠이탄", "파이탄", "닭백탕", "닭 육수", "크리미"],
+  니보시: ["니보시", "멸치"],
+  지로: ["지로", "지로계", "지로케"],
   츠케멘: ["츠케멘", "찍어", "농축"],
-  토리파이탄: ["토리파이탄", "파이탄", "닭백탕", "닭 육수", "크리미"],
 }
 
 const PRIORITY_SIGNALS: PrioritySignal[] = [

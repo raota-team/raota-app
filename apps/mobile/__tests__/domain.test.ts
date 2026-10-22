@@ -7,6 +7,7 @@ import {
   filterAndSortShops,
   firstRecordValidationMessage,
   matchesShopRamenType,
+  matchesSoupChoice,
   isValidLogComment,
   rankShopsForAIRecommendation,
   validateNickname,
@@ -318,6 +319,7 @@ describe("AI shop recommendation", () => {
     ["시오 (소금)", "8"],
     ["미소 (된장)", "2"],
     ["토리파이탄 (닭백탕)", "3"],
+    ["니보시 (멸치)", "10"],
   ])("keeps the selected %s lineage meaningful", (soup, expectedShopId) => {
     const [winner] = rankShopsForAIRecommendation(SHOPS, {
       ...baseInput,
@@ -325,6 +327,15 @@ describe("AI shop recommendation", () => {
     })
 
     expect(winner.shop.id).toBe(expectedShopId)
+  })
+
+  it("matches the new 토리파이탄 · 니보시 · 지로 choices by server type or shop words", () => {
+    const niboshiShoyu = SHOPS.find((shop) => shop.id === "10")!
+    expect(matchesSoupChoice(niboshiShoyu, "니보시", ["니보시", "멸치"])).toBe(true)
+    expect(matchesSoupChoice(niboshiShoyu, "지로", ["지로", "지로계", "지로케"])).toBe(false)
+    const typed = { ...SHOPS[0], ramenTypes: ["지로"], tags: [] }
+    expect(matchesSoupChoice(typed, "지로")).toBe(true)
+    expect(matchesSoupChoice(typed, "토리파이탄", ["토리파이탄", "닭백탕"])).toBe(false)
   })
 
   it("does not score an explicitly typed 이에케 shop as a 돈코츠 match", () => {

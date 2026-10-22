@@ -168,7 +168,15 @@ function DistributionBar({
 
 /** 밝은 국물 칸 위에는 검정 글씨, 진한 칸 위에는 흰 글씨 */
 function lightSoup(name: string) {
-  return name === "돈코츠" || name === "시오" || name === "미소" || name === "기타"
+  return (
+    name === "돈코츠" ||
+    name === "시오" ||
+    name === "미소" ||
+    name === "토리파이탄" ||
+    name === "니보시" ||
+    name === "지로" ||
+    name === "기타"
+  )
 }
 
 

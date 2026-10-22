@@ -36,7 +36,9 @@ export const MENU_OPTIONS = [
   { value: "이에케", label: "이에케 (돈코츠쇼유)", short: "이에케", keys: ["이에케"] },
   { value: "시오", label: "시오 라멘 (소금)", short: "시오", keys: ["시오"] },
   { value: "미소", label: "미소 라멘 (된장)", short: "미소", keys: ["미소"] },
-  { value: "토리파이탄", label: "토리파이탄 (닭백탕)", short: "토리파이탄", keys: ["토리파이탄", "닭백탕"] },
+  { value: "토리파이탄", label: "토리파이탄 (닭백탕)", short: "토리파이탄", keys: ["토리파이탄", "토리빠이탄", "닭백탕"] },
+  { value: "니보시", label: "니보시 (멸치 육수)", short: "니보시", keys: ["니보시", "멸치"] },
+  { value: "지로", label: "지로 (지로계)", short: "지로", keys: ["지로"] },
 ]
 
 const SORT_OPTIONS: Array<{ value: MapSort; label: string }> = [
