@@ -1,25 +1,28 @@
 import { NaverMapMarkerOverlay, NaverMapView, type NaverMapViewRef } from "@mj-studio/react-native-naver-map"
 import * as Haptics from "expo-haptics"
-import { router } from "expo-router"
+import { router, useLocalSearchParams } from "expo-router"
 import { ChevronLeft } from "lucide-react-native"
-import { useMemo, useRef, useState } from "react"
-import { Pressable, StyleSheet, View } from "react-native"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { LogBox, Pressable, StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { AppText } from "@/src/components/ui"
 import { colors, radii, spacing, touchTarget } from "@/src/theme"
-import { MAP_PIN_HEIGHT, MapHeader, MapShopPin, QuickView, useMapFilters } from "../native/map.web"
+import { MAP_PIN_HEIGHT, MapHeader, QuickView, useMapFilters } from "../native/map.web"
 
 /*
  * PROTOTYPE — 버리는 코드. 지도를 네이버 지도로 옮길지 고르기 위한 시험 화면(prototype/naver-map 브랜치 전용).
  * raota://map-naver 로 연다. 지금 지도 탭(애플 지도, react-native-maps)과 같은 매장·검색·필터·카드를
  * 네이버 지도 SDK 위에 올려 바탕 지도, 핀·묶음, 카메라 이동을 나란히 비교한다.
  * - 묶음: 네이버 SDK 자체 클러스터링(화면 56pt 안이면 묶음, 줌 17 넘으면 안 묶음)
- * - 낱개 핀: 미리 그린 그림(검은 원 + 흰 로고). 고른 가게만 빨간 원 + 빨간 이름표 뷰
+ * - 낱개 핀: 미리 그린 그림(검은 원 + 흰 로고). 고른 가게는 빨간 원 그림 + 빨간 이름표 뷰
  * - 카메라: 220ms ease-out(네이버 SDK가 지속 시간을 그대로 따른다)
  */
 
 const PIN_IMAGE = require("@/assets/images/map-pin.png")
+const SELECTED_PIN_IMAGE = require("@/assets/images/map-pin-selected.png")
+// 비교 사진에 개발용 경고 띠가 덮이지 않게 한다(앱 동작과 무관한 RN 개발 경고)
+LogBox.ignoreLogs(["Sending `onAnimatedValueUpdate`"])
 const START = { latitude: 37.5537, longitude: 126.9156, zoom: 14 }
 /** 고른 핀 뷰의 폭. 이름표(최대 160pt)가 들어가는 크기 */
 const SELECTED_PIN_WIDTH = 168
@@ -48,6 +51,18 @@ export default function NaverMapPrototype() {
     mapRef.current?.animateCameraTo({ latitude: shop.lat, longitude: shop.lng, duration: CAMERA_MS, easing: "EaseOut" })
   }
 
+  // 비교 사진용: ?shopId=로 가게를 골라 열고, ?style=raw면 바탕을 옅게 하지 않은 네이버 기본 지도를 보여 준다
+  const params = useLocalSearchParams<{ shopId?: string; style?: string }>()
+  const raw = params.style === "raw"
+  useEffect(() => {
+    const shop = shops.find((item) => item.id === params.shopId)
+    if (!shop) return
+    setSelectedId(shop.id)
+    mapRef.current?.animateCameraTo({ latitude: shop.lat, longitude: shop.lng, zoom: 16, duration: CAMERA_MS, easing: "EaseOut" })
+    // 링크로 들어온 한 번만 고른다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.shopId, shops.length > 0])
+
   return (
     <View style={styles.root}>
       <NaverMapView
@@ -57,8 +72,8 @@ export default function NaverMapPrototype() {
         isShowLocationButton={false}
         // 애플 지도의 mutedStandard처럼 바탕을 옅게 하고 지명·시설 글씨를 줄여 우리 핀이 먼저 보이게 한다.
         // 시설 아이콘을 아예 지우려면 네이버 스타일 에디터의 사용자 스타일(customStyleId)이 필요하다
-        lightness={0.35}
-        symbolScale={0.85}
+        lightness={raw ? 0 : 0.35}
+        symbolScale={raw ? 1 : 0.85}
         isShowScaleBar={false}
         isShowZoomControls={false}
         locale="ko"
@@ -69,6 +84,17 @@ export default function NaverMapPrototype() {
       >
         {selected ? (
           <NaverMapMarkerOverlay
+            height={touchTarget}
+            image={SELECTED_PIN_IMAGE}
+            latitude={selected.lat}
+            longitude={selected.lng}
+            width={touchTarget}
+            zIndex={1001}
+          />
+        ) : null}
+        {selected ? (
+          // 화면 조각 마커는 안의 그림을 못 그려서 빨간 원은 그림으로, 이름표만 뷰로 올린다
+          <NaverMapMarkerOverlay
             anchor={{ x: 0.5, y: touchTarget / 2 / MAP_PIN_HEIGHT }}
             height={MAP_PIN_HEIGHT}
             latitude={selected.lat}
@@ -77,7 +103,11 @@ export default function NaverMapPrototype() {
             zIndex={1000}
           >
             <View collapsable={false} style={styles.selectedPin}>
-              <MapShopPin name={selected.name} selected />
+              <View style={styles.label}>
+                <AppText capScale numberOfLines={1} style={styles.labelText} variant="meta">
+                  {selected.name}
+                </AppText>
+              </View>
             </View>
           </NaverMapMarkerOverlay>
         ) : null}
@@ -102,7 +132,9 @@ export default function NaverMapPrototype() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
-  selectedPin: { width: SELECTED_PIN_WIDTH, height: MAP_PIN_HEIGHT, alignItems: "center" },
+  selectedPin: { width: SELECTED_PIN_WIDTH, height: MAP_PIN_HEIGHT, alignItems: "center", paddingTop: touchTarget + spacing.x1 },
+  label: { height: 28, maxWidth: 160, paddingHorizontal: spacing.x3, justifyContent: "center", borderRadius: radii.pill, backgroundColor: colors.brand },
+  labelText: { color: colors.onDark, fontWeight: "700", textAlign: "center" },
   badge: {
     position: "absolute",
     left: spacing.x4,
