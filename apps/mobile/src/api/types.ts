@@ -459,6 +459,8 @@ export interface RecommendationResponse {
   shops: ShopSummary[]
   /** "지금 영업 중", "1km 이내"처럼 화면에 그대로 보여주는 말 */
   appliedConditions: string[]
+  /** 매장 ID마다 AI가 쓴 추천 이유 한 문장. 이유를 만들지 못한 매장은 빠지고, 이 필드가 없는 옛 서버도 있다 */
+  reasons?: Record<string, string>
 }
 
 /** 오늘의 큐레이션. 없으면 null */

@@ -489,7 +489,7 @@ describe("AI curator", () => {
   it("moves to the ticket screen right away while the server recommendation is still on its way", async () => {
     isRemote.mockImplementation((domain: string) => domain === "recommendations")
     const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
-    const answer = Promise.withResolvers<{ shops: (typeof SHOPS)[number][]; appliedConditions: string[] }>()
+    const answer = Promise.withResolvers<{ shops: (typeof SHOPS)[number][]; appliedConditions: string[]; reasons: Record<string, string> }>()
     const recommendations = jest
       .spyOn(remoteReads as unknown as { recommendations: (...args: unknown[]) => Promise<unknown> }, "recommendations")
       .mockReturnValue(answer.promise)
@@ -512,13 +512,26 @@ describe("AI curator", () => {
       expect(view.getByTestId("curation-loading-dots", { includeHiddenElements: true })).toBeTruthy()
 
       await act(async () => {
-        answer.resolve({ shops: [{ ...SHOPS[0], id: "9001", name: "서버추천라멘" }], appliedConditions: ["쇼유"] })
+        answer.resolve({
+          shops: [{ ...SHOPS[0], id: "9001", name: "서버추천라멘" }, { ...SHOPS[1], id: "9002", name: "두번째라멘" }],
+          appliedConditions: ["쇼유"],
+          reasons: { "9001": "맑은 쇼유 국물을 혼자 편하게 즐기기 좋아요" },
+        })
       })
       // 답이 오면 기다림 표시는 사라지고 건너뛰기가 나온다
       expect(view.queryByTestId("curation-loading-dots", { includeHiddenElements: true })).toBeNull()
       await fireEvent.press(view.getByRole("button", { name: "추천 바로 보기" }))
       expect(view.getByText(`오늘 ${NICKNAME}님을 위한 라멘집`)).toBeTruthy()
       expect(view.getAllByText(/서버추천라멘/).length).toBeGreaterThan(0)
+      // AI가 쓴 이유가 있으면 고른 조건 목록 대신 그 이유를 보여준다
+      expect(within(view.getByTestId("ai-recommend-reason")).getByText("맑은 쇼유 국물을 혼자 편하게 즐기기 좋아요")).toBeTruthy()
+      expect(view.queryByText("추천에 쓴 조건")).toBeNull()
+
+      // 이유가 없는 다음 후보로 넘기면 앞 매장의 이유가 남지 않고 조건 목록으로 돌아간다
+      await fireEvent.press(view.getByRole("button", { name: "다시 추천받기" }))
+      expect(view.getAllByText(/두번째라멘/).length).toBeGreaterThan(0)
+      expect(view.queryByTestId("ai-recommend-reason")).toBeNull()
+      expect(view.getByText("추천에 쓴 조건")).toBeTruthy()
     } finally {
       recommendations.mockRestore()
       isRemote.mockImplementation(() => false)

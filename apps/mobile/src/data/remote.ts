@@ -328,9 +328,13 @@ export const remoteReads = {
    */
   async recommendations(
     request: Parameters<typeof recommendationApi.recommend>[0],
-  ): Promise<{ shops: Shop[]; appliedConditions: string[] }> {
+  ): Promise<{ shops: Shop[]; appliedConditions: string[]; reasons: Record<string, string> }> {
     const result = await recommendationApi.recommend(request)
-    return { shops: (result.shops ?? []).map(toAppShopSummary), appliedConditions: result.appliedConditions ?? [] }
+    return {
+      shops: (result.shops ?? []).map(toAppShopSummary),
+      appliedConditions: result.appliedConditions ?? [],
+      reasons: result.reasons ?? {},
+    }
   },
 } as const
 

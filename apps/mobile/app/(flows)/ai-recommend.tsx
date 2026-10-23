@@ -2,7 +2,7 @@ import * as Haptics from "expo-haptics"
 import * as Location from "expo-location"
 import { router } from "expo-router"
 import { usePreventRemove } from "expo-router/react-navigation"
-import { ArrowRight, Check, ChevronRight } from "lucide-react-native"
+import { ArrowRight, Check, ChevronRight, Sparkles } from "lucide-react-native"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   AccessibilityInfo,
@@ -113,6 +113,11 @@ interface Candidate {
   shop: CuratorShop
   /** 사진 위·식권의 종류 이름. 고른 국물과 맞은 매장이면 고른 이름 그대로 쓴다 */
   typeLabel: string
+  /**
+   * 서버 AI가 쓴 이 매장의 추천 이유. 없으면(로컬 추천·이유 생성 실패) 고른 조건 목록을 대신 보여준다.
+   * "다시 추천받기"로 후보를 바꿀 때 앞 매장의 이유가 남지 않도록 늘 키를 둔다
+   */
+  reason: string | null
 }
 
 interface Curation extends Candidate {
@@ -347,8 +352,8 @@ const byPopularity = (a: CuratorShop, b: CuratorShop) =>
   b.reviewCount - a.reviewCount || b.rating - a.rating || a.distanceM - b.distanceM
 
 /** 고른 국물과 맞은 매장은 종류도 고른 이름으로 적는다(사진 위 표시·식권·조건 줄이 같은 말을 쓴다) */
-function candidateFor(shop: CuratorShop, soup: (typeof SOUP_OPTIONS)[number]): Candidate {
-  return { shop, typeLabel: matchesSoupChoice(shop, soup.label, soup.keys) ? soup.label : shopSoupLabel(shop) }
+function candidateFor(shop: CuratorShop, soup: (typeof SOUP_OPTIONS)[number], reason: string | null = null): Candidate {
+  return { shop, typeLabel: matchesSoupChoice(shop, soup.label, soup.keys) ? soup.label : shopSoupLabel(shop), reason }
 }
 
 /**
@@ -473,9 +478,9 @@ async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise
     ...(origin ?? {}),
   }
   try {
-    const { shops, appliedConditions } = await remoteReads.recommendations(request)
+    const { shops, appliedConditions, reasons } = await remoteReads.recommendations(request)
     if (shops.length) {
-      const candidates = shops.map((shop) => candidateFor(shop, soup))
+      const candidates = shops.map((shop) => candidateFor(shop, soup, reasons[shop.id]?.trim() || null))
       // 서버가 준 조건은 화면에 그대로 보여주는 말이라 덧붙이는 설명 없이 이름만 쓴다
       const conditions = appliedConditions.map((label) => ({ label, applied: true, note: "" }))
       return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
@@ -885,7 +890,21 @@ export default function AIRecommendScreen() {
               </View>
             </View>
 
-            {result.conditions.length || result.fallbackNote ? (
+            {result.reason ? (
+              // AI가 쓴 이유가 있으면 고른 조건을 다시 늘어놓지 않고 이 매장을 고른 이유를 보여준다
+              <View style={styles.conditions} testID="ai-recommend-reason">
+                <AppText accessibilityRole="header" style={styles.conditionsTitle} variant="sectionTitle">
+                  추천 이유
+                </AppText>
+                <View accessibilityLabel="AI가 썼어요" accessible style={styles.aiLabel}>
+                  <Sparkles color={colors.ink} size={16} />
+                  <AppText capScale style={styles.aiLabelText} variant="meta">AI가 썼어요</AppText>
+                </View>
+                <AppText lineBreakStrategyIOS="hangul-word" style={styles.reasonText} variant="secondary">
+                  {result.reason}
+                </AppText>
+              </View>
+            ) : result.conditions.length || result.fallbackNote ? (
               <View style={styles.conditions}>
                 <AppText accessibilityRole="header" style={styles.conditionsTitle} variant="sectionTitle">
                   추천에 쓴 조건
@@ -1342,6 +1361,9 @@ const styles = StyleSheet.create({
   fallbackNote: { marginBottom: spacing.x3 },
   condition: { minHeight: 49, justifyContent: "center", paddingVertical: spacing.x3, borderBottomWidth: line.hair, borderBottomColor: colors.border },
   conditionLabel: { fontSize: 13, lineHeight: 17 },
+  aiLabel: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, marginBottom: spacing.x2 },
+  aiLabelText: { fontWeight: "700" },
+  reasonText: { lineHeight: 20 },
   conditionNote: { marginTop: spacing.x1, fontSize: 12, lineHeight: 17 },
   restart: {
     flexDirection: "row",
