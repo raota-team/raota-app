@@ -455,6 +455,8 @@ export interface RecommendationRequest {
 }
 
 export interface RecommendationResponse {
+  /** 노출 기록 ID. 매장을 열면 이 ID로 알린다. 기록을 남기지 못했으면 null */
+  recommendationId: Id | null
   /** 최대 6곳 */
   shops: ShopSummary[]
   /** "지금 영업 중", "1km 이내"처럼 화면에 그대로 보여주는 말 */

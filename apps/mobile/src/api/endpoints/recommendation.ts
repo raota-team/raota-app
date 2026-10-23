@@ -18,6 +18,13 @@ export function createRecommendationApi(client: ApiClient = apiClient) {
       return client.get<TodayRecommendations>("/ai/recommendations/today")
     },
 
+    /** 추천 결과에서 매장을 열었다고 알린다(204). 처음 연 시각만 남고, 내 추천이 아니거나 그 추천에 없는 매장이면 404 */
+    markOpened(recommendationId: string, shopId: string): Promise<void> {
+      return client.post<void>(
+        `/ai/recommendations/${encodeURIComponent(recommendationId)}/shops/${encodeURIComponent(shopId)}/open`,
+      )
+    },
+
     /** 오늘의 큐레이션. 오늘 고른 매장이 없으면 null */
     today(): Promise<TodayCuration | null> {
       return client.get<TodayCuration | null>("/curations/today", { auth: "optional" })

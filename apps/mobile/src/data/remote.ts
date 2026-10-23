@@ -72,6 +72,7 @@ import { LOUNGE_ALL_TYPES, type HiddenAuthor, type LoungeSort } from "../domain/
  * - useTasteNoteFields   → remoteReads.tasteNoteFields   GET /taste-note-definitions (ramenLogs)
  * - useNicknameAvailability → remoteReads.nicknameAvailability GET /members/nickname-availability (member)
  * - AI 추천 화면         → remoteReads.recommendations   POST /ai/recommendations (recommendations)
+ *   매장 상세 보기       → remoteWrites.markRecommendationOpened POST /ai/recommendations/{id}/shops/{shopId}/open
  *
  * 스토어 actions ↔ 함수 ↔ 서버 경로
  * - 앱 시작               → remoteReads.restoreSession     GET /members/me (auth, 저장된 토큰이 있을 때)
@@ -328,9 +329,10 @@ export const remoteReads = {
    */
   async recommendations(
     request: Parameters<typeof recommendationApi.recommend>[0],
-  ): Promise<{ shops: Shop[]; appliedConditions: string[]; reasons: Record<string, string> }> {
+  ): Promise<{ recommendationId: string | null; shops: Shop[]; appliedConditions: string[]; reasons: Record<string, string> }> {
     const result = await recommendationApi.recommend(request)
     return {
+      recommendationId: result.recommendationId ?? null,
       shops: (result.shops ?? []).map(toAppShopSummary),
       appliedConditions: result.appliedConditions ?? [],
       reasons: result.reasons ?? {},
@@ -458,6 +460,11 @@ export const remoteWrites = {
   /** 서버 로그아웃. 실패해도 기기의 토큰은 지워진다(authApi.logout) */
   async signOut(): Promise<void> {
     await authApi.logout()
+  },
+
+  /** 서버 추천 결과에서 매장을 열었다고 알린다. 추천 성과 집계용이라 실패해도 화면은 그대로 둔다 */
+  async markRecommendationOpened(recommendationId: string, shopId: string): Promise<void> {
+    await recommendationApi.markOpened(recommendationId, shopId)
   },
 
   /**

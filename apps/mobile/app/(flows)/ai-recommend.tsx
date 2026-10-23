@@ -27,7 +27,7 @@ import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { TodayTicketsSheet } from "@/src/components/TodayTicketsSheet"
 import { AppText, Button, ConfirmDialog, EmptyState, Header, LoadingState, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
 import { useLocalShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
-import { remoteReads, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
+import { remoteReads, remoteWrites, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
 import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
 import { curatorTasteReport } from "@/src/domain/curatorTaste"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -131,6 +131,8 @@ interface Curation extends Candidate {
   /** "다시 추천받기"가 차례로 보여 줄 후보(순위순). 지금 보이는 것은 candidates[index] */
   candidates: Candidate[]
   index: number
+  /** 서버 추천의 노출 기록 ID. 매장을 열면 이 ID로 알린다. 로컬·대체(인기순) 추천과 기록 실패는 null */
+  recommendationId: string | null
 }
 
 /**
@@ -459,12 +461,12 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
   }
   if (ranked.length) {
     const candidates = ranked.map((shop) => candidateFor(shop, soup))
-    return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
+    return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId: null }
   }
 
   const fallbackCandidates = [...all].sort(byPopularity).map((shop) => candidateFor(shop, soup))
   return fallbackCandidates.length
-    ? { ...fallbackCandidates[0], conditions, fallback: true, candidates: fallbackCandidates, index: 0 }
+    ? { ...fallbackCandidates[0], conditions, fallback: true, candidates: fallbackCandidates, index: 0, recommendationId: null }
     : null
 }
 
@@ -483,12 +485,12 @@ async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise
     ...(origin ?? {}),
   }
   try {
-    const { shops, appliedConditions, reasons } = await remoteReads.recommendations(request)
+    const { recommendationId, shops, appliedConditions, reasons } = await remoteReads.recommendations(request)
     if (shops.length) {
       const candidates = shops.map((shop) => candidateFor(shop, soup, reasons[shop.id]?.trim() || null))
       // 서버가 준 조건은 화면에 그대로 보여주는 말이라 덧붙이는 설명 없이 이름만 쓴다
       const conditions = appliedConditions.map((label) => ({ label, applied: true, note: "" }))
-      return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
+      return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId }
     }
   } catch (error) {
     // 요청이 너무 잦거나 오늘 식권을 다 쓰면 인기순으로 대신 고르지 않고 화면이 알린다
@@ -498,7 +500,7 @@ async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise
     const popular = await remoteReads.shops({ sort: "POPULAR", size: 6 })
     const candidates = popular.items.map((shop) => candidateFor(shop, soup))
     return candidates.length
-      ? { ...candidates[0], conditions: [], fallback: true, fallbackNote: POPULAR_FALLBACK_NOTE, candidates, index: 0 }
+      ? { ...candidates[0], conditions: [], fallback: true, fallbackNote: POPULAR_FALLBACK_NOTE, candidates, index: 0, recommendationId: null }
       : null
   } catch {
     return null
@@ -511,7 +513,7 @@ function curationFromTicket(ticket: RemoteTicket): Curation | null {
   const candidates = ticket.shops.map((shop) => candidateFor(shop, soup, ticket.reasons[shop.id]?.trim() || null))
   if (!candidates.length) return null
   const conditions = ticket.appliedConditions.map((label) => ({ label, applied: true, note: "" }))
-  return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
+  return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId: ticket.id }
 }
 
 type Coordinates = { latitude: number; longitude: number }
@@ -734,6 +736,14 @@ export default function AIRecommendScreen() {
       return
     }
     router.push({ pathname: "/record/new", params: { shopId: shop.id } })
+  }
+
+  /** 매장 상세를 연다. 서버 추천이면 추천 성과 집계용으로 열었다고 알리고, 실패해도 화면은 그대로 넘어간다 */
+  const openResultShop = (shown: Curation) => {
+    if (shown.recommendationId) {
+      remoteWrites.markRecommendationOpened(shown.recommendationId, shown.shop.id).catch(() => undefined)
+    }
+    router.push({ pathname: "/shop/[shopId]", params: { shopId: shown.shop.id } })
   }
 
   if (ticketPending) {
@@ -1095,7 +1105,7 @@ export default function AIRecommendScreen() {
           />
           <Button
             fullWidth
-            onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: result.shop.id } })}
+            onPress={() => openResultShop(result)}
             rightIcon={compact ? undefined : <ChevronRight color={colors.onDark} size={16} />}
             style={[styles.stickyButton, ctaSize]}
             title="매장 상세 보기"

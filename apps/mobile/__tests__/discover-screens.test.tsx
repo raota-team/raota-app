@@ -5,7 +5,7 @@ import { Linking, StyleSheet } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import { createInitialPersistedState } from "@/src/data/fixtures"
-import { remoteReads } from "@/src/data/remote"
+import { remoteReads, remoteWrites } from "@/src/data/remote"
 import type * as FixturesModule from "@/src/data/fixtures"
 import type { RaotaRepository } from "@/src/repository"
 import type * as SharedModule from "@raota/shared"
@@ -493,13 +493,19 @@ describe("AI curator", () => {
   it("moves to the ticket screen right away while the server recommendation is still on its way", async () => {
     isRemote.mockImplementation((domain: string) => domain === "recommendations")
     const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
-    const answer = Promise.withResolvers<{ shops: (typeof SHOPS)[number][]; appliedConditions: string[]; reasons: Record<string, string> }>()
+    const answer = Promise.withResolvers<{
+      recommendationId: string | null
+      shops: (typeof SHOPS)[number][]
+      appliedConditions: string[]
+      reasons: Record<string, string>
+    }>()
     const recommendations = jest
       .spyOn(remoteReads as unknown as { recommendations: (...args: unknown[]) => Promise<unknown> }, "recommendations")
       .mockReturnValue(answer.promise)
     const tickets = jest
       .spyOn(remoteReads as unknown as { recommendationTickets: () => Promise<unknown> }, "recommendationTickets")
       .mockResolvedValue({ dailyLimit: 3, remaining: 3, tickets: [] })
+    const opened = jest.spyOn(remoteWrites, "markRecommendationOpened").mockResolvedValue()
     try {
       jest.useFakeTimers()
       const view = await renderScreen(<AIRecommendScreen />)
@@ -527,6 +533,7 @@ describe("AI curator", () => {
 
       await act(async () => {
         answer.resolve({
+          recommendationId: "501",
           shops: [{ ...SHOPS[0], id: "9001", name: "서버추천라멘" }, { ...SHOPS[1], id: "9002", name: "두번째라멘" }],
           appliedConditions: ["쇼유"],
           reasons: { "9001": "맑은 쇼유 국물을 혼자 편하게 즐기기 좋아요" },
@@ -548,9 +555,16 @@ describe("AI curator", () => {
       expect(view.getByText("추천에 쓴 조건")).toBeTruthy()
       // 새 식권을 뽑았으니 남은 장수를 다시 읽는다
       expect(tickets).toHaveBeenCalledTimes(2)
+
+      // 지금 보이는 후보의 상세를 열면 그 추천 기록과 매장으로 열었다고 알린다
+      jest.useRealTimers()
+      await fireEvent.press(view.getByRole("button", { name: "매장 상세 보기" }))
+      expect(opened).toHaveBeenCalledWith("501", "9002")
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/shop/[shopId]", params: { shopId: "9002" } })
     } finally {
       recommendations.mockRestore()
       tickets.mockRestore()
+      opened.mockRestore()
       isRemote.mockImplementation(() => false)
     }
   })
@@ -606,6 +620,7 @@ describe("AI curator", () => {
         remaining: 1,
         tickets: [drawn("2", "두번째식권라멘", "두번째 식권의 이유예요."), drawn("1", "첫식권라멘", "첫 식권의 이유예요.")],
       })
+    const opened = jest.spyOn(remoteWrites, "markRecommendationOpened").mockResolvedValue()
     try {
       const home = await renderScreen(<HomeScreen />)
       await fireEvent.press(await home.findByRole("button", { name: "오늘 뽑은 식권 2장, 남은 식권 1장" }))
@@ -620,8 +635,52 @@ describe("AI curator", () => {
       expect(await curator.findByTestId("ai-recommend-reason")).toBeTruthy()
       expect(within(curator.getByTestId("ai-recommend-reason")).getByText("첫 식권의 이유예요.")).toBeTruthy()
       expect(curator.queryByText("1 / 4")).toBeNull()
+      // 다시 본 식권에서 상세를 열어도 그 식권의 추천 기록으로 알린다
+      await fireEvent.press(curator.getByRole("button", { name: "매장 상세 보기" }))
+      expect(opened).toHaveBeenCalledWith("1", "911")
     } finally {
       tickets.mockRestore()
+      opened.mockRestore()
+      isRemote.mockImplementation(() => false)
+    }
+  })
+
+  it("does not report opening a shop from the popular fallback when the server recommendation fails", async () => {
+    isRemote.mockImplementation((domain: string) => domain === "recommendations")
+    const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
+    const recommendations = jest
+      .spyOn(remoteReads as unknown as { recommendations: (...args: unknown[]) => Promise<unknown> }, "recommendations")
+      .mockRejectedValue(new Error("recommendation down"))
+    const popular = jest
+      .spyOn(remoteReads as unknown as { shops: (...args: unknown[]) => Promise<unknown> }, "shops")
+      .mockResolvedValue({ items: [{ ...SHOPS[0], id: "9101", name: "인기라멘" }] })
+    const tickets = jest
+      .spyOn(remoteReads as unknown as { recommendationTickets: () => Promise<unknown> }, "recommendationTickets")
+      .mockResolvedValue({ dailyLimit: 3, remaining: 3, tickets: [] })
+    const opened = jest.spyOn(remoteWrites, "markRecommendationOpened").mockResolvedValue()
+    try {
+      jest.useFakeTimers()
+      const view = await renderScreen(<AIRecommendScreen />)
+      await view.findByText("1 / 4")
+      await fireEvent.press(view.getByRole("radio", { name: "쇼유, 간장 타레" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      await fireEvent.press(view.getByRole("radio", { name: "혼밥하기 좋은 곳, 혼자 편하게" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      await fireEvent.press(view.getByRole("radio", { name: "깔끔하고 깊은 감칠맛, 청탕 · 맑은 국물" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      await fireEvent.press(view.getByRole("button", { name: "AI 맞춤 추천받기" }))
+      await fireEvent.press(view.getByRole("button", { name: "식권 쓰기" }))
+      await fireEvent.press(await view.findByRole("button", { name: "추천 바로 보기" }))
+      expect(view.getAllByText(/인기라멘/).length).toBeGreaterThan(0)
+      jest.useRealTimers()
+      await fireEvent.press(view.getByRole("button", { name: "매장 상세 보기" }))
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/shop/[shopId]", params: { shopId: "9101" } })
+      expect(opened).not.toHaveBeenCalled()
+    } finally {
+      recommendations.mockRestore()
+      popular.mockRestore()
+      tickets.mockRestore()
+      opened.mockRestore()
       isRemote.mockImplementation(() => false)
     }
   })
