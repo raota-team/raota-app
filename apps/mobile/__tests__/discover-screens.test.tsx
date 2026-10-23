@@ -385,7 +385,7 @@ describe("AI curator", () => {
     await act(async () => {
       jest.advanceTimersByTime(900)
     })
-    expect(view.getByText("오늘의 추천을 정리하고 있어요")).toBeTruthy()
+    expect(view.getByText("식권을 뽑고 있어요")).toBeTruthy()
     expect(view.queryByText("오늘의 한 그릇")).toBeNull()
     await act(async () => {
       jest.advanceTimersByTime(900)
