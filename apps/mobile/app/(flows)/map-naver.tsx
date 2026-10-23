@@ -55,6 +55,10 @@ export default function NaverMapPrototype() {
         initialCamera={START}
         isShowCompass={false}
         isShowLocationButton={false}
+        // 애플 지도의 mutedStandard처럼 바탕을 옅게 하고 지명·시설 글씨를 줄여 우리 핀이 먼저 보이게 한다.
+        // 시설 아이콘을 아예 지우려면 네이버 스타일 에디터의 사용자 스타일(customStyleId)이 필요하다
+        lightness={0.35}
+        symbolScale={0.85}
         isShowScaleBar={false}
         isShowZoomControls={false}
         locale="ko"
