@@ -479,9 +479,10 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
                 {pickQuote ? (
                   <View style={styles.pickSummary} testID="home-curation-summary">
                     {pickByAi ? (
+                      // 섹션 머리의 날짜처럼 진한 잉크 글씨로 둔다(사용자 결정, 2026.10.23)
                       <View style={styles.pickSummaryLabel}>
-                        <Sparkles color={colors.textMuted} size={14} />
-                        <AppText capScale tone="muted" variant="meta">AI가 요약했어요</AppText>
+                        <Sparkles color={colors.ink} size={14} />
+                        <AppText capScale style={styles.bold} variant="meta">AI가 요약했어요</AppText>
                       </View>
                     ) : null}
                     <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
