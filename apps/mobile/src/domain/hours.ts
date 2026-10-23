@@ -34,7 +34,8 @@ export interface HoursGroup {
 }
 
 export type HoursStatus =
-  | { kind: "open"; closesAt: number }
+  /** breakNext면 closesAt에 문을 닫는 게 아니라 쉬는 시간에 들어간다 */
+  | { kind: "open"; closesAt: number; breakNext: boolean }
   | { kind: "break"; reopensAt: number }
   | { kind: "beforeOpen"; opensAt: number }
   /** next는 다음에 여는 때. 그 사이에 영업시간을 모르는 날이 끼면 지어내지 않고 null이다 */
@@ -125,7 +126,7 @@ export function hoursStatusAt(week: readonly DayHours[], now: SeoulTime): HoursS
   // 어제 자정을 넘겨 이어지는 영업
   const yesterday = byDay.get((now.day + 6) % 7)
   const lateNight = yesterday?.ranges.find((range) => range.end > MINUTES_PER_DAY && now.minute < range.end - MINUTES_PER_DAY)
-  if (lateNight) return { kind: "open", closesAt: lateNight.end }
+  if (lateNight) return { kind: "open", closesAt: lateNight.end, breakNext: false }
 
   const today = byDay.get(now.day)
   if (!today) return null
@@ -134,7 +135,7 @@ export function hoursStatusAt(week: readonly DayHours[], now: SeoulTime): HoursS
     if (now.minute < range.start) {
       return index === 0 ? { kind: "beforeOpen", opensAt: range.start } : { kind: "break", reopensAt: range.start }
     }
-    if (now.minute < range.end) return { kind: "open", closesAt: range.end }
+    if (now.minute < range.end) return { kind: "open", closesAt: range.end, breakNext: index < today.ranges.length - 1 }
   }
   return { kind: "closed", closedToday: false, next: nextOpening(byDay, now.day) }
 }
@@ -161,7 +162,8 @@ export function breaksOf(ranges: readonly OpenRange[]): OpenRange[] {
 export function statusText(status: HoursStatus): { label: string; detail: string | null } {
   switch (status.kind) {
     case "open":
-      return { label: "영업 중", detail: `${formatTime(status.closesAt)}에 닫아요` }
+      // 다음이 쉬는 시간이면 "닫아요"라고 하면 오늘 영업이 끝나는 것처럼 들린다
+      return { label: "영업 중", detail: status.breakNext ? `${formatTime(status.closesAt)}부터 쉬어요` : `${formatTime(status.closesAt)}에 닫아요` }
     case "break":
       return { label: "쉬는 시간", detail: `${formatTime(status.reopensAt)}에 다시 열어요` }
     case "beforeOpen":

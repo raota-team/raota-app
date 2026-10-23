@@ -64,7 +64,8 @@ describe("hoursStatusAt", () => {
 
   it("walks a day with a break: before open, open, break, open again, then closed until the next open day", () => {
     expect(at(1, "10:00")).toEqual({ label: "준비 중", detail: "11:00에 열어요" })
-    expect(at(1, "11:00")).toEqual({ label: "영업 중", detail: "15:00에 닫아요" })
+    // 첫 구간 끝은 문을 닫는 게 아니라 쉬는 시간이 시작되는 때다
+    expect(at(1, "11:00")).toEqual({ label: "영업 중", detail: "15:00부터 쉬어요" })
     expect(at(1, "15:00")).toEqual({ label: "쉬는 시간", detail: "17:00에 다시 열어요" })
     expect(at(1, "17:30")).toEqual({ label: "영업 중", detail: "20:30에 닫아요" })
     // 화요일은 휴무라 다음 영업일 이름으로 알려 준다

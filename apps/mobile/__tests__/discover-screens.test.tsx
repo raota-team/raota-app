@@ -298,8 +298,8 @@ describe("shop detail", () => {
     mockParams.shopId = "5"
     const view = await renderScreen(<ShopDetailScreen />)
     await view.findByText(/^묘코/)
-    // 정보 줄은 지금 상태를 먼저 말하고, 오늘 시간과 쉬는 시간을 따로 적는다
-    const trigger = view.getByRole("button", { name: "영업시간, 영업 중, 15:00에 닫아요. 오늘(수) 12:00 – 21:00 · 쉬는 시간 15:00 – 17:30" })
+    // 정보 줄은 지금 상태를 먼저 말하고, 오늘 시간과 쉬는 시간을 따로 적는다. 다음이 쉬는 시간이면 "닫아요"가 아니라 "쉬어요"다
+    const trigger = view.getByRole("button", { name: "영업시간, 영업 중, 15:00부터 쉬어요. 오늘(수) 12:00 – 21:00 · 쉬는 시간 15:00 – 17:30" })
     expect(StyleSheet.flatten(within(trigger).getByTestId("shop-hours-status-dot").props.style).backgroundColor).toEqual(colors.open)
     expect(trigger.props.accessibilityState.expanded).toBe(false)
     await fireEvent.press(trigger)
@@ -311,7 +311,8 @@ describe("shop detail", () => {
     expect(view.getByTestId("shop-hours-now", { includeHiddenElements: true })).toBeTruthy()
     expect(view.getByText("오늘 라스트오더 20:30")).toBeTruthy()
     await fireEvent.press(view.getByRole("button", { name: "닫기" }))
-    expect(view.queryByTestId("shop-hours-row")).toBeNull()
+    // 시트는 닫히는 동안 잠깐 남아 있다가 사라진다
+    await waitFor(() => expect(view.queryAllByTestId("shop-hours-row")).toHaveLength(0))
     expect(view.getByRole("button", { name: /^영업시간, 영업 중/ }).props.accessibilityState.expanded).toBe(false)
   })
 
