@@ -25,7 +25,7 @@ import { isRemote } from "@/src/api/config"
 import type { RecommendationRequest } from "@/src/api/types"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { TodayTicketsSheet } from "@/src/components/TodayTicketsSheet"
-import { AppText, Button, ConfirmDialog, Header, LoadingState, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
+import { AppText, Button, ConfirmDialog, EmptyState, Header, LoadingState, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
 import { useLocalShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
 import { remoteReads, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
 import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
@@ -745,6 +745,25 @@ export default function AIRecommendScreen() {
     )
   }
 
+  // 오늘 식권을 다 뽑았으면 단계 화면에 들이지 않는다(사용자 결정, 2026.10.23).
+  // 뽑아 둔 식권 다시 보기와 마지막 장을 막 뽑은 결과·발권 연출은 단계가 아니라 그대로 둔다
+  if (ticketsUsedUp && typeof step === "number") {
+    return (
+      <Screen contentContainerStyle={styles.flex} edges={ALL_EDGES}>
+        <Header backLabel="뒤로가기" onBack={() => (router.canGoBack() ? router.back() : router.replace("/native"))} title="AI 라멘 큐레이터" />
+        <EmptyState
+          actionLabel={todayTickets.tickets.length ? "뽑은 식권 보기" : undefined}
+          description={`식권은 하루 ${todayTickets.dailyLimit}장이에요. 내일 다시 뽑을 수 있어요.`}
+          icon={<Ticket color={colors.textMuted} size={32} />}
+          onAction={() => setTicketsOpen(true)}
+          style={styles.flex}
+          title="오늘 식권을 다 뽑았어요"
+        />
+        <TodayTicketsSheet onClose={() => setTicketsOpen(false)} onSelect={openTicket} today={todayTickets} visible={ticketsOpen} />
+      </Screen>
+    )
+  }
+
   if (step === "loading") {
     return (
       <CurationLoading
@@ -813,10 +832,10 @@ export default function AIRecommendScreen() {
           <View>
             {todayTickets ? (
               <View style={styles.ticketStrip}>
-                <View accessible accessibilityLabel={ticketsUsedUp ? DAILY_LIMIT_MESSAGE : `오늘 남은 식권 ${todayTickets.remaining}장, 하루 ${todayTickets.dailyLimit}장`} style={styles.ticketCount}>
-                  <Ticket color={ticketsUsedUp ? colors.textMuted : colors.ink} size={16} />
-                  <AppText capScale style={styles.ticketCountText} tone={ticketsUsedUp ? "sub" : "ink"} variant="meta">
-                    {ticketsUsedUp ? "오늘 식권을 다 뽑았어요" : `오늘 남은 식권 ${todayTickets.remaining}장`}
+                <View accessible accessibilityLabel={`오늘 남은 식권 ${todayTickets.remaining}장, 하루 ${todayTickets.dailyLimit}장`} style={styles.ticketCount}>
+                  <Ticket color={colors.ink} size={16} />
+                  <AppText capScale style={styles.ticketCountText} variant="meta">
+                    {`오늘 남은 식권 ${todayTickets.remaining}장`}
                   </AppText>
                 </View>
                 {todayTickets.tickets.length ? (
@@ -1050,8 +1069,8 @@ export default function AIRecommendScreen() {
             <Button disabled={requesting} fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="secondary" />
           ) : null}
           <Button
-            accessibilityHint={numericStep === 4 && ticketsUsedUp ? "내일 다시 뽑을 수 있어요" : stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
-            disabled={!stepAnswered || (numericStep === 4 && ticketsUsedUp)}
+            accessibilityHint={stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
+            disabled={!stepAnswered}
             loading={numericStep === 4 && requesting}
             onPress={() => {
               if (numericStep !== 4) setStep((numericStep + 1) as Step)
@@ -1061,7 +1080,7 @@ export default function AIRecommendScreen() {
             }}
             rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
             style={[styles.primaryCta, ctaSize]}
-            title={numericStep === 4 ? (ticketsUsedUp ? "오늘 식권을 다 뽑았어요" : "AI 맞춤 추천받기") : stepAnswered ? "다음" : numericStep === 1 ? "국물을 골라주세요" : numericStep === 2 ? "상황을 골라주세요" : "중요한 요소를 골라주세요"}
+            title={numericStep === 4 ? "AI 맞춤 추천받기" : stepAnswered ? "다음" : numericStep === 1 ? "국물을 골라주세요" : numericStep === 2 ? "상황을 골라주세요" : "중요한 요소를 골라주세요"}
           />
         </StickyActionBar>
       ) : result ? (

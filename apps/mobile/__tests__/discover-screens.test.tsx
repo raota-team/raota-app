@@ -555,7 +555,7 @@ describe("AI curator", () => {
     }
   })
 
-  it("shows today's remaining tickets, reopens a drawn ticket, and stops at zero", async () => {
+  it("blocks the curator steps once today's tickets are used up but still reopens a drawn ticket", async () => {
     isRemote.mockImplementation((domain: string) => domain === "recommendations")
     const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
     const drawn = {
@@ -572,21 +572,13 @@ describe("AI curator", () => {
     try {
       const view = await renderScreen(<AIRecommendScreen />)
       expect(await view.findByText("오늘 식권을 다 뽑았어요")).toBeTruthy()
-
-      // 다 쓴 날은 4단계에서 버튼이 꺼지고 서버를 부르지 않는다
-      await fireEvent.press(view.getByRole("radio", { name: "쇼유, 간장 타레" }))
-      await fireEvent.press(view.getByRole("button", { name: "다음" }))
-      await fireEvent.press(view.getByRole("radio", { name: "혼밥하기 좋은 곳, 혼자 편하게" }))
-      await fireEvent.press(view.getByRole("button", { name: "다음" }))
-      await fireEvent.press(view.getByRole("radio", { name: "깔끔하고 깊은 감칠맛, 청탕 · 맑은 국물" }))
-      await fireEvent.press(view.getByRole("button", { name: "다음" }))
-      const draw = view.getByRole("button", { name: "오늘 식권을 다 뽑았어요" })
-      expect(draw).toBeDisabled()
-      await fireEvent.press(draw)
+      expect(view.getByText("식권은 하루 3장이에요. 내일 다시 뽑을 수 있어요.")).toBeTruthy()
+      // 다 쓴 날은 단계 화면이 열리지 않아 서버를 부를 길이 없다
+      expect(view.queryByRole("radio", { name: "쇼유, 간장 타레" })).toBeNull()
       expect(recommendations).not.toHaveBeenCalled()
 
       // 오늘 뽑은 식권은 그때의 매장과 추천 이유 그대로 다시 열린다. 언제 뽑았는지는 서울 날짜까지 적는다
-      await fireEvent.press(view.getByRole("button", { name: "뽑은 식권 1장 보기" }))
+      await fireEvent.press(view.getByRole("button", { name: "뽑은 식권 보기" }))
       await fireEvent.press(view.getByRole("button", { name: "2026년 10월 23일 11:05에 뽑은 식권, 아까뽑은라멘, 이에케, 가까운 순" }))
       expect(view.getAllByText(/아까뽑은라멘/).length).toBeGreaterThan(0)
       expect(within(view.getByTestId("ai-recommend-reason")).getByText("이에케 국물이 진하고 차슈가 두툼하다는 기록이 많아요.")).toBeTruthy()
@@ -621,7 +613,6 @@ describe("AI curator", () => {
       expect(router.push).not.toHaveBeenCalled()
       await fireEvent.press(home.getByRole("button", { name: /에 뽑은 식권, 첫식권라멘/ }))
       expect(router.push).toHaveBeenCalledWith({ pathname: "/ai-recommend", params: { ticket: "1" } })
-      home.unmount()
 
       // 고른 식권으로 들어오면 추천 단계를 건너뛰고 그 식권의 결과가 바로 열린다
       mockParams.ticket = "1"
@@ -629,6 +620,35 @@ describe("AI curator", () => {
       expect(await curator.findByTestId("ai-recommend-reason")).toBeTruthy()
       expect(within(curator.getByTestId("ai-recommend-reason")).getByText("첫 식권의 이유예요.")).toBeTruthy()
       expect(curator.queryByText("1 / 4")).toBeNull()
+    } finally {
+      tickets.mockRestore()
+      isRemote.mockImplementation(() => false)
+    }
+  })
+
+  it("keeps home from entering the curator once today's tickets are used up", async () => {
+    isRemote.mockImplementation((domain: string) => domain === "recommendations")
+    const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
+    const tickets = jest
+      .spyOn(remoteReads as unknown as { recommendationTickets: () => Promise<unknown> }, "recommendationTickets")
+      .mockResolvedValue({
+        dailyLimit: 3,
+        remaining: 0,
+        tickets: ["3", "2", "1"].map((id) => ({
+          id,
+          createdAt: "2026-10-23T02:05:00Z",
+          shops: [{ ...SHOPS[0], id: `91${id}`, name: `식권라멘${id}` }],
+          appliedConditions: ["쇼유"],
+          reasons: {},
+        })),
+      })
+    try {
+      const home = await renderScreen(<HomeScreen />)
+      const card = await home.findByRole("button", { name: "오늘 뭐 먹지? AI 라멘 큐레이터, 오늘 식권을 다 뽑았어요" })
+      await fireEvent.press(card)
+      expect(router.push).not.toHaveBeenCalledWith("/ai-recommend")
+      // 대신 뽑아 둔 식권 목록이 홈 위에 열린다
+      expect(home.getByRole("button", { name: /에 뽑은 식권, 식권라멘1/ })).toBeTruthy()
     } finally {
       tickets.mockRestore()
       isRemote.mockImplementation(() => false)

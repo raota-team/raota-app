@@ -78,7 +78,7 @@ import { colors, maxFontScale, pressFade, radii, spacing, touchTarget, typograph
  * 한 장씩 감정서(사용자 결정, 2026.10.23. 시안: prototype/record-screen 브랜치).
  * 위에는 답할수록 채워지는 감정서 한 장, 아래에는 질문 하나. 스크롤 없이 한 화면에 들어간다.
  * 메뉴·종류 → 점수 넷 → 재방문 → 추가 감정(맛 태그·메모·사진·공개, 선택) 일곱 단계이고,
- * 점수와 재방문은 고르면 저절로 다음 질문으로 넘어간다. 감정서 칸을 누르면 그 질문으로 돌아간다.
+ * 답을 고른 뒤 "다음"을 눌러 넘어간다(저절로 넘기지 않는다, 사용자 결정 2026.10.23). 감정서 칸을 누르면 그 질문으로 돌아간다.
  * 완식 도장은 저장 뒤 완료 화면에서 한 번만 찍는다.
  */
 
@@ -118,9 +118,6 @@ const FIELD_STEP: Record<FieldKey, StepKey | null> = {
   note: "extra",
   tasteNotes: "extra",
 }
-/** 고른 답을 잠깐 보여 준 뒤 넘어간다. 바로 넘어가면 무엇을 눌렀는지 보지 못한다 */
-const ADVANCE_DELAY = 320
-const ADVANCE_DELAY_REDUCED = 120
 /** 화면 전환 기본 곡선(DESIGN.md Motion) */
 const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1)
 
@@ -488,7 +485,8 @@ export default function NewRecordScreen() {
   const [photos, setPhotos] = useState<string[]>([])
   const [note, setNote] = useState("")
   const [tasteNotes, setTasteNotes] = useState<TasteNotes>(EMPTY_TASTE_NOTES)
-  const [isPublic, setIsPublic] = useState(false)
+  // 새 기록은 공개가 기본이다(사용자 결정, 2026.10.23). 고치기는 불러온 값으로 바꾼다
+  const [isPublic, setIsPublic] = useState(true)
   const [step, setStep] = useState(0)
   // 감정서 칸으로 돌아갈 수 있는 가장 먼 질문
   const [reached, setReached] = useState(0)
@@ -513,7 +511,6 @@ export default function NewRecordScreen() {
   const menuRef = useRef<TextInput>(null)
   const noteRef = useRef<TextInput>(null)
   const questionRef = useRef<View>(null)
-  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 질문에 들어선 뒤 옮길 포커스. 빠진 메뉴·메모로 데려갈 때만 입력칸에 둔다
   const focusOnEnter = useRef<"menu" | "note" | "question">("question")
 
@@ -653,7 +650,7 @@ export default function NewRecordScreen() {
       photos.length > 0 ||
       note.length > 0 ||
       selectedTagCount > 0 ||
-      isPublic
+      !isPublic
   const preventLeave = isDirty && !leaving
   const preventLeaveRef = useRef(preventLeave)
   preventLeaveRef.current = preventLeave
@@ -692,8 +689,6 @@ export default function NewRecordScreen() {
     setSaveError(null)
   }, [shop?.id, menuName, ramenType, visitedAt, scores, revisit, photos, note, tasteNotes, isPublic])
 
-  useEffect(() => () => clearTimeout(advanceTimer.current ?? undefined), [])
-
   // 질문이 바뀌면 VoiceOver가 새 질문부터 읽게 한다. 빠진 메뉴·메모로 데려온 경우엔 입력칸을 연다
   const firstStepRender = useRef(true)
   useEffect(() => {
@@ -715,28 +710,12 @@ export default function NewRecordScreen() {
   }, [reduceMotion, step])
 
   const goToStep = (target: number) => {
-    clearTimeout(advanceTimer.current ?? undefined)
     const next = Math.max(0, Math.min(LAST_STEP, target))
     if (next === step) return
     if (STEPS[next] !== "meal") Keyboard.dismiss()
     setDirection(next > step ? "next" : "back")
     setStep(next)
     setReached((current) => Math.max(current, next))
-  }
-  // 타이머가 울릴 때의 최신 답으로 다음 질문을 고른다
-  const latest = useRef({ step, goToStep, nextStepAfter })
-  latest.current = { step, goToStep, nextStepAfter }
-  const advanceAfterAnswer = (from: number) => {
-    clearTimeout(advanceTimer.current ?? undefined)
-    advanceTimer.current = setTimeout(
-      () => {
-        advanceTimer.current = null
-        const current = latest.current
-        if (current.step !== from) return
-        current.goToStep(current.nextStepAfter(from))
-      },
-      reduceMotion ? ADVANCE_DELAY_REDUCED : ADVANCE_DELAY,
-    )
   }
 
   const confirmLeave = () => {
@@ -998,7 +977,7 @@ export default function NewRecordScreen() {
       if (!isComplete) return missingHint(missing)
       return extraCount > 0 ? "발행하면 취향 리포트에 반영돼요" : "고르지 않아도 바로 발행할 수 있어요"
     }
-    return isAnswered(stepKey) ? undefined : "고르면 다음 질문으로 넘어가요"
+    return isAnswered(stepKey) ? undefined : "답을 고른 뒤 다음을 눌러주세요"
   })()
   const nudged = nudgedStep === step
   const footerHintTone = saveError ? "critical" : nudged && footerHint ? "brand" : "muted"
@@ -1051,7 +1030,6 @@ export default function NewRecordScreen() {
             onPress={() => {
               if (revisit !== choice.label) selectionHaptic()
               setRevisit(choice.label)
-              advanceAfterAnswer(step)
             }}
             selected={revisit === choice.label}
           />
@@ -1160,7 +1138,6 @@ export default function NewRecordScreen() {
             onPress={() => {
               if (scores[axisKey] !== index + 1) selectionHaptic()
               setScores((current) => ({ ...current, [axisKey]: index + 1 }))
-              advanceAfterAnswer(step)
             }}
             selected={scores[axisKey] === index + 1}
           />

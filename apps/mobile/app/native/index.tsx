@@ -236,6 +236,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
       return () => { active = false }
     }, [ticketsEnabled]),
   )
+  const ticketsUsedUp = todayTickets?.remaining === 0
 
   /** 위치가 있으면 실제 거리로 다시 계산한다 */
   const shops = useMemo(() => {
@@ -391,10 +392,11 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
         </View>
 
         <Pressable
-          accessibilityHint="국물과 상황을 골라 오늘의 한 그릇을 추천받아요"
-          accessibilityLabel="오늘 뭐 먹지? AI 라멘 큐레이터"
+          accessibilityHint={ticketsUsedUp ? "오늘 뽑은 식권을 다시 볼 수 있어요" : "국물과 상황을 골라 오늘의 한 그릇을 추천받아요"}
+          accessibilityLabel={ticketsUsedUp ? "오늘 뭐 먹지? AI 라멘 큐레이터, 오늘 식권을 다 뽑았어요" : "오늘 뭐 먹지? AI 라멘 큐레이터"}
           accessibilityRole="button"
-          onPress={() => router.push("/ai-recommend")}
+          // 오늘 식권을 다 뽑았으면 큐레이터에 들이지 않고 뽑아 둔 식권을 연다(사용자 결정, 2026.10.23)
+          onPress={() => (ticketsUsedUp ? setTicketsOpen(true) : router.push("/ai-recommend"))}
           testID="home-curator"
           style={({ pressed }) => [styles.curator, pressed && styles.pressedWash]}
         >
@@ -405,11 +407,11 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
                   오늘 뭐 먹지?
                 </AppText>
                 <AppText lineBreakStrategyIOS="hangul-word" style={styles.curatorSub} tone="sub" variant="secondary">
-                  국물과 상황에 맞는 오늘의 한 그릇 추천
+                  {ticketsUsedUp ? `오늘 식권 ${todayTickets.dailyLimit}장을 다 뽑았어요. 내일 다시 채워져요` : "국물과 상황에 맞는 오늘의 한 그릇 추천"}
                 </AppText>
-                <View style={[styles.curatorButton, pressed && styles.curatorButtonPressed]}>
-                  <AppText capScale style={styles.bold} tone="onDark" variant="secondary">
-                    AI 추천받기
+                <View style={[styles.curatorButton, ticketsUsedUp && styles.curatorButtonDone, pressed && (ticketsUsedUp ? styles.curatorButtonDonePressed : styles.curatorButtonPressed)]}>
+                  <AppText capScale style={styles.bold} tone={ticketsUsedUp ? "ink" : "onDark"} variant="secondary">
+                    {ticketsUsedUp ? "뽑은 식권 보기" : "AI 추천받기"}
                   </AppText>
                 </View>
               </View>
@@ -419,11 +421,11 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
             </>
           )}
         </Pressable>
-        {todayTickets?.tickets.length ? (
-          // 카드 안에 넣으면 버튼 안의 버튼이 되므로 카드 바로 아래 한 줄로 둔다
+        {todayTickets?.tickets.length && !ticketsUsedUp ? (
+          // 카드 안에 넣으면 버튼 안의 버튼이 되므로 카드 바로 아래 한 줄로 둔다. 다 뽑았으면 카드가 대신 연다
           <Pressable
             accessibilityHint="오늘 뽑은 식권을 골라 다시 볼 수 있어요"
-            accessibilityLabel={`오늘 뽑은 식권 ${todayTickets.tickets.length}장, ${todayTickets.remaining > 0 ? `남은 식권 ${todayTickets.remaining}장` : "내일 다시 채워져요"}`}
+            accessibilityLabel={`오늘 뽑은 식권 ${todayTickets.tickets.length}장, 남은 식권 ${todayTickets.remaining}장`}
             accessibilityRole="button"
             onPress={() => setTicketsOpen(true)}
             style={({ pressed }) => [styles.ticketLine, pressed && styles.pressedWash]}
@@ -433,7 +435,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
             <AppText capScale style={[styles.bold, styles.flexShrink]} variant="secondary">
               {`오늘 뽑은 식권 ${todayTickets.tickets.length}장`}
               <AppText capScale tone="sub" variant="secondary">
-                {todayTickets.remaining > 0 ? ` · 남은 식권 ${todayTickets.remaining}장` : " · 내일 다시 채워져요"}
+                {` · 남은 식권 ${todayTickets.remaining}장`}
               </AppText>
             </AppText>
             <View style={styles.flex} />
@@ -734,6 +736,9 @@ const styles = StyleSheet.create({
   },
   curatorPhoto: { width: 112, height: 132, marginRight: spacing.x4, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvasSoft },
   curatorButtonPressed: { backgroundColor: colors.brandPressed },
+  // 오늘 식권을 다 뽑은 뒤의 버튼은 빨강이 아니다(누르면 뽑아 둔 식권을 볼 뿐이다)
+  curatorButtonDone: { backgroundColor: colors.secondary },
+  curatorButtonDonePressed: { backgroundColor: colors.secondaryPressed },
   ticketLine: {
     minHeight: touchTarget,
     flexDirection: "row",

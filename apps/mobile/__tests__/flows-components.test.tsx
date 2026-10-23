@@ -250,12 +250,13 @@ describe("record screens", () => {
     expect(view.getByRole("radio", { name: /^육수 농도 4점/ }).props.accessibilityState.checked).toBe(true)
   })
 
-  /** 메뉴를 적고 점수 넷과 재방문을 골라 마지막 장(추가 감정)까지 간다. 답을 고르면 저절로 넘어간다 */
+  /** 메뉴를 적고 점수 넷과 재방문을 골라 마지막 장(추가 감정)까지 간다. 답마다 "다음"을 누른다 */
   async function answerRequired(view: Awaited<ReturnType<typeof renderWithStore>>) {
     await fireEvent.changeText(await view.findByLabelText("먹은 메뉴"), "특제 쇼유 라멘")
     await fireEvent.press(view.getByRole("button", { name: "다음" }))
     for (const name of [/^전체 만족도 4점/, /^육수 농도 3점/, /^면 삶기 5점/, /^토핑 2점/, /^재방문 의사 자주 감/]) {
       await fireEvent.press(await view.findByRole("radio", { name }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
     }
     expect(await view.findByText("더 남길 감정이 있나요?")).toBeTruthy()
   }
@@ -293,12 +294,18 @@ describe("record screens", () => {
     }
   })
 
-  it("moves on after an answer, fills the ticket, and returns to a question from its ticket cell", async () => {
+  it("waits for Next after an answer, fills the ticket, and returns to a question from its ticket cell", async () => {
     const view = await renderWithStore(<NewRecordScreen />)
     await fireEvent.changeText(await view.findByLabelText("먹은 메뉴"), "특제 쇼유 라멘")
     await fireEvent.press(view.getByRole("button", { name: "다음" }))
 
     await fireEvent.press(await view.findByRole("radio", { name: /^전체 만족도 4점/ }))
+    // 고르기만 해서는 넘어가지 않는다
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    })
+    expect(view.getByText("전체 만족도는 어땠나요?")).toBeTruthy()
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
     expect(await view.findByText("육수 농도는 어땠나요?")).toBeTruthy()
 
     await fireEvent.press(view.getByRole("button", { name: "전체 만족도 4점, 눌러서 이 질문으로 가요" }))
@@ -308,7 +315,7 @@ describe("record screens", () => {
     expect(view.getByRole("button", { name: /^토핑 아직 비어 있음/ }).props.accessibilityState.disabled).toBe(true)
   })
 
-  it("saves a private five-axis record with extra tags and opens the completion screen", async () => {
+  it("saves a public-by-default five-axis record with extra tags and opens the completion screen", async () => {
     const { router } = jest.requireMock("expo-router") as {
       router: { replace: jest.Mock }
     }
@@ -316,8 +323,8 @@ describe("record screens", () => {
     const view = await renderWithStore(<NewRecordScreen />, repository)
     await answerRequired(view)
 
-    expect(view.getByRole("button", { name: "나만 보기" }).props.accessibilityState.selected).toBe(true)
-    expect(view.getByRole("button", { name: "공개" }).props.accessibilityState.selected).toBe(false)
+    expect(view.getByRole("button", { name: "공개" }).props.accessibilityState.selected).toBe(true)
+    expect(view.getByRole("button", { name: "나만 보기" }).props.accessibilityState.selected).toBe(false)
     await fireEvent.press(view.getByRole("button", { name: "국물 진해요" }))
     expect(view.getByRole("button", { name: "추가 감정 1개" })).toBeTruthy()
     await fireEvent.press(view.getByRole("button", { name: "기록 저장하기" }))
@@ -332,7 +339,7 @@ describe("record screens", () => {
       expect(repository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           logs: expect.arrayContaining([
-            expect.objectContaining({ menuName: "특제 쇼유 라멘", isPublic: false, tasteNotes: expect.objectContaining({ broth: ["진해요"] }) }),
+            expect.objectContaining({ menuName: "특제 쇼유 라멘", isPublic: true, tasteNotes: expect.objectContaining({ broth: ["진해요"] }) }),
           ]),
         }),
       ),
