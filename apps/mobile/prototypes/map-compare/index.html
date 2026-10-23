@@ -44,12 +44,12 @@
   <p class="lead">같은 중심(마포·서교동 일대), 같은 매장 538곳, 같은 검색·필터·카드. 바탕 지도와 핀만 바뀝니다(첫 화면은 애플 쪽이 조금 더 넓게 보여요). 아이폰 시뮬레이터에서 찍은 실제 화면이에요.</p>
 
   <div class="verdict">
-    <strong>추천: 네이버로 옮기기.</strong> 역·노선·건물 이름 같은 한국 지도 정보가 훨씬 풍부하고, 안드로이드에서도 같은 지도가 떠요.
-    다만 바탕에 시설 아이콘이 많아 <b>우리 전용 차분한 스타일</b>을 입혀야 핀이 묻히지 않아요.
+    <strong>추천: 네이버 + RAOTA 전용 스타일로 옮기기.</strong> 역·노선·동 이름 같은 한국 지도 정보는 살리고, 가게·시설 아이콘은 꺼서 우리 핀이 먼저 보여요.
+    안드로이드에서도 같은 지도가 떠요.
   </div>
 
   <h2>1. 첫 화면</h2>
-  <p class="lead">처음 지도 탭을 열었을 때. 네이버는 기본 그대로와, 바탕을 옅게 한 버전 두 가지예요.</p>
+  <p class="lead">처음 지도 탭을 열었을 때. 네이버는 기본 그대로와, 네이버 스타일 에디터로 만든 RAOTA 전용 스타일(raota-quiet) 두 가지예요.</p>
   <div class="row">
     <figure>
       <img src="shots/apple-default.jpg" alt="애플 지도 첫 화면" loading="lazy" />
@@ -60,8 +60,8 @@
       <figcaption><span class="tag naver">네이버 · 기본</span><b>정보는 풍부, 대신 복잡해요</b><span>망원역·합정역, 2호선·6호선, 학교·건물 이름까지. 핀보다 지도가 먼저 눈에 들어와요.</span></figcaption>
     </figure>
     <figure>
-      <img src="shots/naver-muted.jpg" alt="네이버 지도 옅게 한 첫 화면" loading="lazy" />
-      <figcaption><span class="tag naver">네이버 · 옅게</span><b>바탕만 옅게, 핀은 그대로</b><span>밝기 +35%, 글씨 85%. 나아졌지만 시설 아이콘은 남아요. 완전히 지우려면 전용 스타일이 필요해요.</span></figcaption>
+      <img src="shots/naver-quiet.jpg" alt="네이버 지도 RAOTA 스타일 첫 화면" loading="lazy" />
+      <figcaption><span class="tag naver">네이버 · RAOTA 스타일</span><b>차분한데 길 찾기 정보는 남아요</b><span>가게·은행·편의점·시설 아이콘 32종을 끄고, 도로·구역을 회색 톤으로 낮췄어요. 지하철 노선·역, 동 이름, 공원은 남겼어요.</span></figcaption>
     </figure>
   </div>
   <p class="note">네이버의 주황 숫자 원은 네이버 기본 묶음이에요. 색을 못 바꿔서, 옮기면 지금 쓰는 검은 숫자 알약 방식을 그대로 올릴 거예요.</p>
@@ -75,7 +75,7 @@
     </figure>
     <figure>
       <img src="shots/naver-selected.jpg" alt="네이버 지도 가게 선택" loading="lazy" />
-      <figcaption><span class="tag naver">네이버 · 옅게</span><b>주변 건물·편의점까지 보여요</b><span>CU·GS25·아파트 이름으로 찾아가기 쉬워요. 빨간 핀이 여전히 가장 먼저 보여요.</span></figcaption>
+      <figcaption><span class="tag naver">네이버 · RAOTA 스타일</span><b>골목 이름까지 보여요</b><span>월드컵북로·잔다리로 같은 길 이름이 촘촘해서 위치 감이 확실해요. 빨간 핀이 가장 먼저 보여요.</span></figcaption>
     </figure>
   </div>
 
@@ -83,18 +83,18 @@
   <table>
     <thead><tr><th></th><th>지금 · 애플</th><th>네이버</th></tr></thead>
     <tbody>
-      <tr><td>한국 지도 정보</td><td>역·건물 이름이 적어요</td><td class="good">역·노선·건물·상호까지 풍부</td></tr>
+      <tr><td>한국 지도 정보</td><td>역·길 이름이 적어요</td><td class="good">역·노선·동·골목 이름까지 풍부</td></tr>
       <tr><td>안드로이드</td><td class="bad">구글 지도로 바뀌어 다르게 보여요</td><td class="good">아이폰과 같은 지도</td></tr>
       <tr><td>핀 그리기</td><td>핀 그림이 늦게 실리는 문제를 직접 막아야 했어요</td><td class="good">그림 핀을 지도가 바로 그려요</td></tr>
       <tr><td>카메라 이동</td><td>속도를 맞추려고 라이브러리를 고쳐 썼어요</td><td class="good">0.22초 그대로 지켜요</td></tr>
-      <tr><td>바탕 지도 톤</td><td class="good">기본이 차분해요</td><td>시설 아이콘이 많아 전용 스타일 필요</td></tr>
+      <tr><td>바탕 지도 톤</td><td class="good">기본이 차분해요</td><td class="good">전용 스타일로 차분하게 맞춤 (에디터에서 고쳐 다시 발행하면 앱에 바로 반영)</td></tr>
       <tr><td>비용</td><td class="good">무료</td><td>지도 로딩 월 600만 건까지 무료, 넘으면 건당 0.1원</td></tr>
     </tbody>
   </table>
 
   <h2>4. 옮긴다면 할 일</h2>
   <ol>
-    <li>네이버 스타일 에디터에서 RAOTA 전용 차분한 스타일 만들기 (시설 아이콘 끄기, 회색 톤)</li>
+    <li><s>네이버 스타일 에디터에서 RAOTA 전용 차분한 스타일 만들기</s> 완료 (raota-quiet)</li>
     <li>지도 탭을 네이버 지도로 바꾸고, 지금 쓰는 묶음 방식(검은 숫자 알약, 누르면 확대) 그대로 연결</li>
     <li>빨간 핀·검은 핀 그림 정리, 안드로이드 빌드에서 확인</li>
     <li>애플 지도 라이브러리와 고쳐 쓰던 패치 지우기</li>

@@ -24,6 +24,9 @@ const SELECTED_PIN_IMAGE = require("@/assets/images/map-pin-selected.png")
 // 비교 사진에 개발용 경고 띠가 덮이지 않게 한다(앱 동작과 무관한 RN 개발 경고)
 LogBox.ignoreLogs(["Sending `onAnimatedValueUpdate`"])
 const START = { latitude: 37.5537, longitude: 126.9156, zoom: 14 }
+/** 네이버 스타일 에디터 raota-quiet의 My Style ID(편집 화면 주소의 ID와 다르다. 발행 후 "스타일 적용하기"에서 확인).
+ *  에디터에서 고쳐 다시 발행하면 앱에 그대로 반영된다 */
+const RAOTA_STYLE_ID = "1c8032eb-8f49-425e-904c-4fef8749ffc9"
 /** 고른 핀 뷰의 폭. 이름표(최대 160pt)가 들어가는 크기 */
 const SELECTED_PIN_WIDTH = 168
 const CAMERA_MS = 220
@@ -51,9 +54,10 @@ export default function NaverMapPrototype() {
     mapRef.current?.animateCameraTo({ latitude: shop.lat, longitude: shop.lng, duration: CAMERA_MS, easing: "EaseOut" })
   }
 
-  // 비교 사진용: ?shopId=로 가게를 골라 열고, ?style=raw면 바탕을 옅게 하지 않은 네이버 기본 지도를 보여 준다
+  // 비교 사진용: ?shopId=로 가게를 골라 열고, ?style=로 바탕을 고른다
+  // raw = 네이버 기본, light = 기본을 옅게만, 없으면 RAOTA 전용 스타일(raota-quiet)
   const params = useLocalSearchParams<{ shopId?: string; style?: string }>()
-  const raw = params.style === "raw"
+  const variant = params.style === "raw" || params.style === "light" ? params.style : "quiet"
   useEffect(() => {
     const shop = shops.find((item) => item.id === params.shopId)
     if (!shop) return
@@ -70,10 +74,10 @@ export default function NaverMapPrototype() {
         initialCamera={START}
         isShowCompass={false}
         isShowLocationButton={false}
-        // 애플 지도의 mutedStandard처럼 바탕을 옅게 하고 지명·시설 글씨를 줄여 우리 핀이 먼저 보이게 한다.
-        // 시설 아이콘을 아예 지우려면 네이버 스타일 에디터의 사용자 스타일(customStyleId)이 필요하다
-        lightness={raw ? 0 : 0.35}
-        symbolScale={raw ? 1 : 0.85}
+        // raota-quiet: 네이버 스타일 에디터에서 만든 RAOTA 전용 스타일. 가게·시설 아이콘을 끄고 도로·구역을 회색 톤으로 낮췄다
+        customStyleId={variant === "quiet" ? RAOTA_STYLE_ID : undefined}
+        lightness={variant === "light" ? 0.35 : 0}
+        symbolScale={variant === "light" ? 0.85 : 1}
         isShowScaleBar={false}
         isShowZoomControls={false}
         locale="ko"
