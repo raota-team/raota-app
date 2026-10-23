@@ -18,6 +18,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated"
 
+import { sizedImageUri } from "../api/imageSize"
 import { colors, usePalette } from "../theme"
 
 type ImageStatus = "empty" | "loading" | "loaded" | "error"
@@ -50,7 +51,11 @@ export function ResilientUriImage({
     status: normalizedUri ? "loading" : "empty",
   })
   const status = loadState.uri === normalizedUri ? loadState.status : normalizedUri ? "loading" : "empty"
-  const [frameWidth, setFrameWidth] = useState(0)
+  // 칸 크기를 잰 뒤에 그 크기에 맞춘 사진을 받는다. 재기 전에 원본을 받으면 수 MB를 그냥 내려받는다
+  const [frame, setFrame] = useState({ width: 0, height: 0 })
+  const frameWidth = frame.width
+  const longestSide = Math.max(frame.width, frame.height)
+  const sourceUri = normalizedUri && longestSide > 0 ? sizedImageUri(normalizedUri, longestSide) : ""
   const reducedMotion = useReducedMotion()
   const palette = usePalette()
   const imageOpacity = useSharedValue(reducedMotion ? 1 : 0)
@@ -88,11 +93,11 @@ export function ResilientUriImage({
       accessibilityState={{ busy: status === "loading" }}
       style={[styles.container, style]}
       onLayout={({ nativeEvent }) => {
-        const width = nativeEvent.layout.width
-        setFrameWidth((previous) => previous === width ? previous : width)
+        const { width, height } = nativeEvent.layout
+        setFrame((previous) => (previous.width === width && previous.height === height ? previous : { width, height }))
       }}
     >
-      {normalizedUri && !unavailable ? (
+      {sourceUri && !unavailable ? (
         <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, imageStyle]}>
           <Image
             accessibilityIgnoresInvertColors
@@ -110,7 +115,7 @@ export function ResilientUriImage({
               imageOpacity.value = 0
               setLoadState({ uri: normalizedUri, status: "loading" })
             }}
-            source={{ uri: normalizedUri }}
+            source={{ uri: sourceUri }}
             style={StyleSheet.absoluteFill}
             transition={reducedMotion ? 0 : transition}
           />

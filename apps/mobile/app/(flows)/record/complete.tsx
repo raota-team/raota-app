@@ -30,6 +30,7 @@ import {
 } from "@/src/components/ui"
 import { InkStamp } from "@/src/components/InkStamp"
 import { useRecordReminderPrompt } from "@/src/notifications"
+import { sizedImageUri } from "@/src/api/imageSize"
 import { colors, radii, spacing } from "@/src/theme"
 
 /*
@@ -209,7 +210,7 @@ export default function RecordCompleteScreen() {
           <Animated.View style={[styles.ticket, ticketStyle]}>
             <View style={styles.ticketHeader}>
               {photo ? (
-                <Image accessibilityLabel={`${log.menuName} 사진`} contentFit="cover" source={{ uri: photo }} style={styles.ticketPhoto} />
+                <Image accessibilityLabel={`${log.menuName} 사진`} contentFit="cover" source={{ uri: sizedImageUri(photo, 360) }} style={styles.ticketPhoto} />
               ) : (
                 <View style={styles.ticketPhotoFallback}>
                   <AppText tone="muted" variant="meta">RAOTA 식권 · 한 그릇</AppText>

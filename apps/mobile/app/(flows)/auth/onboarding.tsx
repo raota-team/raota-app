@@ -30,6 +30,7 @@ import { OnboardingProfileUpdateError } from "@/src/data/remote"
 import { NICKNAME_MAX, NICKNAME_MIN, NICKNAME_REQUIRED_ERROR, validateNickname } from "@/src/domain/nickname"
 import { ONBOARDING_PROMPT_DELAY, useRecordReminderPrompt } from "@/src/notifications"
 import { useRaota } from "@/src/state/RaotaStore"
+import { sizedImageUri } from "@/src/api/imageSize"
 import { colors, line, pressFade, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
@@ -207,7 +208,7 @@ export default function OnboardingScreen() {
           <View style={styles.doneHead}>
             <View style={styles.doneAvatar}>
               {registered.avatar ? (
-                <Image accessibilityLabel="프로필 사진" contentFit="cover" source={{ uri: registered.avatar }} style={styles.fill} />
+                <Image accessibilityLabel="프로필 사진" contentFit="cover" source={{ uri: sizedImageUri(registered.avatar, 120) }} style={styles.fill} />
               ) : (
                 <UserRound color={colors.textMuted} size={36} />
               )}
@@ -383,7 +384,7 @@ export default function OnboardingScreen() {
               style={({ pressed }) => [styles.avatar, pressed && pressFade]}
             >
               {avatar ? (
-                <Image accessibilityLabel="고른 프로필 사진" contentFit="cover" source={{ uri: avatar }} style={styles.fill} />
+                <Image accessibilityLabel="고른 프로필 사진" contentFit="cover" source={{ uri: sizedImageUri(avatar, 120) }} style={styles.fill} />
               ) : (
                 <UserRound color={colors.textMuted} size={24} />
               )}

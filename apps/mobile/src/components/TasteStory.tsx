@@ -22,6 +22,7 @@ import {
   type TasteIdentity,
   type TasteScores,
 } from "@raota/shared"
+import { sizedImageUri } from "../api/imageSize"
 import { colors, radii, soupColorOf, spacing, tasteAxis, usePalette } from "../theme"
 import { AppText } from "./ui"
 
@@ -279,7 +280,8 @@ function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: nu
           ))}
         </View>
       ) : null}
-      {slide.photo ? <Image contentFit="cover" source={{ uri: slide.photo }} style={[styles.photo, { width: photoWidth }]} transition={150} /> : null}
+      {/* 카드 높이(168pt 이상)가 사진 폭보다 길 때가 많아 긴 변을 240pt로 잡는다 */}
+      {slide.photo ? <Image contentFit="cover" source={{ uri: sizedImageUri(slide.photo, Math.max(photoWidth, 240)) }} style={[styles.photo, { width: photoWidth }]} transition={150} /> : null}
       {slide.shares && total > 0 ? (
         // 국물별 몫을 한 줄로 이어 붙인 막대. 손잡이 없는 비율 띠라 슬라이더로 읽히지 않는다
         <View style={styles.footer}>

@@ -11,6 +11,7 @@ import { track } from "@/src/analytics"
 import { useBookmarkedShops, useShops } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
 import { AppText, Chip, EmptyState, IconButton, LoadingState } from "@/src/components/ui"
+import { sizedImageUri } from "@/src/api/imageSize"
 import { colors, maxFontScale, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
@@ -102,7 +103,7 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
     >
       <View style={styles.rowPhoto}>
         {shop.photo ? (
-          <Image contentFit="cover" source={{ uri: shop.photo }} style={StyleSheet.absoluteFill} transition={150} />
+          <Image contentFit="cover" source={{ uri: sizedImageUri(shop.photo, 48) }} style={StyleSheet.absoluteFill} transition={150} />
         ) : null}
       </View>
       <View style={styles.rowCopy}>

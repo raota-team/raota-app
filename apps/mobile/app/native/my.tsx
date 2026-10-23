@@ -45,6 +45,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
+import { sizedImageUri } from "@/src/api/imageSize"
 import { colors, line, maxFontScale, radii, ramenHeat, spacing, touchTarget, typography } from "@/src/theme"
 import { shopSpecOf, shopStyleOf } from "../(flows)/taste/index"
 import Svg, { Path } from "react-native-svg"
@@ -1132,11 +1133,11 @@ function TasteBoards({ bowls, myLogs, shops }: {
           <View style={styles.collage}>
             {board.photos.length ? (
               <>
-                <Image contentFit="cover" source={{ uri: board.photos[0] }} style={board.photos.length > 1 ? styles.collageMain : styles.fill} />
+                <Image contentFit="cover" source={{ uri: sizedImageUri(board.photos[0], board.photos.length > 1 ? 116 : 180) }} style={board.photos.length > 1 ? styles.collageMain : styles.fill} />
                 {board.photos.length > 1 ? (
                   <View style={styles.collageSide}>
                     {board.photos.slice(1).map((photo) => (
-                      <Image contentFit="cover" key={photo} source={{ uri: photo }} style={styles.collageSmall} />
+                      <Image contentFit="cover" key={photo} source={{ uri: sizedImageUri(photo, 60) }} style={styles.collageSmall} />
                     ))}
                   </View>
                 ) : null}
@@ -1160,7 +1161,7 @@ function Thumb({ uri, letter, size = 48 }: { uri?: string | null; letter: string
   return (
     <View style={[styles.thumb, { width: size, height: size, borderRadius: radii.sm }]}>
       {uri ? (
-        <Image contentFit="cover" source={{ uri }} style={styles.fill} transition={150} />
+        <Image contentFit="cover" source={{ uri: sizedImageUri(uri, size) }} style={styles.fill} transition={150} />
       ) : (
         <AppText tone="sub" variant="cardTitle">
           {letter.slice(0, 1)}

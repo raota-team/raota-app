@@ -45,6 +45,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
+import { sizedImageUri } from "@/src/api/imageSize"
 import { colors, line, radii, soupColorOf, spacing, typography } from "@/src/theme"
 
 /* 취향 종합 리포트: 한 장씩 넘기는 이야기 → 종류별 분포 → 자주 간 라멘집 → 다음 한 그릇. */
@@ -956,7 +957,7 @@ export default function TasteReportScreen() {
                           </AppText>
                           <View style={styles.thumb}>
                             {visit.photo ? (
-                              <Image contentFit="cover" source={{ uri: visit.photo }} style={styles.thumbImage} transition={150} />
+                              <Image contentFit="cover" source={{ uri: sizedImageUri(visit.photo, 48) }} style={styles.thumbImage} transition={150} />
                             ) : (
                               <AppText tone="sub" variant="cardTitle">
                                 {visit.name.slice(0, 1)}
@@ -1002,7 +1003,7 @@ export default function TasteReportScreen() {
                     >
                       <View style={[styles.pinImage, styles.pinTall]}>
                         {suggestion.shop.photos[0] ? (
-                          <Image contentFit="cover" source={{ uri: suggestion.shop.photos[0] }} style={styles.thumbImage} transition={150} />
+                          <Image contentFit="cover" source={{ uri: sizedImageUri(suggestion.shop.photos[0], 48) }} style={styles.thumbImage} transition={150} />
                         ) : (
                           <AppText style={styles.pinFallback} variant="cardTitle">{suggestion.shop.name.slice(0, 1)}</AppText>
                         )}
@@ -1026,7 +1027,7 @@ export default function TasteReportScreen() {
                       >
                         <View style={[styles.pinImage, styles.pinShort]}>
                           {suggestion.shop.photos[0] ? (
-                            <Image contentFit="cover" source={{ uri: suggestion.shop.photos[1] ?? suggestion.shop.photos[0] }} style={styles.thumbImage} transition={150} />
+                            <Image contentFit="cover" source={{ uri: sizedImageUri(suggestion.shop.photos[1] ?? suggestion.shop.photos[0], 48) }} style={styles.thumbImage} transition={150} />
                           ) : (
                             <AppText style={styles.pinFallback} variant="cardTitle">{suggestion.shop.name.slice(0, 1)}</AppText>
                           )}

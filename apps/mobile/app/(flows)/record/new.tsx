@@ -72,6 +72,7 @@ import {
   TicketCut,
 } from "@/src/components/ui"
 import { EdgeBackZone } from "@/src/components/EdgeBackZone"
+import { sizedImageUri } from "@/src/api/imageSize"
 import { colors, maxFontScale, pressFade, radii, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
 /*
@@ -1091,7 +1092,7 @@ export default function NewRecordScreen() {
                   onPress={() => setPhotos((current) => current.filter((item) => item !== uri))}
                   style={({ pressed }) => [styles.photoTile, pressed && pressFade]}
                 >
-                  <Image contentFit="cover" source={{ uri }} style={StyleSheet.absoluteFill} />
+                  <Image contentFit="cover" source={{ uri: sizedImageUri(uri, touchTarget + 4) }} style={StyleSheet.absoluteFill} />
                   <View style={styles.photoRemoveDot}>
                     <X color={colors.onPhotoPill} size={10} strokeWidth={3} />
                   </View>
@@ -1189,7 +1190,7 @@ export default function NewRecordScreen() {
               </Pressable>
             </View>
             <View style={styles.ticketShop}>
-              {thumbnail ? <Image accessible={false} contentFit="cover" source={{ uri: thumbnail }} style={styles.ticketThumb} /> : null}
+              {thumbnail ? <Image accessible={false} contentFit="cover" source={{ uri: sizedImageUri(thumbnail, TICKET_THUMB) }} style={styles.ticketThumb} /> : null}
               <View style={styles.flexShrink}>
                 {isEdit ? (
                   // 고치기에서는 가게를 바꿀 수 없다

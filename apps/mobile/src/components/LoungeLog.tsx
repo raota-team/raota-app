@@ -37,6 +37,7 @@ import {
   tasteSummaryOf,
 } from "../domain/lounge"
 import { useRaota } from "../state/RaotaStore"
+import { sizedImageUri } from "../api/imageSize"
 import { colors, line, pressFade, radii, spacing, touchTarget } from "../theme"
 import { ResilientUriImage } from "./ResilientUriImage"
 import { TasteFingerprint } from "./TasteFingerprint"
@@ -66,7 +67,7 @@ function shopLabel(shop: RamenLog["shop"]) {
 export function Avatar({ name, uri, size = 36, tone = "dark" }: { name: string; uri?: string | null; size?: number; tone?: "dark" | "soft" }) {
   const frame = { width: size, height: size, borderRadius: radii.pill }
   if (uri) {
-    return <Image accessibilityIgnoresInvertColors accessible={false} contentFit="cover" source={{ uri }} style={[frame, styles.avatarImage]} />
+    return <Image accessibilityIgnoresInvertColors accessible={false} contentFit="cover" source={{ uri: sizedImageUri(uri, size) }} style={[frame, styles.avatarImage]} />
   }
   return (
     <View
