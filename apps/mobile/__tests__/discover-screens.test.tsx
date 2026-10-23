@@ -15,7 +15,7 @@ import HomeScreen from "@/app/native/index"
 import ShopDetailScreen from "@/app/(flows)/shop/[shopId]"
 import AIRecommendScreen from "@/app/(flows)/ai-recommend"
 
-const mockParams: { shopId?: string; tickets?: string } = {}
+const mockParams: { shopId?: string; ticket?: string } = {}
 
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), canGoBack: jest.fn(() => true), navigate: jest.fn(), push: jest.fn(), replace: jest.fn() },
@@ -116,7 +116,7 @@ afterEach(() => {
 beforeEach(() => {
   jest.clearAllMocks()
   delete mockParams.shopId
-  delete mockParams.tickets
+  delete mockParams.ticket
 })
 
 describe("home", () => {
@@ -584,9 +584,9 @@ describe("AI curator", () => {
       await fireEvent.press(draw)
       expect(recommendations).not.toHaveBeenCalled()
 
-      // 오늘 뽑은 식권은 그때의 매장과 추천 이유 그대로 다시 열린다(서울 11:05에 뽑았다)
+      // 오늘 뽑은 식권은 그때의 매장과 추천 이유 그대로 다시 열린다. 언제 뽑았는지는 서울 날짜까지 적는다
       await fireEvent.press(view.getByRole("button", { name: "뽑은 식권 1장 보기" }))
-      await fireEvent.press(view.getByRole("button", { name: "11:05에 뽑은 식권, 아까뽑은라멘, 이에케, 가까운 순" }))
+      await fireEvent.press(view.getByRole("button", { name: "2026년 10월 23일 11:05에 뽑은 식권, 아까뽑은라멘, 이에케, 가까운 순" }))
       expect(view.getAllByText(/아까뽑은라멘/).length).toBeGreaterThan(0)
       expect(within(view.getByTestId("ai-recommend-reason")).getByText("이에케 국물이 진하고 차슈가 두툼하다는 기록이 많아요.")).toBeTruthy()
     } finally {
@@ -596,31 +596,38 @@ describe("AI curator", () => {
     }
   })
 
-  it("links today's drawn tickets from home and opens the list on arrival", async () => {
+  it("lists today's tickets on home without leaving it, then opens the picked ticket's result directly", async () => {
     isRemote.mockImplementation((domain: string) => domain === "recommendations")
     const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
-    const drawn = (id: string, name: string) => ({
+    const drawn = (id: string, name: string, reason: string) => ({
       id,
       createdAt: "2026-10-23T02:05:00Z",
       shops: [{ ...SHOPS[0], id: `91${id}`, name }],
       appliedConditions: ["쇼유"],
-      reasons: {},
+      reasons: { [`91${id}`]: reason },
     })
     const tickets = jest
       .spyOn(remoteReads as unknown as { recommendationTickets: () => Promise<unknown> }, "recommendationTickets")
-      .mockResolvedValue({ dailyLimit: 3, remaining: 1, tickets: [drawn("2", "두번째식권라멘"), drawn("1", "첫식권라멘")] })
+      .mockResolvedValue({
+        dailyLimit: 3,
+        remaining: 1,
+        tickets: [drawn("2", "두번째식권라멘", "두번째 식권의 이유예요."), drawn("1", "첫식권라멘", "첫 식권의 이유예요.")],
+      })
     try {
       const home = await renderScreen(<HomeScreen />)
-      const line = await home.findByRole("button", { name: "오늘 뽑은 식권 2장, 남은 식권 1장" })
-      await fireEvent.press(line)
-      expect(router.push).toHaveBeenCalledWith({ pathname: "/ai-recommend", params: { tickets: "open" } })
+      await fireEvent.press(await home.findByRole("button", { name: "오늘 뽑은 식권 2장, 남은 식권 1장" }))
+      // 홈을 떠나지 않고 홈 위에서 목록을 연다
+      expect(router.push).not.toHaveBeenCalled()
+      await fireEvent.press(home.getByRole("button", { name: /에 뽑은 식권, 첫식권라멘/ }))
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/ai-recommend", params: { ticket: "1" } })
       home.unmount()
 
-      // 그 줄로 들어오면 누르지 않아도 오늘 뽑은 식권 목록이 열려 있다
-      mockParams.tickets = "open"
+      // 고른 식권으로 들어오면 추천 단계를 건너뛰고 그 식권의 결과가 바로 열린다
+      mockParams.ticket = "1"
       const curator = await renderScreen(<AIRecommendScreen />)
-      expect(await curator.findByRole("button", { name: /에 뽑은 식권, 두번째식권라멘/ })).toBeTruthy()
-      expect(curator.getByRole("button", { name: /에 뽑은 식권, 첫식권라멘/ })).toBeTruthy()
+      expect(await curator.findByTestId("ai-recommend-reason")).toBeTruthy()
+      expect(within(curator.getByTestId("ai-recommend-reason")).getByText("첫 식권의 이유예요.")).toBeTruthy()
+      expect(curator.queryByText("1 / 4")).toBeNull()
     } finally {
       tickets.mockRestore()
       isRemote.mockImplementation(() => false)

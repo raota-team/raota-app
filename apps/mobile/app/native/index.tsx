@@ -9,6 +9,7 @@ import { monthKeyOfDate, seoulMonthKey, seoulToday, type RamenLog, type Shop, ty
 import { isRemote } from "@/src/api/config"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, EmptyState, LoadingState } from "@/src/components/ui"
+import { TodayTicketsSheet } from "@/src/components/TodayTicketsSheet"
 import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile, useTodayCuration } from "@/src/data/hooks"
 import { remoteReads, type RemoteTodayTickets } from "@/src/data/remote"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
@@ -220,6 +221,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   // 오늘 뽑은 AI 식권. 큐레이터에서 뽑고 돌아오면 다시 읽어야 해서 화면에 들어올 때마다 읽는다
   const ticketsEnabled = isRemote("recommendations") && loggedIn
   const [todayTickets, setTodayTickets] = useState<RemoteTodayTickets | null>(null)
+  const [ticketsOpen, setTicketsOpen] = useState(false)
   useFocusEffect(
     useCallback(() => {
       if (!ticketsEnabled) {
@@ -420,10 +422,10 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
         {todayTickets?.tickets.length ? (
           // 카드 안에 넣으면 버튼 안의 버튼이 되므로 카드 바로 아래 한 줄로 둔다
           <Pressable
-            accessibilityHint="AI 큐레이터에서 오늘 뽑은 식권을 골라 다시 봐요"
+            accessibilityHint="오늘 뽑은 식권을 골라 다시 볼 수 있어요"
             accessibilityLabel={`오늘 뽑은 식권 ${todayTickets.tickets.length}장, ${todayTickets.remaining > 0 ? `남은 식권 ${todayTickets.remaining}장` : "내일 다시 채워져요"}`}
             accessibilityRole="button"
-            onPress={() => router.push({ pathname: "/ai-recommend", params: { tickets: "open" } })}
+            onPress={() => setTicketsOpen(true)}
             style={({ pressed }) => [styles.ticketLine, pressed && styles.pressedWash]}
             testID="home-tickets"
           >
@@ -642,6 +644,16 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
           </View>
         ) : null}
       </ScrollView>
+      {/* 추천 단계로 넘어가지 않고 홈 위에서 고른다. 고른 식권만 그 결과 화면으로 연다 */}
+      <TodayTicketsSheet
+        onClose={() => setTicketsOpen(false)}
+        onSelect={(ticket) => {
+          setTicketsOpen(false)
+          router.push({ pathname: "/ai-recommend", params: { ticket: ticket.id } })
+        }}
+        today={todayTickets}
+        visible={ticketsOpen}
+      />
     </View>
   )
 }
