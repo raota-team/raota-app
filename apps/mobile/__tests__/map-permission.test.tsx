@@ -28,41 +28,57 @@ jest.mock("lucide-react-native", () => {
   })
 })
 
-const mockAnimateToRegion = jest.fn()
+const mockAnimateRegionTo = jest.fn()
+const mockAnimateCameraTo = jest.fn()
+const mockSetLocationTrackingMode = jest.fn()
 
-jest.mock("react-native-maps", () => {
+jest.mock("@mj-studio/react-native-naver-map", () => {
   const React = require("react") as typeof ReactModule
   const { Pressable, View } = require("react-native") as typeof ReactNativeModule
-  const MapView = React.forwardRef(function MapView(
-    {
-      children,
-      showsUserLocation,
-    }: {
-      children?: React.ReactNode
-      showsUserLocation?: boolean
-    },
+  const NaverMapView = React.forwardRef(function NaverMapView(
+    { children, onInitialized }: { children?: React.ReactNode; onInitialized?: () => void },
     ref,
   ) {
-    React.useImperativeHandle(ref, () => ({ animateToRegion: mockAnimateToRegion }))
-    return React.createElement(
-      View,
+    React.useImperativeHandle(ref, () => ({
+      animateRegionTo: mockAnimateRegionTo,
+      animateCameraTo: mockAnimateCameraTo,
+      setLocationTrackingMode: mockSetLocationTrackingMode,
+    }))
+    React.useEffect(() => {
+      onInitialized?.()
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+    return React.createElement(View, { testID: "naver-map" }, children)
+  })
+  // 네이버 마커는 접근성 이름을 받지 못한다. 테스트는 좌표(accessibilityValue)로 어느 가게 핀인지 찾는다
+  const NaverMapMarkerOverlay = ({
+    children,
+    image,
+    latitude,
+    longitude,
+    onTap,
+    width,
+    height,
+  }: {
+    children?: React.ReactNode
+    image?: unknown
+    latitude: number
+    longitude: number
+    onTap?: () => void
+    width?: number
+    height?: number
+  }) =>
+    React.createElement(
+      Pressable,
       {
-        testID: "apple-map",
-        accessibilityState: { selected: Boolean(showsUserLocation) },
+        accessibilityValue: { text: `${latitude},${longitude}` },
+        onPress: onTap,
+        style: { width, height },
+        testID: image === undefined ? "map-view-marker" : "map-image-marker",
       },
       children,
     )
-  })
-  const Marker = ({
-    children,
-    accessibilityLabel,
-    onPress,
-  }: {
-    children?: React.ReactNode
-    accessibilityLabel?: string
-    onPress?: () => void
-  }) => React.createElement(Pressable, { accessibilityLabel, onPress }, children)
-  return { __esModule: true, default: MapView, Marker, UrlTile: () => null }
+  return { __esModule: true, NaverMapView, NaverMapMarkerOverlay }
 })
 
 jest.mock("react-native-worklets", () => require("react-native-worklets/src/mock"))
@@ -102,6 +118,17 @@ function MapHarness() {
   )
 }
 
+/** 마커가 가리키는 가게(좌표가 같은 가게) */
+function shopAt(marker: { props: { accessibilityValue?: { text?: string } } }) {
+  const [lat, lng] = (marker.props.accessibilityValue?.text ?? "").split(",").map(Number)
+  return SHOPS.find((shop) => shop.lat === lat && shop.lng === lng)
+}
+
+/** 기기에서는 투명한 사본이 그려지며 이름표 폭을 잰다. 테스트에서는 그 잰 값을 직접 보낸다 */
+async function measureLabel(view: Awaited<ReturnType<typeof render>>, width = 80) {
+  await fireEvent(view.getByTestId("map-pin-label-measure"), "layout", { nativeEvent: { layout: { x: 0, y: 0, width, height: 28 } } })
+}
+
 describe("map location permission states", () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -123,25 +150,23 @@ describe("map location permission states", () => {
       await view.findByText("위치 권한이 없어 망원·합정 일대를 보여드려요."),
     ).toBeTruthy()
     expect(view.getByRole("button", { name: "설정 열기" })).toBeTruthy()
-    // 거절해도 기본 지역의 지도는 그대로 쓴다. 처음에는 아무 가게도 고르지 않아 카드가 없다
-    expect(view.getByTestId("apple-map").props.accessibilityState.selected).toBe(false)
-    const regularPin = (await view.findAllByTestId("unselected-map-pin"))[0]
-    expect(view.queryByTestId("selected-map-pin")).toBeNull()
+    // 거절해도 기본 지역의 지도는 그대로 쓰고, 내 위치 점은 켜지 않는다. 처음에는 아무 가게도 고르지 않아 카드가 없다
+    expect(view.getByTestId("naver-map")).toBeTruthy()
+    expect(mockSetLocationTrackingMode).not.toHaveBeenCalled()
+    const regularPin = (await view.findAllByTestId("map-image-marker"))[0]
+    expect(view.queryByTestId("map-pin-label")).toBeNull()
     expect(view.queryByRole("button", { name: /매장 상세 보기/ })).toBeNull()
-    expect(within(regularPin).queryByTestId("map-pin-label")).toBeNull()
-    // 핀을 누르면 고르고 카드가 뜬다. 카드의 ✕로 다시 풀 수 있다
-    await fireEvent.press(regularPin.parent!)
-    const selectedPin = view.getByTestId("selected-map-pin")
-    expect(within(view.getByTestId("map-surface")).getByRole("button", { name: /매장 상세 보기/ })).toBeTruthy()
-    expect(within(selectedPin).getByTestId("map-pin-label")).toBeTruthy()
-    expect(within(selectedPin).getByTestId("map-pin-logo")).toBeTruthy()
-    // 핀이 선택되지 않았을 때도 원을 감싼 탭 영역은 최소 44pt이다.
-    expect(StyleSheet.flatten(regularPin.props.style).minWidth).toBeGreaterThanOrEqual(44)
+    // 핀 원을 감싼 탭 영역은 최소 44pt이다.
+    expect(StyleSheet.flatten(regularPin.props.style).width).toBeGreaterThanOrEqual(44)
     expect(StyleSheet.flatten(regularPin.props.style).height).toBeGreaterThanOrEqual(44)
-    expect(StyleSheet.flatten(selectedPin.props.style).height).toBeGreaterThanOrEqual(44)
+    // 핀을 누르면 고르고 이름표와 카드가 뜬다. 카드의 ✕로 다시 풀 수 있다
+    await fireEvent.press(regularPin)
+    await measureLabel(view)
+    expect(view.getByTestId("map-pin-label")).toBeTruthy()
+    expect(within(view.getByTestId("map-surface")).getByRole("button", { name: /매장 상세 보기/ })).toBeTruthy()
     expect(StyleSheet.flatten(view.getByRole("button", { name: "기본 지역으로 이동" }).props.style).height).toBeGreaterThanOrEqual(44)
     await fireEvent.press(view.getByRole("button", { name: "선택 해제" }))
-    expect(view.queryByTestId("selected-map-pin")).toBeNull()
+    expect(view.queryByTestId("map-pin-label")).toBeNull()
     expect(view.queryByRole("button", { name: /매장 상세 보기/ })).toBeNull()
   })
 
@@ -150,17 +175,20 @@ describe("map location permission states", () => {
     location.requestForegroundPermissionsAsync.mockResolvedValue({ status: "denied" })
 
     const view = await render(<MapHarness />)
-    const regularPin = (await view.findAllByTestId("unselected-map-pin"))[0]
-    const marker = regularPin.parent
-    const name = marker?.props.accessibilityLabel as string
+    const marker = (await view.findAllByTestId("map-image-marker"))[0]
+    const name = shopAt(marker)?.name as string
     expect(name).toBeTruthy()
 
-    await fireEvent.press(marker!)
-    const selectedPin = view.getByTestId("selected-map-pin")
-    expect(within(selectedPin).getByText(name)).toBeTruthy()
-    expect(within(selectedPin).getByTestId("map-pin-label")).toBeTruthy()
+    await fireEvent.press(marker)
+    // 이름표는 잰 폭이 오기 전에는 그리지 않는다(넓은 칸으로 찍히면 옆 묶음의 탭을 가로챈다)
+    expect(view.queryByTestId("map-pin-label")).toBeNull()
+    await measureLabel(view, 83.2)
+    // 이름표는 고른 가게 하나에만 붙고, 마커 칸 폭은 잰 이름표 폭과 같다
+    expect(view.getAllByTestId("map-pin-label")).toHaveLength(1)
+    expect(within(view.getByTestId("map-pin-label")).getByText(name)).toBeTruthy()
+    const labelMarker = view.getAllByTestId("map-view-marker").find((item) => within(item).queryByTestId("map-pin-label"))!
+    expect(StyleSheet.flatten(labelMarker.props.style).width).toBe(84)
     expect(view.getByRole("button", { name: /매장 상세 보기/ }).props.accessibilityLabel).toContain(name)
-    expect(view.getAllByTestId("unselected-map-pin").every((pin) => within(pin).queryByTestId("map-pin-label") === null)).toBe(true)
   })
 
   it("focuses a shop from a BIGINT route ID and keeps that ID in navigation", async () => {
@@ -196,7 +224,8 @@ describe("map location permission states", () => {
     expect(StyleSheet.flatten(openFilter.props.style).height).toBe(40)
     expect(StyleSheet.flatten(view.getByRole("button", { name: /메뉴 필터/ }).props.style).height).toBe(40)
     expect(StyleSheet.flatten(view.getByTestId("map-open-lamp").props.style).backgroundColor).toEqual(colors.open)
-    await fireEvent.press(view.getByLabelText("멘야준"))
+    const menyajun = SHOPS.find((shop) => shop.name === "멘야준")!
+    await fireEvent.press(view.getAllByTestId("map-image-marker").find((marker) => shopAt(marker)?.id === menyajun.id)!)
     const quickView = await view.findByRole("button", { name: /매장 상세 보기/ })
     expect(StyleSheet.flatten(within(quickView).getByTestId("map-open-status-lamp").props.style).backgroundColor).toEqual(colors.open)
     expect(StyleSheet.flatten(within(quickView).getByText("영업 중").props.style).color).toEqual(colors.open)
@@ -237,12 +266,10 @@ describe("map location permission states", () => {
       coords: { latitude: 37.55, longitude: 126.91 },
     })
 
-    const view = await render(<MapHarness />)
+    await render(<MapHarness />)
 
     await waitFor(() => {
-      expect(
-        view.getByTestId("apple-map").props.accessibilityState.selected,
-      ).toBe(true)
+      expect(mockSetLocationTrackingMode).toHaveBeenCalledWith("NoFollow")
     })
   })
 
@@ -253,12 +280,15 @@ describe("map location permission states", () => {
     }
     location.requestForegroundPermissionsAsync.mockResolvedValue({ status: "granted" })
     location.getCurrentPositionAsync.mockResolvedValue({ coords: { latitude: 37.501, longitude: 127.039 } })
-    mockAnimateToRegion.mockClear()
+    mockAnimateRegionTo.mockClear()
 
     await render(<MapHarness />)
 
+    // 네이버 지도의 영역은 남서쪽 모서리가 기준이다. 넘긴 영역의 가운데가 내 위치여야 한다
     await waitFor(() => {
-      expect(mockAnimateToRegion).toHaveBeenCalledWith(expect.objectContaining({ latitude: 37.501, longitude: 127.039 }), expect.any(Number))
+      const target = mockAnimateRegionTo.mock.calls.at(-1)?.[0] as { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number }
+      expect(target.latitude + target.latitudeDelta / 2).toBeCloseTo(37.501, 6)
+      expect(target.longitude + target.longitudeDelta / 2).toBeCloseTo(127.039, 6)
     })
   })
 })

@@ -1,28 +1,32 @@
+import { NaverMapMarkerOverlay, NaverMapView, type NaverMapViewRef } from "@mj-studio/react-native-naver-map"
 import * as Haptics from "expo-haptics"
 import { useIsFocused, useLocalSearchParams } from "expo-router"
 import * as Location from "expo-location"
 import { MapPin, Navigation } from "lucide-react-native"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Keyboard, Linking, Pressable, StyleSheet, View, useWindowDimensions } from "react-native"
-import MapView, { Marker, type Region } from "react-native-maps"
 import { useReducedMotion } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { AppText } from "@/src/components/ui"
 import { useShop } from "@/src/data/hooks"
-import { calculateMapClusters, regionToSpread } from "@/src/domain/map"
+import { calculateMapClusters, regionToSpread, type MapRegion } from "@/src/domain/map"
 import { colors, radii, spacing, touchTarget } from "@/src/theme"
 import {
   MAP_PIN_HEIGHT,
   MapHeader,
   MapClusterPin,
-  MapShopPin,
+  MapPinLabel,
+  MapPinLabelPill,
   QuickView,
   ShopListView,
+  clusterPinWidth,
   mapStyles,
   useMapFilters,
   type Coordinate,
 } from "./map.web"
+
+type Region = MapRegion
 
 /** 위치 권한이 없을 때 보여주는 기본 지역(망원·합정 일대, 원장 매장이 모인 곳) */
 const DEFAULT_REGION: Region = {
@@ -47,16 +51,21 @@ const START_LOCATION_WAIT = 1200
  */
 let rememberedUserRegion: Region | null = null
 
-/**
- * 고른 핀의 zIndex. Apple 지도는 누른 자리에서 가장 가까운 핀을 스스로 "선택"하고,
- * react-native-maps는 그 핀의 zIndex에 999를 더해 올린다. 옆 핀을 누르다 스치면 그 핀이
- * 1 + 999로 떠서 고른 핀의 이름표를 덮으므로, 고른 핀은 그보다 높게 둔다.
- */
+/** 고른 핀은 다른 핀·묶음 위에 그린다(이름표가 이웃 핀에 덮이지 않게) */
 const SELECTED_Z_INDEX = 2000
 
-/** 이름표 자리는 모든 핀에 남겨 두고, 지도의 좌표는 언제나 원의 중심에 고정한다. */
-const PIN_ANCHOR = { x: 0.5, y: (touchTarget / 2) / MAP_PIN_HEIGHT }
-const CLUSTER_ANCHOR = { x: 0.5, y: 0.5 }
+/** 핀 원 그림(44pt 칸 가운데 32pt 원 + 흰 로고). 좌표는 원의 중심에 맞춘다 */
+const SHOP_PIN_IMAGE = require("@/assets/images/map-pin.png")
+const SELECTED_PIN_IMAGE = require("@/assets/images/map-pin-selected.png")
+const CENTER_ANCHOR = { x: 0.5, y: 0.5 }
+/** 이름표 마커는 위쪽 44pt 원 자리를 비워 두고 그 가운데를 좌표에 맞춰, 빨간 원 바로 아래에 붙는다 */
+const LABEL_ANCHOR = { x: 0.5, y: touchTarget / 2 / MAP_PIN_HEIGHT }
+/**
+ * 네이버 스타일 에디터(style-editor.map.naver.com)의 raota-quiet 스타일 My Style ID. 가게·시설 아이콘 32종을 끄고
+ * 도로·구역·바탕을 따뜻한 회색으로 낮췄다(지하철 노선·역, 동 이름, 공원은 남김). 에디터에서 고쳐 다시 발행하면 앱에 바로 반영된다.
+ * 편집 화면 주소의 ID가 아니라 발행 뒤 "스타일 적용하기"에 나오는 ID다
+ */
+const RAOTA_STYLE_ID = "1c8032eb-8f49-425e-904c-4fef8749ffc9"
 /** 화면 밖으로 이만큼(화면 크기 대비) 더 넓게 핀을 그려 둔다. 조금 옮길 때 빈 곳이 보이지 않게 */
 const VIEWPORT_MARGIN = 0.5
 /** 고른 가게 카드(112pt)와 아래 여백이 지도를 가리는 높이. 묶음을 펼칠 때 그 위 칸에 맞춘다 */
@@ -68,10 +77,22 @@ function inViewport(shop: { lat: number; lng: number }, region: Region): boolean
   return Math.abs(shop.lat - region.latitude) <= latitudeReach && Math.abs(shop.lng - region.longitude) <= longitudeReach
 }
 
+/*
+ * 네이버 지도의 Region은 남서쪽 모서리가 기준(latitude/longitude = 남서쪽 끝)이고,
+ * 이 화면의 영역(핀 고르기·묶음 계산·펼치기)은 가운데가 기준이다. 지도와 주고받을 때만 바꾼다
+ */
+function fromNaverRegion(region: Region): Region {
+  return { ...region, latitude: region.latitude + region.latitudeDelta / 2, longitude: region.longitude + region.longitudeDelta / 2 }
+}
+
+function toNaverRegion(region: Region): Region {
+  return { ...region, latitude: region.latitude - region.latitudeDelta / 2, longitude: region.longitude - region.longitudeDelta / 2 }
+}
+
 type LocationStatus = "loading" | "granted" | "denied"
 
 /**
- * 지도 탭: Apple 지도(react-native-maps) + 웹 MapScreen과 같은 검색·필터·퀵뷰·목록.
+ * 지도 탭: 네이버 지도(@mj-studio/react-native-naver-map, RAOTA 전용 스타일) + 웹 MapScreen과 같은 검색·필터·퀵뷰·목록.
  * 위치 권한을 이 화면에서 묻고, 거절하면 기본 지역과 설정 경로를 보여준다.
  */
 export default function MapScreen() {
@@ -85,7 +106,8 @@ export default function MapScreen() {
  */
 function MapBody({ onRetry }: { onRetry: () => void }) {
   const insets = useSafeAreaInsets()
-  const mapRef = useRef<MapView>(null)
+  const mapRef = useRef<NaverMapViewRef>(null)
+  const [mapReady, setMapReady] = useState(false)
   const [viewMode, setViewMode] = useState<"map" | "list">("map")
   const [region, setRegion] = useState<Region>(rememberedUserRegion ?? DEFAULT_REGION)
   // 처음 들어올 때는 시작 위치(내 위치)가 정해진 뒤에 지도를 그린다. 기본 지역에서 출발해 미끄러지듯 옮겨 가지 않게
@@ -95,11 +117,6 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   const [origin, setOrigin] = useState<Coordinate | null>(null)
   const [headerHeight, setHeaderHeight] = useState(insets.top + spacing.x2 + spacing.x12 + spacing.x16)
   const reducedMotion = useReducedMotion()
-  /*
-   * 마커 스냅샷은 로고와 글씨가 그려질 때까지 잠깐 갱신한 뒤 고정한다.
-   * 계속 다시 그리면 지도가 무거워지고 핀 탭을 놓친다.
-   */
-  const [trackingPins, setTrackingPins] = useState(true)
   const filters = useMapFilters(origin)
 
   // 지도를 이미 그렸는지. 그린 뒤에는 시작 위치(initialRegion)를 바꿔도 소용없어 대신 카메라를 옮긴다
@@ -164,14 +181,17 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   const selectedShop = useShop(selectedInList ? null : selectedId).data
   // 처음에는 아무 가게도 고르지 않는다. 핀을 눌러야 고르고, 카드의 ✕나 지도 빈 곳을 누르면 풀린다(사용자 결정 2026.10.21)
   const selected = selectedInList ?? selectedShop ?? null
+  // 고른 가게 이름표의 잰 폭. 다른 가게를 고르면 그 이름으로 다시 잴 때까지 이름표 마커를 그리지 않는다
+  const [labelSize, setLabelSize] = useState<{ name: string; width: number } | null>(null)
+  const labelWidth = selected && labelSize?.name === selected.name ? Math.max(touchTarget, labelSize.width) : null
   // 검색·필터로 고른 가게가 목록에서 빠지면 고른 것도 푼다(지도에 없는 가게 카드가 남지 않게).
   // 원장에 없어 따로 불러온 가게(가게 상세의 "지도에서 보기")는 목록에 없으니 건드리지 않는다
   useEffect(() => {
     if (!selectedId || selectedInList) return
     if (filters.allShops.some((shop) => shop.id === selectedId)) setSelectedId(null)
   }, [filters.allShops, selectedId, selectedInList])
-  // 보이는 곳(과 둘레 반 화면씩)의 매장만 핀으로 그린다. 전부(약 540곳) 그리면 지도가 핀마다 그림을 만드느라 느려진다.
-  // 지도를 옮기고 멈추면(onRegionChangeComplete) 새로 보이는 곳의 핀이 붙는다
+  // 보이는 곳(과 둘레 반 화면씩)의 매장만 핀으로 그린다. 묶음 숫자는 뷰 마커라 전부(약 540곳) 그리면 무거워진다.
+  // 지도를 옮기고 멈추면(onCameraIdle) 새로 보이는 곳의 핀이 붙는다
   const visibleShops = useMemo(() => markerShops.filter((shop) => inViewport(shop, region)), [markerShops, region])
   // 좌표 차이를 화면 거리로 바꿀 지도 칸 크기. 재기 전에는 화면 크기로 어림한다(탭 막대만큼 크게 잡힌다)
   const windowSize = useWindowDimensions()
@@ -188,22 +208,10 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
     [visibleShops, selectedId, region, frame.width, frame.height],
   )
 
-  // 핀이 바뀌면 잠깐 다시 그리게 두고(로고가 실릴 시간) 곧 고정한다.
-  // 로고가 늦게 오면(개발 빌드는 그림을 Metro에서 받는다) 실린 순간 한 번 더 그리게 해 빈 원으로 굳지 않게 한다
-  const cancelSettle = useRef(() => {})
-  const trackPinsBriefly = useCallback(() => {
-    setTrackingPins(true)
-    cancelSettle.current()
-    const settle = setTimeout(() => setTrackingPins(false), 700)
-    cancelSettle.current = () => clearTimeout(settle)
-  }, [])
-  useEffect(() => {
-    trackPinsBriefly()
-  }, [clusters, selectedId, trackPinsBriefly])
-  useEffect(() => () => cancelSettle.current(), [])
-
   // 카메라 이동은 짧게(빠릿하게). 동작 줄이기에서는 바로 옮긴다
-  const animateTo = (target: Region) => mapRef.current?.animateToRegion(target, reducedMotion ? 0 : CAMERA_MS)
+  const cameraMs = reducedMotion ? 0 : CAMERA_MS
+  const animateTo = (target: Region) =>
+    mapRef.current?.animateRegionTo({ ...toNaverRegion(target), duration: cameraMs, easing: "EaseOut" })
 
   const goToUser = () => {
     if (!origin) {
@@ -213,18 +221,22 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
     animateTo({ ...origin, latitudeDelta: 0.012, longitudeDelta: 0.01 })
   }
 
-
   // 핀을 고르면 그 가게로 옮기기만 한다. 확대 수준을 바꾸면 묶음이 풀리며 핀들이 자리를 옮겨 고른 곳을 놓친다
   const selectShop = (shopId: string, latitude: number, longitude: number) => {
     setSelectedId(shopId)
     void Haptics.selectionAsync().catch(() => undefined)
-    animateTo({ ...region, latitude, longitude })
+    mapRef.current?.animateCameraTo({ latitude, longitude, duration: cameraMs, easing: "EaseOut" })
   }
+
+  // 내 위치 점은 네이버 지도가 직접 따라 그린다(NoFollow: 점만 움직이고 카메라는 그대로)
+  useEffect(() => {
+    if (mapReady && locationStatus === "granted") mapRef.current?.setLocationTrackingMode("NoFollow")
+  }, [mapReady, locationStatus])
 
   /*
    * 가게 상세의 "지도에서 보기"가 넘기는 매장. 그 가게를 골라 가깝게 보여 준다.
    * 지금 필터나 검색에 걸려 그 가게가 빠져 있으면 필터를 풀어야 핀이 보인다.
-   * 지도 이동은 탭이 화면에 올라온 뒤에 한다. 가게 상세 뒤에 가려진 채로 부르면 Apple 지도가 무시한다.
+   * 지도 이동은 탭이 화면에 올라온 뒤에 한다. 가게 상세 뒤에 가려진 채로 부르면 지도가 무시한다.
    */
   const params = useLocalSearchParams<{ shopId?: string; focus?: string }>()
   const focusInList = filters.allShops.find((shop) => shop.id === params.shopId)
@@ -279,6 +291,9 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
       <MapNotice actionLabel="설정 열기" icon={<MapPin color={colors.inkSub} size={16} />} message="위치 권한이 없어 망원·합정 일대를 보여드려요." onAction={() => void Linking.openSettings()} />
     ) : null
 
+  // 고른 가게 카드(또는 "없어요" 카드)가 떠 있는지. 네이버 로고는 가리면 안 되므로 카드 위로 올린다
+  const cardShown = Boolean(selected) || (!filters.isLoading && markerShops.length === 0)
+
   return (
     <View style={styles.root}>
       {viewMode === "map" ? (
@@ -291,78 +306,115 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
           testID="map-surface"
         >
             {startResolved ? (
-            <MapView
+            <NaverMapView
               accessibilityLabel="라멘집 지도"
+              customStyleId={RAOTA_STYLE_ID}
               // 목록에서 돌아와 다시 그려질 때 보던 자리(내 위치 포함)를 그대로 잇는다
-              initialRegion={region}
-              mapType="mutedStandard"
-              onMapReady={flushFocus}
-              onPress={(event) => {
-                Keyboard.dismiss()
-                // 핀을 누를 때도 지도 onPress가 함께 온다. 그때는 고른 것을 풀지 않는다
-                if (event.nativeEvent.action !== "marker-press") setSelectedId(null)
+              initialRegion={toNaverRegion(region)}
+              isRotateGesturesEnabled={false}
+              isShowCompass={false}
+              isShowLocationButton={false}
+              isShowScaleBar={false}
+              isShowZoomControls={false}
+              isTiltGesturesEnabled={false}
+              locale="ko"
+              logoMargin={{ left: spacing.x3, bottom: cardShown ? QUICK_VIEW_HEIGHT + spacing.x2 : spacing.x2 }}
+              onCameraIdle={({ region: visible }) => setRegion(fromNaverRegion(visible))}
+              onInitialized={() => {
+                setMapReady(true)
+                flushFocus()
               }}
-              onRegionChangeComplete={setRegion}
+              // 핀·묶음을 누르면 그 마커가 탭을 가져가 여기로 오지 않는다. 빈 곳을 누를 때만 고른 것을 푼다
+              onTapMap={() => {
+                Keyboard.dismiss()
+                setSelectedId(null)
+              }}
               ref={mapRef}
-              rotateEnabled={false}
-              showsCompass={false}
-              showsMyLocationButton={false}
-              showsPointsOfInterests={false}
-              showsUserLocation={locationStatus === "granted"}
               style={StyleSheet.absoluteFill}
             >
               {clusters.map((cluster) => {
                 if (cluster.shopIds.length > 1) {
                   return (
-                    <Marker
-                      accessibilityLabel={`라멘집 ${cluster.shopIds.length}곳, 확대해서 보기`}
-                      anchor={CLUSTER_ANCHOR}
-                      coordinate={{ latitude: cluster.latitude, longitude: cluster.longitude }}
+                    <NaverMapMarkerOverlay
+                      anchor={CENTER_ANCHOR}
+                      height={touchTarget}
                       key={cluster.id}
-                      onPress={() => {
+                      latitude={cluster.latitude}
+                      longitude={cluster.longitude}
+                      onTap={() => {
                         const members = visibleShops.filter((shop) => cluster.shopIds.includes(shop.id))
                         if (members.length === 0) return
                         // 이 묶음이 풀릴 만큼만 확대한다. 머리와 고른 가게 카드에 가리지 않는 칸에 맞춘다
                         animateTo(regionToSpread(members, region, frame, { top: headerHeight, bottom: selected ? QUICK_VIEW_HEIGHT : 0 }))
                       }}
-                      tracksViewChanges={trackingPins}
+                      width={clusterPinWidth(cluster.shopIds.length)}
                       zIndex={1}
                     >
                       <MapClusterPin count={cluster.shopIds.length} />
-                    </Marker>
+                    </NaverMapMarkerOverlay>
                   )
                 }
                 const shop = visibleShops.find((item) => item.id === cluster.shopIds[0])
                 if (!shop) return null
                 return (
-                  <Marker
-                    accessibilityLabel={shop.name}
-                    anchor={PIN_ANCHOR}
-                    coordinate={{ latitude: shop.lat, longitude: shop.lng }}
+                  <NaverMapMarkerOverlay
+                    anchor={CENTER_ANCHOR}
+                    height={touchTarget}
+                    image={SHOP_PIN_IMAGE}
                     key={cluster.id}
-                    onPress={() => selectShop(shop.id, shop.lat, shop.lng)}
-                    tracksViewChanges={trackingPins}
+                    latitude={shop.lat}
+                    longitude={shop.lng}
+                    onTap={() => selectShop(shop.id, shop.lat, shop.lng)}
+                    width={touchTarget}
                     zIndex={1}
-                  >
-                    <MapShopPin name={shop.name} onLogoLoad={trackPinsBriefly} selected={false} />
-                  </Marker>
+                  />
                 )
               })}
               {selected?.lat && selected.lng ? (
-                // 고른 핀은 묶음과 따로, 늘 다른 핀 위에 그린다(이름표가 이웃 핀에 덮이지 않게)
-                <Marker
-                  accessibilityLabel={`${selected.name}, 선택됨`}
-                  anchor={PIN_ANCHOR}
-                  coordinate={{ latitude: selected.lat, longitude: selected.lng }}
-                  key={`shop-${selected.id}`}
-                  onPress={() => selectShop(selected.id, selected.lat, selected.lng)}
-                  tracksViewChanges={trackingPins}
-                  zIndex={SELECTED_Z_INDEX}
-                >
-                  <MapShopPin name={selected.name} onLogoLoad={trackPinsBriefly} selected />
-                </Marker>
+                // 고른 핀은 묶음과 따로, 늘 다른 핀 위에 그린다. 원은 그림, 이름표는 뷰라 마커 둘로 겹쳐 올린다.
+                // 둘 다 밑에 깔린 지도 글씨(길·동 이름)를 가려 이름표가 읽히게 한다
+                <>
+                  <NaverMapMarkerOverlay
+                    anchor={CENTER_ANCHOR}
+                    height={touchTarget}
+                    image={SELECTED_PIN_IMAGE}
+                    isHideCollidedSymbols
+                    key={`selected-pin-${selected.id}`}
+                    latitude={selected.lat}
+                    longitude={selected.lng}
+                    onTap={() => selectShop(selected.id, selected.lat, selected.lng)}
+                    width={touchTarget}
+                    zIndex={SELECTED_Z_INDEX + 1}
+                  />
+                  {labelWidth !== null ? (
+                    <NaverMapMarkerOverlay
+                      anchor={LABEL_ANCHOR}
+                      height={MAP_PIN_HEIGHT}
+                      isHideCollidedSymbols
+                      key={`selected-label-${selected.id}`}
+                      latitude={selected.lat}
+                      longitude={selected.lng}
+                      onTap={() => selectShop(selected.id, selected.lat, selected.lng)}
+                      width={labelWidth}
+                      zIndex={SELECTED_Z_INDEX}
+                    >
+                      <MapPinLabel name={selected.name} width={labelWidth} />
+                    </NaverMapMarkerOverlay>
+                  ) : null}
+                </>
               ) : null}
-            </MapView>
+            </NaverMapView>
+            ) : null}
+            {selected ? (
+              // 이름표 폭을 재는 투명한 사본. 잰 폭으로 이름표 마커를 만든다(마커는 처음 그린 모습을 사진처럼 찍어 쓴다)
+              <View
+                onLayout={({ nativeEvent }) => setLabelSize({ name: selected.name, width: Math.ceil(nativeEvent.layout.width) })}
+                pointerEvents="none"
+                style={styles.labelMeasure}
+                testID="map-pin-label-measure"
+              >
+                <MapPinLabelPill name={selected.name} />
+              </View>
             ) : null}
             <MapHeader
               filters={filters}
@@ -472,6 +524,8 @@ const styles = StyleSheet.create({
   noticeActionText: { fontWeight: "700" },
   noticePressed: { backgroundColor: colors.surfacePressed },
   mapArea: { flex: 1, backgroundColor: colors.canvasSoft },
+  // 이름표 폭을 재는 사본은 보이지 않게, 다른 것의 자리를 밀지 않게 띄운다
+  labelMeasure: { position: "absolute", left: 0, top: 0, opacity: 0 },
   // 퀵뷰와 조작키는 지도 위에서만 그림자를 가진다.
   quickViewWrap: { position: "absolute", left: spacing.x2_5, right: spacing.x2_5, bottom: spacing.x2_5 },
   controls: { alignSelf: "flex-end" },

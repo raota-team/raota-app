@@ -90,7 +90,21 @@
       ],
       "expo-image",
       "expo-web-browser",
-      "./plugins/withIosSceneLifecycle"
+      "./plugins/withIosSceneLifecycle",
+      [
+        "@mj-studio/react-native-naver-map",
+        {
+          "client_id": "u84o9e15rb"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": ["https://repository.map.naver.com/archive/maven"]
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

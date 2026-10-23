@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router"
 import { Check, ChevronDown, List, Map as MapIcon, MapPin, Search, X } from "lucide-react-native"
 import { useEffect, useMemo, useState, type ReactElement } from "react"
-import { FlatList, Image, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native"
+import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import type { Shop, ShopCatalogItem } from "@raota/shared"
@@ -11,7 +11,7 @@ import { useMapShops } from "@/src/data/hooks"
 import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
 import { colors, line, maxFontScale, radii, shadows, spacing, touchTarget, typography } from "@/src/theme"
 
-/** 검색·필터·퀵뷰는 지도 위에 떠 있고, 목록에서는 사진과 정보 사이에 줄만 둔다. */
+/** 고른 핀 이름표 마커의 높이: 원 자리(44pt) + 틈 + 이름표(28pt). 좌표는 원 자리의 가운데에 맞춘다 */
 export const MAP_PIN_HEIGHT = touchTarget + spacing.x1 + 28
 
 export type MapShop = Shop & Partial<Pick<ShopCatalogItem, "style" | "spec" | "lastOrder">>
@@ -560,34 +560,42 @@ export function LocationNotice({ message, actionLabel, onAction }: { message: st
 }
 
 /*
- * 핀 로고는 28pt 전용 작은 그림(pin-logo, @2x·@3x)을 쓴다. 1024px 앱 로고를 핀마다 풀면 늦게 뜨고,
- * 지도 마커는 그려진 순간을 사진처럼 굳혀 쓰므로 로고가 늦으면 빈 원으로 굳는다. 그래서 로고가 실리면 onLogoLoad로 알린다
+ * 핀의 원(검은 원·고른 가게의 빨간 원 + 흰 로고)은 미리 그린 그림(assets/images/map-pin*.png)이라 지도가 바로 그린다.
+ * 고른 가게의 이름표와 묶음 숫자만 뷰로 그려 마커에 올린다. 네이버 지도는 마커 뷰를 사진처럼 찍어 쓰는데
+ * 그 안의 그림(Image)은 찍히지 않아서, 뷰 마커에는 글자와 면만 둔다.
  */
-const PIN_LOGO = require("@/assets/images/pin-logo.png")
 
-/** 핀 그림은 지도 조작과 별개인 뷰로 두어 두 플랫폼에서 같은 모양을 쓸 수 있다. */
-export function MapShopPin({ name, selected, onLogoLoad }: { name: string; selected: boolean; onLogoLoad?: () => void }) {
+/** 빨간 이름표 알약. 지도 밖에 투명하게 한 번 그려 폭을 재고, 그 폭으로 이름표 마커를 만든다 */
+export function MapPinLabelPill({ name }: { name: string }) {
   return (
-    <View style={mapStyles.pin} testID={selected ? "selected-map-pin" : "unselected-map-pin"}>
-      <View style={mapStyles.pinHitArea}>
-        <View style={[mapStyles.pinCircle, selected && mapStyles.pinCircleSelected]} testID="map-pin-symbol">
-          <Image accessible={false} onLoad={onLogoLoad} source={PIN_LOGO} style={mapStyles.pinLogo} testID="map-pin-logo" />
-        </View>
-      </View>
-      {selected ? (
-        <View style={mapStyles.pinLabel} testID="map-pin-label">
-          <AppText capScale numberOfLines={1} style={mapStyles.pinLabelText} variant="meta">
-            {name}
-          </AppText>
-        </View>
-      ) : null}
+    <View style={mapStyles.pinLabel}>
+      <AppText capScale numberOfLines={1} style={mapStyles.pinLabelText} variant="meta">
+        {name}
+      </AppText>
     </View>
   )
 }
 
+/**
+ * 고른 핀 아래 빨간 이름표 마커. 위쪽 원 자리(44pt)를 비워 두고, 마커는 이 칸의 원 중심을 좌표에 맞춘다.
+ * 마커는 투명한 곳까지 칸 전체가 탭을 받으므로 칸 폭을 이름표 폭(잰 값)에 맞춘다. 넓으면 옆 묶음·핀의 탭을 가로챈다
+ */
+export function MapPinLabel({ name, width }: { name: string; width: number }) {
+  return (
+    <View collapsable={false} style={[mapStyles.pinLabelFrame, { width }]} testID="map-pin-label">
+      <MapPinLabelPill name={name} />
+    </View>
+  )
+}
+
+/** 묶음 마커의 폭. 세 자리 수(100곳 이상)는 알약이 잘리지 않게 넓힌다 */
+export function clusterPinWidth(count: number): number {
+  return count >= 100 ? 64 : touchTarget
+}
+
 export function MapClusterPin({ count }: { count: number }) {
   return (
-    <View style={mapStyles.pinHitArea}>
+    <View collapsable={false} style={[mapStyles.clusterFrame, { width: clusterPinWidth(count) }]}>
       <View style={mapStyles.clusterPin} testID="map-cluster">
         <AppText capScale style={mapStyles.clusterCount} tone="onDark" variant="button">
           {count}
@@ -597,7 +605,7 @@ export function MapClusterPin({ count }: { count: number }) {
   )
 }
 
-/** Expo 웹 미리보기: Apple 지도는 iOS에만 있으므로 같은 검색·필터와 목록만 보여준다 */
+/** Expo 웹 미리보기: 네이버 지도는 앱(iOS·Android)에만 있으므로 같은 검색·필터와 목록만 보여준다 */
 export default function WebMapScreen() {
   const [retryKey, setRetryKey] = useState(0)
   return <WebMapBody key={retryKey} onRetry={() => setRetryKey((key) => key + 1)} />
@@ -612,7 +620,7 @@ function WebMapBody({ onRetry }: { onRetry: () => void }) {
       <ShopListView
         filters={filters}
         onRetry={onRetry}
-        notice={<LocationNotice message="지도와 현재 위치는 iOS 앱에서 Apple 지도로 보여드려요. 여기서는 목록으로 볼 수 있어요." />}
+        notice={<LocationNotice message="지도와 현재 위치는 앱에서 보여드려요. 여기서는 목록으로 볼 수 있어요." />}
       />
     </View>
   )
@@ -630,30 +638,18 @@ export const mapStyles = StyleSheet.create({
     ...shadows.modal,
   },
   floatingPressed: { backgroundColor: colors.surfacePressed },
-  pin: { alignItems: "center", minWidth: touchTarget, height: MAP_PIN_HEIGHT },
-  // 고른 핀만 이름표가 보인다. 비선택 핀도 같은 높이를 써서 원의 중심은 선택 전후 제자리에 남는다.
-  pinHitArea: { width: touchTarget, height: touchTarget, alignItems: "center", justifyContent: "center" },
-  pinCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.black,
-  },
-  pinCircleSelected: { backgroundColor: colors.brand },
-  pinLogo: { width: 28, height: 28, resizeMode: "contain", tintColor: colors.white },
   // 고른 핀의 이름표는 원과 같은 빨강이다. 둘이 한 덩어리로 "지금 보는 곳"을 가리킨다(사용자 결정, 2026.10.23)
+  pinLabelFrame: { height: MAP_PIN_HEIGHT, alignItems: "center", paddingTop: touchTarget + spacing.x1 },
   pinLabel: {
     height: 28,
     maxWidth: 160,
-    marginTop: spacing.x1,
     paddingHorizontal: spacing.x2_5,
     justifyContent: "center",
     borderRadius: radii.pill,
     backgroundColor: colors.brand,
   },
   pinLabelText: { color: colors.onDark, fontWeight: "700", textAlign: "center" },
+  clusterFrame: { height: touchTarget, alignItems: "center", justifyContent: "center" },
   // 세 자리 수(100곳 이상)도 알약 안에 들어가게 폭이 늘어난다
   clusterPin: {
     minWidth: touchTarget,
