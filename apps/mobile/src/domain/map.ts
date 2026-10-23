@@ -33,7 +33,7 @@ export const MAP_CLOSEST_CLUSTER_DELTA = 0.004
  * 한 단계 확대했다고 묶음이 한꺼번에 풀려 핀이 겹겹이 쌓이지 않는다.
  * 매장 ID 순으로 돌며 앞선 묶음의 첫 핀에서 56pt 안이면 그 묶음에 넣는다(사슬처럼 길게 이어 묶지 않는다).
  * 묶음은 첫 핀 자리에 둔다. 가운데(평균)에 두면 이웃 묶음 쪽으로 밀려 서로 겹친다. 첫 핀끼리는 늘 56pt 넘게 떨어져 있다.
- * 같은 확대 수준에서는 늘 같은 묶음이 나온다.
+ * 같은 확대 수준에서는 늘 같은 묶음이 나온다. 묶음 id는 첫 핀(묶음 자리) 가게로 정해, 숫자만 바뀌는 묶음은 같은 마커로 남는다.
  */
 export function calculateMapClusters(
   shops: Array<Pick<Shop, "id" | "lat" | "lng">>,
@@ -67,7 +67,7 @@ export function calculateMapClusters(
     .map(({ items }): MapCluster => {
       const shopIds = items.map((shop) => shop.id)
       return {
-        id: shopIds.length === 1 ? `shop-${shopIds[0]}` : `cluster-${shopIds.join("-")}`,
+        id: shopIds.length === 1 ? `shop-${shopIds[0]}` : `cluster-${shopIds[0]}`,
         latitude: items[0].lat,
         longitude: items[0].lng,
         shopIds,

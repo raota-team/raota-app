@@ -190,24 +190,32 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
     if (!selectedId || selectedInList) return
     if (filters.allShops.some((shop) => shop.id === selectedId)) setSelectedId(null)
   }, [filters.allShops, selectedId, selectedInList])
-  // 보이는 곳(과 둘레 반 화면씩)의 매장만 핀으로 그린다. 묶음 숫자는 뷰 마커라 전부(약 540곳) 그리면 무거워진다.
-  // 지도를 옮기고 멈추면(onCameraIdle) 새로 보이는 곳의 핀이 붙는다
-  const visibleShops = useMemo(() => markerShops.filter((shop) => inViewport(shop, region)), [markerShops, region])
   // 좌표 차이를 화면 거리로 바꿀 지도 칸 크기. 재기 전에는 화면 크기로 어림한다(탭 막대만큼 크게 잡힌다)
   const windowSize = useWindowDimensions()
   const [mapFrame, setMapFrame] = useState<{ width: number; height: number } | null>(null)
   const frame = mapFrame ?? windowSize
-  // 고른 가게는 묶음에 넣지 않는다. 묶이면 카드는 떠 있는데 빨간 핀이 숫자 알약 속에 숨는다
+  /*
+   * 묶음은 보이는 곳만이 아니라 모든 매장으로 계산한다. 보이는 곳만 묶으면 지도를 옮길 때마다 가장자리로 드나드는
+   * 가게 때문에 묶음이 바뀌어, 멈출 때마다 핀이 거의 다 지워졌다 다시 그려져 끊겨 보였다(2026.10.24).
+   * 그래서 묶음은 확대 수준(영역 폭)이 바뀔 때만 다시 계산하고, 옮기기만 하면 같은 묶음이 그대로 남는다.
+   * 고른 가게는 묶음에 넣지 않는다. 묶이면 카드는 떠 있는데 빨간 핀이 숫자 알약 속에 숨는다
+   */
   const clusters = useMemo(
     () =>
       calculateMapClusters(
-        selectedId ? visibleShops.filter((shop) => shop.id !== selectedId) : visibleShops,
-        region,
+        selectedId ? markerShops.filter((shop) => shop.id !== selectedId) : markerShops,
+        { latitudeDelta: region.latitudeDelta, longitudeDelta: region.longitudeDelta },
         { width: frame.width, height: frame.height },
       ),
-    [visibleShops, selectedId, region, frame.width, frame.height],
+    [markerShops, selectedId, region.latitudeDelta, region.longitudeDelta, frame.width, frame.height],
   )
-
+  // 보이는 곳(과 둘레 반 화면씩)의 묶음·핀만 마커로 그린다. 묶음 숫자는 뷰 마커라 전부 그리면 무거워진다.
+  // 지도를 옮기고 멈추면(onCameraIdle) 새로 보이는 곳의 마커가 붙는다
+  const visibleClusters = useMemo(
+    () => clusters.filter((cluster) => inViewport({ lat: cluster.latitude, lng: cluster.longitude }, region)),
+    [clusters, region],
+  )
+  const shopById = useMemo(() => new Map(markerShops.map((shop) => [shop.id, shop])), [markerShops])
   // 카메라 이동은 짧게(빠릿하게). 동작 줄이기에서는 바로 옮긴다
   const cameraMs = reducedMotion ? 0 : CAMERA_MS
   const animateTo = (target: Region) =>
@@ -332,7 +340,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
               ref={mapRef}
               style={StyleSheet.absoluteFill}
             >
-              {clusters.map((cluster) => {
+              {visibleClusters.map((cluster) => {
                 if (cluster.shopIds.length > 1) {
                   return (
                     <NaverMapMarkerOverlay
@@ -342,7 +350,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                       latitude={cluster.latitude}
                       longitude={cluster.longitude}
                       onTap={() => {
-                        const members = visibleShops.filter((shop) => cluster.shopIds.includes(shop.id))
+                        const members = cluster.shopIds.flatMap((id) => shopById.get(id) ?? [])
                         if (members.length === 0) return
                         // 이 묶음이 풀릴 만큼만 확대한다. 머리와 고른 가게 카드에 가리지 않는 칸에 맞춘다
                         animateTo(regionToSpread(members, region, frame, { top: headerHeight, bottom: selected ? QUICK_VIEW_HEIGHT : 0 }))
@@ -350,11 +358,12 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                       width={clusterPinWidth(cluster.shopIds.length)}
                       zIndex={1}
                     >
-                      <MapClusterPin count={cluster.shopIds.length} />
+                      {/* 마커는 처음 그린 모습을 사진처럼 찍어 쓴다. 숫자가 바뀌면 key로 다시 찍게 해 마커는 그대로 두고 숫자만 바꾼다 */}
+                      <MapClusterPin count={cluster.shopIds.length} key={cluster.shopIds.length} />
                     </NaverMapMarkerOverlay>
                   )
                 }
-                const shop = visibleShops.find((item) => item.id === cluster.shopIds[0])
+                const shop = shopById.get(cluster.shopIds[0])
                 if (!shop) return null
                 return (
                   <NaverMapMarkerOverlay
