@@ -26,14 +26,13 @@ import { EdgeBackZone } from "@/src/components/EdgeBackZone"
 import { AppText, BottomSheet, Button, EmptyState, Header, IconButton, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
 import { isRemote } from "@/src/api/config"
 import { useShop, useShops } from "@/src/data/hooks"
+import { breaksOf, DAY_SHORT, formatTime, groupWeek, hoursStatusAt, parseOpeningHours, seoulTime, spanText, statusText, type DayHours } from "@/src/domain/hours"
 import { naverMapLinks } from "@/src/domain/naverMap"
 import { isLogVisibleTo } from "@/src/domain/lounge"
 import { shopTasteSummaryOf } from "@/src/domain/shopTaste"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, radii, spacing, touchTarget } from "@/src/theme"
 
-const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
-const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
 /** 하단 고정 바 높이(버튼 48 + 위아래 여백)만큼 토스트를 띄운다 */
 const TOAST_OFFSET = 88
 /** 이 가게의 맛 카드 윗변에서 이만큼(제목 + 첫 문장) 보이면 떠오르게 한다 */
@@ -58,6 +57,54 @@ function businessLabel(shop: Shop): { label: string; open: boolean } {
     default:
       return { label: "영업 정보 확인 필요", open: false }
   }
+}
+
+interface LiveStatus {
+  label: string
+  detail: string | null
+  open: boolean
+}
+
+/** 초록 점(영업 중일 때만) + "쉬는 시간 · 17:00에 다시 열어요" */
+function HoursStatusLine({ status, large = false }: { status: LiveStatus; large?: boolean }) {
+  return (
+    <View style={styles.statusLine}>
+      <View style={[styles.statusDot, { backgroundColor: status.open ? colors.open : colors.textMuted }]} testID="shop-hours-status-dot" />
+      <AppText style={[styles.flexShrink, styles.tabular]} variant={large ? "body" : "secondary"}>
+        <AppText style={styles.bold} variant={large ? "body" : "secondary"}>{status.label}</AppText>
+        {status.detail ? <AppText tone="sub" variant={large ? "body" : "secondary"}>{` · ${status.detail}`}</AppText> : null}
+      </AppText>
+    </View>
+  )
+}
+
+/**
+ * 오늘 하루를 첫 여는 시각부터 마지막 닫는 시각까지 한 줄 막대로 보여 준다.
+ * 영업 구간은 검정, 쉬는 시간은 빈 트랙, 지금 시각은 동그란 표시다. 읽는 내용은 위 상태 줄과 아래 요일 목록이 같으므로 스크린리더는 건너뛴다.
+ */
+function TodayTimeline({ hours, nowMinute }: { hours: DayHours; nowMinute: number }) {
+  const start = hours.ranges[0].start
+  const end = hours.ranges[hours.ranges.length - 1].end
+  const span = end - start
+  const at = (minute: number): `${number}%` => `${((minute - start) / span) * 100}%`
+  const pauses = breaksOf(hours.ranges)
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.timeline} testID="shop-hours-timeline">
+      <View style={styles.timelineTrack}>
+        {hours.ranges.map((range) => (
+          <View key={range.start} style={[styles.timelineOpen, { left: at(range.start), width: `${((range.end - range.start) / span) * 100}%` }]} />
+        ))}
+        {nowMinute >= start && nowMinute <= end ? <View style={[styles.timelineNow, { left: at(nowMinute) }]} testID="shop-hours-now" /> : null}
+      </View>
+      <View style={styles.timelineLabels}>
+        <AppText capScale style={styles.tabular} tone="sub" variant="meta">{formatTime(start)}</AppText>
+        {pauses.length === 1 ? (
+          <AppText capScale style={styles.tabular} tone="muted" variant="meta">{`쉬는 시간 ${formatTime(pauses[0].start)} – ${formatTime(pauses[0].end)}`}</AppText>
+        ) : null}
+        <AppText capScale style={styles.tabular} tone="sub" variant="meta">{formatTime(end)}</AppText>
+      </View>
+    </View>
+  )
 }
 
 function InstagramIcon({ color, size = 16 }: { color: ColorValue; size?: number }) {
@@ -168,21 +215,24 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     track("shop_viewed", { shopId: shop.id })
   }, [shop.id])
 
-  const dayIndex = new Date().getDay()
-  const todayName = DAY_NAMES[dayIndex]
-  const todayShort = DAY_SHORT[dayIndex]
-  const hasHours = shop.openingHours.length > 0
-  const todayEntry = shop.openingHours.find((entry) => entry.startsWith(todayName))
-  const todayTime = todayEntry?.replace(/^.*?: /, "")
-  const todayOpening = todayTime?.match(/^\d{1,2}:\d{2}/)?.[0]
-  const openingMinute = todayOpening ? Number(todayOpening.split(":")[0]) * 60 + Number(todayOpening.split(":")[1]) : null
-  const now = new Date()
-  const upcomingOpening = shop.businessStatus === "OPERATIONAL" && !shop.isOpen && openingMinute !== null && now.getHours() * 60 + now.getMinutes() < openingMinute
-    ? `지금은 준비 중, ${todayOpening}에 열어요`
-    : null
-  const splitHours = todayTime?.match(/\d{1,2}:\d{2}\s*~\s*(\d{1,2}:\d{2})\s*,\s*(\d{1,2}:\d{2})/)
-
+  // 영업시간은 서버·데모 모두 "요일: 시간" 문자열이라 한 곳(domain/hours)에서 읽고, 상태는 서울 시각으로 정한다
+  const week = useMemo(() => parseOpeningHours(shop.openingHours), [shop.openingHours])
+  const now = seoulTime()
+  const todayShort = DAY_SHORT[now.day]
+  const todayHours = week.find((entry) => entry.day === now.day)
+  const todayBreaks = todayHours ? breaksOf(todayHours.ranges) : []
+  const hasHours = week.length > 0
   const status = businessLabel(shop)
+  // 영업 중인 매장은 영업시간으로 쉬는 시간·다음 여는 시각까지 알려 준다. 휴업·폐업이거나 오늘 시간을 모르면 원장 상태를 쓴다
+  const hoursStatus = shop.businessStatus === "OPERATIONAL" ? hoursStatusAt(week, now) : null
+  const liveStatus: LiveStatus = hoursStatus
+    ? { ...statusText(hoursStatus), open: hoursStatus.kind === "open" }
+    : { label: status.label, detail: null, open: status.open }
+  const todayLine = !todayHours
+    ? `오늘(${todayShort}) 영업시간 정보 없음`
+    : todayHours.closed
+      ? `오늘(${todayShort}) 휴무`
+      : `오늘(${todayShort}) ${spanText(todayHours.ranges)}${todayBreaks.map((pause) => ` · 쉬는 시간 ${formatTime(pause.start)} – ${formatTime(pause.end)}`).join("")}`
   const photos = shop.photos.filter(Boolean)
   const perks = [
     { label: "면 리필", value: shop.servicePerks?.noodleRefill },
@@ -478,7 +528,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               <AppText capScale tone="sub" variant="meta">{shop.style}</AppText>
             ) : null}
             <AppText capScale style={styles.metaText} tone="muted" variant="meta">
-              {`${shop.style ? " · " : ""}${status.label}${shop.lastOrder ? ` · 라스트오더 ${shop.lastOrder}` : ""}${shop.distanceM > 0 ? ` · ${formatDistance(shop.distanceM)}` : ""}`}
+              {`${shop.style ? " · " : ""}${liveStatus.label}${shop.lastOrder ? ` · 라스트오더 ${shop.lastOrder}` : ""}${shop.distanceM > 0 ? ` · ${formatDistance(shop.distanceM)}` : ""}`}
             </AppText>
           </View>
         </View>
@@ -604,16 +654,18 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           {hasHours ? (
             <Pressable
               accessibilityHint="요일별 영업시간을 시트로 열어요"
-              accessibilityLabel={`영업시간, 오늘(${todayShort}) ${todayTime ?? "정보 없음"}`}
+              accessibilityLabel={`영업시간, ${liveStatus.label}${liveStatus.detail ? `, ${liveStatus.detail}` : ""}. ${todayLine}`}
               accessibilityRole="button"
               accessibilityState={{ expanded: hoursOpen }}
               onPress={() => setHoursOpen(true)}
               style={({ pressed }) => [styles.infoRow, pressed && styles.infoPressed]}
             >
               <AppText style={styles.infoKey} tone="muted" variant="secondary">영업시간</AppText>
-              <View style={styles.hoursPreview}>
-                <AppText capScale tone="muted" variant="meta">{`오늘(${todayShort})`}</AppText>
-                <AppText style={styles.infoText} variant="secondary">{todayTime ?? "정보 없음"}</AppText>
+              <View style={styles.infoValue}>
+                <HoursStatusLine status={liveStatus} />
+                <AppText capScale lineBreakStrategyIOS="hangul-word" style={[styles.hoursToday, styles.tabular]} tone="muted" variant="meta">{todayLine}</AppText>
+              </View>
+              <View style={styles.hoursChevron}>
                 <ChevronRight color={colors.textMuted} size={16} />
               </View>
             </Pressable>
@@ -731,34 +783,51 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                 <View style={styles.flex}>
                   <AppText accessibilityRole="header" variant="screenTitle">영업시간</AppText>
                   <AppText capScale style={[styles.hoursStatus, styles.flexShrink]} tone="muted" variant="meta">
-                    {`${shop.name}${shop.branch ? ` ${shop.branch}` : ""} · ${upcomingOpening ?? status.label}`}
+                    {`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}`}
                   </AppText>
                 </View>
                 <IconButton accessibilityLabel="닫기" icon={<X color={colors.ink} size={20} />} onPress={() => setHoursOpen(false)} />
               </View>
-              <ScrollView contentContainerStyle={styles.hoursWeek} showsVerticalScrollIndicator={false}>
-                {shop.openingHours.map((entry, index) => {
-                  const day = entry.split(": ")[0]
-                  const time = entry.slice(day.length + 2)
-                  const isToday = day === todayName
-                  return (
-                    <View key={day} style={[styles.hourRow, index > 0 && styles.hourDivider]} testID="shop-hours-row">
-                      <View style={styles.hourDay}>
-                        <AppText style={[styles.hourText, isToday && styles.bold]} tone={isToday ? "ink" : "sub"} variant="secondary">{day}</AppText>
-                        {isToday ? <AppText capScale style={styles.todayChip} variant="meta">오늘</AppText> : null}
+              <ScrollView contentContainerStyle={styles.hoursBody} showsVerticalScrollIndicator={false}>
+                <View style={styles.sheetNow}>
+                  <HoursStatusLine large status={liveStatus} />
+                  {todayHours && !todayHours.closed ? <TodayTimeline hours={todayHours} nowMinute={now.minute} /> : null}
+                </View>
+                <View style={styles.hoursWeek}>
+                  {groupWeek(week).map((group, index) => {
+                    const isToday = group.days.includes(now.day)
+                    const pauses = breaksOf(group.ranges)
+                    const timeText = group.closed ? "휴무" : spanText(group.ranges)
+                    return (
+                      <View
+                        accessibilityLabel={`${group.label}${isToday ? ", 오늘" : ""}, ${timeText}${pauses.map((pause) => `, 쉬는 시간 ${formatTime(pause.start)}부터 ${formatTime(pause.end)}까지`).join("")}`}
+                        accessible
+                        key={group.label}
+                        style={[styles.hourRow, index > 0 && styles.hourDivider]}
+                        testID="shop-hours-row"
+                      >
+                        <View style={styles.hourDay}>
+                          <AppText style={[styles.hourText, isToday && styles.bold]} tone={isToday ? "ink" : "sub"} variant="secondary">{group.label}</AppText>
+                          {isToday ? <AppText capScale style={styles.todayChip} variant="meta">오늘</AppText> : null}
+                        </View>
+                        <View style={styles.hourTimes}>
+                          <AppText style={[styles.hourText, styles.tabular, isToday && styles.bold]} tone={group.closed ? "muted" : isToday ? "ink" : "sub"} variant="secondary">
+                            {timeText}
+                          </AppText>
+                          {pauses.map((pause) => (
+                            <AppText capScale key={pause.start} style={styles.tabular} tone="muted" variant="meta">
+                              {`쉬는 시간 ${formatTime(pause.start)} – ${formatTime(pause.end)}`}
+                            </AppText>
+                          ))}
+                        </View>
                       </View>
-                      <AppText style={[styles.hourText, styles.hourTime, isToday && styles.bold]} tone={isToday ? "ink" : time === "정기 휴무" ? "muted" : "sub"} variant="secondary">
-                        {time}
-                      </AppText>
-                    </View>
-                  )
-                })}
+                    )
+                  })}
+                </View>
+                {shop.lastOrder ? (
+                  <AppText capScale style={styles.hoursNote} tone="muted" variant="meta">{`오늘 라스트오더 ${shop.lastOrder}`}</AppText>
+                ) : null}
               </ScrollView>
-              {shop.lastOrder || splitHours ? (
-                <AppText capScale style={styles.hoursNote} tone="muted" variant="meta">
-                  {[shop.lastOrder ? `라스트오더 ${shop.lastOrder}` : null, splitHours ? `${splitHours[1]} ~ ${splitHours[2]}은 쉬는 시간` : null].filter(Boolean).join(" · ")}
-                </AppText>
-              ) : null}
             </View>
           </View>
         </Modal>
@@ -851,7 +920,11 @@ const styles = StyleSheet.create({
   infoValue: { flex: 1, minWidth: 0 },
   naverHint: { flexDirection: "row", alignItems: "center", gap: spacing.x1, marginTop: spacing.x3 },
   naverText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
-  hoursPreview: { flex: 1, minWidth: 0, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x1_5 },
+  hoursToday: { marginTop: spacing.x1 },
+  hoursChevron: { paddingTop: 2 },
+  statusLine: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
+  statusDot: { width: 8, height: 8, borderRadius: radii.pill },
+  tabular: { fontVariant: ["tabular-nums"] },
   phone: { flexDirection: "row", alignItems: "center" },
 
   similar: { marginTop: spacing.section },
@@ -868,14 +941,21 @@ const styles = StyleSheet.create({
   hoursHandle: { alignSelf: "center", width: 36, height: 5, borderRadius: radii.pill, backgroundColor: colors.secondaryPressed },
   hoursHead: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingLeft: spacing.x5, paddingRight: spacing.x4, paddingTop: spacing.x3, paddingBottom: spacing.x2 },
   hoursStatus: { marginTop: spacing.x1 },
-  hoursWeek: { paddingHorizontal: spacing.x5 },
-  hourRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2, paddingVertical: spacing.x3 },
+  hoursBody: { paddingHorizontal: spacing.x5 },
+  sheetNow: { paddingTop: spacing.x2, paddingBottom: spacing.x5 },
+  timeline: { marginTop: spacing.x4 },
+  timelineTrack: { height: 8, borderRadius: radii.pill, backgroundColor: colors.border },
+  timelineOpen: { position: "absolute", top: 0, bottom: 0, borderRadius: radii.pill, backgroundColor: colors.ink },
+  timelineNow: { position: "absolute", top: -3, width: 14, height: 14, marginLeft: -7, borderRadius: radii.pill, borderWidth: 3, borderColor: colors.ink, backgroundColor: colors.canvas },
+  timelineLabels: { flexDirection: "row", justifyContent: "space-between", gap: spacing.x2, marginTop: spacing.x2 },
+  hoursWeek: { borderTopWidth: line.hair, borderTopColor: colors.border },
+  hourRow: { minHeight: 48, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.x3, paddingVertical: spacing.x3 },
   hourDivider: { borderTopWidth: line.hair, borderTopColor: colors.border },
   hourDay: { flexDirection: "row", alignItems: "center", gap: spacing.x2 },
   hourText: { fontSize: 15, lineHeight: 20, fontWeight: "500" },
-  hourTime: { flexShrink: 1, textAlign: "right" },
+  hourTimes: { flexShrink: 1, alignItems: "flex-end", gap: spacing.x0_5 },
   todayChip: { paddingHorizontal: spacing.x2, paddingVertical: spacing.x0_5, borderRadius: radii.pill, backgroundColor: colors.selected, color: colors.onSelected, fontWeight: "700" },
-  hoursNote: { paddingHorizontal: spacing.x5, paddingTop: spacing.x3 },
+  hoursNote: { paddingTop: spacing.x3 },
 
   moreOptions: { gap: spacing.x1, paddingBottom: spacing.x3 },
   stickyBar: { paddingHorizontal: spacing.x4 },

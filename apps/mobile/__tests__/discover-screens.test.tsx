@@ -289,27 +289,27 @@ describe("shop detail", () => {
     }
   })
 
-  it("opens weekday hours as a dismissible sheet with today's row and actual break", async () => {
-    // 묘코는 월·화 정기 휴무라 오늘 줄의 쉬는 시간이 요일마다 달라진다. 영업하는 수요일 낮으로 고정한다
+  it("shows the live hours status and opens a sheet with today's timeline and grouped days", async () => {
+    // 묘코는 월·화 정기 휴무, 수–일 12:00 ~ 15:00, 17:30 ~ 21:00이다. 영업하는 수요일 낮으로 고정한다
     jest.useFakeTimers({ now: new Date("2026-10-21T12:00:00+09:00"), advanceTimers: true })
     mockParams.shopId = "5"
     const view = await renderScreen(<ShopDetailScreen />)
     await view.findByText(/^묘코/)
-    const trigger = view.getByRole("button", { name: /^영업시간, 오늘/ })
+    // 정보 줄은 지금 상태를 먼저 말하고, 오늘 시간과 쉬는 시간을 따로 적는다
+    const trigger = view.getByRole("button", { name: "영업시간, 영업 중, 15:00에 닫아요. 오늘(수) 12:00 – 21:00 · 쉬는 시간 15:00 – 17:30" })
+    expect(StyleSheet.flatten(within(trigger).getByTestId("shop-hours-status-dot").props.style).backgroundColor).toEqual(colors.open)
     expect(trigger.props.accessibilityState.expanded).toBe(false)
     await fireEvent.press(trigger)
 
     expect(view.getByRole("header", { name: "영업시간" })).toBeTruthy()
-    expect(view.getAllByText("정기 휴무")).toHaveLength(2)
-    expect(view.getByText("수요일")).toBeTruthy()
-    expect(view.getByText("오늘")).toBeTruthy()
-    expect(view.getByText("라스트오더 20:30 · 15:00 ~ 17:30은 쉬는 시간")).toBeTruthy()
-    const weekdayTime = view.getAllByText("12:00 ~ 15:00, 17:30 ~ 21:00")[0]
-    expect(weekdayTime.props.numberOfLines).toBeUndefined()
-    expect(StyleSheet.flatten(view.getAllByTestId("shop-hours-row")[0].props.style).paddingVertical).toBe(12)
+    // 같은 시간인 요일은 한 줄로 묶고, 오늘이 든 줄에 "오늘"을 단다
+    const rows = view.getAllByTestId("shop-hours-row").map((row) => row.props.accessibilityLabel)
+    expect(rows).toEqual(["월·화, 휴무", "수–일, 오늘, 12:00 – 21:00, 쉬는 시간 15:00부터 17:30까지"])
+    expect(view.getByTestId("shop-hours-now", { includeHiddenElements: true })).toBeTruthy()
+    expect(view.getByText("오늘 라스트오더 20:30")).toBeTruthy()
     await fireEvent.press(view.getByRole("button", { name: "닫기" }))
-    expect(view.queryByText("오늘")).toBeNull()
-    expect(view.getByRole("button", { name: /^영업시간, 오늘/ }).props.accessibilityState.expanded).toBe(false)
+    expect(view.queryByTestId("shop-hours-row")).toBeNull()
+    expect(view.getByRole("button", { name: /^영업시간, 영업 중/ }).props.accessibilityState.expanded).toBe(false)
   })
 
   it("sends guests to login instead of saving or recording", async () => {
