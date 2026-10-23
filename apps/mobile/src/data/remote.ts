@@ -336,7 +336,39 @@ export const remoteReads = {
       reasons: result.reasons ?? {},
     }
   },
+
+  /** 오늘 뽑은 식권(최신순)과 남은 장수 */
+  async recommendationTickets(): Promise<RemoteTodayTickets> {
+    const today = await recommendationApi.todayTickets()
+    return {
+      dailyLimit: today.dailyLimit,
+      remaining: today.remaining,
+      tickets: (today.tickets ?? []).map((ticket) => ({
+        id: ticket.recommendationId,
+        createdAt: ticket.createdAt,
+        shops: (ticket.shops ?? []).map(toAppShopSummary),
+        appliedConditions: ticket.appliedConditions ?? [],
+        reasons: ticket.reasons ?? {},
+      })),
+    }
+  },
 } as const
+
+export interface RemoteTicket {
+  id: string
+  /** ISO 시각 */
+  createdAt: string
+  shops: Shop[]
+  appliedConditions: string[]
+  reasons: Record<string, string>
+}
+
+export interface RemoteTodayTickets {
+  dailyLimit: number
+  remaining: number
+  /** 최신순 */
+  tickets: RemoteTicket[]
+}
 
 export interface CreateRamenLogOptions {
   /** 로그인한 계정 id. 주면 보낸 요청을 아웃박스에 남겨 실패한 저장을 같은 키로 다시 보낼 수 있다 */

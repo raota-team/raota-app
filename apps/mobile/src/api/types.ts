@@ -459,8 +459,25 @@ export interface RecommendationResponse {
   shops: ShopSummary[]
   /** "지금 영업 중", "1km 이내"처럼 화면에 그대로 보여주는 말 */
   appliedConditions: string[]
-  /** 매장 ID마다 AI가 쓴 추천 이유 한 문장. 이유를 만들지 못한 매장은 빠지고, 이 필드가 없는 옛 서버도 있다 */
+  /** 매장 ID마다 AI가 쓴 추천 이유. 이유를 만들지 못한 매장은 빠지고, 이 필드가 없는 옛 서버도 있다 */
   reasons?: Record<string, string>
+}
+
+/** 오늘 뽑은 식권 한 장. 그때 보여준 매장(지금도 추천해도 되는 곳만)과 조건, 추천 이유다 */
+export interface RecommendationTicket {
+  recommendationId: Id
+  createdAt: DateTime
+  shops: ShopSummary[]
+  appliedConditions: string[]
+  reasons: Record<string, string>
+}
+
+/** GET /ai/recommendations/today. 하루 dailyLimit장, 서울 날짜가 바뀌면 다시 채워진다 */
+export interface TodayRecommendations {
+  dailyLimit: number
+  remaining: number
+  /** 최신순 */
+  tickets: RecommendationTicket[]
 }
 
 /** 오늘의 큐레이션. 없으면 null */

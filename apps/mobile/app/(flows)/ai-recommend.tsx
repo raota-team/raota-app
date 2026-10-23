@@ -2,8 +2,8 @@ import * as Haptics from "expo-haptics"
 import * as Location from "expo-location"
 import { router } from "expo-router"
 import { usePreventRemove } from "expo-router/react-navigation"
-import { ArrowRight, Check, ChevronRight, Sparkles } from "lucide-react-native"
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { ArrowRight, Check, ChevronRight, Sparkles, Ticket } from "lucide-react-native"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   AccessibilityInfo,
   Platform,
@@ -24,11 +24,12 @@ import { isApiError } from "@/src/api/client"
 import { isRemote } from "@/src/api/config"
 import type { RecommendationRequest } from "@/src/api/types"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, Button, Header, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, Header, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
 import { useLocalShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
-import { remoteReads } from "@/src/data/remote"
+import { remoteReads, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
 import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
 import { curatorTasteReport } from "@/src/domain/curatorTaste"
+import { formatTime, seoulTime } from "@/src/domain/hours"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, maxFontScale, radii, soupColorOf, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
@@ -95,6 +96,7 @@ const PROMPT_MAX_LENGTH = 200
 /** 서버 추천을 만들지 못해 인기순으로 대신 보여 줄 때 */
 const POPULAR_FALLBACK_NOTE = "지금은 AI 추천을 만들 수 없어 인기 라멘집을 보여드려요"
 const RATE_LIMITED_MESSAGE = "잠시 후 다시 시도해 주세요"
+const DAILY_LIMIT_MESSAGE = "오늘 식권을 다 뽑았어요. 내일 다시 뽑을 수 있어요"
 
 interface Inputs {
   soupId: string
@@ -351,9 +353,12 @@ const hasAnyKey = (shop: CuratorShop, keys: string[]) => keys.some((key) => shop
 const byPopularity = (a: CuratorShop, b: CuratorShop) =>
   b.reviewCount - a.reviewCount || b.rating - a.rating || a.distanceM - b.distanceM
 
-/** 고른 국물과 맞은 매장은 종류도 고른 이름으로 적는다(사진 위 표시·식권·조건 줄이 같은 말을 쓴다) */
-function candidateFor(shop: CuratorShop, soup: (typeof SOUP_OPTIONS)[number], reason: string | null = null): Candidate {
-  return { shop, typeLabel: matchesSoupChoice(shop, soup.label, soup.keys) ? soup.label : shopSoupLabel(shop), reason }
+/**
+ * 고른 국물과 맞은 매장은 종류도 고른 이름으로 적는다(사진 위 표시·식권·조건 줄이 같은 말을 쓴다).
+ * 다시 보는 식권처럼 고른 국물을 모르면 매장 자신의 종류를 쓴다
+ */
+function candidateFor(shop: CuratorShop, soup: (typeof SOUP_OPTIONS)[number] | undefined, reason: string | null = null): Candidate {
+  return { shop, typeLabel: soup && matchesSoupChoice(shop, soup.label, soup.keys) ? soup.label : shopSoupLabel(shop), reason }
 }
 
 /**
@@ -486,7 +491,8 @@ async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise
       return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
     }
   } catch (error) {
-    if (isApiError(error, "RATE_LIMITED")) throw error
+    // 요청이 너무 잦거나 오늘 식권을 다 쓰면 인기순으로 대신 고르지 않고 화면이 알린다
+    if (isApiError(error, "RATE_LIMITED") || isApiError(error, "DAILY_LIMIT_EXCEEDED")) throw error
   }
   try {
     const popular = await remoteReads.shops({ sort: "POPULAR", size: 6 })
@@ -497,6 +503,15 @@ async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise
   } catch {
     return null
   }
+}
+
+/** 오늘 뽑은 식권을 다시 볼 때. 그때 보여준 매장 순서와 조건, 추천 이유를 그대로 쓴다 */
+function curationFromTicket(ticket: RemoteTicket): Curation | null {
+  const soup = SOUP_OPTIONS.find((option) => ticket.appliedConditions.includes(option.label))
+  const candidates = ticket.shops.map((shop) => candidateFor(shop, soup, ticket.reasons[shop.id]?.trim() || null))
+  if (!candidates.length) return null
+  const conditions = ticket.appliedConditions.map((label) => ({ label, applied: true, note: "" }))
+  return { ...candidates[0], conditions, fallback: false, candidates, index: 0 }
 }
 
 type Coordinates = { latitude: number; longitude: number }
@@ -571,6 +586,18 @@ export default function AIRecommendScreen() {
   const requestingRef = useRef(false)
   const [requesting, setRequesting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  // 서버 추천은 하루에 뽑을 수 있는 식권 수가 있다. 옛 서버(식권 없음)이거나 읽지 못하면 null이라 아무것도 막지 않고, 막는 일은 서버가 한다
+  const ticketsEnabled = remoteCurator && loggedIn
+  const [todayTickets, setTodayTickets] = useState<RemoteTodayTickets | null>(null)
+  const [ticketsOpen, setTicketsOpen] = useState(false)
+  const loadTickets = useCallback(() => {
+    if (!ticketsEnabled) return
+    remoteReads.recommendationTickets().then(setTodayTickets, () => setTodayTickets(null))
+  }, [ticketsEnabled])
+  useEffect(() => {
+    loadTickets()
+  }, [loadTickets])
+  const ticketsUsedUp = todayTickets?.remaining === 0
   // 내 그릇 목록(데모 원장 + 앱 기록)으로 취향을 계산한다. 비회원·기록 없음이면 null
   const taste = useMemo(
     () => (loggedIn ? curatorTasteReport(bowls.data, tasteProfile.data.profile, shopsQuery.data) : null),
@@ -634,12 +661,18 @@ export default function AIRecommendScreen() {
           setCuration(next)
           // 추천을 하나도 못 만들었으면 식권 없이 실패 화면으로 간다
           if (!next || reducedMotion) setStep("result")
+          loadTickets()
         },
-        () => {
+        (error: unknown) => {
           if (requestSeq.current !== request) return
-          // curateRemote는 요청이 너무 잦을 때(429)만 던진다. 대신 고르지 않고 4단계로 돌아간다
+          // curateRemote는 요청이 너무 잦거나(429) 오늘 식권을 다 썼을 때만 던진다. 대신 고르지 않고 4단계로 돌아간다
           setStep(4)
-          setToast(RATE_LIMITED_MESSAGE)
+          if (isApiError(error, "DAILY_LIMIT_EXCEEDED")) {
+            setToast(DAILY_LIMIT_MESSAGE)
+            loadTickets()
+          } else {
+            setToast(RATE_LIMITED_MESSAGE)
+          }
         },
       )
       .finally(() => {
@@ -651,6 +684,18 @@ export default function AIRecommendScreen() {
   const restart = () => {
     setCuration(null)
     setStep(1)
+  }
+
+  /** 오늘 뽑은 식권을 결과 화면으로 다시 연다. 그사이 매장이 모두 문을 닫았으면 알리기만 한다 */
+  const openTicket = (ticket: RemoteTicket) => {
+    const next = curationFromTicket(ticket)
+    setTicketsOpen(false)
+    if (!next) {
+      setToast("이 식권의 가게를 지금은 보여드릴 수 없어요")
+      return
+    }
+    setCuration(next)
+    setStep("result")
   }
 
   /** 같은 답으로 다음 순위 후보를 보여 준다. 끝까지 보면 처음 후보로 돌아간다 */
@@ -736,6 +781,28 @@ export default function AIRecommendScreen() {
       >
         {numericStep ? (
           <View>
+            {todayTickets ? (
+              <View style={styles.ticketStrip}>
+                <View accessible accessibilityLabel={ticketsUsedUp ? DAILY_LIMIT_MESSAGE : `오늘 남은 식권 ${todayTickets.remaining}장, 하루 ${todayTickets.dailyLimit}장`} style={styles.ticketCount}>
+                  <Ticket color={ticketsUsedUp ? colors.textMuted : colors.ink} size={16} />
+                  <AppText capScale style={styles.ticketCountText} tone={ticketsUsedUp ? "sub" : "ink"} variant="meta">
+                    {ticketsUsedUp ? "오늘 식권을 다 뽑았어요" : `오늘 남은 식권 ${todayTickets.remaining}장`}
+                  </AppText>
+                </View>
+                {todayTickets.tickets.length ? (
+                  <Pressable
+                    accessibilityHint="오늘 뽑은 식권을 골라 다시 볼 수 있어요"
+                    accessibilityLabel={`뽑은 식권 ${todayTickets.tickets.length}장 보기`}
+                    accessibilityRole="button"
+                    onPress={() => setTicketsOpen(true)}
+                    style={({ pressed }) => [styles.ticketLink, pressed && styles.pressedWash]}
+                  >
+                    <AppText capScale tone="sub" variant="meta">{`뽑은 식권 ${todayTickets.tickets.length}장 보기`}</AppText>
+                    <ChevronRight color={colors.textMuted} size={14} />
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
             <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${(numericStep / 4) * 100}%` }]} />
             </View>
@@ -953,13 +1020,13 @@ export default function AIRecommendScreen() {
             <Button disabled={requesting} fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="secondary" />
           ) : null}
           <Button
-            accessibilityHint={stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
-            disabled={!stepAnswered}
+            accessibilityHint={numericStep === 4 && ticketsUsedUp ? "내일 다시 뽑을 수 있어요" : stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
+            disabled={!stepAnswered || (numericStep === 4 && ticketsUsedUp)}
             loading={numericStep === 4 && requesting}
             onPress={() => (numericStep === 4 ? void startAnalysis() : setStep((numericStep + 1) as Step))}
             rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
             style={[styles.primaryCta, ctaSize]}
-            title={numericStep === 4 ? "AI 맞춤 추천받기" : stepAnswered ? "다음" : numericStep === 1 ? "국물을 골라주세요" : numericStep === 2 ? "상황을 골라주세요" : "중요한 요소를 골라주세요"}
+            title={numericStep === 4 ? (ticketsUsedUp ? "오늘 식권을 다 뽑았어요" : "AI 맞춤 추천받기") : stepAnswered ? "다음" : numericStep === 1 ? "국물을 골라주세요" : numericStep === 2 ? "상황을 골라주세요" : "중요한 요소를 골라주세요"}
           />
         </StickyActionBar>
       ) : result ? (
@@ -981,6 +1048,32 @@ export default function AIRecommendScreen() {
           />
         </StickyActionBar>
       ) : null}
+      <BottomSheet description={todayTickets ? `하루 ${todayTickets.dailyLimit}장, 자정에 다시 채워져요` : undefined} onClose={() => setTicketsOpen(false)} title="오늘 뽑은 식권" visible={ticketsOpen}>
+        {todayTickets?.tickets.map((ticket, index) => {
+          const time = formatTime(seoulTime(new Date(ticket.createdAt)).minute)
+          const first = ticket.shops[0]
+          return (
+            <Pressable
+              accessibilityHint="이 식권의 추천을 다시 봐요"
+              accessibilityLabel={`${time}에 뽑은 식권, ${first ? first.name : "보여줄 가게 없음"}, ${ticket.appliedConditions.join(", ")}`}
+              accessibilityRole="button"
+              key={ticket.id}
+              onPress={() => openTicket(ticket)}
+              style={({ pressed }) => [styles.ticketRow, index > 0 && styles.ticketRowDivider, pressed && styles.pressedWash]}
+              testID="ai-ticket-row"
+            >
+              <View style={styles.flexShrink}>
+                <AppText capScale style={styles.tabular} tone="muted" variant="meta">{`${time}에 뽑은 식권`}</AppText>
+                <AppText lineBreakStrategyIOS="hangul-word" variant="bodyStrong">{first ? first.name : "지금은 보여줄 가게가 없어요"}</AppText>
+                {ticket.appliedConditions.length ? (
+                  <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">{ticket.appliedConditions.join(" · ")}</AppText>
+                ) : null}
+              </View>
+              <ChevronRight color={colors.textMuted} size={16} />
+            </Pressable>
+          )
+        })}
+      </BottomSheet>
       <Toast message={toast ?? ""} onDismiss={() => setToast(null)} style={{ bottom: ctaSize.minHeight + spacing.x6 }} visible={Boolean(toast)} />
     </Screen>
   )
@@ -1260,6 +1353,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.x4,
   },
   progressFill: { height: "100%", borderRadius: radii.pill, backgroundColor: colors.ink },
+  // 하루 식권: 진행 막대 위 한 줄. 남은 장수는 왼쪽, 뽑은 식권 다시 보기는 오른쪽 링크
+  ticketStrip: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x2, marginTop: -spacing.x2, marginBottom: spacing.x1 },
+  ticketCount: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5, flexShrink: 1 },
+  ticketCountText: { fontWeight: "700" },
+  ticketLink: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", gap: spacing.x0_5, paddingLeft: spacing.x2, borderRadius: radii.sm },
+  ticketRow: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingVertical: spacing.x3 },
+  ticketRowDivider: { borderTopWidth: line.hair, borderTopColor: colors.border },
+  tabular: { fontVariant: ["tabular-nums"] },
   chosenTitle: { fontWeight: "700", marginBottom: spacing.x3 },
   // 네 칸을 한 줄에 두고 높이를 두 줄 값 기준으로 고정한다. 조건을 고를 때 칸이 커지거나 줄이 늘어 아래 질문이 밀리지 않는다
   chosenRow: { flexDirection: "row", gap: spacing.x1_5, marginBottom: spacing.section },

@@ -493,6 +493,9 @@ describe("AI curator", () => {
     const recommendations = jest
       .spyOn(remoteReads as unknown as { recommendations: (...args: unknown[]) => Promise<unknown> }, "recommendations")
       .mockReturnValue(answer.promise)
+    const tickets = jest
+      .spyOn(remoteReads as unknown as { recommendationTickets: () => Promise<unknown> }, "recommendationTickets")
+      .mockResolvedValue({ dailyLimit: 3, remaining: 3, tickets: [] })
     try {
       jest.useFakeTimers()
       const view = await renderScreen(<AIRecommendScreen />)
@@ -532,7 +535,52 @@ describe("AI curator", () => {
       expect(view.getAllByText(/두번째라멘/).length).toBeGreaterThan(0)
       expect(view.queryByTestId("ai-recommend-reason")).toBeNull()
       expect(view.getByText("추천에 쓴 조건")).toBeTruthy()
+      // 새 식권을 뽑았으니 남은 장수를 다시 읽는다
+      expect(tickets).toHaveBeenCalledTimes(2)
     } finally {
+      recommendations.mockRestore()
+      tickets.mockRestore()
+      isRemote.mockImplementation(() => false)
+    }
+  })
+
+  it("shows today's remaining tickets, reopens a drawn ticket, and stops at zero", async () => {
+    isRemote.mockImplementation((domain: string) => domain === "recommendations")
+    const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
+    const drawn = {
+      id: "77",
+      createdAt: "2026-10-23T02:05:00Z",
+      shops: [{ ...SHOPS[0], id: "9101", name: "아까뽑은라멘" }],
+      appliedConditions: ["이에케", "가까운 순"],
+      reasons: { "9101": "이에케 국물이 진하고 차슈가 두툼하다는 기록이 많아요." },
+    }
+    const tickets = jest
+      .spyOn(remoteReads as unknown as { recommendationTickets: () => Promise<unknown> }, "recommendationTickets")
+      .mockResolvedValue({ dailyLimit: 3, remaining: 0, tickets: [drawn] })
+    const recommendations = jest.spyOn(remoteReads as unknown as { recommendations: () => Promise<unknown> }, "recommendations")
+    try {
+      const view = await renderScreen(<AIRecommendScreen />)
+      expect(await view.findByText("오늘 식권을 다 뽑았어요")).toBeTruthy()
+
+      // 다 쓴 날은 4단계에서 버튼이 꺼지고 서버를 부르지 않는다
+      await fireEvent.press(view.getByRole("radio", { name: "쇼유, 간장 타레" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      await fireEvent.press(view.getByRole("radio", { name: "혼밥하기 좋은 곳, 혼자 편하게" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      await fireEvent.press(view.getByRole("radio", { name: "깔끔하고 깊은 감칠맛, 청탕 · 맑은 국물" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      const draw = view.getByRole("button", { name: "오늘 식권을 다 뽑았어요" })
+      expect(draw).toBeDisabled()
+      await fireEvent.press(draw)
+      expect(recommendations).not.toHaveBeenCalled()
+
+      // 오늘 뽑은 식권은 그때의 매장과 추천 이유 그대로 다시 열린다(서울 11:05에 뽑았다)
+      await fireEvent.press(view.getByRole("button", { name: "뽑은 식권 1장 보기" }))
+      await fireEvent.press(view.getByRole("button", { name: "11:05에 뽑은 식권, 아까뽑은라멘, 이에케, 가까운 순" }))
+      expect(view.getAllByText(/아까뽑은라멘/).length).toBeGreaterThan(0)
+      expect(within(view.getByTestId("ai-recommend-reason")).getByText("이에케 국물이 진하고 차슈가 두툼하다는 기록이 많아요.")).toBeTruthy()
+    } finally {
+      tickets.mockRestore()
       recommendations.mockRestore()
       isRemote.mockImplementation(() => false)
     }
