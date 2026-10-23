@@ -85,13 +85,12 @@ export function useMapFilters(origin: Coordinate | null) {
     const timer = setTimeout(() => setSearchQuery(search.trim()), 300)
     return () => clearTimeout(timer)
   }, [search])
+  // 내 위치는 요청에 넣지 않는다. 위치가 잡힐 때마다(마지막 위치 → 정확한 위치) 전체 매장을 다시 받아
+  // 핀이 두세 번 다시 그려졌다. 거리는 아래에서 내 위치로 계산하고, 거리순 정렬도 앱에서 한다
   const shopsQuery = useMapShops({
     query: searchQuery || undefined,
     ramenType: menu === "ALL" ? undefined : menu,
     openNow: onlyOpen || undefined,
-    sort: sort === "popular" || !origin ? "POPULAR" : "DISTANCE",
-    latitude: origin?.latitude,
-    longitude: origin?.longitude,
   })
   // 홈의 "스타일로 찾기"가 지도 탭으로 넘기는 메뉴 필터(예: ?menu=쇼유). 모르는 값은 무시한다.
   // 같은 값으로 다시 들어오면 탭 파라미터가 바뀌지 않아 효과가 다시 돌지 않는다(사용자가 필터를 직접 풀었을 때).
@@ -117,7 +116,12 @@ export function useMapFilters(origin: Coordinate | null) {
     const inRegion = regionKeys.length
       ? mapShops.filter((shop) => regionKeys.some((key) => (shop.branch ?? "").includes(key) || shop.address.includes(key)))
       : mapShops
-    if (shopsQuery.remote) return inRegion // 나머지 필터와 정렬은 서버의 전체 결과를 따른다.
+    if (shopsQuery.remote) {
+      // 나머지 필터는 서버 결과를 따르고, 서버 순서는 인기순이다. 좌표 없는 매장은 거리순에서 맨 뒤로 보낸다
+      if (sort !== "distance" || !origin) return inRegion
+      const far = (shop: MapShop) => (shop.lat && shop.lng ? shop.distanceM : Number.POSITIVE_INFINITY)
+      return [...inRegion].sort((a, b) => far(a) - far(b))
+    }
     const menuOption = MENU_OPTIONS.find((option) => option.value === menu)
     const query = search.trim().toLocaleLowerCase("ko-KR")
     return inRegion
@@ -140,7 +144,7 @@ export function useMapFilters(origin: Coordinate | null) {
           ? b.reviewCount - a.reviewCount || b.rating - a.rating || a.distanceM - b.distanceM
           : a.distanceM - b.distanceM,
       )
-  }, [mapShops, menu, onlyOpen, region, search, shopsQuery.remote, sort])
+  }, [mapShops, menu, onlyOpen, origin, region, search, shopsQuery.remote, sort])
   const hasActiveFilter = region !== "ALL" || menu !== "ALL" || onlyOpen
   const pendingSearch = shopsQuery.remote && search.trim() !== searchQuery
   return {

@@ -13,7 +13,7 @@ import {
   openReminderTestMenu,
 } from "@/src/components/RecordMenu"
 import { AppText } from "@/src/components/ui"
-import { useMonthlyReports } from "@/src/data"
+import { prefetchMapShops, useMonthlyReports } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, pressFade, radii, spacing } from "@/src/theme"
 
@@ -127,6 +127,11 @@ export function RaotaTabBar({ state, descriptors, navigation, insets }: TabBarPr
 }
 
 export default function TabLayout() {
+  const { isHydrated } = useRaota()
+  // 지도 탭의 매장 목록은 미리 받아 둔다. 저장된 로그인이 풀린 뒤에 읽어야 내 찜 여부가 맞다
+  useEffect(() => {
+    if (isHydrated) prefetchMapShops()
+  }, [isHydrated])
   return (
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <RaotaTabBar {...props} />}>
       <Tabs.Screen name="index" options={{ title: "홈" }} />

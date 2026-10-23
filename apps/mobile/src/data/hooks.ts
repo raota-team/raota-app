@@ -210,13 +210,26 @@ export function useLocalShops(): Query<Shop[]> {
   return { data: shops, ...status }
 }
 
+const mapShopsKey = (params: ShopMapParams) => `shops:map:${JSON.stringify(params)}`
+
 /** 지도와 목록은 같은 전체 매장을 읽는다. 좌표가 없는 매장은 지도에서만 제외한다. */
 export function useMapShops(params: ShopMapParams = {}): Query<Shop[]> & { remote: boolean } {
   const { shops } = useRaota()
   const status = useQueryState()
   const enabled = isRemote("shops")
-  const remote = useRemoteResult(enabled ? `shops:map:${JSON.stringify(params)}` : null, [] as Shop[], () => remoteReads.mapShops(params))
+  const remote = useRemoteResult(enabled ? mapShopsKey(params) : null, [] as Shop[], () => remoteReads.mapShops(params))
   return enabled ? { ...remote, remote: true } : { data: shops, ...status, remote: false }
+}
+
+/**
+ * 지도 탭의 기본 매장(필터 없음)을 미리 받아 둔다. 전체 매장(약 540곳)을 한 번에 받아 1~2초 걸리므로,
+ * 지도 탭을 열 때 기다리지 않게 앱이 뜨면 바로 읽어 캐시에 둔다. 이미 있거나 읽는 중이면 아무것도 하지 않는다
+ */
+export function prefetchMapShops(): void {
+  if (!isRemote("shops")) return
+  const key = mapShopsKey({})
+  if (remoteCache.get(key)) return
+  remoteCache.load(key, () => remoteReads.mapShops({})).catch(() => undefined)
 }
 
 /** 없는 오늘의 큐레이션은 null(서버가 픽을 발행하지 않았을 때). */

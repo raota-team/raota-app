@@ -57,6 +57,14 @@ const SELECTED_Z_INDEX = 2000
 /** 이름표 자리는 모든 핀에 남겨 두고, 지도의 좌표는 언제나 원의 중심에 고정한다. */
 const PIN_ANCHOR = { x: 0.5, y: (touchTarget / 2) / MAP_PIN_HEIGHT }
 const CLUSTER_ANCHOR = { x: 0.5, y: 0.5 }
+/** 화면 밖으로 이만큼(화면 크기 대비) 더 넓게 핀을 그려 둔다. 조금 옮길 때 빈 곳이 보이지 않게 */
+const VIEWPORT_MARGIN = 0.5
+
+function inViewport(shop: { lat: number; lng: number }, region: Region): boolean {
+  const latitudeReach = region.latitudeDelta * (0.5 + VIEWPORT_MARGIN)
+  const longitudeReach = region.longitudeDelta * (0.5 + VIEWPORT_MARGIN)
+  return Math.abs(shop.lat - region.latitude) <= latitudeReach && Math.abs(shop.lng - region.longitude) <= longitudeReach
+}
 
 type LocationStatus = "loading" | "granted" | "denied"
 
@@ -160,7 +168,10 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
     if (!selectedId || selectedInList) return
     if (filters.allShops.some((shop) => shop.id === selectedId)) setSelectedId(null)
   }, [filters.allShops, selectedId, selectedInList])
-  const clusters = useMemo(() => calculateMapClusters(markerShops, region), [markerShops, region])
+  // 보이는 곳(과 둘레 반 화면씩)의 매장만 핀으로 그린다. 전부(약 540곳) 그리면 지도가 핀마다 그림을 만드느라 느려진다.
+  // 지도를 옮기고 멈추면(onRegionChangeComplete) 새로 보이는 곳의 핀이 붙는다
+  const visibleShops = useMemo(() => markerShops.filter((shop) => inViewport(shop, region)), [markerShops, region])
+  const clusters = useMemo(() => calculateMapClusters(visibleShops, region), [visibleShops, region])
 
   // 핀이 바뀌면 잠깐 다시 그리게 두고(로고가 실릴 시간) 곧 고정한다.
   // 로고가 늦게 오면(개발 빌드는 그림을 Metro에서 받는다) 실린 순간 한 번 더 그리게 해 빈 원으로 굳지 않게 한다
@@ -304,7 +315,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                     </Marker>
                   )
                 }
-                const shop = markerShops.find((item) => item.id === cluster.shopIds[0])
+                const shop = visibleShops.find((item) => item.id === cluster.shopIds[0])
                 if (!shop) return null
                 const isSelected = selected?.id === shop.id
                 return (

@@ -184,43 +184,6 @@ describe("map location permission states", () => {
     }
   })
 
-  it("enables the native user-location layer after permission is granted", async () => {
-    const location = jest.requireMock("expo-location") as {
-      requestForegroundPermissionsAsync: jest.Mock
-      getCurrentPositionAsync: jest.Mock
-    }
-    location.requestForegroundPermissionsAsync.mockResolvedValue({
-      status: "granted",
-    })
-    location.getCurrentPositionAsync.mockResolvedValue({
-      coords: { latitude: 37.55, longitude: 126.91 },
-    })
-
-    const view = await render(<MapHarness />)
-
-    await waitFor(() => {
-      expect(
-        view.getByTestId("apple-map").props.accessibilityState.selected,
-      ).toBe(true)
-    })
-  })
-
-  it("centers on the user's location the first time the map opens", async () => {
-    const location = jest.requireMock("expo-location") as {
-      requestForegroundPermissionsAsync: jest.Mock
-      getCurrentPositionAsync: jest.Mock
-    }
-    location.requestForegroundPermissionsAsync.mockResolvedValue({ status: "granted" })
-    location.getCurrentPositionAsync.mockResolvedValue({ coords: { latitude: 37.501, longitude: 127.039 } })
-    mockAnimateToRegion.mockClear()
-
-    await render(<MapHarness />)
-
-    await waitFor(() => {
-      expect(mockAnimateToRegion).toHaveBeenCalledWith(expect.objectContaining({ latitude: 37.501, longitude: 127.039 }), expect.any(Number))
-    })
-  })
-
   it("keeps the open lamp, reset and list sort usable across map/list views", async () => {
     const location = jest.requireMock("expo-location") as {
       requestForegroundPermissionsAsync: jest.Mock
@@ -258,5 +221,44 @@ describe("map location permission states", () => {
     expect(view.getByRole("radio", { name: "거리순" }).props.accessibilityState.checked).toBe(true)
     await fireEvent.press(view.getByRole("radio", { name: "인기순" }))
     expect(view.getByRole("radio", { name: "인기순" }).props.accessibilityState.checked).toBe(true)
+  })
+
+  // 지도는 앱이 켜진 동안 마지막 내 위치(모듈 변수)에서 다시 시작한다. 아래 위치 허용 테스트가 강남 좌표를 남기면
+  // 그 뒤 테스트의 지도는 강남에서 열려 망원 매장 핀이 화면 밖이 된다(보이는 곳의 핀만 그린다). 그래서 핀을 누르는 테스트는 그 위에 둔다
+  it("enables the native user-location layer after permission is granted", async () => {
+    const location = jest.requireMock("expo-location") as {
+      requestForegroundPermissionsAsync: jest.Mock
+      getCurrentPositionAsync: jest.Mock
+    }
+    location.requestForegroundPermissionsAsync.mockResolvedValue({
+      status: "granted",
+    })
+    location.getCurrentPositionAsync.mockResolvedValue({
+      coords: { latitude: 37.55, longitude: 126.91 },
+    })
+
+    const view = await render(<MapHarness />)
+
+    await waitFor(() => {
+      expect(
+        view.getByTestId("apple-map").props.accessibilityState.selected,
+      ).toBe(true)
+    })
+  })
+
+  it("centers on the user's location the first time the map opens", async () => {
+    const location = jest.requireMock("expo-location") as {
+      requestForegroundPermissionsAsync: jest.Mock
+      getCurrentPositionAsync: jest.Mock
+    }
+    location.requestForegroundPermissionsAsync.mockResolvedValue({ status: "granted" })
+    location.getCurrentPositionAsync.mockResolvedValue({ coords: { latitude: 37.501, longitude: 127.039 } })
+    mockAnimateToRegion.mockClear()
+
+    await render(<MapHarness />)
+
+    await waitFor(() => {
+      expect(mockAnimateToRegion).toHaveBeenCalledWith(expect.objectContaining({ latitude: 37.501, longitude: 127.039 }), expect.any(Number))
+    })
   })
 })
