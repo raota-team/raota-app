@@ -1,4 +1,5 @@
 import { fireEvent, render, within } from "@testing-library/react-native"
+import type * as ReactModule from "react"
 import type { ReactElement } from "react"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
@@ -12,6 +13,7 @@ import HomeScreen from "@/app/native/index"
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), canGoBack: jest.fn(() => true), navigate: jest.fn(), push: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(() => ({})),
+  useFocusEffect: (effect: () => void | (() => void)) => jest.requireActual<typeof ReactModule>("react").useEffect(effect, [effect]),
 }))
 
 jest.mock("lucide-react-native", () => {

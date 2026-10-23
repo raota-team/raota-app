@@ -1,4 +1,5 @@
 import { act, fireEvent, render, waitFor, within } from "@testing-library/react-native"
+import type * as ReactModule from "react"
 import type { ReactElement } from "react"
 import { Linking, StyleSheet } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
@@ -14,11 +15,12 @@ import HomeScreen from "@/app/native/index"
 import ShopDetailScreen from "@/app/(flows)/shop/[shopId]"
 import AIRecommendScreen from "@/app/(flows)/ai-recommend"
 
-const mockParams: { shopId?: string } = {}
+const mockParams: { shopId?: string; tickets?: string } = {}
 
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), canGoBack: jest.fn(() => true), navigate: jest.fn(), push: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(() => mockParams),
+  useFocusEffect: (effect: () => void | (() => void)) => jest.requireActual<typeof ReactModule>("react").useEffect(effect, [effect]),
 }))
 
 jest.mock("expo-router/react-navigation", () => ({ usePreventRemove: jest.fn() }))
@@ -114,6 +116,7 @@ afterEach(() => {
 beforeEach(() => {
   jest.clearAllMocks()
   delete mockParams.shopId
+  delete mockParams.tickets
 })
 
 describe("home", () => {
@@ -589,6 +592,37 @@ describe("AI curator", () => {
     } finally {
       tickets.mockRestore()
       recommendations.mockRestore()
+      isRemote.mockImplementation(() => false)
+    }
+  })
+
+  it("links today's drawn tickets from home and opens the list on arrival", async () => {
+    isRemote.mockImplementation((domain: string) => domain === "recommendations")
+    const { SHOPS } = jest.requireMock("@/src/data/fixtures") as typeof FixturesModule
+    const drawn = (id: string, name: string) => ({
+      id,
+      createdAt: "2026-10-23T02:05:00Z",
+      shops: [{ ...SHOPS[0], id: `91${id}`, name }],
+      appliedConditions: ["쇼유"],
+      reasons: {},
+    })
+    const tickets = jest
+      .spyOn(remoteReads as unknown as { recommendationTickets: () => Promise<unknown> }, "recommendationTickets")
+      .mockResolvedValue({ dailyLimit: 3, remaining: 1, tickets: [drawn("2", "두번째식권라멘"), drawn("1", "첫식권라멘")] })
+    try {
+      const home = await renderScreen(<HomeScreen />)
+      const line = await home.findByRole("button", { name: "오늘 뽑은 식권 2장, 남은 식권 1장" })
+      await fireEvent.press(line)
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/ai-recommend", params: { tickets: "open" } })
+      home.unmount()
+
+      // 그 줄로 들어오면 누르지 않아도 오늘 뽑은 식권 목록이 열려 있다
+      mockParams.tickets = "open"
+      const curator = await renderScreen(<AIRecommendScreen />)
+      expect(await curator.findByRole("button", { name: /에 뽑은 식권, 두번째식권라멘/ })).toBeTruthy()
+      expect(curator.getByRole("button", { name: /에 뽑은 식권, 첫식권라멘/ })).toBeTruthy()
+    } finally {
+      tickets.mockRestore()
       isRemote.mockImplementation(() => false)
     }
   })

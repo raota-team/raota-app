@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics"
 import * as Location from "expo-location"
-import { router } from "expo-router"
+import { router, useLocalSearchParams } from "expo-router"
 import { usePreventRemove } from "expo-router/react-navigation"
 import { ArrowRight, Check, ChevronRight, Sparkles, Ticket } from "lucide-react-native"
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
@@ -600,6 +600,14 @@ export default function AIRecommendScreen() {
     loadTickets()
   }, [loadTickets])
   const ticketsUsedUp = todayTickets?.remaining === 0
+  // 홈의 "오늘 뽑은 식권" 줄로 들어오면 식권 목록을 바로 연다(처음 읽었을 때 한 번만)
+  const { tickets: ticketsParam } = useLocalSearchParams<{ tickets?: string }>()
+  const openedFromHome = useRef(false)
+  useEffect(() => {
+    if (ticketsParam !== "open" || openedFromHome.current || !todayTickets?.tickets.length) return
+    openedFromHome.current = true
+    setTicketsOpen(true)
+  }, [ticketsParam, todayTickets])
   // 내 그릇 목록(데모 원장 + 앱 기록)으로 취향을 계산한다. 비회원·기록 없음이면 null
   const taste = useMemo(
     () => (loggedIn ? curatorTasteReport(bowls.data, tasteProfile.data.profile, shopsQuery.data) : null),

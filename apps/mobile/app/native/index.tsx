@@ -1,14 +1,16 @@
 import * as Location from "expo-location"
-import { router } from "expo-router"
-import { ChevronRight, Sparkles } from "lucide-react-native"
-import { useEffect, useMemo, useState } from "react"
+import { router, useFocusEffect } from "expo-router"
+import { ChevronRight, Sparkles, Ticket } from "lucide-react-native"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Image, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { monthKeyOfDate, seoulMonthKey, seoulToday, type RamenLog, type Shop, type ShopCatalogItem, type TasteIdentity, type TasteProfile } from "@raota/shared"
+import { isRemote } from "@/src/api/config"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, EmptyState, LoadingState } from "@/src/components/ui"
 import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile, useTodayCuration } from "@/src/data/hooks"
+import { remoteReads, type RemoteTodayTickets } from "@/src/data/remote"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -215,6 +217,23 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   const tasteIdentity = useTasteIdentity()
   const origin = useKnownLocation()
   const loggedIn = Boolean(currentUser?.isLoggedIn)
+  // 오늘 뽑은 AI 식권. 큐레이터에서 뽑고 돌아오면 다시 읽어야 해서 화면에 들어올 때마다 읽는다
+  const ticketsEnabled = isRemote("recommendations") && loggedIn
+  const [todayTickets, setTodayTickets] = useState<RemoteTodayTickets | null>(null)
+  useFocusEffect(
+    useCallback(() => {
+      if (!ticketsEnabled) {
+        setTodayTickets(null)
+        return
+      }
+      let active = true
+      remoteReads.recommendationTickets().then(
+        (tickets) => { if (active) setTodayTickets(tickets) },
+        () => { if (active) setTodayTickets(null) },
+      )
+      return () => { active = false }
+    }, [ticketsEnabled]),
+  )
 
   /** 위치가 있으면 실제 거리로 다시 계산한다 */
   const shops = useMemo(() => {
@@ -398,6 +417,27 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
             </>
           )}
         </Pressable>
+        {todayTickets?.tickets.length ? (
+          // 카드 안에 넣으면 버튼 안의 버튼이 되므로 카드 바로 아래 한 줄로 둔다
+          <Pressable
+            accessibilityHint="AI 큐레이터에서 오늘 뽑은 식권을 골라 다시 봐요"
+            accessibilityLabel={`오늘 뽑은 식권 ${todayTickets.tickets.length}장, ${todayTickets.remaining > 0 ? `남은 식권 ${todayTickets.remaining}장` : "내일 다시 채워져요"}`}
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: "/ai-recommend", params: { tickets: "open" } })}
+            style={({ pressed }) => [styles.ticketLine, pressed && styles.pressedWash]}
+            testID="home-tickets"
+          >
+            <Ticket color={colors.ink} size={16} />
+            <AppText capScale style={[styles.bold, styles.flexShrink]} variant="secondary">
+              {`오늘 뽑은 식권 ${todayTickets.tickets.length}장`}
+              <AppText capScale tone="sub" variant="secondary">
+                {todayTickets.remaining > 0 ? ` · 남은 식권 ${todayTickets.remaining}장` : " · 내일 다시 채워져요"}
+              </AppText>
+            </AppText>
+            <View style={styles.flex} />
+            <ChevronRight color={colors.textMuted} size={16} />
+          </Pressable>
+        ) : null}
 
         {shopsQuery.isLoading ? <LoadingState label="라멘집을 불러오는 중…" /> : null}
         {shopsQuery.error ? (
@@ -682,6 +722,17 @@ const styles = StyleSheet.create({
   },
   curatorPhoto: { width: 112, height: 132, marginRight: spacing.x4, borderRadius: radii.sm, overflow: "hidden", backgroundColor: colors.canvasSoft },
   curatorButtonPressed: { backgroundColor: colors.brandPressed },
+  ticketLine: {
+    minHeight: touchTarget,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.x2,
+    marginHorizontal: spacing.gutter,
+    marginTop: spacing.x2,
+    // 카드 글자(curatorCopy paddingLeft)와 같은 선에서 시작한다
+    paddingHorizontal: spacing.x5,
+    borderRadius: radii.sm,
+  },
   sectionFirst: { paddingHorizontal: spacing.gutter, paddingTop: spacing.section },
   section: { paddingHorizontal: spacing.gutter, paddingTop: spacing.section },
   sectionHead: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2, marginBottom: spacing.x3 },
