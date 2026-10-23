@@ -1,9 +1,10 @@
+import * as Haptics from "expo-haptics"
 import { useEffect, useMemo } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { SearchX } from "lucide-react-native"
 import { Image } from "expo-image"
-import { ScrollView, StyleSheet, View } from "react-native"
+import { Platform, ScrollView, StyleSheet, View } from "react-native"
 import Animated, {
   Easing,
   interpolate,
@@ -27,8 +28,9 @@ import {
   StickyActionBar,
   TicketCut,
 } from "@/src/components/ui"
+import { InkStamp } from "@/src/components/InkStamp"
 import { useRecordReminderPrompt } from "@/src/notifications"
-import { colors, line, radii, spacing } from "@/src/theme"
+import { colors, radii, spacing } from "@/src/theme"
 
 /*
  * 저장한 기록을 사진과 다섯 평가가 있는 식권으로 보여 준다.
@@ -38,7 +40,10 @@ import { colors, line, radii, spacing } from "@/src/theme"
 const STAMP_DURATION = 620
 /** 화면이 밀려 들어오는 동안 찍히면 아무도 못 본다. iOS 스택 전환(약 350ms)이 끝난 뒤에 찍는다 */
 const STAMP_DELAY = 420
+/** 도장이 종이에 닿는 순간(진행률). 이때 잉크가 퍼지고 식권이 눌리고 손에 쿵 하고 전해진다 */
+const STAMP_LAND = 0.48
 const STAMP_SIZE = 92
+const TICKET_PHOTO_HEIGHT = 190
 const scoreLabels = {
   satisfaction: "만족도",
   brothDensity: "육수",
@@ -115,30 +120,47 @@ export default function RecordCompleteScreen() {
   const comment = useMemo(() => (log ? bowlComment(log, scores, taste.before) : null), [log, scores, taste.before])
   const stampedLogId = log?.id
 
-  // 저장된 그릇이 나타날 때 도장을 한 번만 누른다. 동작 줄이기에서는 찍힌 상태부터 보여준다
+  // 저장된 그릇이 나타날 때 도장을 한 번만 누른다. 크게 들렸다 떨어져 눌리며 살짝 튀고 자리를 잡는다.
+  // 동작 줄이기에서는 찍힌 상태부터 보여준다
   const stamp = useSharedValue(reduceMotion ? 1 : 0)
+  const bloom = useSharedValue(reduceMotion ? 1 : 0)
+  const thud = useSharedValue(0)
   useEffect(() => {
     if (stampedLogId == null) return
     if (reduceMotion) {
       stamp.value = 1
+      bloom.value = 1
       return
     }
+    const landAt = STAMP_DELAY + STAMP_DURATION * STAMP_LAND
     stamp.value = 0
-    stamp.value = withDelay(
-      STAMP_DELAY,
-      withSequence(
-        withTiming(0.55, { duration: STAMP_DURATION * 0.55, easing: Easing.out(Easing.cubic) }),
-        withTiming(1, { duration: STAMP_DURATION * 0.45, easing: Easing.out(Easing.quad) }),
-      ),
+    stamp.value = withDelay(STAMP_DELAY, withTiming(1, { duration: STAMP_DURATION, easing: Easing.out(Easing.quad) }))
+    bloom.value = 0
+    bloom.value = withDelay(landAt, withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) }))
+    thud.value = withDelay(
+      landAt - 40,
+      withSequence(withTiming(1, { duration: 90, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 260, easing: Easing.out(Easing.cubic) })),
     )
-  }, [stampedLogId, reduceMotion, stamp])
+    const timer = setTimeout(() => {
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined)
+    }, landAt)
+    return () => clearTimeout(timer)
+  }, [stampedLogId, reduceMotion, stamp, bloom, thud])
 
   const stampStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(stamp.value, [0, 0.55, 1], [0, 1, 1]),
+    opacity: interpolate(stamp.value, [0, STAMP_LAND, 1], [0, 0.94, 0.92]),
     transform: [
-      { rotate: `${interpolate(stamp.value, [0, 0.55, 1], [-24, -10, -10])}deg` },
-      { scale: interpolate(stamp.value, [0, 0.55, 1], [1.9, 0.94, 1]) },
+      { rotate: `${interpolate(stamp.value, [0, STAMP_LAND, 0.62, 0.78, 1], [-26, -12, -15, -13.5, -14])}deg` },
+      { scale: interpolate(stamp.value, [0, STAMP_LAND, 0.62, 0.78, 1], [2.6, 0.9, 1.06, 0.985, 1]) },
     ],
+  }))
+  // 닿는 순간 잉크가 번지듯 옅은 고리가 퍼졌다 사라진다
+  const bloomStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(bloom.value, [0, 1], [0.35, 0]),
+    transform: [{ scale: interpolate(bloom.value, [0, 1], [0.9, 1.2]) }],
+  }))
+  const ticketStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: thud.value * 3 }, { scale: 1 - thud.value * 0.012 }],
   }))
 
   const goHome = () => router.replace("/native")
@@ -184,7 +206,7 @@ export default function RecordCompleteScreen() {
         </View>
 
         <View style={styles.body}>
-          <View style={styles.ticket}>
+          <Animated.View style={[styles.ticket, ticketStyle]}>
             <View style={styles.ticketHeader}>
               {photo ? (
                 <Image accessibilityLabel={`${log.menuName} 사진`} contentFit="cover" source={{ uri: photo }} style={styles.ticketPhoto} />
@@ -193,21 +215,6 @@ export default function RecordCompleteScreen() {
                   <AppText tone="muted" variant="meta">RAOTA 식권 · 한 그릇</AppText>
                 </View>
               )}
-              <Animated.View
-                accessibilityLabel={`완식 도장, ${stampedAt}`}
-                accessibilityRole="image"
-                accessible
-                pointerEvents="none"
-                style={[styles.stamp, stampStyle]}
-              >
-                <View pointerEvents="none" style={styles.stampFill} />
-                <View style={styles.stampInner}>
-                  <AppText style={styles.stampTitle} tone="brand" variant="sectionTitle">완식</AppText>
-                  <AppText capScale maxFontSizeMultiplier={1} style={styles.stampDate} tone="brand" variant="meta">
-                    {stampedAt}
-                  </AppText>
-                </View>
-              </Animated.View>
             </View>
             <View style={styles.ticketMain}>
               <AppText lineBreakStrategyIOS="hangul-word" style={styles.menu} variant="cardTitle">
@@ -241,7 +248,23 @@ export default function RecordCompleteScreen() {
                 })}
               </View>
             ) : null}
-          </View>
+            {/* 사진이 아니라 식권 종이 위에 찍어야 잉크가 읽힌다. 절취선에 살짝 걸친다 */}
+            <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampBloom, bloomStyle]} />
+            <Animated.View
+              accessibilityLabel={`완식 도장, ${stampedAt}`}
+              accessibilityRole="image"
+              accessible
+              pointerEvents="none"
+              style={[styles.stamp, stampStyle]}
+            >
+              <InkStamp
+                caption={`No.${String(bowlCount).padStart(4, "0")}`}
+                ringText={`RAOTA ✦ 라멘 완식 인증 ✦ ${formatVisitDate(log.visitedAt)} ✦`}
+                size={STAMP_SIZE}
+                title="완식"
+              />
+            </Animated.View>
+          </Animated.View>
           <AppText
             accessibilityLabel={`이번 그릇 정리. ${comment}`}
             accessibilityRole="summary"
@@ -290,7 +313,7 @@ const styles = StyleSheet.create({
   counter: { marginTop: spacing.x1, textAlign: "center" },
   body: { paddingHorizontal: spacing.x5 },
   ticket: { borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
-  ticketHeader: { height: 190 },
+  ticketHeader: { height: TICKET_PHOTO_HEIGHT },
   ticketPhoto: { width: "100%", height: "100%", borderTopLeftRadius: radii.sm, borderTopRightRadius: radii.sm },
   ticketPhotoFallback: {
     height: "100%",
@@ -300,44 +323,19 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radii.sm,
     backgroundColor: colors.canvasSoft,
   },
-  ticketMain: { paddingHorizontal: spacing.x4, paddingTop: spacing.x4, paddingBottom: spacing.x4 },
+  // 오른쪽은 도장 자리라 메뉴 이름이 그 앞에서 줄을 바꾼다
+  ticketMain: { paddingLeft: spacing.x4, paddingRight: STAMP_SIZE, paddingTop: spacing.x4, paddingBottom: spacing.x4 },
   menu: { fontWeight: "700" },
   shopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
   shopMetaText: { minWidth: 0 },
   stamp: {
     position: "absolute",
-    right: spacing.x2_5,
-    top: spacing.x2,
+    right: spacing.x2,
+    top: TICKET_PHOTO_HEIGHT + spacing.x1,
     width: STAMP_SIZE,
     height: STAMP_SIZE,
-    borderRadius: radii.pill,
-    borderWidth: 3,
-    borderColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  stampFill: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: radii.pill,
-    backgroundColor: colors.white,
-    opacity: 0.86,
-  },
-  stampInner: {
-    width: STAMP_SIZE - spacing.x2_5,
-    height: STAMP_SIZE - spacing.x2_5,
-    borderRadius: radii.pill,
-    borderWidth: line.base,
-    borderColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // 도장은 두 모드 모두 흰 면 위라 다크용 밝은 빨강(brandText) 대신 테두리와 같은 brand를 쓴다
-  stampTitle: { fontSize: 25, lineHeight: 28, fontWeight: "700", letterSpacing: 0.5, color: colors.brand },
-  stampDate: { fontVariant: ["tabular-nums"], color: colors.brand },
+  stampBloom: { borderRadius: radii.pill, borderWidth: 4, borderColor: colors.brand },
   scoreRow: { flexDirection: "row", paddingHorizontal: spacing.x3, paddingTop: spacing.x4, paddingBottom: spacing.x4 },
   scoreColumn: { flex: 1, minWidth: 0, alignItems: "center", gap: spacing.x0_5 },
   scoreValue: { fontWeight: "700", fontVariant: ["tabular-nums"], fontSize: 20, lineHeight: 24 },

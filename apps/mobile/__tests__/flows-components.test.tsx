@@ -250,26 +250,33 @@ describe("record screens", () => {
     expect(view.getByRole("radio", { name: /^육수 농도 4점/ }).props.accessibilityState.checked).toBe(true)
   })
 
-  it("shows the selected shop, editable menu, visit date and folded optional details", async () => {
+  /** 메뉴를 적고 점수 넷과 재방문을 골라 마지막 장(추가 감정)까지 간다. 답을 고르면 저절로 넘어간다 */
+  async function answerRequired(view: Awaited<ReturnType<typeof renderWithStore>>) {
+    await fireEvent.changeText(await view.findByLabelText("먹은 메뉴"), "특제 쇼유 라멘")
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
+    for (const name of [/^전체 만족도 4점/, /^육수 농도 3점/, /^면 삶기 5점/, /^토핑 2점/, /^재방문 의사 자주 감/]) {
+      await fireEvent.press(await view.findByRole("radio", { name }))
+    }
+    expect(await view.findByText("더 남길 감정이 있나요?")).toBeTruthy()
+  }
+
+  it("starts with the meal question and keeps it until the menu is filled", async () => {
     const view = await renderWithStore(<NewRecordScreen />)
 
     expect(await view.findByText("멘야준 · 망원 본점")).toBeTruthy()
-    await fireEvent.changeText(view.getByLabelText("먹은 메뉴"), "특제 쇼유 라멘")
-    expect(view.getByLabelText("먹은 메뉴").props.value).toBe("특제 쇼유 라멘")
+    expect(view.getByText("무엇을 먹었나요?")).toBeTruthy()
     expect(view.getByRole("button", { name: /^방문일, / })).toBeTruthy()
-    expect(view.getAllByRole("radio", { name: /^재방문 의사/ })).toHaveLength(3)
-    expect(view.queryByText("맛 태그")).toBeNull()
-    expect(view.getByRole("button", { name: "사진 추가" })).toBeTruthy()
-    expect(view.queryByLabelText("기억해둘 점")).toBeNull()
+    // 멘야준(쇼유 라멘)은 라멘 종류가 미리 골라져 있다
+    expect(view.getByRole("radio", { name: "쇼유" }).props.accessibilityState.checked).toBe(true)
 
-    const details = view.getByRole("button", { name: "상세 추가" })
-    expect(details.props.accessibilityState.expanded).toBe(false)
-    await fireEvent.press(details)
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
+    expect(view.getByText("먹은 메뉴를 채워주세요")).toBeTruthy()
+    expect(view.getByText("무엇을 먹었나요?")).toBeTruthy()
 
-    expect(view.getByText("맛 태그")).toBeTruthy()
-    expect(view.getByRole("button", { name: "사진 추가" })).toBeTruthy()
-    expect(view.getByLabelText("기억해둘 점")).toBeTruthy()
-    expect(details.props.accessibilityState.expanded).toBe(true)
+    await fireEvent.changeText(view.getByLabelText("먹은 메뉴"), "특제 쇼유 라멘")
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
+    expect(await view.findByText("전체 만족도는 어땠나요?")).toBeTruthy()
+    expect(view.getAllByRole("radio", { name: /^전체 만족도/ })).toHaveLength(5)
   })
 
   it("selects a shop by its full BIGINT route ID on the record form", async () => {
@@ -281,75 +288,38 @@ describe("record screens", () => {
     try {
       const view = await renderWithStore(<NewRecordScreen />)
       expect(await view.findByText("멘야준 · 망원 본점")).toBeTruthy()
-      expect(view.getByRole("button", { name: "기록 저장하기, 남은 필수 6개" })).toBeTruthy()
     } finally {
       SHOPS[0] = original
     }
   })
 
-  it("offers a private default and an explicit public choice beside Save", async () => {
+  it("moves on after an answer, fills the ticket, and returns to a question from its ticket cell", async () => {
     const view = await renderWithStore(<NewRecordScreen />)
-    const privateButton = await view.findByRole("button", { name: "나만 보기" })
-    const publicButton = view.getByRole("button", { name: "공개" })
+    await fireEvent.changeText(await view.findByLabelText("먹은 메뉴"), "특제 쇼유 라멘")
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
 
-    expect(privateButton.props.accessibilityState.selected).toBe(true)
-    expect(publicButton.props.accessibilityState.selected).toBe(false)
-    expect(view.queryByRole("switch", { name: "내 기록 공개하기" })).toBeNull()
-    expect(view.queryByText("공개 기록")).toBeNull()
+    await fireEvent.press(await view.findByRole("radio", { name: /^전체 만족도 4점/ }))
+    expect(await view.findByText("육수 농도는 어땠나요?")).toBeTruthy()
 
-    await fireEvent.press(publicButton)
-    expect(publicButton.props.accessibilityState.selected).toBe(true)
-    await fireEvent.press(privateButton)
-    expect(privateButton.props.accessibilityState.selected).toBe(true)
+    await fireEvent.press(view.getByRole("button", { name: "전체 만족도 4점, 눌러서 이 질문으로 가요" }))
+    expect(await view.findByText("전체 만족도는 어땠나요?")).toBeTruthy()
+    expect(view.getByRole("radio", { name: /^전체 만족도 4점/ }).props.accessibilityState.checked).toBe(true)
+    // 아직 닿지 않은 질문의 칸은 누를 수 없다
+    expect(view.getByRole("button", { name: /^토핑 아직 비어 있음/ }).props.accessibilityState.disabled).toBe(true)
   })
 
-  it("keeps an incomplete ramen record on screen and names what is missing", async () => {
-    const { router } = jest.requireMock("expo-router") as {
-      router: { replace: jest.Mock }
-    }
-    const view = await renderWithStore(<NewRecordScreen />)
-
-    // 멘야준(쇼유 라멘)은 라멘 종류가 미리 골라져 있고 방문일은 오늘이다.
-    expect(
-      await view.findByText(
-        "먹은 메뉴, 전체 만족도, 육수 농도 외 3개를 채워주세요",
-      ),
-    ).toBeTruthy()
-    const save = view.getByRole("button", { name: "기록 저장하기, 남은 필수 6개" })
-    // 미완성이어도 눌리는 버튼이다(누르면 빠진 첫 항목으로 데려다준다).
-    // disabled를 주면 VoiceOver가 "흐림"으로 읽어 이 길이 화면을 못 보는 사용자에게만 닫힌다
-    expect(save.props.accessibilityState?.disabled).toBeFalsy()
-    expect(save.props.accessibilityHint).toBe("누르면 빠진 첫 항목으로 이동해요")
-
-    await fireEvent.press(save)
-
-    expect(view.getByText("채워주세요")).toBeTruthy()
-    expect(view.getAllByText("골라주세요")).toHaveLength(5)
-    expect(router.replace).not.toHaveBeenCalled()
-  })
-
-  it("saves a complete five-axis record and opens the completion screen", async () => {
+  it("saves a private five-axis record with extra tags and opens the completion screen", async () => {
     const { router } = jest.requireMock("expo-router") as {
       router: { replace: jest.Mock }
     }
     const repository = repositoryWith()
     const view = await renderWithStore(<NewRecordScreen />, repository)
+    await answerRequired(view)
 
-    await fireEvent.changeText(
-      await view.findByLabelText("먹은 메뉴"),
-      "특제 쇼유 라멘",
-    )
-    for (const name of [
-      /^전체 만족도 4점/,
-      /^육수 농도 3점/,
-      /^면 삶기 5점/,
-      /^토핑 2점/,
-      /^재방문 의사 자주 감/,
-    ]) {
-      await fireEvent.press(view.getByRole("radio", { name }))
-    }
-
-    expect(view.getByText("필수 항목을 모두 채웠어요")).toBeTruthy()
+    expect(view.getByRole("button", { name: "나만 보기" }).props.accessibilityState.selected).toBe(true)
+    expect(view.getByRole("button", { name: "공개" }).props.accessibilityState.selected).toBe(false)
+    await fireEvent.press(view.getByRole("button", { name: "국물 진해요" }))
+    expect(view.getByRole("button", { name: "추가 감정 1개" })).toBeTruthy()
     await fireEvent.press(view.getByRole("button", { name: "기록 저장하기" }))
 
     await waitFor(() =>
@@ -361,10 +331,32 @@ describe("record screens", () => {
     await waitFor(() =>
       expect(repository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          logs: expect.arrayContaining([expect.objectContaining({ menuName: "특제 쇼유 라멘", isPublic: false })]),
+          logs: expect.arrayContaining([
+            expect.objectContaining({ menuName: "특제 쇼유 라멘", isPublic: false, tasteNotes: expect.objectContaining({ broth: ["진해요"] }) }),
+          ]),
         }),
       ),
     )
+  })
+
+  it("sends Save back to the first unanswered question instead of saving", async () => {
+    const { router } = jest.requireMock("expo-router") as {
+      router: { replace: jest.Mock }
+    }
+    const view = await renderWithStore(<NewRecordScreen />)
+    await answerRequired(view)
+
+    // 앞 질문으로 돌아가 메뉴를 지운 뒤 칸을 눌러 마지막 장으로 온다
+    for (let index = 0; index < 6; index += 1) await fireEvent.press(view.getByRole("button", { name: "이전 질문" }))
+    await fireEvent.changeText(await view.findByLabelText("먹은 메뉴"), "")
+    await fireEvent.press(view.getByRole("button", { name: /^추가 감정 아직 비어 있음, 눌러서/ }))
+    const save = await view.findByRole("button", { name: "기록 저장하기, 남은 필수 1개" })
+    // 미완성이어도 눌리는 버튼이다. disabled를 주면 VoiceOver가 "흐림"으로 읽어 이 길이 닫힌다
+    expect(save.props.accessibilityState?.disabled).toBeFalsy()
+
+    await fireEvent.press(save)
+    expect(await view.findByText("무엇을 먹었나요?")).toBeTruthy()
+    expect(router.replace).not.toHaveBeenCalled()
   })
 
   it("asks before leaving a record that has input", async () => {
