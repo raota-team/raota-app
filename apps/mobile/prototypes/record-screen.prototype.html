@@ -1,0 +1,523 @@
+<!doctype html>
+<!--
+  PROTOTYPE — 버리는 코드. "라멘 기록하기 화면을 어떻게 꾸밀까"를 고르기 위한 시안.
+  ?variant=A|B|C 로 바꾸고, 아래 막대(또는 ← →)로 넘긴다. 앱 토큰(색·글꼴·반경·문구)을 그대로 옮겼다.
+  C(한 장씩 감정서)가 골라져 v2로 다듬는 중: 스크롤 없이 한 화면, 추가 감정 단계, 움직임.
+  고르고 나면 이긴 안만 RN 코드로 다시 쓰고 이 파일은 지운다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RAOTA 기록하기 · 디자인 시안</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root {
+    --brand: #e60000; --ink: #000; --paper: #fff; --soft: #f6f6f3; --pressed: #e5e5e0;
+    --muted: #62625b; --faint: #c8c8c1; --border: #dadad3; --outline: #91918c; --selected: #000;
+    --soup-edge: rgba(0,0,0,.12);
+    --ease-out: cubic-bezier(.22, 1, .36, 1);
+    --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Pretendard, -apple-system, sans-serif; background: #e9e8e3; color: var(--ink); min-height: 100vh; }
+  button, input, textarea { font: inherit; color: inherit; border: 0; background: none; }
+  button { cursor: pointer; }
+  .stage { display: flex; flex-direction: column; align-items: center; padding: 28px 16px 120px; gap: 14px; }
+  .caption { max-width: 390px; text-align: center; }
+  .caption h1 { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+  .caption p { margin-top: 6px; font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .phone { width: 390px; height: 844px; background: var(--paper); border-radius: 48px; overflow: hidden; position: relative;
+    box-shadow: 0 30px 60px -20px rgba(0,0,0,.35), 0 0 0 10px #111; display: flex; flex-direction: column; }
+  .status { height: 47px; flex: none; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 30px 6px; font-weight: 600; font-size: 15px; }
+  .nav { height: 52px; flex: none; display: flex; align-items: center; justify-content: center; position: relative; font-weight: 700; font-size: 17px; }
+  .nav .back { position: absolute; left: 12px; width: 44px; height: 44px; display: grid; place-items: center; }
+  .nav .right { position: absolute; right: 20px; font-size: 13px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .scroll { flex: 1; overflow-y: auto; padding: 4px 16px 24px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .footer { flex: none; border-top: 1px solid var(--border); padding: 12px 16px 34px; background: var(--paper); }
+  .hint { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .btn { height: 52px; border-radius: 16px; font-weight: 700; font-size: 16px; display: grid; place-items: center; transition: transform .12s var(--ease-out), background .2s; }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { background: var(--brand); color: #fff; flex: 1; }
+  .btn.primary[disabled] { background: var(--soft); color: var(--muted); cursor: default; transform: none; }
+  .btn.ghost { background: var(--pressed); }
+  .label { font-size: 14px; font-weight: 700; }
+  .meta { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .tab { font-variant-numeric: tabular-nums; }
+  .input { width: 100%; height: 52px; border: 1px solid var(--outline); border-radius: 16px; display: flex; align-items: center; padding: 0 16px; font-size: 16px; justify-content: space-between; text-align: left; }
+  .input.placeholder { color: #8b8b84; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { height: 40px; padding: 0 14px; border-radius: 999px; background: var(--soft); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 7px; transition: transform .15s var(--ease-out), background .2s, color .2s; }
+  .chip:active { transform: scale(.94); }
+  .chip.on { background: var(--selected); color: #fff; }
+  .dot { width: 10px; height: 10px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--soup-edge); flex: none; }
+  .photo { background: var(--soft) center/cover; border-radius: 16px; }
+  svg { display: block; }
+
+  /* ---------- A · 테이스팅 시트 ---------- */
+  .A .card { background: var(--soft); border-radius: 32px; padding: 18px 16px; margin-top: 12px; }
+  .A .card h2 { font-size: 17px; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; }
+  .A .card h2 small { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .A .shop { display: flex; gap: 12px; margin-top: 14px; }
+  .A .shop .photo { width: 96px; height: 96px; flex: none; display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; font-weight: 600; background: var(--paper); }
+  .A .shop .fields { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .A .shop .input { height: 44px; background: var(--paper); border: 0; font-size: 15px; }
+  .A .axis { margin-top: 16px; }
+  .A .axis-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .A .axis-head .val { font-size: 13px; font-weight: 700; }
+  .A .axis-head .val.empty { color: var(--faint); font-weight: 600; }
+  .A .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; }
+  .A .scale button { height: 44px; border-radius: 999px; background: var(--paper); font-weight: 700; font-size: 15px; }
+  .A .scale button.on { background: var(--selected); color: #fff; }
+  .A .ends { display: flex; justify-content: space-between; margin-top: 6px; }
+  .A .revisit { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+  .A .revisit button { height: 44px; border-radius: 999px; background: var(--paper); font-weight: 700; font-size: 14px; }
+  .A .revisit button.on { background: var(--selected); color: #fff; }
+  .A .chips { margin-top: 12px; }
+  .A .chip { background: var(--paper); }
+  .A .chip.on { background: var(--selected); }
+  .A .seg { display: inline-flex; background: var(--soft); border-radius: 999px; padding: 4px; height: 52px; }
+  .A .seg button { padding: 0 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--muted); }
+  .A .seg button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+  /* ---------- B · 국물 게이지 ---------- */
+  .B .hero { display: flex; gap: 12px; align-items: center; }
+  .B .hero .photo { width: 64px; height: 64px; flex: none; }
+  .B .hero b { font-size: 20px; letter-spacing: -.02em; }
+  .B .bowls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+  .B .bowl { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0 8px; border-radius: 16px; background: var(--soft); font-size: 13px; font-weight: 700; }
+  .B .bowl.on { background: var(--selected); color: #fff; }
+  .B .bowl .well { width: 34px; height: 34px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--soup-edge); }
+  .B .bowl.on .well { box-shadow: 0 0 0 2px #fff, inset 0 0 0 1px var(--soup-edge); }
+  .B section { margin-top: 26px; }
+  .B section > .label { font-size: 17px; }
+  .B .gauge-row { margin-top: 18px; }
+  .B .gauge-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .B .gauge-head .val { font-size: 14px; font-weight: 700; }
+  .B .gauge-head .val.empty { color: var(--faint); font-weight: 600; }
+  .B .gauge { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 10px; height: 44px; }
+  .B .gauge button { border-radius: 8px; background: var(--soft); position: relative; transition: background .18s ease-out; }
+  .B .gauge button:first-child { border-radius: 16px 8px 8px 16px; }
+  .B .gauge button:last-child { border-radius: 8px 16px 16px 8px; }
+  .B .gauge button.fill { box-shadow: inset 0 0 0 1px var(--soup-edge); }
+  .B .gauge button span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: rgba(0,0,0,.28); }
+  .B .gauge button.fill span { color: transparent; }
+  .B .ends { display: flex; justify-content: space-between; margin-top: 6px; }
+  .B .chips { margin-top: 10px; }
+
+  /* ---------- C · 한 장씩 감정서 (v2: 한 화면, 추가 감정, 움직임) ---------- */
+  .C .scroll { overflow: hidden; display: flex; flex-direction: column; padding-bottom: 12px; }
+  .C .progress { height: 4px; border-radius: 999px; background: var(--pressed); overflow: hidden; flex: none; }
+  .C .progress i { display: block; height: 100%; background: var(--ink); border-radius: 999px; transition: width .45s var(--ease-out); }
+  .C .ticket { flex: none; margin-top: 12px; background: var(--soft); border-radius: 32px; padding: 14px 18px 12px; position: relative; transform-origin: 50% 0; }
+  .C .ticket::before, .C .ticket::after { content: ""; position: absolute; top: 92px; width: 18px; height: 18px; border-radius: 999px; background: var(--paper); }
+  .C .ticket::before { left: -9px; } .C .ticket::after { right: -9px; }
+  .C .t-head { display: flex; justify-content: space-between; align-items: center; }
+  .C .t-head b { font-size: 13px; letter-spacing: .04em; }
+  .C .t-shop { display: flex; gap: 10px; margin-top: 10px; align-items: center; min-width: 0; }
+  .C .t-shop .photo { width: 44px; height: 44px; flex: none; border-radius: 12px; }
+  .C .t-shop b { font-size: 17px; display: block; }
+  .C .t-shop .sub { display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .C .t-shop .sub .ph { color: var(--faint); }
+  .C .cut { border-top: 2px dashed var(--border); margin: 14px -2px 10px; }
+  .C .t-scores { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; perspective: 400px; }
+  .C .t-score { text-align: center; }
+  .C .t-score .n { height: 30px; border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 15px; background: var(--paper); color: var(--faint); transition: background .25s, color .25s, box-shadow .25s; }
+  .C .t-score.on .n { background: var(--selected); color: #fff; }
+  .C .t-score.now .n { box-shadow: inset 0 0 0 2px var(--ink); color: var(--ink); }
+  .C .t-score.extra.on .n { background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+  .C .t-score .k { font-size: 10.5px; color: var(--muted); margin-top: 3px; font-weight: 600; }
+  .C .t-score.pop .n { animation: flipIn .5s var(--ease-spring); }
+  @keyframes flipIn { 0% { transform: rotateX(-90deg) scale(.8); } 60% { transform: rotateX(12deg) scale(1.08); } 100% { transform: none; } }
+  /* 완식 도장: 잉크 질감(가장자리 번짐 + 덜 묻은 얼룩)은 SVG 필터가, 종이에 스민 느낌은 multiply가 맡는다 */
+  .C .stamp { position: absolute; right: 10px; top: 22px; width: 92px; height: 92px; opacity: 0; pointer-events: none; z-index: 2;
+    transform: rotate(-14deg) scale(.6); mix-blend-mode: multiply; }
+  .C .stamp svg { width: 100%; height: 100%; overflow: visible; }
+  .C .stamp.on { opacity: .92; transform: rotate(-14deg) scale(1); }
+  .C .stamp.slam { animation: slam .62s var(--ease-out) both; }
+  /* 크게 들려 있다가 떨어지고, 눌리며 살짝 퍼졌다 자리를 잡는다. 떨어지는 동안은 초점이 흐리다 */
+  @keyframes slam {
+    0% { opacity: 0; transform: rotate(-26deg) scale(2.6); filter: blur(3px); }
+    48% { opacity: .95; transform: rotate(-12deg) scale(.9); filter: blur(0); }
+    62% { transform: rotate(-15deg) scale(1.06); }
+    78% { transform: rotate(-13.5deg) scale(.985); }
+    100% { opacity: .92; transform: rotate(-14deg) scale(1); }
+  }
+  .C .stamp .bloom { transform-origin: 60px 60px; opacity: 0; }
+  .C .stamp.slam .bloom { animation: bloom .7s .26s var(--ease-out) both; }
+  @keyframes bloom { 0% { opacity: .35; transform: scale(.9); } 100% { opacity: 0; transform: scale(1.18); } }
+  .C .ticket.thud { animation: thud .5s .18s var(--ease-out); }
+  @keyframes thud { 0%, 100% { transform: none; } 30% { transform: translateY(3px) scale(.985); } 60% { transform: translateY(-1px); } }
+
+  .C .q { flex: 1; min-height: 0; margin-top: 18px; display: flex; flex-direction: column; }
+  .C .q.in-next { animation: inNext .38s var(--ease-out) both; }
+  .C .q.in-back { animation: inBack .38s var(--ease-out) both; }
+  @keyframes inNext { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+  @keyframes inBack { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+  .C .q .step { font-size: 12px; color: var(--muted); font-weight: 700; display: flex; gap: 6px; align-items: center; }
+  .C .q .step .opt-badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--soft); }
+  .C .q h2 { font-size: 24px; font-weight: 700; letter-spacing: -.03em; margin-top: 4px; line-height: 1.25; }
+  .C .options { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .C .opt { height: 50px; border-radius: 16px; background: var(--soft); display: flex; align-items: center; justify-content: space-between; padding: 0 16px 0 18px; font-size: 16px; font-weight: 600;
+    position: relative; overflow: hidden; transition: transform .15s var(--ease-out), color .2s; isolation: isolate; }
+  .C .opt::before { content: ""; position: absolute; inset: 0; background: var(--selected); transform: scaleX(0); transform-origin: left; transition: transform .28s var(--ease-out); z-index: -1; }
+  .C .opt:active { transform: scale(.98); }
+  .C .opt.on { color: #fff; }
+  .C .opt.on::before { transform: scaleX(1); }
+  .C .opt .num { width: 26px; height: 26px; border-radius: 999px; background: var(--paper); display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--ink); transition: transform .3s var(--ease-spring); }
+  .C .opt.on .num { transform: scale(1.12); }
+  .C .opts-stagger .opt { animation: rise .4s var(--ease-out) both; }
+  .C .opts-stagger .opt:nth-child(2) { animation-delay: .03s; } .C .opts-stagger .opt:nth-child(3) { animation-delay: .06s; }
+  .C .opts-stagger .opt:nth-child(4) { animation-delay: .09s; } .C .opts-stagger .opt:nth-child(5) { animation-delay: .12s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .C .ends { display: flex; justify-content: space-between; margin-top: 8px; }
+  .C .menu-input { margin-top: 14px; height: 50px; border: 1px solid var(--outline); border-radius: 16px; padding: 0 16px; font-size: 16px; width: 100%; outline: none; }
+  .C .menu-input:focus { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+  .C .types { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+  .C .types .chip { height: 34px; padding: 0 11px; font-size: 13px; }
+  .C .seg-tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--soft); border-radius: 999px; padding: 4px; margin-top: 12px; position: relative; }
+  .C .seg-tabs .thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 4); border-radius: 999px; background: var(--paper); box-shadow: 0 1px 3px rgba(0,0,0,.12); transition: transform .3s var(--ease-out); }
+  .C .seg-tabs button { height: 36px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--muted); position: relative; z-index: 1; }
+  .C .seg-tabs button.on { color: var(--ink); }
+  .C .seg-tabs button i { font-style: normal; font-size: 11px; margin-left: 3px; color: var(--brand); }
+  .C .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; min-height: 80px; align-content: flex-start; }
+  .C .tags .chip { height: 36px; font-size: 14px; }
+  .C .tags.swap .chip { animation: rise .3s var(--ease-out) both; }
+  .C .tags .chip.just { animation: bump .35s var(--ease-spring); }
+  @keyframes bump { 50% { transform: scale(1.1); } }
+  .C .extra-row { display: flex; gap: 8px; margin-top: 12px; }
+  .C .memo { flex: 1; min-width: 0; height: 48px; border-radius: 16px; background: var(--soft); padding: 0 14px; font-size: 15px; outline: none; }
+  .C .memo:focus { box-shadow: inset 0 0 0 1.5px var(--ink); background: var(--paper); }
+  .C .photos { display: flex; gap: 6px; }
+  .C .photo-slot { width: 48px; height: 48px; border-radius: 14px; background: var(--soft) center/cover; display: grid; place-items: center; }
+  .C .photo-slot.filled { animation: rise .3s var(--ease-out); }
+  .C .seg { display: inline-flex; background: var(--soft); border-radius: 999px; padding: 4px; height: 52px; flex: none; }
+  .C .seg button { padding: 0 12px; border-radius: 999px; font-weight: 700; font-size: 14px; color: var(--muted); transition: background .2s, color .2s; }
+  .C .seg button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .C .toast { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); background: #111; color: #fff; padding: 12px 18px; border-radius: 999px; font-size: 14px; font-weight: 600;
+    white-space: nowrap; animation: toast 2.4s var(--ease-out) both; z-index: 5; }
+  @keyframes toast { 0% { opacity: 0; transform: translate(-50%, 12px); } 12%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 6px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .C *, .C *::before, .C *::after { animation: none !important; transition: none !important; }
+  }
+
+  /* ---------- switcher (프로토타입 전용, 디자인의 일부가 아님) ---------- */
+  .switcher { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px;
+    background: #1b1b1b; color: #fff; border-radius: 999px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.3); z-index: 10; }
+  .switcher button { width: 40px; height: 40px; border-radius: 999px; color: #fff; display: grid; place-items: center; font-size: 18px; }
+  .switcher button:hover { background: #333; }
+  .switcher .name { min-width: 210px; text-align: center; font-size: 14px; font-weight: 700; }
+  .switcher .name small { display: block; font-size: 11px; color: #aaa; font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="caption"><h1 id="title"></h1><p id="desc"></p></div>
+  <div class="phone" id="phone"></div>
+</div>
+<div class="switcher">
+  <button id="prev" aria-label="이전 안">←</button>
+  <div class="name" id="name"></div>
+  <button id="next" aria-label="다음 안">→</button>
+</div>
+
+<script>
+// 실제 566라멘 사진. 내려받아 옆에 두어 이 파일만 열어도 보이게 했다
+const PHOTO = "record-screen.prototype-photo.webp"
+const SOUP = { 쇼유: "#A8662C", 돈코츠: "#E3CFA4", 이에케: "#70410E", 시오: "#E9C24F", 미소: "#D4733A", 토리파이탄: "#F3E7C9", 니보시: "#8F8066", 지로: "#C69C6D", 츠케멘: "#5A3A22", 탄탄멘: "#CFCAC0", 마제소바: "#CFCAC0", 아부라소바: "#CFCAC0", 기타: "#CFCAC0" }
+const TYPES = Object.keys(SOUP)
+const AXES = [
+  { key: "satisfaction", label: "전체 만족도", short: "만족", words: ["아쉬웠어요", "그저 그랬어요", "괜찮았어요", "맛있었어요", "인생 라멘이에요"] },
+  { key: "broth", label: "육수 농도", short: "육수", low: "맑음", high: "진함", words: ["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"] },
+  { key: "noodle", label: "면 삶기", short: "면", low: "부드럽게", high: "단단하게", words: ["아주 부드럽게", "부드러운 편", "중간", "단단한 편", "아주 단단하게"] },
+  { key: "topping", label: "토핑", short: "토핑", words: ["아쉬움", "조금 아쉬움", "보통", "좋음", "훌륭함"] },
+]
+const REVISIT = ["한 번이면 충분", "가끔", "자주 갈래요"]
+/*
+ * 완식 인증 도장. 굵은 바깥 테 + 가는 안쪽 테 두 줄, 테두리를 도는 글자, 가운데 "완식".
+ * ink 필터: 잔 노이즈로 가장자리를 살짝 흔들고(번짐), 굵은 노이즈로 잉크가 덜 묻은 얼룩을 뚫는다.
+ */
+const STAMP_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true">
+  <defs>
+    <filter id="ink" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="grain"/>
+      <feDisplacementMap in="SourceGraphic" in2="grain" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="3" seed="11" result="blot"/>
+      <feColorMatrix in="blot" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.2 0 0 0 2.3" result="patchy"/>
+      <feTurbulence type="fractalNoise" baseFrequency="1.6" numOctaves="1" seed="3" result="speck"/>
+      <feColorMatrix in="speck" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2 0 0 0 2.15" result="specks"/>
+      <feComposite in="patchy" in2="specks" operator="in" result="mask"/>
+      <feComposite in="rough" in2="mask" operator="in"/>
+    </filter>
+    <path id="stamp-ring" d="M60,60 m-40.5,0 a40.5,40.5 0 1,1 81,0 a40.5,40.5 0 1,1 -81,0"/>
+  </defs>
+  <circle class="bloom" cx="60" cy="60" r="56" fill="none" stroke="#d1001c" stroke-width="6"/>
+  <g filter="url(#ink)" fill="#d1001c" stroke="#d1001c" font-family="Pretendard, sans-serif">
+    <circle cx="60" cy="60" r="55.5" fill="none" stroke-width="5.5"/>
+    <circle cx="60" cy="60" r="49" fill="none" stroke-width="1.4"/>
+    <circle cx="60" cy="60" r="31.5" fill="none" stroke-width="1.4"/>
+    <text stroke="none" font-size="9" font-weight="800"><textPath href="#stamp-ring" textLength="246" lengthAdjust="spacing">RAOTA ✦ 라멘 완식 인증 ✦ 2026.10.23 ✦</textPath></text>
+    <text stroke="none" x="60" y="63" text-anchor="middle" font-size="22" font-weight="900" letter-spacing="-.5">완식</text>
+    <text stroke="none" x="60" y="78" text-anchor="middle" font-size="8" font-weight="800" letter-spacing="1">No.0004</text>
+  </g>
+</svg>`
+// 앱 TASTE_FIELDS 그대로
+const TAGS = [
+  { key: "broth", label: "국물", options: ["진해요", "깔끔해요", "감칠맛 좋아요", "기름져요", "어패류 향"] },
+  { key: "noodle", label: "면", options: ["탄력 있어요", "단단해요", "부드러워요", "국물이 잘 배어요", "양 많아요"] },
+  { key: "seasoning", label: "간", options: ["딱 좋아요", "슴슴해요", "짭짤해요", "매콤해요", "밥 생각나요"] },
+  { key: "topping", label: "토핑", options: ["차슈 좋아요", "계란 좋아요", "멘마 좋아요", "파 향 좋아요", "구성 알차요"] },
+]
+const VARIANTS = {
+  A: { name: "테이스팅 시트", desc: "지금 구조는 그대로 두고 '가게·메뉴', '맛 평가', '종류·날짜' 세 묶음으로 나눠요. 점수를 누르면 오른쪽에 뜻이 바로 뜨고, 라멘 종류에 국물 색 점이 붙어요." },
+  B: { name: "국물 게이지", desc: "먼저 오늘 먹은 국물을 그릇 색으로 고르고, 점수는 숫자 대신 눌러서 채우는 다섯 칸 게이지예요. 게이지가 고른 국물 색으로 차올라요." },
+  C: { name: "한 장씩 감정서 v2", desc: "스크롤 없이 한 화면에 질문 하나. 메뉴·종류 → 점수 넷 → 재방문 → 추가 감정(맛 태그·메모·사진, 선택) 일곱 단계예요. 고르면 저절로 넘어가고, 발행하면 완식 도장이 찍혀요." },
+}
+const state = {
+  soup: "지로", menu: "", scores: { satisfaction: null, broth: null, noodle: null, topping: null }, revisit: null, pub: false,
+  // C 전용
+  c: { soup: null, step: 1, tagTab: "broth", tags: { broth: [], noodle: [], seasoning: [], topping: [] }, memo: "", photos: 0, issued: false },
+}
+// 다음 화면에만 한 번 걸 움직임
+const anim = { dir: null, pop: null, tagSwap: false, justTag: null, stamp: false, toast: null, photo: false }
+let variant = new URLSearchParams(location.search).get("variant") || "C"
+if (!VARIANTS[variant]) variant = "C"
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches
+
+const chrome = (body, footer, right = "") => `
+  <div class="status"><span class="tab">9:41</span><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#000" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2"/><rect x="25" y="4.5" width="1.5" height="4" rx=".75" opacity=".4"/></svg></div>
+  <div class="nav"><button class="back" aria-label="뒤로" data-back="1"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>라멘 기록하기${right ? `<span class="right">${right}</span>` : ""}</div>
+  <div class="scroll">${body}</div>
+  <div class="footer">${footer}</div>`
+const missing = () => {
+  const m = []
+  if (!state.menu) m.push("먹은 메뉴")
+  AXES.forEach((a) => state.scores[a.key] == null && m.push(a.label))
+  if (state.revisit == null) m.push("재방문 의사")
+  return m
+}
+const hintText = () => { const m = missing(); return m.length ? `${m.slice(0, 2).join(", ")}${m.length > 2 ? ` 외 ${m.length - 2}개` : ""}를 채워주세요` : "다 채웠어요. 저장하면 취향 리포트에 반영돼요" }
+const menuButton = () => `<button class="input ${state.menu ? "" : "placeholder"}" data-act="menu">${state.menu || "예: 특제 쇼유 라멘"}</button>`
+const topic = (word) => ((word.charCodeAt(word.length - 1) - 0xac00) % 28 ? `${word}은` : `${word}는`)
+
+function renderA() {
+  const axis = (a) => {
+    const v = state.scores[a.key]
+    return `<div class="axis"><div class="axis-head"><span class="label">${a.label}</span><span class="val ${v ? "" : "empty"}">${v ? `${v} · ${a.words[v - 1]}` : "골라주세요"}</span></div>
+      <div class="scale">${[1,2,3,4,5].map((n) => `<button class="${v === n ? "on" : ""}" data-score="${a.key}:${n}">${n}</button>`).join("")}</div>
+      ${a.low ? `<div class="ends meta"><span>${a.low}</span><span>${a.high}</span></div>` : ""}</div>`
+  }
+  const done = AXES.filter((a) => state.scores[a.key]).length + (state.revisit ? 1 : 0)
+  return chrome(`
+    <div class="card"><h2>가게 · 메뉴</h2>
+      <div class="shop"><div class="photo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#62625b" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>사진 추가</div><div class="fields">
+        <div class="input" style="height:44px;background:#fff;border:0;font-size:15px">566라멘 <span class="meta">›</span></div>
+        ${menuButton()}</div></div></div>
+    <div class="card"><h2>맛 평가 <small class="tab">${done} / 5</small></h2>
+      ${AXES.map(axis).join("")}
+      <div class="axis"><div class="axis-head"><span class="label">재방문 의사</span><span class="val ${state.revisit ? "" : "empty"}">${state.revisit || "골라주세요"}</span></div>
+      <div class="revisit">${REVISIT.map((r) => `<button class="${state.revisit === r ? "on" : ""}" data-revisit="${r}">${r}</button>`).join("")}</div></div></div>
+    <div class="card"><h2>라멘 종류 · 방문일</h2>
+      <div class="chips">${TYPES.map((t) => `<button class="chip ${state.soup === t ? "on" : ""}" data-soup="${t}"><i class="dot" style="background:${SOUP[t]}"></i>${t}</button>`).join("")}</div>
+      <div class="input" style="margin-top:14px;background:#fff;border:0"><span>2026년 10월 23일 (금) <span class="meta">오늘</span></span></div></div>`,
+    `<div class="hint">${hintText()}</div><div class="row">
+      <div class="seg"><button class="${state.pub ? "" : "on"}" data-pub="0">나만 보기</button><button class="${state.pub ? "on" : ""}" data-pub="1">공개</button></div>
+      <button class="btn primary" ${missing().length ? "disabled" : ""}>저장</button></div>`)
+}
+
+function renderB() {
+  const color = SOUP[state.soup]
+  const gauge = (a) => {
+    const v = state.scores[a.key]
+    return `<div class="gauge-row"><div class="gauge-head"><span class="label">${a.label}</span><span class="val ${v ? "" : "empty"}">${v ? a.words[v - 1] : "눌러서 채워요"}</span></div>
+      <div class="gauge">${[1,2,3,4,5].map((n) => `<button class="${v && n <= v ? "fill" : ""}" style="${v && n <= v ? `background:${color}` : ""}" data-score="${a.key}:${n}" aria-label="${a.label} ${n}점"><span>${n}</span></button>`).join("")}</div>
+      ${a.low ? `<div class="ends meta"><span>${a.low}</span><span>${a.high}</span></div>` : ""}</div>`
+  }
+  return chrome(`
+    <div class="hero"><div class="photo" style="background-image:url(${PHOTO})"></div><div><div class="meta">566라멘 · 2026년 10월 23일</div><b>오늘 어떤 국물이었어요?</b></div></div>
+    <div class="bowls">${TYPES.slice(0, 8).map((t) => `<button class="bowl ${state.soup === t ? "on" : ""}" data-soup="${t}"><i class="well" style="background:${SOUP[t]}"></i>${t}</button>`).join("")}</div>
+    <div class="chips" style="margin-top:8px">${TYPES.slice(8).map((t) => `<button class="chip ${state.soup === t ? "on" : ""}" data-soup="${t}"><i class="dot" style="background:${SOUP[t]}"></i>${t}</button>`).join("")}</div>
+    <section><div class="label">먹은 메뉴</div><div style="margin-top:10px">${menuButton()}</div></section>
+    <section><div class="label">맛은 어땠나요</div>${AXES.map(gauge).join("")}</section>
+    <section><div class="label">또 갈 건가요</div><div class="chips">${REVISIT.map((r) => `<button class="chip ${state.revisit === r ? "on" : ""}" data-revisit="${r}">${r}</button>`).join("")}</div></section>`,
+    `<div class="hint">${hintText()}</div><div class="row">
+      <button class="chip ${state.pub ? "" : "on"}" data-pub="0" style="height:52px">나만 보기</button>
+      <button class="chip ${state.pub ? "on" : ""}" data-pub="1" style="height:52px">공개</button>
+      <button class="btn primary" ${missing().length ? "disabled" : ""}>저장</button></div>`)
+}
+
+/* ---------- C v2 ---------- */
+const C_STEPS = [
+  { key: "meal", type: "meal" },
+  ...AXES.map((a) => ({ ...a, type: "axis" })),
+  { key: "revisit", type: "revisit", short: "재방문" },
+  { key: "extra", type: "extra", short: "감정" },
+]
+const LAST = C_STEPS.length
+const tagCount = () => Object.values(state.c.tags).reduce((sum, list) => sum + list.length, 0)
+const stepDone = (s) =>
+  s.type === "meal" ? Boolean(state.menu && state.c.soup)
+  : s.type === "axis" ? Boolean(state.scores[s.key])
+  : s.type === "revisit" ? Boolean(state.revisit)
+  : true
+const requiredDone = () => C_STEPS.filter((s) => s.type !== "extra").every(stepDone)
+
+function renderC() {
+  const c = state.c
+  const s = C_STEPS[c.step - 1]
+  const revisitN = { "한 번이면 충분": "1", "가끔": "2", "자주 갈래요": "3" }
+  const cells = C_STEPS.slice(1).map((x) => {
+    const value = x.type === "axis" ? state.scores[x.key] : x.type === "revisit" ? state.revisit && revisitN[state.revisit] : tagCount() || null
+    const now = C_STEPS.indexOf(x) === c.step - 1 && !value
+    return `<div class="t-score ${value ? "on" : ""} ${now ? "now" : ""} ${x.type === "extra" ? "extra" : ""} ${anim.pop === x.key ? "pop" : ""}"><div class="n tab">${value ? (x.type === "extra" ? `+${value}` : value) : "·"}</div><div class="k">${x.short}</div></div>`
+  }).join("")
+  const sub = state.menu || c.soup
+    ? `${c.soup ? `<i class="dot" style="background:${SOUP[c.soup]}"></i>${c.soup}` : ""}${c.soup && state.menu ? " · " : ""}${state.menu ? state.menu : ""}`
+    : `<span class="ph">무엇을 먹었는지 적어 주세요</span>`
+
+  let question = ""
+  if (s.type === "meal") {
+    question = `<h2>무엇을 먹었나요?</h2>
+      <input class="menu-input" id="menu" placeholder="예: 지로 라멘 야채 마시" value="${state.menu.replace(/"/g, "&quot;")}" maxlength="40" />
+      <div class="types ${anim.dir ? "opts-stagger" : ""}">${TYPES.map((t) => `<button class="chip ${c.soup === t ? "on" : ""}" data-csoup="${t}"><i class="dot" style="background:${SOUP[t]}"></i>${t}</button>`).join("")}</div>`
+  } else if (s.type === "axis") {
+    question = `<h2>${topic(s.label)} 어땠나요?</h2>
+      <div class="options ${anim.dir ? "opts-stagger" : ""}">${s.words.map((w, i) => `<button class="opt ${state.scores[s.key] === i + 1 ? "on" : ""}" data-cscore="${s.key}:${i + 1}">${w}<span class="num">${i + 1}</span></button>`).join("")}</div>
+      ${s.low ? `<div class="ends meta"><span>← ${s.low}</span><span>${s.high} →</span></div>` : ""}`
+  } else if (s.type === "revisit") {
+    question = `<h2>다시 가고 싶나요?</h2>
+      <div class="options ${anim.dir ? "opts-stagger" : ""}">${REVISIT.map((r, i) => `<button class="opt ${state.revisit === r ? "on" : ""}" data-crevisit="${r}">${r}<span class="num">${i + 1}</span></button>`).join("")}</div>`
+  } else {
+    const tabIndex = TAGS.findIndex((t) => t.key === c.tagTab)
+    const group = TAGS[tabIndex]
+    question = `<h2>더 남길 감정이 있나요?</h2>
+      <div class="seg-tabs"><span class="thumb" style="transform:translateX(${tabIndex * 100}%)"></span>${TAGS.map((t) => `<button class="${c.tagTab === t.key ? "on" : ""}" data-tagtab="${t.key}">${t.label}${c.tags[t.key].length ? `<i>${c.tags[t.key].length}</i>` : ""}</button>`).join("")}</div>
+      <div class="tags ${anim.tagSwap || anim.dir ? "swap" : ""}">${group.options.map((o) => `<button class="chip ${c.tags[group.key].includes(o) ? "on" : ""} ${anim.justTag === o ? "just" : ""}" data-tag="${group.key}:${o}">${o}</button>`).join("")}</div>
+      <div class="extra-row">
+        <input class="memo" id="memo" placeholder="기억해둘 점 (예: 다음엔 면 단단하게)" value="${c.memo.replace(/"/g, "&quot;")}" maxlength="500" />
+        <div class="photos">${[0, 1, 2].map((i) => i < c.photos
+          ? `<button class="photo-slot ${anim.photo && i === c.photos - 1 ? "filled" : ""}" style="background-image:url(${PHOTO})" data-photo="remove" aria-label="사진 빼기"></button>`
+          : i === c.photos ? `<button class="photo-slot" data-photo="add" aria-label="사진 추가"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#62625b" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>` : "").join("")}</div>
+      </div>`
+  }
+
+  const stepLabel = s.type === "extra" ? `<span class="tab">${c.step} / ${LAST}</span><span class="opt-badge">선택</span>` : `<span class="tab">${c.step} / ${LAST}</span>`
+  const body = `
+    <div class="progress"><i style="width:${(c.step / LAST) * 100}%"></i></div>
+    <div class="ticket ${anim.stamp ? "thud" : ""}">
+      <div class="t-head"><b>RAOTA 감정서</b><span class="meta tab">26.10.23 · No. 0004</span></div>
+      <div class="t-shop"><div class="photo" style="background-image:url(${PHOTO})"></div><div style="min-width:0"><b>566라멘</b><span class="meta sub" id="t-sub">${sub}</span></div></div>
+      <div class="stamp ${c.issued ? "on" : ""} ${anim.stamp ? "slam" : ""}" aria-label="완식 인증 도장">${STAMP_SVG}</div>
+      <div class="cut"></div>
+      <div class="t-scores">${cells}</div>
+    </div>
+    <div class="q ${anim.dir === "next" ? "in-next" : anim.dir === "back" ? "in-back" : ""}"><div class="step">${stepLabel}</div>${question}</div>
+    ${anim.toast ? `<div class="toast">${anim.toast}</div>` : ""}`
+
+  let footer
+  if (s.type === "meal") {
+    footer = `<div class="row"><button class="btn primary" data-next="1" ${stepDone(s) ? "" : "disabled"}>${stepDone(s) ? "다음" : state.menu ? "라멘 종류를 골라 주세요" : "메뉴를 적어 주세요"}</button></div>`
+  } else if (s.type === "extra") {
+    footer = `<div class="row">
+      <div class="seg"><button class="${state.pub ? "" : "on"}" data-pub="0">나만 보기</button><button class="${state.pub ? "on" : ""}" data-pub="1">공개</button></div>
+      <button class="btn primary" data-issue="1" ${requiredDone() && !c.issued ? "" : "disabled"}>${c.issued ? "발행했어요" : tagCount() || c.memo || c.photos ? "감정서 발행" : "건너뛰고 발행"}</button></div>`
+  } else {
+    footer = `<div class="row"><button class="btn ghost" style="width:96px" data-back="1">이전</button>
+      <button class="btn primary" data-next="1" ${stepDone(s) ? "" : "disabled"}>${stepDone(s) ? "다음" : "고르면 넘어가요"}</button></div>`
+  }
+  return chrome(body, footer, "")
+}
+
+const RENDER = { A: renderA, B: renderB, C: renderC }
+function render() {
+  const phone = document.getElementById("phone")
+  phone.className = `phone ${variant}`
+  phone.innerHTML = RENDER[variant]()
+  document.getElementById("title").textContent = `${variant} · ${VARIANTS[variant].name}`
+  document.getElementById("desc").textContent = VARIANTS[variant].desc
+  document.getElementById("name").innerHTML = `${variant} — ${VARIANTS[variant].name}<small>← → 키로 안을 넘겨요 · 화면 안을 눌러 보세요</small>`
+  Object.assign(anim, { dir: null, pop: null, tagSwap: false, justTag: null, stamp: false, toast: null, photo: false })
+  // 글자를 칠 때는 다시 그리지 않고 식권 줄만 고친다(입력칸 포커스 유지)
+  const menu = document.getElementById("menu")
+  if (menu) menu.addEventListener("input", () => { state.menu = menu.value.trim(); patchMeal() })
+  const memo = document.getElementById("memo")
+  if (memo) memo.addEventListener("input", () => { state.c.memo = memo.value; patchExtraButton() })
+}
+function patchMeal() {
+  const s = C_STEPS[0]
+  const sub = document.getElementById("t-sub")
+  const c = state.c
+  sub.innerHTML = state.menu || c.soup ? `${c.soup ? `<i class="dot" style="background:${SOUP[c.soup]}"></i>${c.soup}` : ""}${c.soup && state.menu ? " · " : ""}${state.menu}` : `<span class="ph">무엇을 먹었는지 적어 주세요</span>`
+  const btn = document.querySelector('[data-next]')
+  btn.disabled = !stepDone(s)
+  btn.textContent = stepDone(s) ? "다음" : state.menu ? "라멘 종류를 골라 주세요" : "메뉴를 적어 주세요"
+}
+function patchExtraButton() {
+  const btn = document.querySelector('[data-issue]')
+  if (btn && !state.c.issued) btn.textContent = tagCount() || state.c.memo || state.c.photos ? "감정서 발행" : "건너뛰고 발행"
+}
+function goStep(next) {
+  const c = state.c
+  const target = Math.max(1, Math.min(LAST, next))
+  if (target === c.step) return
+  anim.dir = target > c.step ? "next" : "back"
+  c.step = target
+  render()
+}
+function go(delta) {
+  const keys = Object.keys(VARIANTS)
+  variant = keys[(keys.indexOf(variant) + delta + keys.length) % keys.length]
+  const url = new URL(location.href); url.searchParams.set("variant", variant); history.replaceState(null, "", url)
+  render()
+}
+document.getElementById("prev").onclick = () => go(-1)
+document.getElementById("next").onclick = () => go(1)
+addEventListener("keydown", (e) => {
+  if (e.target.matches("input, textarea")) return
+  if (e.key === "ArrowLeft") go(-1)
+  if (e.key === "ArrowRight") go(1)
+})
+let advanceTimer = null
+document.getElementById("phone").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return
+  const d = b.dataset
+  const c = state.c
+  // A·B
+  if (d.score) { const [k, v] = d.score.split(":"); state.scores[k] = Number(v) }
+  if (d.revisit) state.revisit = d.revisit
+  if (d.soup) state.soup = d.soup
+  if (d.act === "menu") state.menu = state.menu ? "" : "지로 라멘 (야채 마시)"
+  if (d.pub) state.pub = d.pub === "1"
+  // C: 답을 고르면 채워지는 걸 잠깐 보여 준 뒤 다음 질문으로 넘어간다
+  if (d.cscore || d.crevisit) {
+    if (d.cscore) { const [k, v] = d.cscore.split(":"); state.scores[k] = Number(v); anim.pop = k }
+    else { state.revisit = d.crevisit; anim.pop = "revisit" }
+    render()
+    clearTimeout(advanceTimer)
+    advanceTimer = setTimeout(() => goStep(c.step + 1), reduced ? 0 : 320)
+    return
+  }
+  if (d.csoup) { c.soup = d.csoup; render(); return }
+  if (d.tagtab) { if (c.tagTab !== d.tagtab) { c.tagTab = d.tagtab; anim.tagSwap = true } render(); return }
+  if (d.tag) {
+    const [k, o] = d.tag.split(":")
+    const list = c.tags[k]
+    c.tags[k] = list.includes(o) ? list.filter((x) => x !== o) : [...list, o]
+    if (!list.includes(o)) anim.justTag = o
+    anim.pop = "extra"
+    render(); return
+  }
+  if (d.photo === "add") { c.photos = Math.min(3, c.photos + 1); anim.photo = true; render(); return }
+  if (d.photo === "remove") { c.photos = Math.max(0, c.photos - 1); render(); return }
+  if (d.next) { goStep(c.step + 1); return }
+  if (d.back) { if (variant === "C") goStep(c.step - 1); return }
+  if (d.issue) { c.issued = true; anim.stamp = true; anim.toast = "감정서를 발행했어요 · 취향 리포트에 반영돼요"; render(); return }
+  render()
+})
+render()
+</script>
+</body>
+</html>
