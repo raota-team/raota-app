@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { AppText } from "@/src/components/ui"
 import { useShop } from "@/src/data/hooks"
-import { calculateMapClusters } from "@/src/domain/map"
+import { calculateMapClusters, regionToSpread } from "@/src/domain/map"
 import { colors, radii, spacing, touchTarget } from "@/src/theme"
 import {
   MAP_PIN_HEIGHT,
@@ -59,6 +59,8 @@ const PIN_ANCHOR = { x: 0.5, y: (touchTarget / 2) / MAP_PIN_HEIGHT }
 const CLUSTER_ANCHOR = { x: 0.5, y: 0.5 }
 /** 화면 밖으로 이만큼(화면 크기 대비) 더 넓게 핀을 그려 둔다. 조금 옮길 때 빈 곳이 보이지 않게 */
 const VIEWPORT_MARGIN = 0.5
+/** 고른 가게 카드(112pt)와 아래 여백이 지도를 가리는 높이. 묶음을 펼칠 때 그 위 칸에 맞춘다 */
+const QUICK_VIEW_HEIGHT = 112 + spacing.x2_5
 
 function inViewport(shop: { lat: number; lng: number }, region: Region): boolean {
   const latitudeReach = region.latitudeDelta * (0.5 + VIEWPORT_MARGIN)
@@ -317,14 +319,12 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                       anchor={CLUSTER_ANCHOR}
                       coordinate={{ latitude: cluster.latitude, longitude: cluster.longitude }}
                       key={cluster.id}
-                      onPress={() =>
-                        animateTo({
-                          latitude: cluster.latitude,
-                          longitude: cluster.longitude,
-                          latitudeDelta: region.latitudeDelta / 3,
-                          longitudeDelta: region.longitudeDelta / 3,
-                        })
-                      }
+                      onPress={() => {
+                        const members = visibleShops.filter((shop) => cluster.shopIds.includes(shop.id))
+                        if (members.length === 0) return
+                        // 이 묶음이 풀릴 만큼만 확대한다. 머리와 고른 가게 카드에 가리지 않는 칸에 맞춘다
+                        animateTo(regionToSpread(members, region, frame, { top: headerHeight, bottom: selected ? QUICK_VIEW_HEIGHT : 0 }))
+                      }}
                       tracksViewChanges={trackingPins}
                       zIndex={1}
                     >

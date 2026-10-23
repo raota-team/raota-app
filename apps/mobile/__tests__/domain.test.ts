@@ -4,6 +4,7 @@ import { INITIAL_LOGS, INITIAL_TASTE_REPORTS, SHOPS } from "@/src/data/fixtures"
 import { revisitHeadlineOf, SHOP_TASTE_RATIO_MIN_LOGS, shopTasteSummaryOf } from "@/src/domain/shopTaste"
 import {
   calculateMapClusters,
+  regionToSpread,
   filterAndSortShops,
   firstRecordValidationMessage,
   matchesShopRamenType,
@@ -252,6 +253,42 @@ describe("map clusters", () => {
     const clusters = calculateMapClusters([at(bigger, 37.55, 126.91), at(smaller, 37.56, 126.93)], view, frame)
 
     expect(clusters.map((cluster) => cluster.shopIds)).toEqual([[smaller], [bigger]])
+  })
+
+  describe("zooming into a tapped group", () => {
+    const header = { top: 160, bottom: 0 }
+    const visibleBounds = (region: { latitude: number; latitudeDelta: number }) => {
+      const perPt = region.latitudeDelta / frame.height
+      const top = region.latitude + region.latitudeDelta / 2
+      return { north: top - header.top * perPt, south: top - region.latitudeDelta }
+    }
+
+    it("fits the group below the header and splits it into single pins", () => {
+      // 넓게 본 화면에서 한 알약으로 묶인 가까운 가게 넷
+      const wide = { latitudeDelta: 0.09, longitudeDelta: 0.07 }
+      const members = [at("1", 37.55, 126.91), at("2", 37.5512, 126.9115), at("3", 37.5521, 126.9102), at("4", 37.5506, 126.9124)]
+      expect(calculateMapClusters(members, wide, frame)).toHaveLength(1)
+
+      const target = regionToSpread(members, wide, frame, header)
+      const bounds = visibleBounds(target)
+
+      expect(members.every((shop) => shop.lat <= bounds.north && shop.lat >= bounds.south)).toBe(true)
+      expect(calculateMapClusters(members, target, frame).every((cluster) => cluster.shopIds.length === 1)).toBe(true)
+    })
+
+    it("zooms in at least twice even when the group already spans the screen", () => {
+      const spread = [at("1", 37.54, 126.9), at("2", 37.56, 126.92)]
+
+      expect(regionToSpread(spread, view, frame, header).latitudeDelta).toBeCloseTo(view.latitudeDelta / 2)
+    })
+
+    it("stops at street level for shops in one building, where they show as separate pins", () => {
+      const sameBuilding = [at("1", 37.55, 126.91), at("2", 37.55, 126.91)]
+      const target = regionToSpread(sameBuilding, view, frame, header)
+
+      expect(target.latitudeDelta).toBeGreaterThan(0.003)
+      expect(calculateMapClusters(sameBuilding, target, frame)).toHaveLength(2)
+    })
   })
 })
 

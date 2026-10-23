@@ -78,3 +78,50 @@ export function calculateMapClusters(
       compareShopIds(left.shopIds[0], right.shopIds[0]),
     )
 }
+
+export interface MapRegion extends ClusterViewport {
+  latitude: number
+  longitude: number
+}
+
+/** 지도 위에 떠서 가리는 높이(pt). 위는 검색·필터 머리, 아래는 고른 가게 카드 */
+export interface MapInsets {
+  top: number
+  bottom: number
+}
+
+/**
+ * 묶음을 누르면 갈 자리(사용자 결정, 2026.10.23). 그 묶음의 가게가 머리·카드에 가리지 않는 칸에 모두 들어오는 만큼 확대한다.
+ * 묶음은 그만큼 갈라지고, 아주 촘촘한 곳은 작은 숫자로 남아 다시 누르면 마저 풀린다.
+ * 한 번에 다 풀 만큼 더 들어가면 묶음 가게 일부가 화면 밖으로 나간다(홍대 13곳: 3배 확대에 5곳이 밖으로).
+ * - 적어도 지금의 두 배로 확대하고, 골목 수준(묶지 않는 폭)보다 더 들어가지는 않는다. 같은 건물의 가게는 거기서 갈라진다
+ * 경도 1도는 위도 1도보다 cos(위도)만큼 짧아, 세로(위도) 기준으로 맞춘 뒤 가로 폭을 cos로 나눈다.
+ */
+export function regionToSpread(
+  shops: Array<Pick<Shop, "lat" | "lng">>,
+  current: ClusterViewport,
+  frame: ClusterFrame,
+  insets: MapInsets,
+): MapRegion {
+  const lats = shops.map((shop) => shop.lat)
+  const lngs = shops.map((shop) => shop.lng)
+  const minLat = Math.min(...lats)
+  const maxLat = Math.max(...lats)
+  const minLng = Math.min(...lngs)
+  const maxLng = Math.max(...lngs)
+  const cos = Math.cos((((minLat + maxLat) / 2) * Math.PI) / 180)
+  // 가장자리 핀이 반쯤 잘리지 않게 사방으로 묶음 거리만큼 비운다
+  const usableWidth = Math.max(frame.width - MAP_MERGE_DISTANCE_PT * 2, 1)
+  const usableHeight = Math.max(frame.height - insets.top - insets.bottom - MAP_MERGE_DISTANCE_PT * 2, 1)
+  const fitted = Math.max((maxLat - minLat) / usableHeight, ((maxLng - minLng) * cos) / usableWidth)
+  const atLeastTwice = current.latitudeDelta / frame.height / 2
+  const streetLevel = (MAP_CLOSEST_CLUSTER_DELTA * 0.9) / frame.height
+  const latitudePerPt = Math.max(Math.min(fitted, atLeastTwice), streetLevel)
+  return {
+    // 위도가 클수록 화면 위쪽이다. 머리가 가린 만큼 가운데를 북쪽으로 올려 가게들이 보이는 칸 한가운데 오게 한다
+    latitude: (minLat + maxLat) / 2 + ((insets.top - insets.bottom) / 2) * latitudePerPt,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: latitudePerPt * frame.height,
+    longitudeDelta: (latitudePerPt * frame.width) / cos,
+  }
+}
