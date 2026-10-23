@@ -1209,11 +1209,11 @@ export function ConfirmDialog({
       <View style={styles.dialogRoot}>
         <Pressable accessibilityLabel={`${title} 닫기`} accessibilityRole="button" onPress={onCancel} style={styles.backdrop} />
         <View accessibilityRole="alert" accessibilityViewIsModal style={styles.dialog}>
-          <AppText accessibilityRole="header" style={styles.textCenter} variant="sectionTitle">
+          <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.textCenter} variant="sectionTitle">
             {title}
           </AppText>
           {message ? (
-            <AppText style={[styles.textCenter, styles.dialogMessage]} tone="sub" variant="body">
+            <AppText lineBreakStrategyIOS="hangul-word" style={[styles.textCenter, styles.dialogMessage]} tone="sub" variant="body">
               {message}
             </AppText>
           ) : null}

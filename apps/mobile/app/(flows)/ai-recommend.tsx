@@ -24,7 +24,7 @@ import { isApiError } from "@/src/api/client"
 import { isRemote } from "@/src/api/config"
 import type { RecommendationRequest } from "@/src/api/types"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
-import { AppText, BottomSheet, Button, Header, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
+import { AppText, BottomSheet, Button, ConfirmDialog, Header, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
 import { useLocalShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
 import { remoteReads, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
 import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
@@ -590,6 +590,8 @@ export default function AIRecommendScreen() {
   const ticketsEnabled = remoteCurator && loggedIn
   const [todayTickets, setTodayTickets] = useState<RemoteTodayTickets | null>(null)
   const [ticketsOpen, setTicketsOpen] = useState(false)
+  // 식권은 하루 몇 장뿐이라 쓰기 전에 한 번 묻는다
+  const [confirmingTicket, setConfirmingTicket] = useState(false)
   const loadTickets = useCallback(() => {
     if (!ticketsEnabled) return
     remoteReads.recommendationTickets().then(setTodayTickets, () => setTodayTickets(null))
@@ -1023,7 +1025,12 @@ export default function AIRecommendScreen() {
             accessibilityHint={numericStep === 4 && ticketsUsedUp ? "내일 다시 뽑을 수 있어요" : stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
             disabled={!stepAnswered || (numericStep === 4 && ticketsUsedUp)}
             loading={numericStep === 4 && requesting}
-            onPress={() => (numericStep === 4 ? void startAnalysis() : setStep((numericStep + 1) as Step))}
+            onPress={() => {
+              if (numericStep !== 4) setStep((numericStep + 1) as Step)
+              // 남은 식권을 아는 서버 추천이면 쓰기 전에 묻는다. 모르면(비회원·옛 서버·데모) 그대로 진행한다
+              else if (todayTickets && todayTickets.remaining > 0) setConfirmingTicket(true)
+              else startAnalysis()
+            }}
             rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
             style={[styles.primaryCta, ctaSize]}
             title={numericStep === 4 ? (ticketsUsedUp ? "오늘 식권을 다 뽑았어요" : "AI 맞춤 추천받기") : stepAnswered ? "다음" : numericStep === 1 ? "국물을 골라주세요" : numericStep === 2 ? "상황을 골라주세요" : "중요한 요소를 골라주세요"}
@@ -1074,6 +1081,22 @@ export default function AIRecommendScreen() {
           )
         })}
       </BottomSheet>
+      <ConfirmDialog
+        cancelLabel="취소"
+        confirmLabel="식권 쓰기"
+        message={
+          todayTickets?.remaining === 1
+            ? `오늘 남은 마지막 식권이에요. 자정에 다시 ${todayTickets.dailyLimit}장이 채워져요.`
+            : `오늘 남은 식권 ${todayTickets?.remaining ?? 0}장 중 1장을 써요. 자정에 다시 ${todayTickets?.dailyLimit ?? 0}장이 채워져요.`
+        }
+        onCancel={() => setConfirmingTicket(false)}
+        onConfirm={() => {
+          setConfirmingTicket(false)
+          startAnalysis()
+        }}
+        title="식권 1장을 쓸까요?"
+        visible={confirmingTicket}
+      />
       <Toast message={toast ?? ""} onDismiss={() => setToast(null)} style={{ bottom: ctaSize.minHeight + spacing.x6 }} visible={Boolean(toast)} />
     </Screen>
   )

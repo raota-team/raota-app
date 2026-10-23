@@ -506,7 +506,14 @@ describe("AI curator", () => {
       await fireEvent.press(view.getByRole("button", { name: "다음" }))
       await fireEvent.press(view.getByRole("radio", { name: "깔끔하고 깊은 감칠맛, 청탕 · 맑은 국물" }))
       await fireEvent.press(view.getByRole("button", { name: "다음" }))
+      // 남은 식권을 아는 서버 추천은 쓰기 전에 묻는다. 취소하면 서버를 부르지 않는다
       await fireEvent.press(view.getByRole("button", { name: "AI 맞춤 추천받기" }))
+      expect(view.getByText("식권 1장을 쓸까요?")).toBeTruthy()
+      expect(view.getByText("오늘 남은 식권 3장 중 1장을 써요. 자정에 다시 3장이 채워져요.")).toBeTruthy()
+      await fireEvent.press(view.getByRole("button", { name: "취소" }))
+      expect(recommendations).not.toHaveBeenCalled()
+      await fireEvent.press(view.getByRole("button", { name: "AI 맞춤 추천받기" }))
+      await fireEvent.press(view.getByRole("button", { name: "식권 쓰기" }))
 
       // 서버가 아직 답하지 않았어도 발권 화면이 떠 있고, 결과가 없으니 건너뛰기는 아직 없다
       expect(recommendations).toHaveBeenCalledTimes(1)
