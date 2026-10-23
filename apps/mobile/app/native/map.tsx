@@ -3,7 +3,7 @@ import { useIsFocused, useLocalSearchParams } from "expo-router"
 import * as Location from "expo-location"
 import { MapPin, Navigation } from "lucide-react-native"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Keyboard, Linking, Pressable, StyleSheet, View } from "react-native"
+import { Keyboard, Linking, Pressable, StyleSheet, View, useWindowDimensions } from "react-native"
 import MapView, { Marker, type Region } from "react-native-maps"
 import { useReducedMotion } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -171,7 +171,20 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   // 보이는 곳(과 둘레 반 화면씩)의 매장만 핀으로 그린다. 전부(약 540곳) 그리면 지도가 핀마다 그림을 만드느라 느려진다.
   // 지도를 옮기고 멈추면(onRegionChangeComplete) 새로 보이는 곳의 핀이 붙는다
   const visibleShops = useMemo(() => markerShops.filter((shop) => inViewport(shop, region)), [markerShops, region])
-  const clusters = useMemo(() => calculateMapClusters(visibleShops, region), [visibleShops, region])
+  // 좌표 차이를 화면 거리로 바꿀 지도 칸 크기. 재기 전에는 화면 크기로 어림한다(탭 막대만큼 크게 잡힌다)
+  const windowSize = useWindowDimensions()
+  const [mapFrame, setMapFrame] = useState<{ width: number; height: number } | null>(null)
+  const frame = mapFrame ?? windowSize
+  // 고른 가게는 묶음에 넣지 않는다. 묶이면 카드는 떠 있는데 빨간 핀이 숫자 알약 속에 숨는다
+  const clusters = useMemo(
+    () =>
+      calculateMapClusters(
+        selectedId ? visibleShops.filter((shop) => shop.id !== selectedId) : visibleShops,
+        region,
+        { width: frame.width, height: frame.height },
+      ),
+    [visibleShops, selectedId, region, frame.width, frame.height],
+  )
 
   // 핀이 바뀌면 잠깐 다시 그리게 두고(로고가 실릴 시간) 곧 고정한다.
   // 로고가 늦게 오면(개발 빌드는 그림을 Metro에서 받는다) 실린 순간 한 번 더 그리게 해 빈 원으로 굳지 않게 한다
@@ -267,7 +280,14 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   return (
     <View style={styles.root}>
       {viewMode === "map" ? (
-        <View style={styles.mapArea} testID="map-surface">
+        <View
+          onLayout={({ nativeEvent }) => {
+            const { width, height } = nativeEvent.layout
+            setMapFrame((previous) => (previous?.width === width && previous.height === height ? previous : { width, height }))
+          }}
+          style={styles.mapArea}
+          testID="map-surface"
+        >
             {startResolved ? (
             <MapView
               accessibilityLabel="라멘집 지도"
@@ -291,14 +311,11 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
             >
               {clusters.map((cluster) => {
                 if (cluster.shopIds.length > 1) {
-                  const hasSelected = selected ? cluster.shopIds.includes(selected.id) : false
                   return (
                     <Marker
                       accessibilityLabel={`라멘집 ${cluster.shopIds.length}곳, 확대해서 보기`}
                       anchor={CLUSTER_ANCHOR}
                       coordinate={{ latitude: cluster.latitude, longitude: cluster.longitude }}
-                      // 선택이 바뀌어도 같은 마커를 유지한다. 선택마다 키를 바꿔 다시 올리면 고른 핀이
-                      // 옆 핀 아래로 깔리는 일이 있었고, 핀이 사라졌다 나타나며 흔들렸다
                       key={cluster.id}
                       onPress={() =>
                         animateTo({
@@ -309,7 +326,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                         })
                       }
                       tracksViewChanges={trackingPins}
-                      zIndex={hasSelected ? SELECTED_Z_INDEX : 1}
+                      zIndex={1}
                     >
                       <MapClusterPin count={cluster.shopIds.length} />
                     </Marker>
@@ -317,21 +334,34 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                 }
                 const shop = visibleShops.find((item) => item.id === cluster.shopIds[0])
                 if (!shop) return null
-                const isSelected = selected?.id === shop.id
                 return (
                   <Marker
-                    accessibilityLabel={`${shop.name}${isSelected ? ", 선택됨" : ""}`}
+                    accessibilityLabel={shop.name}
                     anchor={PIN_ANCHOR}
                     coordinate={{ latitude: shop.lat, longitude: shop.lng }}
                     key={cluster.id}
                     onPress={() => selectShop(shop.id, shop.lat, shop.lng)}
                     tracksViewChanges={trackingPins}
-                    zIndex={isSelected ? SELECTED_Z_INDEX : 1}
+                    zIndex={1}
                   >
-                    <MapShopPin name={shop.name} onLogoLoad={trackPinsBriefly} selected={isSelected} />
+                    <MapShopPin name={shop.name} onLogoLoad={trackPinsBriefly} selected={false} />
                   </Marker>
                 )
               })}
+              {selected?.lat && selected.lng ? (
+                // 고른 핀은 묶음과 따로, 늘 다른 핀 위에 그린다(이름표가 이웃 핀에 덮이지 않게)
+                <Marker
+                  accessibilityLabel={`${selected.name}, 선택됨`}
+                  anchor={PIN_ANCHOR}
+                  coordinate={{ latitude: selected.lat, longitude: selected.lng }}
+                  key={`shop-${selected.id}`}
+                  onPress={() => selectShop(selected.id, selected.lat, selected.lng)}
+                  tracksViewChanges={trackingPins}
+                  zIndex={SELECTED_Z_INDEX}
+                >
+                  <MapShopPin name={selected.name} onLogoLoad={trackPinsBriefly} selected />
+                </Marker>
+              ) : null}
             </MapView>
             ) : null}
             <MapHeader

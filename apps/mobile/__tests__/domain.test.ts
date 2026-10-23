@@ -200,51 +200,58 @@ describe("shop filtering and sorting", () => {
 })
 
 describe("map clusters", () => {
-  const shops = SHOPS.slice(0, 3) as Shop[]
+  // 390×844pt 화면, 위도·경도 폭 0.03이면 1pt가 약 0.0000770(경도)·0.0000355(위도)다
+  const frame = { width: 390, height: 844 }
+  const view = { latitudeDelta: 0.03, longitudeDelta: 0.03 }
+  const at = (id: string, lat: number, lng: number) => ({ id, lat, lng })
 
-  it("keeps exact markers at close zoom", () => {
-    const clusters = calculateMapClusters(shops, {
-      latitudeDelta: 0.03,
-      longitudeDelta: 0.03,
-    })
-    expect(clusters).toHaveLength(3)
-    expect(clusters.every((cluster) => cluster.shopIds.length === 1)).toBe(true)
+  it("merges pins that would overlap on screen and leaves pins with room alone", () => {
+    const clusters = calculateMapClusters(
+      [at("1", 37.55, 126.91), at("2", 37.5502, 126.9102), at("3", 37.56, 126.93)],
+      view,
+      frame,
+    )
+
+    expect(clusters.map((cluster) => cluster.shopIds)).toEqual([["1", "2"], ["3"]])
+    // 묶음은 첫 핀 자리에 놓인다(가운데로 옮기면 이웃 묶음과 겹친다)
+    expect([clusters[0].latitude, clusters[0].longitude]).toEqual([37.55, 126.91])
   })
 
-  it("builds a deterministic centroid at wide zoom", () => {
-    const clusters = calculateMapClusters(shops, {
-      latitudeDelta: 0.1,
-      longitudeDelta: 0.1,
-    })
-    const centroid = clusters.find((cluster) => cluster.shopIds.length === 3)
+  it("splits a group once zooming in gives each pin room", () => {
+    const shops = [at("1", 37.55, 126.91), at("2", 37.5508, 126.9108)]
 
-    expect(centroid?.shopIds).toEqual(["1", "2", "3"])
-    expect(centroid?.latitude).toBeCloseTo(
-      shops.reduce((sum, shop) => sum + shop.lat, 0) / shops.length,
+    expect(calculateMapClusters(shops, view, frame)).toHaveLength(1)
+    expect(calculateMapClusters(shops, { latitudeDelta: 0.01, longitudeDelta: 0.01 }, frame)).toHaveLength(2)
+  })
+
+  it("never merges at street zoom so shops in one building stay selectable", () => {
+    const clusters = calculateMapClusters(
+      [at("1", 37.55, 126.91), at("2", 37.55, 126.91)],
+      { latitudeDelta: 0.003, longitudeDelta: 0.003 },
+      frame,
     )
+
+    expect(clusters.map((cluster) => cluster.shopIds)).toEqual([["1"], ["2"]])
+  })
+
+  it("does not chain a row of pins into one long group", () => {
+    // 40pt 간격으로 늘어선 세 핀: 첫 핀에서 56pt 안인 둘째만 묶이고 셋째(80pt)는 따로다
+    const step = 40 * (view.longitudeDelta / frame.width)
+    const clusters = calculateMapClusters(
+      [at("1", 37.55, 126.91), at("2", 37.55, 126.91 + step), at("3", 37.55, 126.91 + step * 2)],
+      view,
+      frame,
+    )
+
+    expect(clusters.map((cluster) => cluster.shopIds)).toEqual([["1", "2"], ["3"]])
   })
 
   it("preserves the order and identity of adjacent BIGINT shop IDs", () => {
     const bigger = "9007199254740993124"
     const smaller = "9007199254740993123"
-    const clusters = calculateMapClusters(
-      [{ ...shops[0], id: bigger }, { ...shops[1], id: smaller }],
-      { latitudeDelta: 0.03, longitudeDelta: 0.03 },
-    )
+    const clusters = calculateMapClusters([at(bigger, 37.55, 126.91), at(smaller, 37.56, 126.93)], view, frame)
 
     expect(clusters.map((cluster) => cluster.shopIds)).toEqual([[smaller], [bigger]])
-  })
-
-  it("does not merge shops that fall into distant spatial buckets", () => {
-    // 원장 가게는 모두 마포 안이라, 도시 반대편에 있는 가상 가게로 확인한다
-    const mapo = SHOPS[0]
-    const farAway = { ...mapo, id: "99", lat: mapo.lat + 0.05, lng: mapo.lng + 0.05 }
-    const clusters = calculateMapClusters([mapo, farAway], {
-      latitudeDelta: 0.1,
-      longitudeDelta: 0.1,
-    })
-
-    expect(clusters).toHaveLength(2)
   })
 })
 

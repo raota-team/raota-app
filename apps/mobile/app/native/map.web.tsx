@@ -643,6 +643,7 @@ export const mapStyles = StyleSheet.create({
   },
   pinCircleSelected: { backgroundColor: colors.brand },
   pinLogo: { width: 28, height: 28, resizeMode: "contain", tintColor: colors.white },
+  // 고른 핀의 이름표는 원과 같은 빨강이다. 둘이 한 덩어리로 "지금 보는 곳"을 가리킨다(사용자 결정, 2026.10.23)
   pinLabel: {
     height: 28,
     maxWidth: 160,
@@ -650,12 +651,14 @@ export const mapStyles = StyleSheet.create({
     paddingHorizontal: spacing.x2_5,
     justifyContent: "center",
     borderRadius: radii.pill,
-    backgroundColor: colors.selected,
+    backgroundColor: colors.brand,
   },
-  pinLabelText: { color: colors.onSelected, fontWeight: "700", textAlign: "center" },
+  pinLabelText: { color: colors.onDark, fontWeight: "700", textAlign: "center" },
+  // 세 자리 수(100곳 이상)도 알약 안에 들어가게 폭이 늘어난다
   clusterPin: {
-    width: touchTarget,
+    minWidth: touchTarget,
     height: 36,
+    paddingHorizontal: spacing.x3,
     borderRadius: radii.pill,
     alignItems: "center",
     justifyContent: "center",
