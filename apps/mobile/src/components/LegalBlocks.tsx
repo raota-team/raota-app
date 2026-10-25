@@ -30,16 +30,26 @@ export function LegalBlockView({ block }: { block: LegalBlock }) {
       </View>
     )
   }
-  // 표는 폰 폭에서 읽기 쉽도록 "항목 이름 → 내용" 묶음으로 쌓는다. 첫 행은 머리글이라 건너뛴다.
-  const [, ...rows] = block.rows
+  // 표는 폰 폭에서 읽기 쉽도록 "항목 이름 → 내용" 묶음으로 쌓는다. 첫 행은 머리글이다.
+  // 열이 셋 이상이면 값만 이어 붙이면 무엇인지 알 수 없어 칸마다 머리글을 붙인다(예: "목적: 매장 검색").
+  const [head = [], ...rows] = block.rows
+  const labeled = head.length > 2
   return (
     <View style={styles.table}>
       {rows.map((row, index) => (
         <View key={row[0] ?? index} style={[styles.tableRow, index > 0 && styles.tableDivider]}>
           <AppText variant="bodyStrong">{row[0]}</AppText>
-          <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
-            {row.slice(1).join(" · ")}
-          </AppText>
+          {labeled ? (
+            row.slice(1).map((cell, cellIndex) => (
+              <AppText key={head[cellIndex + 1] ?? cellIndex} lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
+                {`${head[cellIndex + 1]}: ${cell}`}
+              </AppText>
+            ))
+          ) : (
+            <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
+              {row.slice(1).join(" · ")}
+            </AppText>
+          )}
         </View>
       ))}
     </View>

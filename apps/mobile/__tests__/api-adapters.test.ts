@@ -451,8 +451,8 @@ describe("회원", () => {
   })
 
   it("동의 기록의 문서 버전은 약관·처리방침 시행일을 YYYY-MM-DD로 바꾼 값이다", () => {
-    expect(legalDocumentVersion("terms")).toBe("2026-06-11")
-    expect(legalDocumentVersion("privacy")).toBe("2026-10-27")
+    expect(legalDocumentVersion("terms")).toBe("2026-11-03")
+    expect(legalDocumentVersion("privacy")).toBe("2026-11-03")
   })
 
   it("온보딩 중인 계정은 닉네임이 비어 있고 온보딩이 끝나지 않았다", () => {

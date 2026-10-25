@@ -230,7 +230,7 @@ describe("PolicySheet", () => {
     const view = await render(<PolicySheet onClose={onClose} type="terms" />)
 
     expect(view.getByText("이용약관")).toBeTruthy()
-    expect(view.getByText("시행일 2026년 6월 11일")).toBeTruthy()
+    expect(view.getByText("시행일 2026년 11월 3일")).toBeTruthy()
     for (const heading of ["1. 목적", "6. 회원의 의무와 금지행위", "13. 문의"]) {
       expect(view.getByText(heading)).toBeTruthy()
     }
@@ -247,6 +247,9 @@ describe("PolicySheet", () => {
     expect(view.getByText("12. 개인정보 보호책임자 및 문의")).toBeTruthy()
     expect(view.getByText("확인하고 동의")).toBeTruthy()
     expect(view.queryByRole("button", { name: "닫기" })).toBeNull()
+    // 국외 이전 표(4열)는 칸마다 머리글을 붙여 무엇인지 알 수 있다
+    expect(view.getAllByText("목적: 매장 검색")).toHaveLength(1)
+    expect(view.getByText("보유 및 이용 기간: 수집일로부터 1년")).toBeTruthy()
   })
 })
 

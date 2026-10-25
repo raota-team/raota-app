@@ -27,7 +27,7 @@ export const LEGAL_CONTACT_EMAIL = "contact@raota.net"
 export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
   "terms": {
     "title": "이용약관",
-    "effectiveDate": "2026년 6월 11일",
+    "effectiveDate": "2026년 11월 3일",
     "sections": [
       {
         "heading": "1. 목적",
@@ -107,11 +107,19 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
         ]
       },
       {
-        "heading": "8. 콘텐츠 관리와 이용 제한",
+        "heading": "8. 콘텐츠 관리, 신고와 차단",
         "blocks": [
           {
             "type": "paragraph",
-            "text": "서비스는 신고, 모니터링 또는 운영상 확인을 통해 본 약관이나 관계 법령을 위반한 콘텐츠를 숨김, 삭제, 수정 요청하거나 회원의 이용을 일시 또는 영구적으로 제한할 수 있습니다. 긴급한 피해 방지나 법적 요청 대응이 필요한 경우 사전 통지 없이 조치할 수 있습니다."
+            "text": "서비스는 부적절한 콘텐츠와 이를 게시하는 이용자를 허용하지 않습니다. 회원은 게시글·댓글의 메뉴에서 부적절한 콘텐츠를 신고할 수 있고, 특정 이용자를 차단(숨기기)할 수 있습니다. 차단한 이용자의 게시글과 댓글은 그 회원에게 더 이상 보이지 않으며, 차단은 설정에서 언제든 해제할 수 있습니다."
+          },
+          {
+            "type": "paragraph",
+            "text": "서비스는 신고를 접수한 때부터 24시간 이내에 검토하여, 본 약관이나 관계 법령을 위반한 콘텐츠를 숨기거나 삭제하고 해당 콘텐츠를 게시한 회원의 이용을 일시 또는 영구적으로 제한합니다."
+          },
+          {
+            "type": "paragraph",
+            "text": "서비스는 신고 외에도 모니터링 또는 운영상 확인을 통해 같은 조치를 할 수 있습니다. 긴급한 피해 방지나 법적 요청 대응이 필요한 경우 사전 통지 없이 조치할 수 있습니다."
           }
         ]
       },
@@ -164,7 +172,7 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
   },
   "privacy": {
     "title": "개인정보처리방침",
-    "effectiveDate": "2026년 10월 27일",
+    "effectiveDate": "2026년 11월 3일",
     "sections": [
       {
         "heading": "1. 개인정보의 처리 목적",
@@ -217,7 +225,7 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
               ],
               [
                 "자동 생성",
-                "IP 주소, 접속 일시, 브라우저 및 기기 정보, 쿠키, 서비스 이용 기록, 오류 로그"
+                "IP 주소, 접속 일시, 브라우저 및 기기 정보, 쿠키, 서비스 이용 기록, 오류 로그, 앱 이용 기록(화면·기능 사용 이벤트, 앱 설치 때 만든 임의 기기 식별값, 기기·OS·앱 버전)"
               ]
             ]
           },
@@ -271,7 +279,26 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
         "blocks": [
           {
             "type": "paragraph",
-            "text": "RAOTA는 안정적인 서비스 제공을 위해 서버 운영, 데이터 저장, 이미지 저장, 인증, 알림, 보안 및 장애 대응 등 일부 업무를 외부 서비스에 위탁할 수 있습니다. 위탁이 발생하는 경우 수탁자, 위탁 업무의 내용, 보유 및 이용 기간 등 필요한 사항을 본 처리방침 또는 별도 안내를 통해 공개합니다."
+            "text": "RAOTA는 서비스 제공을 위해 다음 업무를 위탁합니다. 국외에 있는 수탁자는 제7조에서 이전 내용을 함께 밝힙니다."
+          },
+          {
+            "type": "table",
+            "rows": [
+              ["수탁자", "위탁 업무"],
+              ["Oracle Corporation (Oracle Cloud Infrastructure, 대한민국 춘천 리전)", "서버·데이터베이스 운영, 앱에서 올린 사진 저장"],
+              ["NAVER Cloud Corp.", "앱 지도 표시"],
+              ["Cloudflare, Inc.", "사진 전송과 크기 변환"],
+              ["Cloudinary Ltd.", "웹에서 올린 사진 저장"],
+              ["OpenAI, L.L.C.", "AI 추천의 매장 검색(요청 조건을 검색용 값으로 변환)"],
+              ["Groq, Inc.", "AI 추천 이유 작성"],
+              ["Grafana Labs", "서버 로그 보관과 장애 대응"],
+              ["Discord Inc.", "운영 알림(오류, 신고 접수)"],
+              ["PostHog, Inc.", "앱 이용 통계"]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "위탁한 개인정보는 회원 탈퇴 또는 위탁 계약 종료 시까지 보유하며, 제7조에 따로 정한 기간이 있으면 그에 따릅니다. 수탁자가 바뀌면 본 처리방침을 통해 알립니다."
           }
         ]
       },
@@ -280,7 +307,24 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
         "blocks": [
           {
             "type": "paragraph",
-            "text": "RAOTA는 서비스 인프라, OAuth 로그인, 이미지 저장 또는 보안 운영 과정에서 국외에 위치한 서버나 외부 서비스를 이용할 수 있습니다. 국외 이전이 구체적으로 발생하는 경우 이전받는 자, 이전 국가, 이전 항목, 이전 목적, 보유 및 이용 기간 등을 관련 법령에 따라 안내합니다."
+            "text": "RAOTA는 서비스 제공을 위해 다음과 같이 개인정보를 국외로 이전합니다. 이전은 서비스를 이용하는 시점에 암호화된 네트워크로 전송하는 방식으로 이루어집니다."
+          },
+          {
+            "type": "table",
+            "rows": [
+              ["이전받는 자 (국가)", "이전 항목", "목적", "보유 및 이용 기간"],
+              ["Cloudflare, Inc. (미국 등 세계 각지)", "사진을 볼 때의 IP 주소, 기기 정보", "사진 전송과 크기 변환", "전송 처리 후 지체 없이 삭제"],
+              ["Cloudinary Ltd. (미국)", "웹에서 올린 사진", "사진 저장", "회원 탈퇴 후 30일"],
+              ["OpenAI, L.L.C. (미국)", "AI 추천 요청 조건(국물·분위기·우선순위, 입력한 문장, 지역)", "매장 검색", "처리 후 최대 30일(오남용 확인 목적)"],
+              ["Groq, Inc. (미국)", "AI 추천 요청 조건과 추천 후보 매장 정보", "추천 이유 작성", "처리 후 지체 없이 삭제"],
+              ["Grafana Labs (일본)", "서버 로그(회원 ID, IP 주소, 요청 정보, 오류 내용)", "장애 대응과 보안", "수집일로부터 30일"],
+              ["Discord Inc. (미국)", "운영 알림에 담긴 회원 ID, 신고 사유, 오류 내용", "운영 알림", "운영자가 알림을 지울 때까지"],
+              ["PostHog, Inc. (미국)", "앱 이용 기록(화면·기능 사용 이벤트, 임의 기기 식별값, 기기·OS·앱 버전)", "이용 통계와 서비스 개선", "수집일로부터 1년"]
+            ]
+          },
+          {
+            "type": "paragraph",
+            "text": "국외 이전을 원하지 않으면 AI 추천 기능을 쓰지 않거나 회원 탈퇴로 거부할 수 있습니다. 이 경우 해당 기능을 이용할 수 없습니다."
           }
         ]
       },
@@ -320,6 +364,10 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
               "Safari: 설정 > 개인정보 보호 > 쿠키 및 웹사이트 데이터 관리",
               "Edge: 설정 > 쿠키 및 사이트 권한 > 쿠키 및 사이트 데이터 관리"
             ]
+          },
+          {
+            "type": "paragraph",
+            "text": "앱에서는 쿠키 대신 이용 통계 도구(PostHog)로 화면·기능 사용 이벤트를 수집합니다. 앱 설치 때 만든 임의 기기 식별값으로만 묶고 회원 ID나 이름과 연결하지 않으며, 서비스 개선과 이용 통계에만 사용합니다."
           }
         ]
       },
