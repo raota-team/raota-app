@@ -8,6 +8,7 @@ import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from "r
 import "react-native-reanimated"
 
 import { track } from "@/src/analytics"
+import { startPostHogAnalytics } from "@/src/analytics/posthog"
 import { Toast } from "@/src/components/ui"
 import { cancelRecordReminders, configureReminderPresentation, deepLinkToPath } from "@/src/notifications"
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
@@ -24,6 +25,7 @@ export const unstable_settings = {
 
 void SplashScreen.preventAutoHideAsync()
 configureReminderPresentation()
+startPostHogAnalytics()
 
 /** 앱 열기(D1·D7 리텐션용). 처음 뜰 때와 백그라운드에서 돌아올 때 한 번씩 */
 function useAppOpenTracking() {
