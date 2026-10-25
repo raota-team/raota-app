@@ -26,7 +26,7 @@ import type { RecommendationRequest } from "@/src/api/types"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { TodayTicketsSheet } from "@/src/components/TodayTicketsSheet"
 import { AppText, Button, ConfirmDialog, EmptyState, Header, LoadingState, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
-import { useLocalShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
+import { useAllShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
 import { remoteReads, remoteWrites, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
 import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
 import { curatorTasteReport } from "@/src/domain/curatorTaste"
@@ -557,7 +557,7 @@ function focusOn(ref: React.RefObject<View | null>) {
 
 export default function AIRecommendScreen() {
   const { currentUser } = useRaota()
-  const shopsQuery = useLocalShops()
+  const shopsQuery = useAllShops()
   const bowls = useMyBowls()
   const tasteProfile = useTasteProfile()
   const reducedMotion = useReducedMotion()

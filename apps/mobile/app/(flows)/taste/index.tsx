@@ -39,7 +39,7 @@ import {
   useActivityLevel,
   useBowlCount,
   useMyBowls,
-  useLocalShops,
+  useAllShops,
   useTasteIdentity,
   useTasteProfile,
   useVisitedShops,
@@ -759,7 +759,7 @@ export default function TasteReportScreen() {
   const { data: identity } = useTasteIdentity()
   const { data: bowls } = useMyBowls()
   const { data: visits } = useVisitedShops()
-  const { data: shops } = useLocalShops()
+  const { data: shops } = useAllShops()
   const { data: level } = useActivityLevel()
 
   const profile = taste.profile

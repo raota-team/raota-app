@@ -39,7 +39,7 @@ import {
   useLongestStreak,
   useMyBowls,
   useMyLogs,
-  useLocalShops,
+  useAllShops,
   useTasteIdentity,
   useMonthlyReports,
   useVisitedShops,
@@ -194,7 +194,7 @@ function MemberView() {
   const myLogs = myLogsQuery.data
   const bookmarks = useBookmarkedShops()
   const saved = bookmarks.data
-  const { data: shops } = useLocalShops()
+  const { data: shops } = useAllShops()
 
   const [tab, setTab] = useState<ActivityTab>("logs")
   const [recentLimit, setRecentLimit] = useState(RECENT_VISIBLE_ROWS)
