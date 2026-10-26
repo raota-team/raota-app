@@ -1,6 +1,6 @@
 import { Buffer } from "buffer"
 import * as Notifications from "expo-notifications"
-import { Redirect, Stack, router, useSegments } from "expo-router"
+import { ErrorBoundary as RouterErrorBoundary, Redirect, Stack, router, useSegments, type ErrorBoundaryProps } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
 import { useEffect, useRef } from "react"
@@ -12,12 +12,20 @@ import { startPostHogAnalytics } from "@/src/analytics/posthog"
 import { Toast } from "@/src/components/ui"
 import { cancelRecordReminders, configureReminderPresentation, deepLinkToPath } from "@/src/notifications"
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
+import { reportError, startErrorMonitoring, withErrorMonitoring } from "@/src/monitoring"
 import { colors, spacing, typography } from "@/src/theme"
 
 ;(globalThis as typeof globalThis & { Buffer?: typeof Buffer }).Buffer ??=
   Buffer
 
-export { ErrorBoundary } from "expo-router"
+/**
+ * 화면 렌더 오류는 이 경계가 먼저 잡아 루트의 Sentry 경계까지 올라가지 않는다. 그래서 여기서 직접 보내고
+ * 화면은 Expo Router 기본 오류 화면(다시 시도)을 그대로 쓴다.
+ */
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  useEffect(() => reportError(props.error), [props.error])
+  return <RouterErrorBoundary {...props} />
+}
 
 export const unstable_settings = {
   initialRouteName: "index",
@@ -25,6 +33,7 @@ export const unstable_settings = {
 
 void SplashScreen.preventAutoHideAsync()
 configureReminderPresentation()
+startErrorMonitoring()
 startPostHogAnalytics()
 
 /** 앱 열기(D1·D7 리텐션용). 처음 뜰 때와 백그라운드에서 돌아올 때 한 번씩 */
@@ -79,7 +88,7 @@ function ReminderDeepLinks() {
   return null
 }
 
-export default function RootLayout() {
+function RootLayout() {
   useEffect(() => {
     void SplashScreen.hideAsync()
   }, [])
@@ -93,6 +102,8 @@ export default function RootLayout() {
     </View>
   )
 }
+
+export default withErrorMonitoring(RootLayout)
 
 function HydratedNavigation() {
   const { state, currentUser, isHydrated, storageError, actions } = useRaota()
