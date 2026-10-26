@@ -48,10 +48,10 @@ export function createMemberApi(client: ApiClient = apiClient) {
       return client.post<void>("/members/me/withdrawal", body)
     },
 
-    /** 내 기록(방문일 최신순, 커서) */
-    myRamenLogs(params: CursorParams = {}): Promise<CursorPage<RamenLogSummary>> {
+    /** 내 기록(방문일 최신순, 커서, 비공개 포함). ramenType을 주면 그 종류만 */
+    myRamenLogs(params: CursorParams & { ramenType?: string } = {}): Promise<CursorPage<RamenLogSummary>> {
       return client.get<CursorPage<RamenLogSummary>>("/members/me/ramen-logs", {
-        query: { cursor: params.cursor, size: params.size },
+        query: { ramenType: params.ramenType, cursor: params.cursor, size: params.size },
       })
     },
 

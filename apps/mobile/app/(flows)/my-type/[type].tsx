@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { sizedImageUri } from "@/src/api/imageSize"
 import { AppText, EmptyState, Header, LoadingState, Screen } from "@/src/components/ui"
-import { useAllShops, useMyBowls, useMyLogs } from "@/src/data"
+import { useAllShops, useMyBowls, useMyLogs, useMyLogsOfType } from "@/src/data"
 import { bowlTypeOf, needsMoreLogs, toBowlRow, type BowlRow } from "@/src/domain/myBowls"
 import { colors, radii, spacing, typography } from "@/src/theme"
 
@@ -21,20 +21,22 @@ export default function MyTypeScreen() {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const bowlsQuery = useMyBowls()
-  const myLogsQuery = useMyLogs()
+  // 사진은 서버에서 이 종류 기록만 읽어 채운다(GET /members/me/ramen-logs?ramenType=). 마이가 이미 받아 둔 내 기록도 같이 쓴다
+  const typeLogs = useMyLogsOfType(type)
+  const { data: myLogs } = useMyLogs()
   const { data: shops } = useAllShops()
-  const myLogs = myLogsQuery.data
+  const knownLogs = useMemo(() => [...typeLogs.data, ...myLogs], [myLogs, typeLogs.data])
 
   const rows = useMemo(
-    () => bowlsQuery.data.filter((bowl) => bowlTypeOf(bowl) === type).map((bowl) => toBowlRow(bowl, myLogs, shops)),
-    [bowlsQuery.data, myLogs, shops, type],
+    () => bowlsQuery.data.filter((bowl) => bowlTypeOf(bowl) === type).map((bowl) => toBowlRow(bowl, knownLogs, shops)),
+    [bowlsQuery.data, knownLogs, shops, type],
   )
-  // 카드 사진이 아직 안 읽은 내 기록 쪽에 있으면 다음 쪽을 읽는다
-  const missingPhotos = needsMoreLogs(rows, myLogs)
-  const { hasMore, loadMore } = myLogsQuery
+  // 카드 사진이 아직 안 읽은 쪽에 있으면 이 종류의 다음 쪽을 읽는다
+  const missingPhotos = needsMoreLogs(rows, knownLogs)
+  const { hasMore, loadMore } = typeLogs
   useEffect(() => {
     if (missingPhotos && hasMore) loadMore()
-  }, [hasMore, loadMore, missingPhotos, myLogs.length])
+  }, [hasMore, loadMore, missingPhotos, knownLogs.length])
 
   const summary = useMemo(() => summarize(rows), [rows])
   const cardWidth = (width - spacing.gutter * 2 - spacing.x3) / 2

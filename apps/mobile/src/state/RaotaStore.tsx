@@ -57,7 +57,7 @@ import {
   writeErrorMessage,
   type RemoteLedger,
 } from "../data/remote"
-import { remoteCache } from "../data/remoteCache"
+import { MY_LOGS_OF_TYPE_KEY, remoteCache } from "../data/remoteCache"
 import { validateRecordDraft } from "../domain/record"
 import { isValidLogComment, type HiddenAuthor } from "../domain/lounge"
 import { compareShopIds } from "../domain/shops"
@@ -1441,7 +1441,7 @@ export function RaotaProvider({
             draftKey: state.recordDraft?.key ?? createIdempotencyKey(),
           })
           dispatch({ type: "ACCOUNT_UPDATE", memberId, update: (current) => accountWithSavedLog(current, log, true) })
-          remoteCache.invalidate("lounge:", `shop:${input.shopId}`)
+          remoteCache.invalidate("lounge:", `shop:${input.shopId}`, MY_LOGS_OF_TYPE_KEY)
           return log
         } catch (error) {
           if (error instanceof AlreadyHandledError) {
@@ -1532,12 +1532,12 @@ export function RaotaProvider({
         try {
           const log = await remoteWrites.updateRamenLog(logId, input)
           dispatch({ type: "ACCOUNT_UPDATE", memberId, update: (current) => accountWithSavedLog(current, log, false) })
-          remoteCache.invalidate("lounge:", `log:${logId}`)
+          remoteCache.invalidate("lounge:", `log:${logId}`, MY_LOGS_OF_TYPE_KEY)
           return log
         } catch (error) {
           if (isApiError(error, "RESOURCE_NOT_FOUND")) {
             dispatch({ type: "ACCOUNT_UPDATE", memberId, update: (current) => accountWithoutLog(current, logId) })
-            remoteCache.invalidate("lounge:", `log:${logId}`)
+            remoteCache.invalidate("lounge:", `log:${logId}`, MY_LOGS_OF_TYPE_KEY)
             throw new Error("이미 삭제된 기록이에요.")
           }
           throw new Error(writeErrorMessage(error, "기록을 고치지 못했어요. 다시 시도해 주세요."))
@@ -1585,7 +1585,7 @@ export function RaotaProvider({
           throw new Error(writeErrorMessage(error, "기록을 지우지 못했어요. 다시 시도해 주세요."))
         }
         dispatch({ type: "ACCOUNT_UPDATE", memberId: currentUser.id, update: (current) => accountWithoutLog(current, logId) })
-        remoteCache.invalidate("lounge:", `log:${logId}`)
+        remoteCache.invalidate("lounge:", `log:${logId}`, MY_LOGS_OF_TYPE_KEY)
         return
       }
       const log = state.logs.find((item) => item.id === logId)

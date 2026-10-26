@@ -32,7 +32,7 @@ import {
 
 import { currentTasteNoteFields, isRemote, isRemoteWithAccount, type ShopListParams, type ShopMapParams, type TasteNoteField } from "../api"
 import { remoteReads, type RemoteLoungeLogDetail, type RemotePage } from "./remote"
-import { remoteCache } from "./remoteCache"
+import { MY_LOGS_OF_TYPE_KEY, remoteCache } from "./remoteCache"
 
 import {
   LOUNGE_PAGE_SIZE,
@@ -43,6 +43,7 @@ import {
   type LoungeSort,
   type LoungeViewer,
 } from "../domain/lounge"
+import { ramenTypeOf } from "../domain/myBowls"
 import { useRaota, type RemoteAccountState } from "../state/RaotaStore"
 
 /**
@@ -301,6 +302,31 @@ export function useMyLogs(): MyLogsQuery {
   return remote
     ? { data, ...accountQueryState(account, account.logs !== null), hasMore: Boolean(account.logsCursor), loadMore }
     : { data, ...status, hasMore: false, loadMore: () => undefined }
+}
+
+/**
+ * 내 기록 중 한 종류(방문일 최신순, 비공개 포함). 종류별 모아 보기의 사진을 채운다.
+ * 서버 회원이면 GET /members/me/ramen-logs?ramenType=, 기기 기록이면 그 종류만 거른다.
+ * 방금 지운 기록은 빼고 방금 고친 기록은 고친 값으로 보여 준다(useMyLogs와 같다).
+ */
+export function useMyLogsOfType(type: string): RemotePaging<RamenLog> {
+  const { userLogs, currentUser, state } = useRaota()
+  const status = useQueryState()
+  const remote = isRemote("ramenLogs") && Boolean(currentUser)
+  const { account } = state
+  const key = remote && currentUser ? `${MY_LOGS_OF_TYPE_KEY}${currentUser.id}:${type}` : null
+  const first = useRemoteResult(key, EMPTY_PAGE as RemotePage<RamenLog>, () => remoteReads.myLogs(null, undefined, type))
+  const pages = useRemoteContinuation(key, first, (cursor) => remoteReads.myLogs(cursor, undefined, type))
+  const data = useMemo(
+    () =>
+      remote
+        ? pages.data
+            .filter((log) => !account.deletedLogIds.includes(log.id))
+            .map((log) => withLikes(account.savedLogs[log.id] ?? log, account))
+        : userLogs.filter((log) => ramenTypeOf(log.ramenType) === type),
+    [account, pages.data, remote, type, userLogs],
+  )
+  return remote ? { ...pages, data } : { data, ...status, hasMore: false, loadMore: () => undefined }
 }
 
 /** 기록 하나. 서버 회원이면 내 기록 목록에 없을 때 GET /ramen-logs/{id}로 읽는다(내 비공개 기록 포함) */
