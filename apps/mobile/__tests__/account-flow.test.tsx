@@ -300,9 +300,9 @@ describe("약관 다시 동의 화면", () => {
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/record/new"))
     expect(bodyOf("PUT", "/members/me/consents")).toEqual({
       consents: [
-        { type: "TERMS", documentVersion: "2026-06-11", granted: true },
-        { type: "PRIVACY", documentVersion: "2026-10-27", granted: true },
-        { type: "MARKETING", documentVersion: "2026-10-27", granted: false },
+        { type: "TERMS", documentVersion: "2026-11-03", granted: true },
+        { type: "PRIVACY", documentVersion: "2026-11-03", granted: true },
+        { type: "MARKETING", documentVersion: "2026-11-03", granted: false },
       ],
     })
   })
@@ -391,9 +391,9 @@ describe("서버 온보딩", () => {
     expect(bodyOf("PUT", "/members/me/onboarding")).toEqual({
       nickname: "면탐험가",
       consents: [
-        { type: "TERMS", documentVersion: "2026-06-11", granted: true },
-        { type: "PRIVACY", documentVersion: "2026-10-27", granted: true },
-        { type: "MARKETING", documentVersion: "2026-10-27", granted: false },
+        { type: "TERMS", documentVersion: "2026-11-03", granted: true },
+        { type: "PRIVACY", documentVersion: "2026-11-03", granted: true },
+        { type: "MARKETING", documentVersion: "2026-11-03", granted: false },
       ],
     })
   })
