@@ -325,6 +325,48 @@ describe("서버 세션", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  /** 새로 설치한 기기: 저장된 앱 상태가 없다(iOS는 앱을 지워도 키체인의 로그인 토큰은 남는다) */
+  const freshInstall = (): RaotaRepository => ({
+    load: jest.fn().mockResolvedValue(null),
+    save: jest.fn().mockResolvedValue(undefined),
+    clear: jest.fn().mockResolvedValue(undefined),
+  })
+
+  /** 첫 화면이 거친 상태를 차례로 모은다(불러오는 중 → 누구로 보였는지) */
+  function startSequence() {
+    const seen: string[] = []
+    function StartProbe() {
+      const { isHydrated, currentUser } = useRaota()
+      const shown = isHydrated ? (currentUser?.nickname ?? "guest") : "loading"
+      if (seen.at(-1) !== shown) seen.push(shown)
+      return null
+    }
+    return { seen, StartProbe }
+  }
+
+  it("새로 설치한 기기는 저장된 로그인을 되살리는 동안 데모 계정(뿡) 대신 불러오는 화면을 보인다", async () => {
+    await tokenStore.set({ accessToken: "a", refreshToken: "r" })
+    const me = Promise.withResolvers<FakeResponse>()
+    fetchMock = jest.fn(() => me.promise)
+    globalThis.fetch = fetchMock
+    const { seen, StartProbe } = startSequence()
+    await renderWithStore(<StartProbe />, freshInstall())
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(seen).toEqual(["loading"])
+    me.resolve(ok(activeMember))
+    await waitFor(() => expect(seen).toEqual(["loading", "라멘러버"]))
+  })
+
+  it("로그인한 적 없는 새 기기는 데모 계정(뿡)이 아니라 비회원으로 시작한다", async () => {
+    serve()
+    const { seen, StartProbe } = startSequence()
+    await renderWithStore(<StartProbe />, freshInstall())
+
+    await waitFor(() => expect(seen).toEqual(["loading", "guest"]))
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it("세션이 끝나면(재발급 거절) 기기에서도 로그아웃하고 그 계정의 아웃박스를 비운다", async () => {
     await tokenStore.set({ accessToken: "old", refreshToken: "old-refresh" })
     await idempotencyOutbox.begin({ accountId: "77", operation: "CREATE_RAMEN_LOG", path: "/ramen-logs", fingerprint: "f", body: {} })

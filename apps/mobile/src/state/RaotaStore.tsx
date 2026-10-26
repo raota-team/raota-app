@@ -28,6 +28,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type PropsWithChildren,
 } from "react"
 
@@ -205,9 +206,21 @@ function demoBookmarkIds(): string[] {
   )
 }
 
+/** 저장된 로그인을 되살리는 동안 첫 화면을 붙잡아 두는 최대 시간 */
+const SESSION_WAIT_MS = 3_000
+
+/**
+ * 서버 계정으로 도는 앱(auth remote)은 데모 계정(뿡)으로 시작하지 않는다.
+ * 새로 깐 기기는 저장된 상태가 없어 데모 상태로 채워지는데, 그대로 두면 로그인을 되살리는 동안
+ * (되살리지 못하면 계속) 뿡으로 로그인한 것처럼 보였다. 서버 회원 ID는 데모 ID와 겹치지 않는다
+ */
+function withoutDemoAccount(state: PersistedAppStateV1): PersistedAppStateV1 {
+  return isRemote("auth") && state.user?.id === DEMO_USER.id ? { ...state, user: null } : state
+}
+
 export function createInitialRaotaState(): RaotaState {
   return {
-    ...createInitialPersistedState(),
+    ...withoutDemoAccount(createInitialPersistedState()),
     hydrationStatus: "loading",
     storageError: null,
     recordDraft: null,
@@ -990,11 +1003,11 @@ export function RaotaProvider({
       .load()
       .then((raw) => {
         if (active)
-          dispatch({ type: "HYDRATE", payload: migratePersistedState(raw) })
+          dispatch({ type: "HYDRATE", payload: withoutDemoAccount(migratePersistedState(raw)) })
       })
       .catch((error: unknown) => {
         if (!active) return
-        dispatch({ type: "HYDRATE", payload: createInitialPersistedState() })
+        dispatch({ type: "HYDRATE", payload: withoutDemoAccount(createInitialPersistedState()) })
         dispatch({ type: "STORAGE_ERROR", payload: errorMessage(error) })
       })
     return () => {
@@ -1062,9 +1075,13 @@ export function RaotaProvider({
   }, [forgetRemoteAccount])
 
   const sessionRestored = useRef(false)
+  // 서버 계정 앱은 저장된 로그인을 되살릴 때까지 첫 화면을 열지 않는다(비회원 화면이 잠깐 보였다 회원으로 바뀌지 않게).
+  // 네트워크가 느리면 SESSION_WAIT_MS 뒤에는 연다. 그 뒤에 되살아나면 그때 회원으로 바뀐다
+  const [sessionSettled, setSessionSettled] = useState(() => !isRemote("auth"))
   useEffect(() => {
     if (state.hydrationStatus !== "ready" || sessionRestored.current || !isRemote("auth")) return
     sessionRestored.current = true
+    const giveUp = setTimeout(() => setSessionSettled(true), SESSION_WAIT_MS)
     remoteReads
       .restoreSession()
       .then((member) => {
@@ -1073,6 +1090,10 @@ export function RaotaProvider({
         dispatch(member ? { type: "MEMBER_SIGNED_IN", payload: member } : { type: "LOGOUT" })
       })
       .catch(() => undefined)
+      .finally(() => {
+        clearTimeout(giveUp)
+        setSessionSettled(true)
+      })
   }, [state.hydrationStatus])
 
   const signIn = useCallback(async (credential: OauthLoginRequest): Promise<AppMember> => {
@@ -2027,7 +2048,7 @@ export function RaotaProvider({
       : SHOPS.filter((shop) => state.bookmarkedShopIds.includes(shop.id))
     return {
       state,
-      isHydrated: state.hydrationStatus !== "loading",
+      isHydrated: state.hydrationStatus !== "loading" && sessionSettled,
       storageError: state.storageError,
       shops: SHOPS,
       newsItems: NEWS_ITEMS,
@@ -2047,7 +2068,7 @@ export function RaotaProvider({
       getPost: (id) => state.communityPosts.find((post) => post.id === id),
       actions,
     }
-  }, [actions, isShopBookmarked, state])
+  }, [actions, isShopBookmarked, sessionSettled, state])
 
   return <RaotaContext.Provider value={value}>{children}</RaotaContext.Provider>
 }
