@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import Constants from "expo-constants"
-import { useRouter } from "expo-router"
+import { Redirect, useRouter } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import {
   ExternalLink,
@@ -54,7 +54,12 @@ function getDetectedDevUrl(): string {
   return "http://192.168.45.190:8443"
 }
 
-export default function WebViewScreen() {
+/** 개발 도구라 출시 빌드에서는 raota://dev-webview로 들어와도 홈으로 보낸다 */
+export default function DevWebViewRoute() {
+  return __DEV__ ? <WebViewScreen /> : <Redirect href="/native" />
+}
+
+function WebViewScreen() {
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const webViewRef = useRef<WebView>(null)
