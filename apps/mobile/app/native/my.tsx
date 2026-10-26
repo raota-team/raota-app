@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
-import { router, useIsFocused } from "expo-router"
+import { Redirect, router, useIsFocused } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as Haptics from "expo-haptics"
@@ -17,7 +17,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native"
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import {
   MENU_CATEGORY_NAMES,
@@ -114,69 +114,14 @@ function buildCalendar(bowls: DemoBowl[], start: string, end: string) {
   return { weeks, monthLabels, total, levelDays }
 }
 
-/** 약관 전문은 시트가 아니라 별도 화면(스와이프 뒤로가기)으로 연다 */
-function openLegal(doc: "terms" | "privacy") {
-  router.push({ pathname: "/legal/[doc]", params: { doc } })
-}
-
-// ---------------------------------------------------------------------------
-// 비회원
-// ---------------------------------------------------------------------------
-
-function GuestView() {
-  return (
-    <SafeAreaView edges={["top", "left", "right"]} style={styles.root}>
-      <ScrollView contentContainerStyle={styles.guest}>
-        <View style={styles.guestBody}>
-        <Image
-          accessibilityLabel="라오타"
-          accessible
-          contentFit="contain"
-          source={require("@/assets/images/logo.png")}
-          style={styles.guestLogo}
-        />
-        <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.gapTop5]} variant="headline">
-          내 라멘 취향을 모아보세요
-        </AppText>
-        <AppText lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.gapTop1]} tone="sub" variant="body">
-          {TASTE_REPORT_ENABLED
-            ? "로그인하면 기록, 가고 싶은 매장, 취향 리포트를 한곳에서 이어볼 수 있어요."
-            : "로그인하면 기록과 가고 싶은 매장을 한곳에서 이어볼 수 있어요."}
-        </AppText>
-        <View style={styles.guestActions}>
-          <Button onPress={() => router.push("/auth/login")} title="로그인" />
-          <Button
-            onPress={() => router.push({ pathname: "/auth/login", params: { mode: "signup" } })}
-            title="회원가입"
-            variant="outline"
-          />
-        </View>
-        </View>
-        <View style={styles.policyLinks}>
-          <Button onPress={() => openLegal("terms")} size="small" textStyle={styles.linkText} title="이용약관" variant="ghost" />
-          <AppText tone="muted" variant="meta">
-            ·
-          </AppText>
-          <Button
-            onPress={() => openLegal("privacy")}
-            size="small"
-            textStyle={styles.linkText}
-            title="개인정보처리방침"
-            variant="ghost"
-          />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // 화면
 // ---------------------------------------------------------------------------
 
+/** 비회원에게는 마이 화면이 없다. 탭을 누르면 로그인을 띄우고(app/native/_layout.tsx), 그래도 이 화면에 오면(로그인에서 뒤로 등) 홈으로 보낸다 */
 export default function MyScreen() {
   const { currentUser } = useRaota()
-  return currentUser ? <MemberView /> : <GuestView />
+  return currentUser ? <MemberView /> : <Redirect href="/native" />
 }
 
 function MemberView() {
@@ -1283,16 +1228,8 @@ const styles = StyleSheet.create({
   alignEnd: { alignItems: "flex-end" },
   rowGap: { flexDirection: "row", alignItems: "center", gap: spacing.x1_5 },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.x3 },
-  gapTop1: { marginTop: spacing.x1 },
-  gapTop5: { marginTop: spacing.x5 },
   pressedWash: { backgroundColor: colors.surfacePressed },
   invisible: { opacity: 0 },
-  linkText: { color: colors.inkSub, ...typography.secondary },
-  guest: { flexGrow: 1, paddingHorizontal: spacing.gutter, paddingTop: spacing.x10, paddingBottom: spacing.section },
-  guestBody: { flex: 1, justifyContent: "center" },
-  guestLogo: { width: 64, height: 64, alignSelf: "center" },
-  guestActions: { marginTop: spacing.section, gap: spacing.x4 },
-  policyLinks: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: spacing.section },
   scroll: { paddingBottom: spacing.x8 },
   profile: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.x3, alignItems: "center" },
   profileTop: { width: "100%", height: touchTarget, alignItems: "flex-end", justifyContent: "center" },

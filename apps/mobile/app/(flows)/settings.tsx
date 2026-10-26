@@ -16,7 +16,8 @@ import { colors, line, radii, spacing, typography } from "@/src/theme"
 
 /*
  * 설정. 마이의 최근 기록이 스크롤로 계속 늘어나서 계정·약관·로그아웃을 여기로 옮겼다(마이 프로필 오른쪽 위 톱니).
- * 로그인하지 않았으면(로그아웃 직후 포함) 마이로 돌려보낸다.
+ * 로그아웃하면 바로 로그인 화면으로 간다(사용자 결정 2026.10.26, 비회원 마이 화면을 없앴다).
+ * 그 밖에 로그인하지 않은 채로 열리면(탈퇴 직후 포함) 홈으로 돌려보낸다.
  */
 // 취향 리포트를 숨긴 빌드는 월간 리포트 알림을 예약하지 않는다(src/notifications/reminders.ts)
 const REMINDER_DESCRIPTION = TASTE_REPORT_ENABLED
@@ -46,7 +47,7 @@ export default function SettingsScreen() {
   const monthly = useMonthlyReports()
   const reminders = useReminderSwitch(monthly.data.current?.recordCount ?? 0)
 
-  if (!user) return <Redirect href="/native/my" />
+  if (!user) return <Redirect href="/native" />
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/native/my"))
 
@@ -286,8 +287,9 @@ export default function SettingsScreen() {
         onCancel={() => setDialog(null)}
         onConfirm={() => {
           setDialog(null)
-          // 로그아웃하면 이 화면은 스스로 마이(비회원 화면)로 돌아간다
+          // 설정 화면을 로그인 화면으로 바꾼다. 설정이 사라지므로 위의 비회원 가드(홈으로)는 걸리지 않는다
           actions.logout()
+          router.replace("/auth/login")
         }}
         title="로그아웃할까요?"
         visible={dialog === "logout"}

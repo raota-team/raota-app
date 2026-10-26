@@ -72,12 +72,18 @@ export function RaotaTabBar({ state, descriptors, navigation, insets }: TabBarPr
 
     const onPress = () => {
       setMenuOpen(false)
+      // 비회원에게 마이 탭은 로그인이다. 탭을 바꾸지 않고 로그인 화면을 띄운다(기록 버튼과 같은 방식)
+      if (routeName === "my" && !currentUser) {
+        router.push("/auth/login")
+        return
+      }
       const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true })
       if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params)
     }
 
     return (
       <Pressable
+        accessibilityHint={routeName === "my" && !currentUser ? "로그인하면 내 기록을 볼 수 있어요" : undefined}
         accessibilityLabel={`${label} 탭`}
         accessibilityRole="tab"
         accessibilityState={{ selected: focused }}
