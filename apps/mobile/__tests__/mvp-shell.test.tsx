@@ -146,6 +146,22 @@ describe("record tab action", () => {
     expect(navigation.navigate).not.toHaveBeenCalled()
   })
 
+  it("opens login instead of an empty My tab for a guest", async () => {
+    const { props, navigation } = tabProps(0)
+    const view = await renderApp(<RaotaTabBar {...props} />, guestState())
+    await fireEvent.press(view.getByRole("tab", { name: "마이 탭" }))
+    expect(router.push).toHaveBeenCalledWith("/auth/login")
+    expect(navigation.navigate).not.toHaveBeenCalled()
+  })
+
+  it("switches to My for a member without opening login", async () => {
+    const { props, navigation } = tabProps(0)
+    const view = await renderApp(<RaotaTabBar {...props} />)
+    await fireEvent.press(view.getByRole("tab", { name: "마이 탭" }))
+    expect(navigation.navigate).toHaveBeenCalledWith("my", undefined)
+    expect(router.push).not.toHaveBeenCalledWith("/auth/login")
+  })
+
   it.each([
     ["주변 라멘집 기록하기", "nearby"],
     ["찜한 가게에서 기록하기", "saved"],

@@ -259,8 +259,8 @@ describe("my screen (demo account)", () => {
     expect(router.push).toHaveBeenCalledWith("/settings")
   })
 
-  it("confirms logout in settings and then My shows only the guest prompt", async () => {
-    // 마이와 설정을 같은 스토어에 함께 띄워, 설정에서 로그아웃하면 마이가 비회원 화면으로 바뀌는지 본다
+  it("confirms logout in settings, goes straight to login and leaves no guest My page", async () => {
+    // 마이와 설정을 같은 스토어에 함께 띄워, 설정에서 로그아웃하면 로그인 화면으로 가고 마이에는 회원 정보가 남지 않는지 본다
     const view = await renderScreen(
       <>
         <MyScreen />
@@ -275,13 +275,12 @@ describe("my screen (demo account)", () => {
     const buttons = view.getAllByRole("button", { name: "로그아웃" })
     await fireEvent.press(buttons[buttons.length - 1])
 
-    expect(await view.findByText("내 라멘 취향을 모아보세요")).toBeTruthy()
-    expect(view.queryByText("뿡")).toBeNull()
+    expect(router.replace).toHaveBeenCalledWith("/auth/login")
+    await waitFor(() => expect(view.queryByText("뿡")).toBeNull())
     expect(view.queryByText("진한 돈골파")).toBeNull()
-    expect(view.getByRole("button", { name: "로그인" })).toBeTruthy()
-    expect(view.getByRole("button", { name: "회원가입" })).toBeTruthy()
-    // 로그아웃한 설정 화면은 마이로 돌아간다
-    expect(view.getByTestId("redirect:/native/my")).toBeTruthy()
+    // 비회원이 마이에 남아 있으면(로그인에서 뒤로 등) 홈으로 보낸다. 비회원 전용 화면은 없다
+    expect(view.getAllByTestId("redirect:/native").length).toBeGreaterThan(0)
+    expect(view.queryByRole("button", { name: "회원가입" })).toBeNull()
   })
 
   it("pages recent bowls inside their five-row frame, not the main scroll", async () => {
