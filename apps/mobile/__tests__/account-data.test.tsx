@@ -8,7 +8,7 @@ import { idempotencyOutbox } from "@/src/api/outbox"
 import { tokenStore } from "@/src/api/tokens"
 import { toAppShopSummary } from "@/src/api/adapters"
 import { createInitialPersistedState } from "@/src/data/fixtures"
-import { useBookmarkedShops, useMyBowls, useMyLogs } from "@/src/data/hooks"
+import { useBookmarkedShops, useMyBowls, useMyLogs, useMyLogsOfType } from "@/src/data/hooks"
 import { remoteCache } from "@/src/data/remoteCache"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
@@ -547,5 +547,60 @@ describe("내 기록·찜(서버 회원)", () => {
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/members/me/ramen-logs/summary"))).toBe(true))
     expect(view.getByTestId("bowls").props.children).toBe("")
     expect(view.getByTestId("saved").props.children).toBe("")
+  })
+})
+
+/** 종류별 모아 보기처럼: 이 종류 내 기록과 사진 */
+function TypeLogsProbe({ type }: { type: string }) {
+  const logs = useMyLogsOfType(type)
+  return <Text testID="type-logs">{logs.data.map((log) => `${log.id}:${log.imageUrl ?? "-"}`).join(",")}</Text>
+}
+
+describe("종류별 내 기록(서버 회원)", () => {
+  it("그 종류만 서버에 물어 사진을 채우고, 새 기록을 저장하면 다시 읽는다", async () => {
+    const server = fakeRamenLogServer()
+    server.loseFirstResponse = false
+    const shoyu = (id: string, image: string | null) => ({
+      id,
+      author: { id: memberA.id, nickname: "라멘러버", avatarUrl: null, logCount: 3 },
+      shop: { id: "7", name: "하쿠텐", branchName: "연남점", region: "마포구" },
+      menuName: "쇼유 라멘",
+      ramenType: "쇼유",
+      visitedAt: "2026-10-03",
+      imageUrls: image ? [image] : [],
+      note: "",
+      tasteNoteCodes: [],
+      revisitIntention: "OFTEN",
+      visibility: "PRIVATE",
+      scores: null,
+      likeCount: 0,
+      commentCount: 0,
+      isLiked: false,
+      isMine: true,
+      createdAt: "2026-10-03T12:00:00Z",
+    })
+    const typeRequests: string[] = []
+    serve(
+      // 종류를 붙인 요청만 여기서 받는다. 저장 전에는 한 그릇, 저장 뒤에는 방금 쓴 기록(사진 없음)이 앞에 붙는다
+      (url, init) => {
+        if ((init.method ?? "GET") !== "GET" || !url.split("?")[0].endsWith("/members/me/ramen-logs") || !url.includes("ramenType=")) return undefined
+        typeRequests.push(decodeURIComponent(url))
+        return page(server.byKey.size ? [shoyu("900", null), shoyu("601", "https://img.test/601.jpg")] : [shoyu("601", "https://img.test/601.jpg")])
+      },
+      ...accountRoutes(memberA, summaryA),
+      on("POST", "/ramen-logs", (_url, init) => server.create(init)),
+    )
+    const view = await renderSignedIn(<><RecordProbe /><TypeLogsProbe type="쇼유" /></>)
+
+    await waitFor(() => expect(view.getByTestId("type-logs").props.children).toBe("601:https://img.test/601.jpg"))
+    // 로그인을 되살리며 캐시를 한 번 비우므로 횟수는 보지 않는다. 늘 이 종류만 묻는다
+    expect(typeRequests.length).toBeGreaterThan(0)
+    expect(typeRequests.every((url) => url.includes("ramenType=쇼유"))).toBe(true)
+    const before = typeRequests.length
+
+    await fireEvent.press(view.getByLabelText("저장"))
+    await waitFor(() => expect(view.getByTestId("message").props.children).toMatch(/^저장됨:900/))
+    await waitFor(() => expect(view.getByTestId("type-logs").props.children).toBe("900:-,601:https://img.test/601.jpg"))
+    expect(typeRequests.length).toBeGreaterThan(before)
   })
 })

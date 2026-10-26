@@ -28,8 +28,12 @@ export function needsMoreLogs(rows: BowlRow[], myLogs: RamenLog[]): boolean {
 }
 
 /** 기록에 고른 종류. RAMEN_TYPES에 없는 옛 종류는 기타로 본다 */
+export function ramenTypeOf(type: string): string {
+  return (RAMEN_TYPES as readonly string[]).includes(type) ? type : "기타"
+}
+
 export function bowlTypeOf(bowl: DemoBowl): string {
-  return (RAMEN_TYPES as readonly string[]).includes(bowl.type) ? bowl.type : "기타"
+  return ramenTypeOf(bowl.type)
 }
 
 /**

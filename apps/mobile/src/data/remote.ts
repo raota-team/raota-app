@@ -209,9 +209,9 @@ export const remoteReads = {
     return shops
   },
 
-  /** 내 기록(방문일 최신순, 비공개 포함). 사진·메모가 있는 목록이다 */
-  async myLogs(cursor?: string | null, size = MY_LOG_PAGE_SIZE): Promise<RemotePage<RamenLog>> {
-    return toPage(await memberApi.myRamenLogs({ cursor, size }), (log: RamenLogSummary) => toAppRamenLog(log))
+  /** 내 기록(방문일 최신순, 비공개 포함). 사진·메모가 있는 목록이다. ramenType을 주면 그 종류만 */
+  async myLogs(cursor?: string | null, size = MY_LOG_PAGE_SIZE, ramenType?: string): Promise<RemotePage<RamenLog>> {
+    return toPage(await memberApi.myRamenLogs({ cursor, size, ramenType }), (log: RamenLogSummary) => toAppRamenLog(log))
   },
 
   /**

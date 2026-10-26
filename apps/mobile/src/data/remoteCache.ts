@@ -6,6 +6,9 @@
  */
 export type CacheEntry = { value: unknown } | { promise: Promise<unknown> }
 
+/** 종류별 내 기록(useMyLogsOfType) 캐시 키의 앞부분. 기록을 쓰고 고치고 지우면 이 앞부분으로 버린다 */
+export const MY_LOGS_OF_TYPE_KEY = "me:logs:type:"
+
 const entries = new Map<string, CacheEntry>()
 /** 키마다 몇 번 버려졌는가. 이어 읽던 커서 페이지를 버릴지 정할 때 쓴다 */
 const generations = new Map<string, number>()
