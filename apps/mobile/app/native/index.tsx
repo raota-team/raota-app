@@ -14,6 +14,7 @@ import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile,
 import { remoteReads, type RemoteTodayTickets } from "@/src/data/remote"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
+import { markLaunchReady } from "@/src/launch"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, maxFontScale, pressFade, radii, spacing, touchTarget } from "@/src/theme"
 
@@ -217,6 +218,10 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   const tasteProfile = useTasteProfile()
   const tasteIdentity = useTasteIdentity()
   const origin = useKnownLocation()
+  // 위쪽 내용(매장 목록·오늘의 큐레이션)을 다 받으면 앱을 켤 때 덮어 둔 화면을 걷는다
+  useEffect(() => {
+    if (!shopsQuery.isLoading && !curation.isLoading) markLaunchReady()
+  }, [curation.isLoading, shopsQuery.isLoading])
   const loggedIn = Boolean(currentUser?.isLoggedIn)
   // 오늘 뽑은 AI 식권. 큐레이터에서 뽑고 돌아오면 다시 읽어야 해서 화면에 들어올 때마다 읽는다
   const ticketsEnabled = isRemote("recommendations") && loggedIn
