@@ -4,6 +4,8 @@ packages:
   - 'packages/*'
 allowBuilds:
   '@parcel/watcher': true
+  # 출시 빌드에서 소스맵을 Sentry로 올리는 sentry-cli 바이너리를 받는다
+  '@sentry/cli': true
   unrs-resolver: true
 minimumReleaseAgeExclude:
   - '@expo/cli@57.0.22'
