@@ -10,6 +10,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.raota.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "내 주변 라멘집과 거리를 보여드리기 위해 위치를 사용합니다.",
         "NSCameraUsageDescription": "라멘 기록에 사진을 남기기 위해 카메라를 사용합니다.",

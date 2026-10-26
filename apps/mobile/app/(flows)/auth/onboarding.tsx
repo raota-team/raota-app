@@ -31,6 +31,7 @@ import { NICKNAME_MAX, NICKNAME_MIN, NICKNAME_REQUIRED_ERROR, validateNickname }
 import { ONBOARDING_PROMPT_DELAY, useRecordReminderPrompt } from "@/src/notifications"
 import { useRaota } from "@/src/state/RaotaStore"
 import { sizedImageUri } from "@/src/api/imageSize"
+import { TASTE_REPORT_ENABLED } from "@/src/features"
 import { colors, line, pressFade, radii, spacing, touchTarget, typography } from "@/src/theme"
 
 /*
@@ -50,7 +51,11 @@ const RAMEN_STYLE_OPTIONS = RAMEN_TYPES
 
 const ONBOARDING_FEATURES: Array<{ Icon: LucideIcon; title: string; desc: string }> = [
   { Icon: MapPin, title: "내 주변 라멘집 찾기", desc: "지도에서 영업 여부와 라스트오더를 확인하고 바로 찾아가요." },
-  { Icon: Soup, title: "한 그릇 라멘로그", desc: "먹은 라멘을 5가지 축으로 기록하면 취향 리포트가 쌓여요." },
+  {
+    Icon: Soup,
+    title: "한 그릇 라멘로그",
+    desc: TASTE_REPORT_ENABLED ? "먹은 라멘을 5가지 축으로 기록하면 취향 리포트가 쌓여요." : "먹은 라멘을 5가지 축으로 기록하고 다시 꺼내 봐요.",
+  },
   { Icon: Sparkles, title: "AI 큐레이터", desc: "원하는 국물과 분위기를 고르면 오늘의 한 곳을 골라 드려요." },
 ]
 
@@ -240,7 +245,11 @@ export default function OnboardingScreen() {
           cancelLabel="나중에"
           confirmLabel="알림 받기"
           loading={reminder.busy}
-          message={`이번 달 기록이 ${MONTHLY_REPORT_TARGET}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요.`}
+          message={
+            TASTE_REPORT_ENABLED
+              ? `이번 달 기록이 ${MONTHLY_REPORT_TARGET}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요.`
+              : "기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요."
+          }
           onCancel={reminder.decline}
           onConfirm={() => void reminder.accept()}
           title="기록할 때가 되면 알려드릴까요?"

@@ -73,6 +73,7 @@ import {
 } from "@/src/components/ui"
 import { EdgeBackZone } from "@/src/components/EdgeBackZone"
 import { sizedImageUri } from "@/src/api/imageSize"
+import { TASTE_REPORT_ENABLED } from "@/src/features"
 import { colors, maxFontScale, pressFade, radii, spacing, touchTarget, typography, usePalette } from "@/src/theme"
 
 /*
@@ -80,7 +81,7 @@ import { colors, maxFontScale, pressFade, radii, spacing, touchTarget, typograph
  * 위에는 답할수록 채워지는 감정서 한 장, 아래에는 질문 하나. 스크롤 없이 한 화면에 들어간다.
  * 메뉴·종류 → 점수 넷 → 재방문 → 추가 감정(맛 태그·메모·사진·공개, 선택) 일곱 단계이고,
  * 답을 고른 뒤 "다음"을 눌러 넘어간다(저절로 넘기지 않는다, 사용자 결정 2026.10.23). 감정서 칸을 누르면 그 질문으로 돌아간다.
- * 완식 도장은 저장 뒤 완료 화면에서 한 번만 찍는다.
+ * 고른 점수는 저장 뒤 완료 화면의 취향 기록지에 펜 동그라미로 한 번 더 보여 준다.
  */
 
 type ScoreAxisKey = Exclude<TasteAxisKey, "revisit">
@@ -903,7 +904,7 @@ export default function NewRecordScreen() {
         <Header backLabel="뒤로가기" onBack={goBack} title={isEdit ? "기록 고치기" : "라멘 기록하기"} />
         <EmptyState
           actionLabel="로그인하기"
-          description="기록은 계정에 저장돼요. 로그인하면 취향 리포트도 함께 쌓여요."
+          description={TASTE_REPORT_ENABLED ? "기록은 계정에 저장돼요. 로그인하면 취향 리포트도 함께 쌓여요." : "기록은 계정에 저장돼요. 로그인하면 남긴 라멘이 계속 쌓여요."}
           icon={<LogIn color={colors.textMuted} size={32} />}
           onAction={() => router.replace("/auth/login")}
           style={styles.flex}
@@ -976,7 +977,7 @@ export default function NewRecordScreen() {
     if (stepKey === "meal") return mealMissing.length ? missingHint(mealMissing) : undefined
     if (stepKey === "extra") {
       if (!isComplete) return missingHint(missing)
-      return extraCount > 0 ? "발행하면 취향 리포트에 반영돼요" : "고르지 않아도 바로 발행할 수 있어요"
+      return extraCount > 0 ? (TASTE_REPORT_ENABLED ? "발행하면 취향 리포트에 반영돼요" : "추가 감정도 함께 발행돼요") : "고르지 않아도 바로 발행할 수 있어요"
     }
     return isAnswered(stepKey) ? undefined : "답을 고른 뒤 다음을 눌러주세요"
   })()

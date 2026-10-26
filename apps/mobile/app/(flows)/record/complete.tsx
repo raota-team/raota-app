@@ -5,71 +5,55 @@ import { StatusBar } from "expo-status-bar"
 import { SearchX } from "lucide-react-native"
 import { Image } from "expo-image"
 import { Platform, ScrollView, StyleSheet, View } from "react-native"
-import Animated, {
-  Easing,
-  interpolate,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated"
+import Animated, { Easing, useAnimatedProps, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated"
+import Svg, { Path } from "react-native-svg"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { MONTHLY_REPORT_TARGET, TASTE_AXES, scoresFromLog, type RamenLog, type TasteAxisKey, type TasteProfile, type TasteScores } from "@raota/shared"
-import { useBowlCount, useLog, useMonthlyReports, useTasteProfile } from "@/src/data"
 import {
-  AppText,
-  Button,
-  ConfirmDialog,
-  EmptyState,
-  LoadingState,
-  StickyActionBar,
-  TicketCut,
-} from "@/src/components/ui"
-import { InkStamp } from "@/src/components/InkStamp"
+  MONTHLY_REPORT_TARGET,
+  REVISIT_OPTIONS,
+  TASTE_AXES,
+  scoresFromLog,
+  type RamenLog,
+  type TasteAxisKey,
+  type TasteProfile,
+  type TasteScores,
+} from "@raota/shared"
+import { useBowlCount, useLog, useMonthlyReports, useTasteProfile } from "@/src/data"
+import { AppText, Button, ConfirmDialog, EmptyState, LoadingState, StickyActionBar } from "@/src/components/ui"
 import { useRecordReminderPrompt } from "@/src/notifications"
 import { sizedImageUri } from "@/src/api/imageSize"
-import { colors, radii, spacing } from "@/src/theme"
+import { TASTE_REPORT_ENABLED } from "@/src/features"
+import { colors, radii, spacing, usePalette } from "@/src/theme"
 
 /*
- * 저장한 기록을 사진과 다섯 평가가 있는 식권으로 보여 준다.
+ * 저장한 기록을 "취향 기록지"로 보여 준다(사용자 결정 2026.10.26, 이치란 주문 용지에서 따온 안).
+ * 다섯 평가의 1~5 칸에 고른 점수를 빨간 펜으로 동그라미 친다. 도장·식권 대신 종이 양식 하나만 둔다.
  * 작성 화면은 replace로 이 화면에 오므로 뒤로 스와이프해도 작성 중이던 기록으로 돌아가지 않는다.
  */
 
-const STAMP_DURATION = 620
-/** 화면이 밀려 들어오는 동안 찍히면 아무도 못 본다. iOS 스택 전환(약 350ms)이 끝난 뒤에 찍는다 */
-const STAMP_DELAY = 420
-/** 도장이 종이에 닿는 순간(진행률). 이때 잉크가 퍼지고 식권이 눌리고 손에 쿵 하고 전해진다 */
-const STAMP_LAND = 0.48
-const STAMP_SIZE = 92
-const TICKET_PHOTO_HEIGHT = 190
-const scoreLabels = {
-  satisfaction: "만족도",
-  brothDensity: "육수",
-  noodleFirmness: "면",
-  topping: "토핑",
-  revisit: "재방문",
-} as const
+/** 화면이 밀려 들어오는 동안 그리면 아무도 못 본다. iOS 스택 전환(약 350ms)이 끝난 뒤에 긋는다 */
+const PEN_DELAY = 420
+const PEN_DURATION = 380
+/** 동그라미 사이 간격. 위 칸부터 한 줄씩 차례로 긋는다 */
+const PEN_GAP = 220
+/** 아래 PEN_PATH의 길이(viewBox 단위). 점선 길이로 써서 앞에서부터 그어지게 한다 */
+const PEN_LENGTH = 240
+/** 끝이 시작점을 살짝 지나치는 손그림 타원(100×60 viewBox). 칸에 맞춰 늘어난다 */
+const PEN_PATH = "M 78 9 C 60 1, 18 4, 8 24 C 0 42, 30 58, 58 56 C 88 54, 99 34, 88 17 C 82 9, 72 6, 60 7"
+const SCALE = [1, 2, 3, 4, 5] as const
+const SCALE_AXES = TASTE_AXES.filter((axis) => axis.key !== "revisit")
+/** 낮은 쪽부터 왼쪽에 둔다. 1~5 칸과 같은 방향이다 */
+const REVISIT_ROW = [...REVISIT_OPTIONS].reverse()
+const PHOTO_SIZE = 64
 
-/** 'YYYY-MM-DD' 또는 'YYYY. MM. DD' → 연·월·일. 형식이 다르면 null */
-function dateParts(value: string): { year: string; month: string; day: string } | null {
-  const match = value.match(/^(\d{4})\D+(\d{2})\D+(\d{2})/)
-  return match ? { year: match[1], month: match[2], day: match[3] } : null
-}
+const AnimatedPath = Animated.createAnimatedComponent(Path)
 
-/** '2026-09-18' → '2026.09.18'. 형식이 다르면 그대로 보여준다 */
+/** 'YYYY-MM-DD' 또는 'YYYY. MM. DD' → '2026.09.18'. 형식이 다르면 그대로 보여준다 */
 function formatVisitDate(value: string): string {
-  const parts = dateParts(value)
-  return parts ? `${parts.year}.${parts.month}.${parts.day}` : value
+  const match = value.match(/^(\d{4})\D+(\d{2})\D+(\d{2})/)
+  return match ? `${match[1]}.${match[2]}.${match[3]}` : value
 }
-
-function formatStampDate(value: string): string {
-  const parts = dateParts(value)
-  return parts ? `${parts.year.slice(-2)}.${parts.month}.${parts.day}` : formatVisitDate(value)
-}
-
 
 /** 메모가 없을 때만, 이번 점수와 이전 평균의 가장 큰 차이를 사실 그대로 말한다 */
 function bowlComment(log: RamenLog, scores: TasteScores | null, before: TasteProfile | null): string {
@@ -105,6 +89,45 @@ function bowlComment(log: RamenLog, scores: TasteScores | null, before: TastePro
   }
 }
 
+/** 고른 칸을 펜으로 두른 동그라미. 칸보다 조금 넘치게 감싸고, 동작 줄이기에서는 그어진 채로 보인다 */
+function PenCircle({ order, reduceMotion }: { order: number; reduceMotion: boolean }) {
+  const ink = usePalette().brand
+  const drawn = useSharedValue(reduceMotion ? 1 : 0)
+  useEffect(() => {
+    if (reduceMotion) {
+      drawn.value = 1
+      return
+    }
+    drawn.value = 0
+    drawn.value = withDelay(PEN_DELAY + order * PEN_GAP, withTiming(1, { duration: PEN_DURATION, easing: Easing.out(Easing.quad) }))
+  }, [drawn, order, reduceMotion])
+  const penProps = useAnimatedProps(() => ({ strokeDashoffset: PEN_LENGTH * (1 - drawn.value) }))
+  return (
+    <View pointerEvents="none" style={styles.pen}>
+      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 100 60" width="100%">
+        <AnimatedPath
+          animatedProps={penProps}
+          d={PEN_PATH}
+          fill="none"
+          stroke={ink}
+          strokeDasharray={[PEN_LENGTH, PEN_LENGTH]}
+          strokeLinecap="round"
+          strokeWidth={4.5}
+        />
+      </Svg>
+    </View>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <AppText capScale style={styles.infoLabel} tone="muted" variant="meta">{label}</AppText>
+      <AppText lineBreakStrategyIOS="hangul-word" style={styles.infoValue} variant="secondary">{value}</AppText>
+    </View>
+  )
+}
+
 export default function RecordCompleteScreen() {
   const { logId } = useLocalSearchParams<{ logId?: string }>()
   const parsedLogId = typeof logId === "string" && logId.length > 0 ? logId : null
@@ -119,50 +142,19 @@ export default function RecordCompleteScreen() {
 
   const scores = useMemo(() => (log ? scoresFromLog(log) : null), [log])
   const comment = useMemo(() => (log ? bowlComment(log, scores, taste.before) : null), [log, scores, taste.before])
-  const stampedLogId = log?.id
+  // 재방문 동그라미는 늘 마지막이다. 점수가 없는 옛 기록은 재방문 하나만 긋는다
+  const revisitOrder = scores ? SCALE_AXES.length : 0
+  const shownLogId = log?.id
 
-  // 저장된 그릇이 나타날 때 도장을 한 번만 누른다. 크게 들렸다 떨어져 눌리며 살짝 튀고 자리를 잡는다.
-  // 동작 줄이기에서는 찍힌 상태부터 보여준다
-  const stamp = useSharedValue(reduceMotion ? 1 : 0)
-  const bloom = useSharedValue(reduceMotion ? 1 : 0)
-  const thud = useSharedValue(0)
+  // 마지막 동그라미를 다 그었을 때 손에 가볍게 한 번 전한다
   useEffect(() => {
-    if (stampedLogId == null) return
-    if (reduceMotion) {
-      stamp.value = 1
-      bloom.value = 1
-      return
-    }
-    const landAt = STAMP_DELAY + STAMP_DURATION * STAMP_LAND
-    stamp.value = 0
-    stamp.value = withDelay(STAMP_DELAY, withTiming(1, { duration: STAMP_DURATION, easing: Easing.out(Easing.quad) }))
-    bloom.value = 0
-    bloom.value = withDelay(landAt, withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) }))
-    thud.value = withDelay(
-      landAt - 40,
-      withSequence(withTiming(1, { duration: 90, easing: Easing.out(Easing.quad) }), withTiming(0, { duration: 260, easing: Easing.out(Easing.cubic) })),
+    if (shownLogId == null || reduceMotion || Platform.OS === "web") return
+    const timer = setTimeout(
+      () => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined),
+      PEN_DELAY + revisitOrder * PEN_GAP + PEN_DURATION,
     )
-    const timer = setTimeout(() => {
-      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => undefined)
-    }, landAt)
     return () => clearTimeout(timer)
-  }, [stampedLogId, reduceMotion, stamp, bloom, thud])
-
-  const stampStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(stamp.value, [0, STAMP_LAND, 1], [0, 0.94, 0.92]),
-    transform: [
-      { rotate: `${interpolate(stamp.value, [0, STAMP_LAND, 0.62, 0.78, 1], [-26, -12, -15, -13.5, -14])}deg` },
-      { scale: interpolate(stamp.value, [0, STAMP_LAND, 0.62, 0.78, 1], [2.6, 0.9, 1.06, 0.985, 1]) },
-    ],
-  }))
-  // 닿는 순간 잉크가 번지듯 옅은 고리가 퍼졌다 사라진다
-  const bloomStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(bloom.value, [0, 1], [0.35, 0]),
-    transform: [{ scale: interpolate(bloom.value, [0, 1], [0.9, 1.2]) }],
-  }))
-  const ticketStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: thud.value * 3 }, { scale: 1 - thud.value * 0.012 }],
-  }))
+  }, [shownLogId, reduceMotion, revisitOrder])
 
   const goHome = () => router.replace("/native")
   const goTaste = () => router.replace("/taste")
@@ -188,7 +180,6 @@ export default function RecordCompleteScreen() {
     )
   }
 
-  const stampedAt = formatStampDate(log.visitedAt)
   const photo = log.photos?.[0] || log.imageUrl
 
   return (
@@ -207,65 +198,54 @@ export default function RecordCompleteScreen() {
         </View>
 
         <View style={styles.body}>
-          <Animated.View style={[styles.ticket, ticketStyle]}>
-            <View style={styles.ticketHeader}>
+          <View style={styles.sheet} testID="record-complete-sheet">
+            <View style={[styles.sheetHead, styles.rule]}>
+              <AppText variant="bodyStrong">취향 기록지</AppText>
+              <AppText capScale style={styles.tabular} tone="muted" variant="meta">{`No.${String(bowlCount).padStart(4, "0")}`}</AppText>
+            </View>
+
+            <View style={[styles.info, styles.rule]}>
+              <View style={styles.infoRows}>
+                <InfoRow label="가게" value={[log.shop.name, log.shop.branch].filter(Boolean).join(" ")} />
+                <InfoRow label="메뉴" value={`${log.menuName} (${log.ramenType})`} />
+                <InfoRow label="날짜" value={formatVisitDate(log.visitedAt)} />
+              </View>
               {photo ? (
-                <Image accessibilityLabel={`${log.menuName} 사진`} contentFit="cover" source={{ uri: sizedImageUri(photo, 360) }} style={styles.ticketPhoto} />
-              ) : (
-                <View style={styles.ticketPhotoFallback}>
-                  <AppText tone="muted" variant="meta">RAOTA 식권 · 한 그릇</AppText>
-                </View>
-              )}
+                <Image accessibilityLabel={`${log.menuName} 사진`} contentFit="cover" source={{ uri: sizedImageUri(photo, PHOTO_SIZE * 3) }} style={styles.photo} />
+              ) : null}
             </View>
-            <View style={styles.ticketMain}>
-              <AppText lineBreakStrategyIOS="hangul-word" style={styles.menu} variant="cardTitle">
-                {log.shop.name} · {log.menuName}
-              </AppText>
-              <View style={styles.shopMeta} testID="record-complete-meta">
-                <AppText accessible accessibilityLabel={`라멘 종류 ${log.ramenType}`} accessibilityRole="text" capScale tone="muted" variant="meta">{log.ramenType}</AppText>
-                <AppText accessibilityLabel={`${formatVisitDate(log.visitedAt)} 방문, ${bowlCount}번째 그릇`} capScale style={styles.shopMetaText} tone="muted" variant="meta">
-                  {`· ${formatVisitDate(log.visitedAt)} · No. ${String(bowlCount).padStart(4, "0")}`}
-                </AppText>
-              </View>
-            </View>
-            <TicketCut />
-            {scores ? (
-              <View style={styles.scoreRow}>
-                {TASTE_AXES.map((axis) => {
-                  const value = axis.key === "revisit" ? log.revisit : scores[axis.key]
-                  return (
-                    <View
-                      accessibilityLabel={`${axis.key === "revisit" ? "재방문" : axis.label} ${axis.key === "revisit" ? value : `${value}점`}`}
-                      accessible
-                      key={axis.key}
-                      style={styles.scoreColumn}
-                    >
-                      <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.scoreValue} variant="cardTitle">
-                        {axis.key === "revisit" ? (scores.revisit === 5 ? "자주" : scores.revisit === 3 ? "가끔" : "한 번") : value}
-                      </AppText>
-                      <AppText capScale lineBreakStrategyIOS="hangul-word" tone="muted" variant="meta">{scoreLabels[axis.key]}</AppText>
+
+            {scores
+              ? SCALE_AXES.map((axis, index) => (
+                  <View accessibilityLabel={`${axis.label} ${scores[axis.key]}점`} accessible key={axis.key} style={[styles.axisRow, styles.rule]}>
+                    <AppText variant="button">{axis.label}</AppText>
+                    <View style={styles.scale}>
+                      <AppText capScale style={styles.scaleEnd} tone="muted" variant="meta">{axis.low}</AppText>
+                      {SCALE.map((value) => (
+                        <View key={value} style={styles.scaleCell}>
+                          <AppText style={styles.scaleNumber} variant="bodyStrong">{value}</AppText>
+                          {scores[axis.key] === value ? <PenCircle order={index} reduceMotion={reduceMotion} /> : null}
+                        </View>
+                      ))}
+                      <AppText capScale style={[styles.scaleEnd, styles.scaleEndHigh]} tone="muted" variant="meta">{axis.high}</AppText>
                     </View>
-                  )
-                })}
+                  </View>
+                ))
+              : null}
+
+            <View accessibilityLabel={`재방문 ${log.revisit}`} accessible style={styles.axisRow}>
+              <AppText variant="button">재방문 의사</AppText>
+              <View style={styles.revisit}>
+                {REVISIT_ROW.map((option) => (
+                  <View key={option} style={styles.revisitCell}>
+                    <AppText capScale style={styles.center} variant="button">{option}</AppText>
+                    {log.revisit === option ? <PenCircle order={revisitOrder} reduceMotion={reduceMotion} /> : null}
+                  </View>
+                ))}
               </View>
-            ) : null}
-            {/* 사진이 아니라 식권 종이 위에 찍어야 잉크가 읽힌다. 절취선에 살짝 걸친다 */}
-            <Animated.View pointerEvents="none" style={[styles.stamp, styles.stampBloom, bloomStyle]} />
-            <Animated.View
-              accessibilityLabel={`완식 도장, ${stampedAt}`}
-              accessibilityRole="image"
-              accessible
-              pointerEvents="none"
-              style={[styles.stamp, stampStyle]}
-            >
-              <InkStamp
-                caption={`No.${String(bowlCount).padStart(4, "0")}`}
-                ringText={`RAOTA ✦ 라멘 완식 인증 ✦ ${formatVisitDate(log.visitedAt)} ✦`}
-                size={STAMP_SIZE}
-                title="완식"
-              />
-            </Animated.View>
-          </Animated.View>
+            </View>
+          </View>
+
           <AppText
             accessibilityLabel={`이번 그릇 정리. ${comment}`}
             accessibilityRole="summary"
@@ -286,18 +266,25 @@ export default function RecordCompleteScreen() {
         cancelLabel="괜찮아요"
         confirmLabel="알림 받기"
         loading={reminder.busy}
-        message={`이번 달 기록이 ${MONTHLY_REPORT_TARGET}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요.`}
+        message={
+          TASTE_REPORT_ENABLED
+            ? `이번 달 기록이 ${MONTHLY_REPORT_TARGET}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요.`
+            : "기록이 일주일 뜸할 때만 알려드릴게요."
+        }
         onCancel={reminder.decline}
         onConfirm={() => void reminder.accept()}
-        title="다음 달 리포트가 나올 즈음 알려드릴까요?"
+        title={TASTE_REPORT_ENABLED ? "다음 달 리포트가 나올 즈음 알려드릴까요?" : "다음 라멘을 잊지 않게 알려드릴까요?"}
         visible={reminder.visible}
       />
 
       {/* 하단 고정 CTA. 처음부터 보인다 */}
       <StickyActionBar style={styles.footer}>
         <View style={styles.actions}>
-          <Button onPress={goTaste} size="large" textStyle={styles.actionText} title="취향 리포트 보기" variant="primary" />
-          <Button onPress={goHome} size="large" textStyle={styles.actionText} title="홈으로" variant="ghost" />
+          {/* 취향 리포트를 숨긴 빌드에서는 홈으로가 하나뿐인 주요 행동이다 */}
+          {TASTE_REPORT_ENABLED ? (
+            <Button onPress={goTaste} size="large" textStyle={styles.actionText} title="취향 리포트 보기" variant="primary" />
+          ) : null}
+          <Button onPress={goHome} size="large" textStyle={styles.actionText} title="홈으로" variant={TASTE_REPORT_ENABLED ? "ghost" : "primary"} />
         </View>
       </StickyActionBar>
     </View>
@@ -307,39 +294,40 @@ export default function RecordCompleteScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.paper },
   flex: { flex: 1 },
+  center: { textAlign: "center" },
+  tabular: { fontVariant: ["tabular-nums"] },
   stateArea: { flex: 1, justifyContent: "center", paddingHorizontal: spacing.gutter },
   scrollContent: { paddingBottom: spacing.x8 },
   statusCap: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: colors.paper },
   intro: { alignItems: "center", paddingHorizontal: spacing.gutter, paddingBottom: spacing.section },
   counter: { marginTop: spacing.x1, textAlign: "center" },
   body: { paddingHorizontal: spacing.x5 },
-  ticket: { borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
-  ticketHeader: { height: TICKET_PHOTO_HEIGHT },
-  ticketPhoto: { width: "100%", height: "100%", borderTopLeftRadius: radii.sm, borderTopRightRadius: radii.sm },
-  ticketPhotoFallback: {
-    height: "100%",
+  sheet: { borderRadius: radii.sm, backgroundColor: colors.canvasSoft, overflow: "hidden" },
+  rule: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  sheetHead: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderTopLeftRadius: radii.sm,
-    borderTopRightRadius: radii.sm,
-    backgroundColor: colors.canvasSoft,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.x4,
+    paddingTop: spacing.x4,
+    paddingBottom: spacing.x3,
   },
-  // 오른쪽은 도장 자리라 메뉴 이름이 그 앞에서 줄을 바꾼다
-  ticketMain: { paddingLeft: spacing.x4, paddingRight: STAMP_SIZE, paddingTop: spacing.x4, paddingBottom: spacing.x4 },
-  menu: { fontWeight: "700" },
-  shopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.x1_5, marginTop: spacing.x1 },
-  shopMetaText: { minWidth: 0 },
-  stamp: {
-    position: "absolute",
-    right: spacing.x2,
-    top: TICKET_PHOTO_HEIGHT + spacing.x1,
-    width: STAMP_SIZE,
-    height: STAMP_SIZE,
-  },
-  stampBloom: { borderRadius: radii.pill, borderWidth: 4, borderColor: colors.brand },
-  scoreRow: { flexDirection: "row", paddingHorizontal: spacing.x3, paddingTop: spacing.x4, paddingBottom: spacing.x4 },
-  scoreColumn: { flex: 1, minWidth: 0, alignItems: "center", gap: spacing.x0_5 },
-  scoreValue: { fontWeight: "700", fontVariant: ["tabular-nums"], fontSize: 20, lineHeight: 24 },
+  info: { flexDirection: "row", alignItems: "center", gap: spacing.x3, paddingHorizontal: spacing.x4, paddingVertical: spacing.x3 },
+  infoRows: { flex: 1, minWidth: 0, gap: spacing.x1 },
+  infoRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2 },
+  infoLabel: { width: 28 },
+  infoValue: { flexShrink: 1, fontWeight: "600" },
+  photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: radii.xs, backgroundColor: colors.secondary },
+  axisRow: { paddingHorizontal: spacing.x4, paddingTop: spacing.x3, paddingBottom: spacing.x2_5 },
+  scale: { flexDirection: "row", alignItems: "center", marginTop: spacing.x1_5 },
+  scaleEnd: { width: 52 },
+  scaleEndHigh: { textAlign: "right" },
+  scaleCell: { flex: 1, height: 32, alignItems: "center", justifyContent: "center" },
+  scaleNumber: { fontVariant: ["tabular-nums"] },
+  // 칸보다 조금 넘치게 둘러 손으로 친 동그라미처럼 보이게 한다
+  pen: { position: "absolute", top: -2, bottom: -2, left: 0, right: 0 },
+  revisit: { flexDirection: "row", gap: spacing.x2, marginTop: spacing.x2 },
+  revisitCell: { flex: 1, minHeight: 36, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.x1 },
   comment: { marginTop: spacing.x4, textAlign: "center", fontSize: 14, lineHeight: 20 },
   footer: { borderTopWidth: 0 },
   actions: { flex: 1, gap: spacing.x2 },

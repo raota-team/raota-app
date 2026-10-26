@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native"
 import { useState, type ReactElement } from "react"
-import { Pressable, StyleSheet } from "react-native"
+import { Pressable } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import type { CreateRamenLogInput } from "@raota/shared"
@@ -108,33 +108,30 @@ beforeEach(() => {
 })
 
 describe("record complete screen", () => {
-  it("shows a five-axis ticket and the largest honest difference for the 43rd bowl", async () => {
+  it("circles the five scores on the taste sheet and states the largest honest difference for the 43rd bowl", async () => {
     const view = await renderCreatedLog()
 
     expect(view.getByLabelText("43번째 그릇")).toBeTruthy()
     expect(view.getByText("기록이 저장됐어요")).toBeTruthy()
-    expect(view.getByText("멘야준 · 특제 쇼유 라멘")).toBeTruthy()
-    expect(view.getByText("· 2026.09.18 · No. 0043")).toBeTruthy()
+    expect(view.getByText("취향 기록지")).toBeTruthy()
+    expect(view.getByText("No.0043")).toBeTruthy()
+    expect(view.getByText("멘야준 망원 본점")).toBeTruthy()
+    expect(view.getByText("특제 쇼유 라멘 (쇼유)")).toBeTruthy()
+    expect(view.getByText("2026.09.18")).toBeTruthy()
     expect(view.getByLabelText("전체 만족도 4점")).toBeTruthy()
     expect(view.getByLabelText("육수 농도 5점")).toBeTruthy()
     expect(view.getByLabelText("면 삶기 4점")).toBeTruthy()
     expect(view.getByLabelText("토핑 4점")).toBeTruthy()
     expect(view.getByLabelText("재방문 자주 감")).toBeTruthy()
     expect(view.queryByText("나만 보기")).toBeNull()
-    expect(view.getByText("RAOTA 식권 · 한 그릇")).toBeTruthy()
-    expect(view.getByLabelText("완식 도장, 26.09.18")).toBeTruthy()
     expect(view.getByText("평소보다 재방문 의사를 높게 남긴 그릇이에요.")).toBeTruthy()
-    expect(StyleSheet.flatten(view.getByTestId("record-complete-meta").props.style).flexWrap).toBe("wrap")
-    expect(view.getByText("자주").props.numberOfLines).toBeUndefined()
-    expect(StyleSheet.flatten(view.getByText("평소보다 재방문 의사를 높게 남긴 그릇이에요.").props.style).marginTop).toBe(16)
     expect(view.queryByText("내 취향 변화")).toBeNull()
+    expect(view.queryByLabelText("특제 쇼유 라멘 사진")).toBeNull()
   })
 
-  it("shows the log photo on the ticket when one was saved", async () => {
+  it("shows the log photo on the sheet when one was saved", async () => {
     const view = await renderCreatedLog({ ...logInput, imageUrl: "https://example.com/ramen.jpg", photos: ["https://example.com/ramen.jpg"] })
-
     expect(view.getByLabelText("특제 쇼유 라멘 사진")).toBeTruthy()
-    expect(view.queryByText("RAOTA 식권 · 한 그릇")).toBeNull()
   })
 
   it("puts the saved memo before a derived score summary", async () => {
@@ -168,9 +165,11 @@ describe("record complete screen", () => {
     mockParams.logId = "1"
     const view = await renderScreen(<RecordCompleteScreen />, state)
 
-    expect(await view.findByText("멘야준 · 특제 쇼유 라멘")).toBeTruthy()
+    expect(await view.findByText("특제 쇼유 라멘 (쇼유)")).toBeTruthy()
     expect(view.getByText(state.logs[0].note)).toBeTruthy()
-    expect(view.queryByText("내 취향 변화")).toBeNull()
+    // 점수가 없으면 1~5 칸은 비우고 재방문만 동그라미 친다
+    expect(view.queryByLabelText(/^전체 만족도/)).toBeNull()
+    expect(view.getByLabelText(`재방문 ${state.logs[0].revisit}`)).toBeTruthy()
   })
 
   it("finds a saved log by its full BIGINT route ID", async () => {
@@ -180,7 +179,7 @@ describe("record complete screen", () => {
     mockParams.logId = logId
     const view = await renderScreen(<RecordCompleteScreen />, state)
 
-    expect(await view.findByText("멘야준 · 특제 쇼유 라멘")).toBeTruthy()
+    expect(await view.findByText("특제 쇼유 라멘 (쇼유)")).toBeTruthy()
     expect(view.queryByText("기록을 찾을 수 없어요")).toBeNull()
   })
 

@@ -4,13 +4,13 @@ import type { TasteAxisKey } from "@raota/shared"
 /**
  * RAOTA의 네이티브 의미 토큰. 값과 역할은 apps/mobile/DESIGN.md(핀터레스트 DESIGN.md를 옮긴 것)를 따른다.
  * 사진이 주인공인 평평한 화면: 흰 바탕, 따뜻한 회색 면, 검정 글씨, 16·32pt 모서리와 알약, 그림자 없음.
- * 빨강은 화면의 주요 행동 하나와 완식 도장에만 쓴다. 뜻을 싣는 색은 국물 색과 맛 지문 축 색뿐이다(docs/RAOTA_COLORS.md).
+ * 빨강은 화면의 주요 행동 하나와 취향 기록지의 펜 동그라미에만 쓴다. 뜻을 싣는 색은 국물 색과 맛 지문 축 색뿐이다(docs/RAOTA_COLORS.md).
  *
  * 다크 모드: iOS에서는 DynamicColorIOS라 시스템 설정을 따라 저절로 바뀐다. 웹·안드로이드는 밝은 값만 쓴다.
  * 색을 문자열로 다뤄야 하는 곳(투명도 합성, 그라데이션 끝색)은 usePalette()로 지금 모드의 hex를 받는다.
  */
 const light = {
-  /** 빨간 면(주요 버튼, 도장 테두리). 글씨에는 brandText를 쓴다 */
+  /** 빨간 면(주요 버튼)과 기록지 펜 동그라미. 글씨에는 brandText를 쓴다 */
   brand: "#E60000",
   brandPressed: "#CC0000",
   brandWeak: "#FFF0F0",
@@ -315,6 +315,19 @@ export const soup: Readonly<Record<string, string>> = {
 }
 export const soupNeutral = "#CFCAC0"
 export const soupColorOf = (type: string) => soup[type.replace(/\s*라멘$/, "").trim()] ?? soupNeutral
+
+/**
+ * AI 식권 종이 색. 라멘집 식권기의 색종이처럼, 뽑힌 가게의 국물 색을 흰 종이에 30%만 섞는다.
+ * 손에 쥐는 실물 종이라 다크 모드에서도 밝은 채로 두고, 그 위 글씨와 선은 늘 ticketInk를 쓴다.
+ */
+export function ticketPaperOf(type: string): string {
+  const hex = soupColorOf(type)
+  return `#${[1, 3, 5]
+    .map((offset) => Math.round(255 - (255 - parseInt(hex.slice(offset, offset + 2), 16)) * 0.3).toString(16).padStart(2, "0"))
+    .join("")}`
+}
+/** 식권 종이 위 글씨와 절취선. 종이가 모드와 상관없이 밝아서 글씨도 모드와 상관없이 어둡다 */
+export const ticketInk = { text: "#000000", muted: "rgba(0, 0, 0, 0.62)", rule: "rgba(0, 0, 0, 0.3)" } as const
 
 /** 사진이나 색 면처럼 배경을 바꿔도 티가 나지 않는 것의 누름. 회색·흰 면은 surfacePressed로 바꾼다 */
 export const pressFade: ViewStyle = { opacity: 0.8 }

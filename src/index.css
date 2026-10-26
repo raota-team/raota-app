@@ -184,40 +184,16 @@ body {
   50% { transform: translateY(-4px); filter: drop-shadow(0 0 20px rgba(230,0,0,0.7)); }
 }
 
-.ticket-border {
-  border: 1.5px dashed var(--color-line-dark);
+/* 기록 완료 취향 기록지: 고른 점수에 펜으로 동그라미를 긋는다(pathLength=1 기준) */
+.pen-circle {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: penDraw 0.38s ease-out forwards;
 }
 
-.ticket-perforation {
-  background-image: radial-gradient(circle, transparent 0, transparent 6px, #FFFDF9 6px);
-  background-size: 100% 100%;
-}
-
-.stamp-badge {
-  border: 2px solid #D92228;
-  color: #D92228;
-  transform: rotate(-4deg);
-  border-radius: 4px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  box-shadow: 0 0 0 1px rgba(217, 34, 40, 0.2);
-}
-
-@keyframes stampIn {
-  0% {
-    opacity: 0;
-    transform: scale(2.5) rotate(-18deg);
-    filter: blur(6px);
-  }
-  70% {
-    opacity: 1;
-    transform: scale(0.94) rotate(-3deg);
-    filter: blur(0);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(-4deg);
-    filter: blur(0);
+@keyframes penDraw {
+  to {
+    stroke-dashoffset: 0;
   }
 }
 
@@ -237,10 +213,6 @@ body {
   100% {
     transform: rotate(360deg);
   }
-}
-
-.anim-stamp {
-  animation: stampIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .anim-pulse-glow {
