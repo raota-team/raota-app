@@ -203,13 +203,6 @@ export function useShops(params: Omit<ShopListParams, "cursor" | "size"> = {}): 
   return remote ? { ...pages, remote: true } : { data: shops, ...status, hasMore: false, loadMore: () => undefined, remote: false }
 }
 
-/** 회원 기록·취향 화면은 로컬 그릇과 같은 원장을 계속 참조한다. */
-export function useLocalShops(): Query<Shop[]> {
-  const { shops } = useRaota()
-  const status = useQueryState()
-  return { data: shops, ...status }
-}
-
 const mapShopsKey = (params: ShopMapParams) => `shops:map:${JSON.stringify(params)}`
 
 /** 지도와 목록은 같은 전체 매장을 읽는다. 좌표가 없는 매장은 지도에서만 제외한다. */
@@ -219,6 +212,15 @@ export function useMapShops(params: ShopMapParams = {}): Query<Shop[]> & { remot
   const enabled = isRemote("shops")
   const remote = useRemoteResult(enabled ? mapShopsKey(params) : null, [] as Shop[], () => remoteReads.mapShops(params))
   return enabled ? { ...remote, remote: true } : { data: shops, ...status, remote: false }
+}
+
+/**
+ * 기록·취향 화면이 매장 이름·사진·종류를 찾는 전체 매장. remote에서는 지도와 같은 서버 전체 매장을 쓴다(앱이 뜰 때 미리 받아 둔 캐시).
+ * 기기 안 고정 매장을 쓰면 서버에만 있는 매장이 사진·추천 후보에서 빠진다.
+ */
+export function useAllShops(): Query<Shop[]> {
+  const { remote: _remote, ...query } = useMapShops()
+  return query
 }
 
 /**

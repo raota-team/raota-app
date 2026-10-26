@@ -981,6 +981,8 @@ export function RaotaProvider({
   )
   const allocatedIds = useRef({ log: "0", post: "0", comment: "0" })
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
+  /** 기록마다 보내는 중인 댓글 초안의 Idempotency-Key. 성공하거나 이미 처리됐다고 확인되면 새 키로 바꾼다 */
+  const commentDraftKeys = useRef(new Map<string, string>())
 
   useEffect(() => {
     let active = true
@@ -1617,8 +1619,11 @@ export function RaotaProvider({
 
       if (isRemoteWithAccount("lounge")) {
         const memberId = user.id
+        const draftKey = commentDraftKeys.current.get(logId) ?? createIdempotencyKey()
+        commentDraftKeys.current.set(logId, draftKey)
         try {
-          const comment = await remoteWrites.addLogComment(logId, { content }, { accountId: memberId })
+          const comment = await remoteWrites.addLogComment(logId, { content }, { accountId: memberId, draftKey })
+          commentDraftKeys.current.delete(logId)
           dispatch({
             type: "ACCOUNT_UPDATE",
             memberId,
@@ -1634,10 +1639,14 @@ export function RaotaProvider({
           return comment
         } catch (error) {
           if (error instanceof AlreadyHandledError) {
+            commentDraftKeys.current.delete(logId)
             remoteCache.invalidate(`lounge:detail:${logId}`)
             throw error
           }
-          if (isApiError(error, "RESOURCE_NOT_FOUND")) remoteCache.invalidate("lounge:")
+          if (isApiError(error, "RESOURCE_NOT_FOUND")) {
+            commentDraftKeys.current.delete(logId)
+            remoteCache.invalidate("lounge:")
+          }
           throw new Error(writeErrorMessage(error, "댓글을 남기지 못했어요. 다시 시도해 주세요."))
         }
       }

@@ -382,6 +382,8 @@ export interface CreateRamenLogOptions {
 export interface CreateCommentOptions {
   /** 로그인한 계정 id. 주면 실패한 댓글을 같은 Idempotency-Key로 다시 보낼 수 있다 */
   accountId?: string
+  /** 댓글 초안 하나에 하나인 Idempotency-Key. 재시도하면서 내용을 고쳐도 같은 키를 쓴다 */
+  draftKey: string
 }
 
 /**
@@ -569,18 +571,17 @@ export const remoteWrites = {
     return liked ? loungeApi.like(logId) : loungeApi.unlike(logId)
   },
 
-  /** 댓글 작성(답글은 없다). 409(이 키로 단 댓글을 이미 지웠다)는 AlreadyHandledError */
-  async addLogComment(
-    logId: string,
-    input: CreateRamenLogCommentInput,
-    options: CreateCommentOptions = {},
-  ): Promise<RamenLogComment> {
+  /**
+   * 댓글 작성(답글은 없다). 409(이 키로 단 댓글을 이미 지웠다)는 AlreadyHandledError.
+   * 응답이 끊긴 뒤 내용을 고쳐 다시 보내도 초안 키가 같아 댓글이 두 개 생기지 않는다.
+   * 첫 요청이 서버에 닿지 못했으면 고친 내용이 남고, 닿았으면 처음 내용이 남는다(댓글은 수정 API가 없다).
+   */
+  async addLogComment(logId: string, input: CreateRamenLogCommentInput, { accountId, draftKey }: CreateCommentOptions): Promise<RamenLogComment> {
     const body = { content: input.content.trim() }
+    const pending = accountId ? await idempotencyOutbox.find(accountId, "CREATE_COMMENT", draftKey) : null
+    if (pending) await idempotencyOutbox.revise(pending.key, { body })
     try {
-      const comment = await loungeApi.createComment(logId, body, {
-        accountId: options.accountId,
-        fingerprint: fingerprintOf({ operation: "CREATE_COMMENT", logId, body }),
-      })
+      const comment = await loungeApi.createComment(logId, body, { accountId, fingerprint: draftKey, idempotencyKey: draftKey })
       return toAppRamenLogComment(comment)
     } catch (error) {
       if (isApiError(error, "CONFLICT")) throw new AlreadyHandledError("이미 처리된 댓글이에요. 댓글을 새로 불러왔어요.", error)

@@ -3,7 +3,8 @@ import type { PropsWithChildren } from "react"
 
 import { isRemote } from "@/src/api/config"
 import { createInitialPersistedState, SHOPS } from "@/src/data/fixtures"
-import { useLocalShops, useLoungeLog, useLoungeLogs, useMapShops, useShop, useShops, useTodayCuration } from "@/src/data/hooks"
+import { useAllShops, useLoungeLog, useLoungeLogs, useMapShops, useShop, useShops, useTodayCuration } from "@/src/data/hooks"
+import { remoteCache } from "@/src/data/remoteCache"
 import type { RaotaRepository } from "@/src/repository"
 import { RaotaProvider } from "@/src/state/RaotaStore"
 
@@ -58,11 +59,14 @@ describe("public data hooks", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it("remote에서도 개인 기록이 참조하는 로컬 매장 원장은 바꾸지 않는다", async () => {
+  it("remote 기록·취향 화면의 전체 매장은 서버에만 있는 매장도 포함하고 지도와 같은 요청을 함께 쓴다", async () => {
     remoteSwitch.mockImplementation((domain) => domain === "shops")
-    const { result } = await renderHook(() => useLocalShops(), { wrapper })
-    expect(result.current.data).toBe(SHOPS)
-    expect(fetchMock).not.toHaveBeenCalled()
+    remoteCache.clear()
+    fetchMock.mockResolvedValueOnce(success([{ ...wireShop, id: "10000001", name: "서버에만 있는 집" }]))
+    const { result } = await renderHook(() => ({ all: useAllShops(), map: useMapShops() }), { wrapper })
+    await waitFor(() => expect(result.current.all.data.map((shop) => shop.name)).toEqual(["서버에만 있는 집"]))
+    expect(result.current.map.data).toEqual(result.current.all.data)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it("지도와 목록은 같은 전체 매장을 쓰며 좌표 없는 매장도 목록에 남긴다", async () => {

@@ -3,7 +3,7 @@ import type { CreateRamenLogInput, Shop } from "@raota/shared"
 import { useEffect, useState } from "react"
 import { Pressable, Text } from "react-native"
 
-import type { MemberMe, RamenLogDetail, RamenLogSummaryItem, ShopSummary } from "@/src/api/types"
+import type { MemberMe, RamenLogComment as WireComment, RamenLogDetail, RamenLogSummaryItem, ShopSummary } from "@/src/api/types"
 import { idempotencyOutbox } from "@/src/api/outbox"
 import { tokenStore } from "@/src/api/tokens"
 import { toAppShopSummary } from "@/src/api/adapters"
@@ -327,6 +327,111 @@ describe("기록 저장 재시도(초안 하나에 Idempotency-Key 하나)", () 
     await fireEvent.press(view.getByLabelText("저장"))
     await waitFor(() => expect(view.getByTestId("message").props.children).toMatch(/^저장됨:/))
     expect(server.keys[2]).not.toBe(server.keys[0])
+  })
+})
+
+/** 라운지 글 상세의 댓글 입력처럼: 내용을 고쳐 다시 보낼 수 있다 */
+function CommentProbe() {
+  const { actions, currentUser } = useRaota()
+  const [content, setContent] = useState("국물이 진해요")
+  const [message, setMessage] = useState("")
+  const send = async () => {
+    try {
+      const comment = await actions.addLogComment("501", { content })
+      setMessage(`보냄:${comment?.content ?? ""}`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "")
+    }
+  }
+  return (
+    <>
+      <Text testID="user">{currentUser?.id ?? "guest"}</Text>
+      <Text testID="message">{message}</Text>
+      <Pressable accessibilityLabel="댓글 고치기" onPress={() => setContent("면이 단단해요")} />
+      <Pressable accessibilityLabel="댓글 보내기" onPress={() => void send()} />
+    </>
+  )
+}
+
+/** 같은 키면 처음 단 댓글을 돌려주는 가짜 댓글 저장소. first는 첫 요청을 어떻게 실패시킬지 정한다 */
+function fakeCommentServer(first: "lose-response" | "never-arrived") {
+  const byKey = new Map<string, WireComment>()
+  const keys: string[] = []
+  let nextId = 300
+  return {
+    keys,
+    byKey,
+    create(init: RequestInit): FakeResponse {
+      const key = (init.headers as Record<string, string>)["Idempotency-Key"]
+      keys.push(key)
+      // 처리 전에 거절된 요청(저장하지 않음)
+      if (keys.length === 1 && first === "never-arrived") return fail(429, "RATE_LIMITED", "잠시 후 다시 시도해 주세요.")
+      const existing = byKey.get(key)
+      if (existing) return ok(existing, 201)
+      const { content } = JSON.parse(String(init.body)) as { content: string }
+      const created: WireComment = {
+        id: String(nextId++),
+        logId: "501",
+        author: { id: memberA.id, nickname: "라멘러버", avatarUrl: null, logCount: 3 },
+        content,
+        createdAt: "2026-10-10T12:00:00Z",
+        isMine: true,
+      }
+      byKey.set(key, created)
+      if (keys.length === 1) return fail(429, "RATE_LIMITED", "잠시 후 다시 시도해 주세요.")
+      return ok(created, 201)
+    },
+  }
+}
+
+describe("댓글 재시도(댓글 초안 하나에 Idempotency-Key 하나)", () => {
+  it("응답을 못 받은 뒤 내용을 고쳐 다시 보내도 같은 키로 보내 댓글이 하나만 생긴다", async () => {
+    const server = fakeCommentServer("lose-response")
+    serve(...accountRoutes(memberA, summaryA), on("POST", "/ramen-logs/501/comments", (_url, init) => server.create(init)))
+    const view = await renderSignedIn(<CommentProbe />)
+
+    await fireEvent.press(view.getByLabelText("댓글 보내기"))
+    await waitFor(() => expect(view.getByTestId("message").props.children).toBe("잠시 후 다시 시도해 주세요."))
+    await fireEvent.press(view.getByLabelText("댓글 고치기"))
+    await fireEvent.press(view.getByLabelText("댓글 보내기"))
+    // 서버에 이미 닿았던 요청이라 처음 단 댓글이 그대로 남는다
+    await waitFor(() => expect(view.getByTestId("message").props.children).toBe("보냄:국물이 진해요"))
+
+    expect(server.keys).toHaveLength(2)
+    expect(server.keys[1]).toBe(server.keys[0])
+    expect(server.byKey.size).toBe(1)
+    expect(await idempotencyOutbox.pending(memberA.id)).toEqual([])
+  })
+
+  it("첫 요청이 서버에 닿지 못했으면 같은 키로 고친 내용을 보내 고친 댓글이 남는다", async () => {
+    const server = fakeCommentServer("never-arrived")
+    serve(...accountRoutes(memberA, summaryA), on("POST", "/ramen-logs/501/comments", (_url, init) => server.create(init)))
+    const view = await renderSignedIn(<CommentProbe />)
+
+    await fireEvent.press(view.getByLabelText("댓글 보내기"))
+    await waitFor(() => expect(view.getByTestId("message").props.children).not.toBe(""))
+    await fireEvent.press(view.getByLabelText("댓글 고치기"))
+    await fireEvent.press(view.getByLabelText("댓글 보내기"))
+    await waitFor(() => expect(view.getByTestId("message").props.children).toBe("보냄:면이 단단해요"))
+
+    expect(server.keys[1]).toBe(server.keys[0])
+    expect([...server.byKey.values()].map((comment) => comment.content)).toEqual(["면이 단단해요"])
+  })
+
+  it("댓글을 남긴 뒤 다음 댓글은 새 키로 보내 새 댓글이 된다", async () => {
+    const server = fakeCommentServer("lose-response")
+    serve(...accountRoutes(memberA, summaryA), on("POST", "/ramen-logs/501/comments", (_url, init) => server.create(init)))
+    const view = await renderSignedIn(<CommentProbe />)
+
+    await fireEvent.press(view.getByLabelText("댓글 보내기"))
+    await waitFor(() => expect(view.getByTestId("message").props.children).toBe("잠시 후 다시 시도해 주세요."))
+    await fireEvent.press(view.getByLabelText("댓글 보내기"))
+    await waitFor(() => expect(view.getByTestId("message").props.children).toBe("보냄:국물이 진해요"))
+    await fireEvent.press(view.getByLabelText("댓글 보내기"))
+    await waitFor(() => expect(server.keys).toHaveLength(3))
+
+    expect(server.keys[2]).not.toBe(server.keys[0])
+    expect(server.byKey.size).toBe(2)
   })
 })
 
