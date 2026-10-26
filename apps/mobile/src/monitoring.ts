@@ -6,11 +6,12 @@ const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() || null
 /**
  * 오류·크래시 수집(Sentry). EXPO_PUBLIC_SENTRY_DSN이 없으면(개발·테스트 기본) 켜지 않는다.
  *
- * 개인정보는 최소로 보낸다:
- * - sendDefaultPii를 끈다. IP 주소와 사용자 정보를 붙이지 않는다.
- * - 회원 ID·닉네임으로 사용자를 식별하지 않는다(setUser를 부르지 않는다).
+ * 개인정보는 처리방침(제2조·제7조·제10조)에 적은 만큼만 보낸다:
+ * - sendDefaultPii를 끈다. 회원 ID·닉네임으로 사용자를 식별하지 않는다.
+ * - IP 주소를 "0.0.0.0"으로 고정한다. 비워 두면 Sentry 서버가 접속 IP로 IP와 대략적인 위치(도시)를 채운다
+ *   (2026.10.26 확인, Sentry 문서의 권장 방법). 프로젝트 설정 Prevent Storing of IP Addresses도 켜 두었다.
+ * - 브레드크럼에서 콘솔 로그와 네트워크 요청 주소를 뺀다. 화면 이동 기록만 남긴다.
  * - 화면 녹화(Session Replay)와 성능 추적은 켜지 않는다. 오류와 크래시, 크래시 없는 세션 비율만 본다.
- * 켜기 전에 개인정보처리방침에 국외 위탁(Sentry, 미국)과 수집 항목을 먼저 적는다.
  */
 export function startErrorMonitoring(): void {
   if (!DSN) return
@@ -19,7 +20,9 @@ export function startErrorMonitoring(): void {
     sendDefaultPii: false,
     tracesSampleRate: 0,
     environment: __DEV__ ? "development" : "production",
+    integrations: [Sentry.breadcrumbsIntegration({ console: false, fetch: false, xhr: false })],
   })
+  Sentry.setUser({ ip_address: "0.0.0.0" })
 }
 
 /**
