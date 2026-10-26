@@ -2,6 +2,8 @@ import mockAsyncStorage from "@react-native-async-storage/async-storage/jest/asy
 
 // 서버 주소는 저장소에 없다. config를 읽는 테스트 파일보다 먼저 가짜 주소를 넣어 둔다
 process.env.EXPO_PUBLIC_API_BASE_URL ??= "https://api.example.test/api/v2"
+// 취향 리포트는 출시 빌드에서 꺼져 있지만, 화면 테스트는 켜진 상태를 기본으로 본다. 끈 상태는 해당 테스트가 따로 mock한다
+process.env.EXPO_PUBLIC_FEATURE_TASTE_REPORT ??= "true"
 
 jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage)
 

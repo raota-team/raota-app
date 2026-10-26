@@ -6,10 +6,11 @@ import { Platform } from "react-native"
 import { MONTHLY_REPORT_TARGET, monthlyReportStatus, seoulMonthKey } from "@raota/shared"
 
 import { track } from "../analytics"
+import { TASTE_REPORT_ENABLED } from "../features"
 
 /*
  * 기록 리마인더. 서버 없이 기기 안에서 로컬 알림 두 개만 예약한다.
- * - 월간 리포트 마감 전: "이번 달 N그릇 더 기록하면 월간 리포트가 나와요"
+ * - 월간 리포트 마감 전: "이번 달 N그릇 더 기록하면 월간 리포트가 나와요" (취향 리포트를 숨긴 빌드에서는 예약하지 않는다)
  * - 마지막 기록 뒤 7일: "지난주에 먹은 라멘, 남겨볼까요?"
  * 기록을 저장할 때마다(완료 화면) 같은 식별자로 다시 예약해 중복을 막는다.
  * 권한은 첫 기록을 저장한 뒤 완료 화면에서 앱 안내 → 시스템 권한 순서로 한 번만 묻는다.
@@ -27,8 +28,8 @@ export type ReminderDecision = "accepted" | "declined"
 /** 알림을 누르면 여는 화면. 루트 레이아웃이 deepLinkToPath로 경로를 바꿔 연다 */
 export const REMINDER_DEEP_LINK = "raota://record/select-shop?mode=nearby&source=reminder"
 
-/** 알림이 열 수 있는 화면. 알림 데이터로 임의 경로를 열지 않도록 목록으로 막는다 */
-const DEEP_LINK_PATHS = ["/record/select-shop", "/record/new", "/taste", "/native"] as const
+/** 알림이 열 수 있는 화면. 알림 데이터로 임의 경로를 열지 않도록 목록으로 막는다. 취향 리포트를 숨긴 빌드에서는 /taste를 열지 않는다 */
+const DEEP_LINK_PATHS: readonly string[] = ["/record/select-shop", "/record/new", "/native", ...(TASTE_REPORT_ENABLED ? ["/taste"] : [])]
 
 const REMINDER_HOUR = 19
 const INACTIVE_DAYS = 7
@@ -64,7 +65,7 @@ export function planRecordReminders({ monthCount, lastRecordAt, now = new Date()
   const plans: PlannedReminder[] = []
   const status = monthlyReportStatus({ [seoulMonthKey(now)]: monthCount }, now)
 
-  if (status.remaining > 0) {
+  if (TASTE_REPORT_ENABLED && status.remaining > 0) {
     // 기기 달력 기준 이번 달 마지막 날
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
     const leadDate = atHour(lastDay, -(MONTHLY_LEAD_DAYS - 1))
@@ -105,7 +106,7 @@ export function deepLinkToPath(url: unknown): string | null {
   const match = url.match(/^(?:raota:\/\/\/?|\/)([^?#]*)(\?[^#]*)?/)
   if (!match) return null
   const path = `/${match[1].replace(/\/+$/, "")}`
-  if (!(DEEP_LINK_PATHS as readonly string[]).includes(path)) return null
+  if (!DEEP_LINK_PATHS.includes(path)) return null
   return `${path}${match[2] ?? ""}`
 }
 
@@ -280,7 +281,7 @@ export function configureReminderPresentation() {
 
 /**
  * 앱 안내를 띄우기 전 완료 화면을 먼저 읽게 둔다.
- * 도장 250ms + 본문 등장 450ms으로 연출이 끝나므로, 그 뒤 티켓·그릇 수·취향 변화를 읽을 시간까지 준다.
+ * 기록지의 펜 동그라미 다섯 개가 약 1.7초에 끝나므로, 그 뒤 기록지·그릇 수·한 줄 정리를 읽을 시간까지 준다.
  * 이 화면은 앱에서 유일한 축하 장면이고, 권한은 보상을 인식한 뒤에 물어야 수락률도 높다.
  */
 export const REMINDER_PROMPT_DELAY = 3500

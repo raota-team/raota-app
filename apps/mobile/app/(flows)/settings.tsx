@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { LEGAL_CONTACT_EMAIL, RAMEN_TYPES } from "@raota/shared"
 import { AppText, BottomSheet, Button, ConfirmDialog, Header, Screen, Toast } from "@/src/components/ui"
 import { useMonthlyReports } from "@/src/data"
+import { TASTE_REPORT_ENABLED } from "@/src/features"
 import { useReminderSwitch } from "@/src/notifications"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, radii, spacing, typography } from "@/src/theme"
@@ -17,7 +18,10 @@ import { colors, line, radii, spacing, typography } from "@/src/theme"
  * 설정. 마이의 최근 기록이 스크롤로 계속 늘어나서 계정·약관·로그아웃을 여기로 옮겼다(마이 프로필 오른쪽 위 톱니).
  * 로그인하지 않았으면(로그아웃 직후 포함) 마이로 돌려보낸다.
  */
-const REMINDER_DESCRIPTION = "월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요."
+// 취향 리포트를 숨긴 빌드는 월간 리포트 알림을 예약하지 않는다(src/notifications/reminders.ts)
+const REMINDER_DESCRIPTION = TASTE_REPORT_ENABLED
+  ? "월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요."
+  : "기록이 일주일 뜸할 때만 알려드려요."
 const BLOCKED_REMINDER_DESCRIPTION = "iOS 설정에서 알림이 꺼져 있어요. 눌러서 설정을 열 수 있어요."
 const EMAIL_FORMAT_ERROR = "이메일 형식이 아니에요. 예: ramen@example.com"
 

@@ -1,6 +1,7 @@
 import { Stack, router, usePathname, useSegments } from "expo-router"
 import { useEffect } from "react"
 
+import { TASTE_REPORT_ENABLED } from "@/src/features"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors } from "@/src/theme"
 
@@ -14,6 +15,8 @@ export default function FlowLayout() {
   const pathname = usePathname()
   const section = segments[1]
   const needsAccount = section === "record" || section === "taste" || section === "hidden-authors"
+  // 취향 리포트를 숨긴 빌드에서는 주소(딥링크·알림 포함)로 들어와도 홈으로 보낸다. 로그인보다 먼저 본다
+  const hidden = section === "taste" && !TASTE_REPORT_ENABLED
   const blocked = needsAccount && !currentUser
   // 약관 다시 동의가 필요한 회원은 로그인·가입·동의 화면과 약관 전문만 볼 수 있다
   const needsConsent = Boolean(currentUser) && state.consentRequired && section !== "auth" && section !== "legal"
@@ -27,9 +30,10 @@ export default function FlowLayout() {
    */
   useEffect(() => {
     // replace라 열려던 화면이 히스토리에서 지워진다. 로그인 뒤 돌아갈 곳을 next로 들려 보낸다
-    if (blocked) router.replace({ pathname: "/auth/login", params: { next: pathname } })
+    if (hidden) router.replace("/native")
+    else if (blocked) router.replace({ pathname: "/auth/login", params: { next: pathname } })
     else if (needsConsent) router.replace({ pathname: "/auth/consent", params: { next: pathname } })
-  }, [blocked, needsConsent, pathname])
+  }, [hidden, blocked, needsConsent, pathname])
 
   return (
     // 화면 어디서나 밀어 뒤로 가기: 루트 스택(app/_layout.tsx)과 같은 설정

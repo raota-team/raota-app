@@ -46,6 +46,7 @@ import {
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
 import { sizedImageUri } from "@/src/api/imageSize"
+import { TASTE_REPORT_ENABLED } from "@/src/features"
 import { colors, line, maxFontScale, radii, ramenHeat, spacing, touchTarget, typography } from "@/src/theme"
 import { shopSpecOf, shopStyleOf } from "../(flows)/taste/index"
 import Svg, { Path } from "react-native-svg"
@@ -138,7 +139,9 @@ function GuestView() {
           내 라멘 취향을 모아보세요
         </AppText>
         <AppText lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.gapTop1]} tone="sub" variant="body">
-          로그인하면 기록, 가고 싶은 매장, 취향 리포트를 한곳에서 이어볼 수 있어요.
+          {TASTE_REPORT_ENABLED
+            ? "로그인하면 기록, 가고 싶은 매장, 취향 리포트를 한곳에서 이어볼 수 있어요."
+            : "로그인하면 기록과 가고 싶은 매장을 한곳에서 이어볼 수 있어요."}
         </AppText>
         <View style={styles.guestActions}>
           <Button onPress={() => router.push("/auth/login")} title="로그인" />
@@ -519,15 +522,20 @@ function MemberView() {
         <View style={[styles.main, { minHeight: Math.max(0, windowHeight - insets.top - touchTarget * 2 - spacing.x8) }]}>
           {tab === "logs" ? (
             <>
-              <MyTasteTicket
-                bowls={bowls}
-                identity={identity}
-                onOpen={() => router.push("/taste")}
-                onStart={() => router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })}
-                recordCount={recordCount}
-                visits={visits}
-              />
-              <MonthlyTasteEntry onOpen={() => router.push("/taste/archive")} />
+              {/* 취향 리포트를 숨긴 빌드에서는 리포트로 들어가는 두 입구를 뺀다. 빈 계정의 첫 기록 안내는 아래 빈 상태가 맡는다 */}
+              {TASTE_REPORT_ENABLED ? (
+                <>
+                  <MyTasteTicket
+                    bowls={bowls}
+                    identity={identity}
+                    onOpen={() => router.push("/taste")}
+                    onStart={() => router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })}
+                    recordCount={recordCount}
+                    visits={visits}
+                  />
+                  <MonthlyTasteEntry onOpen={() => router.push("/taste/archive")} />
+                </>
+              ) : null}
               <TasteBoards bowls={bowls} myLogs={myLogs} shops={shops} />
               <View style={styles.infoSection}>
                 <View style={styles.rowBetween}>
@@ -772,7 +780,8 @@ function MemberView() {
                         onPress={() => openShop(shop)}
                         style={({ pressed }) => [styles.listRow, index > 0 && styles.rowDivider, pressed && styles.pressedWash]}
                       >
-                        <Thumb letter={visit.name} size={48} uri={visit.photo} />
+                        {/* 방문 원장의 사진은 로컬 데모 매장에만 있다. 서버 기록은 지금 매장 목록의 같은 매장 사진을 쓴다 */}
+                        <Thumb letter={visit.name} size={48} uri={visit.photo ?? shop?.photos[0]} />
                         <View style={styles.flex}>
                           <View style={styles.rowGap}>
                             <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} variant="cardTitle">
