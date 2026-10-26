@@ -23,7 +23,6 @@ import {
   MENU_CATEGORY_NAMES,
   RAMEN_ACTIVITY_LEVELS,
   getRamenActivityLevel,
-  menuCategoryOf,
   seoulToday,
   typeCountsOf,
   type DemoBowl,
@@ -32,6 +31,7 @@ import {
   type TasteIdentity,
   type RamenLog,
 } from "@raota/shared"
+import { bowlTypeOf, bowlTypes, needsMoreLogs, toBowlRow } from "@/src/domain/myBowls"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, BottomSheet, Button, Chip, EmptyState, LoadingState, Tag, Toast } from "@/src/components/ui"
 import {
@@ -190,20 +190,9 @@ function MemberView() {
     if (compact !== compactHeader) setCompactHeader(compact)
   }
 
-  const recentLogs = bowls.slice(0, recentLimit).map((bowl) => {
-    if (bowl.logId) {
-      // 서버 기록: 이름이 같은 지점이 섞이지 않게 기록 id와 매장 id로 맞춘다
-      const log = myLogs.find((item) => item.id === bowl.logId)
-      const shop = (bowl.shopId ? shops.find((item) => item.id === bowl.shopId) : undefined) ?? shopByName(bowl.shop)
-      const branch = log?.shop.branch ?? myLogs.find((item) => item.shop.id === bowl.shopId)?.shop.branch ?? shop?.branch
-      return { ...bowl, shop, branch, name: bowl.shop, photo: log?.imageUrl ?? shop?.photos[0] }
-    }
-    const shop = shopByName(bowl.shop)
-    const log = myLogs.find((item) => item.shop.name === bowl.shop && item.menuName === bowl.menu)
-    return { ...bowl, shop, branch: shop?.branch, name: bowl.shop, photo: log?.imageUrl ?? shop?.photos[0] }
-  })
+  const recentLogs = bowls.slice(0, recentLimit).map((bowl) => toBowlRow(bowl, myLogs, shops))
   // 보이는 서버 기록의 사진이 아직 안 읽은 쪽에 있으면 내 기록 다음 쪽을 읽는다
-  const recentNeedsLogs = recentLogs.some((row) => row.logId && !myLogs.some((log) => log.id === row.logId))
+  const recentNeedsLogs = needsMoreLogs(recentLogs, myLogs)
   const { hasMore: myLogsHasMore, loadMore: loadMoreMyLogs } = myLogsQuery
   useEffect(() => {
     if (recentNeedsLogs && myLogsHasMore) loadMoreMyLogs()
@@ -1062,47 +1051,60 @@ function MonthlyTasteEntry({ onOpen }: { onOpen: () => void }) {
   )
 }
 
-/** 실제 기록이 있는 종류만 사진 보드로 묶는다. 사진은 기록 또는 매장 원장의 이미지만 사용한다. */
+/**
+ * 기록에 고른 실제 종류마다 사진 보드 하나. 많이 먹은 순으로 옆으로 넘겨 보고, 누르면 그 종류만 모은 화면을 연다.
+ * 종류가 많아도(최대 13가지) 한 줄 높이라 마이가 길어지지 않는다. 사진은 기록 사진, 없으면 매장 사진.
+ */
 function TasteBoards({ bowls, myLogs, shops }: {
   bowls: DemoBowl[]
   myLogs: RamenLog[]
   shops: Shop[]
 }) {
-  const boards = useMemo(() => {
-    const counts = typeCountsOf(bowls)
-    return MENU_CATEGORY_NAMES.filter((type) => counts[type] > 0).map((type) => {
-      const photos = [...new Set(bowls
-        .filter((bowl) => menuCategoryOf(bowl.type) === type)
-        .map((bowl) => myLogs.find((log) => log.shop.name === bowl.shop && log.menuName === bowl.menu)?.imageUrl
-          ?? shops.find((shop) => shop.name === bowl.shop)?.photos[0])
-        .filter((photo): photo is string => Boolean(photo)))].slice(0, 3)
-      return { type, photos, count: counts[type] }
-    })
-  }, [bowls, myLogs, shops])
+  const boards = useMemo(() => bowlTypes(bowls).map(({ type, count }) => {
+    const photos = [...new Set(bowls
+      .filter((bowl) => bowlTypeOf(bowl) === type)
+      .map((bowl) => toBowlRow(bowl, myLogs, shops).photo)
+      .filter((photo): photo is string => Boolean(photo)))].slice(0, 3)
+    return { type, photos, count }
+  }), [bowls, myLogs, shops])
   if (!boards.length) return null
   return (
-    <View style={styles.boards}>
-      {boards.map((board) => (
-        <View key={board.type} style={styles.board}>
-          <View style={styles.collage}>
-            {board.photos.length ? (
-              <>
-                <Image contentFit="cover" source={{ uri: sizedImageUri(board.photos[0], board.photos.length > 1 ? 116 : 180) }} style={board.photos.length > 1 ? styles.collageMain : styles.fill} />
-                {board.photos.length > 1 ? (
-                  <View style={styles.collageSide}>
-                    {board.photos.slice(1).map((photo) => (
-                      <Image contentFit="cover" key={photo} source={{ uri: sizedImageUri(photo, 60) }} style={styles.collageSmall} />
-                    ))}
-                  </View>
-                ) : null}
-              </>
-            ) : null}
-          </View>
-          <View style={styles.boardLabel}>
-            <AppText numberOfLines={1} variant="bodyStrong">{board.type} {board.count}</AppText>
-          </View>
-        </View>
-      ))}
+    <View style={styles.infoSection}>
+      <View style={styles.rowBetween}>
+        <AppText accessibilityRole="header" variant="sectionTitle">종류별 기록</AppText>
+        <AppText capScale style={styles.tabular} tone="muted" variant="meta">{boards.length}종류</AppText>
+      </View>
+      <ScrollView contentContainerStyle={styles.boardRow} horizontal showsHorizontalScrollIndicator={false} style={styles.boardScroll}>
+        {boards.map((board) => (
+          <Pressable
+            accessibilityHint="이 종류 기록만 모아 봐요"
+            accessibilityLabel={`${board.type} ${board.count}그릇`}
+            accessibilityRole="button"
+            key={board.type}
+            onPress={() => router.push({ pathname: "/my-type/[type]", params: { type: board.type } })}
+            style={({ pressed }) => [styles.board, pressed && styles.deckPressed]}
+          >
+            <View style={styles.collage}>
+              {board.photos.length ? (
+                <>
+                  <Image contentFit="cover" source={{ uri: sizedImageUri(board.photos[0], board.photos.length > 1 ? 104 : 160) }} style={board.photos.length > 1 ? styles.collageMain : styles.fill} />
+                  {board.photos.length > 1 ? (
+                    <View style={styles.collageSide}>
+                      {board.photos.slice(1).map((photo) => (
+                        <Image contentFit="cover" key={photo} source={{ uri: sizedImageUri(photo, 52) }} style={styles.collageSmall} />
+                      ))}
+                    </View>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
+            <View style={[styles.boardLabel, styles.rowGap]}>
+              <AppText numberOfLines={1} style={styles.shrink} variant="bodyStrong">{board.type} {board.count}</AppText>
+              <ChevronRight color={colors.textMuted} size={14} />
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
     </View>
   )
 }
@@ -1277,13 +1279,15 @@ const styles = StyleSheet.create({
   deckFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingRight: spacing.x7 },
   deckMore: { flexDirection: "row", alignItems: "center", gap: spacing.x0_5 },
   deckMoreText: { fontWeight: "700", color: colors.ink },
-  boards: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.x2, rowGap: spacing.x4, marginHorizontal: -spacing.x1 },
-  board: { width: "48%", flexGrow: 1, maxWidth: "49%" },
-  collage: { height: 116, flexDirection: "row", gap: 2, borderRadius: radii.sm, backgroundColor: colors.canvasSoft, overflow: "hidden" },
+  // 종류 보드 줄은 화면 끝까지 흘려 옆으로 더 있다는 걸 보여 준다
+  boardScroll: { marginHorizontal: -spacing.gutter },
+  boardRow: { paddingHorizontal: spacing.gutter, gap: spacing.x3 },
+  board: { width: 156 },
+  collage: { height: 104, flexDirection: "row", gap: 2, borderRadius: radii.sm, backgroundColor: colors.canvasSoft, overflow: "hidden" },
   collageMain: { flex: 2 },
   collageSide: { flex: 1, gap: 2 },
   collageSmall: { flex: 1, width: "100%" },
-  boardLabel: { paddingHorizontal: spacing.x1, marginTop: spacing.x2 },
+  boardLabel: { paddingHorizontal: spacing.x0_5, marginTop: spacing.x2 },
   infoSection: { gap: spacing.x3 },
   calendarHeading: { flexShrink: 0 },
   periodScroll: { flexShrink: 1 },

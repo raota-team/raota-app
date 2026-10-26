@@ -14,6 +14,8 @@ import SettingsScreen from "@/app/(flows)/settings"
 import TasteReportScreen from "@/app/(flows)/taste/index"
 import MonthlyTasteScreen from "@/app/(flows)/taste/archive"
 import MonthlyTasteReportScreen from "@/app/(flows)/taste/[reportId]"
+import MyTypeScreen from "@/app/(flows)/my-type/[type]"
+import { bowlTypes } from "@/src/domain/myBowls"
 
 const mockParams: Record<string, string | undefined> = {}
 
@@ -666,5 +668,45 @@ describe("monthly taste", () => {
     expect(view.getByRole("tab", { name: "2026년 7월" }).props.accessibilityState).toEqual(
       expect.objectContaining({ selected: true }),
     )
+  })
+})
+
+describe("ramen types on My", () => {
+  it("gives every recorded type its own board, most eaten first, and opens that type", async () => {
+    const view = await renderScreen(<MyScreen />)
+    await view.findByText("뿡")
+    // 츠케멘·아부라소바도 기타로 묶이지 않고 따로. 같은 수면 기록 종류 순(츠케멘이 먼저)
+    const boards = view.getAllByLabelText(/^\S+ \d+그릇$/).filter((node) => node.props.accessibilityHint === "이 종류 기록만 모아 봐요")
+    expect(boards.map((node) => node.props.accessibilityLabel)).toEqual([
+      "돈코츠 14그릇", "쇼유 12그릇", "시오 8그릇", "미소 4그릇", "츠케멘 2그릇", "아부라소바 2그릇",
+    ])
+    await fireEvent.press(view.getByRole("button", { name: "쇼유 12그릇" }))
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/my-type/[type]", params: { type: "쇼유" } })
+  })
+
+  it("keeps 기타 last even when it is the most eaten, and counts unknown old types as 기타", () => {
+    const bowl = (type: string) => ({ date: "2026-07-01", shop: "가게", type, menu: "메뉴" })
+    expect(bowlTypes([bowl("기타"), bowl("中華そば"), bowl("기타"), bowl("쇼유")])).toEqual([
+      { type: "쇼유", count: 1 },
+      { type: "기타", count: 3 },
+    ])
+  })
+
+  it("collects one type on its own screen with its own summary", async () => {
+    mockParams.type = "쇼유"
+    const view = await renderScreen(<MyTypeScreen />)
+    expect(await view.findByText("12그릇")).toBeTruthy()
+    expect(view.getByText("가게 4곳 · 처음 2026.03.28 · 최근 2026.09.03")).toBeTruthy()
+    expect(view.getByText(/^자주 간 곳 멘야준 5번$/)).toBeTruthy()
+    // 카드는 쇼유 그릇 12개뿐, 최신순
+    const cards = view.getAllByLabelText(/, \d{4}\.\d\d\.\d\d$/)
+    expect(cards).toHaveLength(12)
+    expect(cards[0].props.accessibilityLabel).toMatch(/, 2026\.09\.03$/)
+  })
+
+  it("says so when there are no bowls of that type", async () => {
+    mockParams.type = "지로"
+    const view = await renderScreen(<MyTypeScreen />)
+    expect(await view.findByText("지로 기록이 없어요")).toBeTruthy()
   })
 })
