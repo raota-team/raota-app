@@ -1,10 +1,11 @@
-import { ChevronRight, Ticket } from "lucide-react-native"
+import { Ticket } from "lucide-react-native"
 import { Pressable, StyleSheet, View } from "react-native"
+import Svg, { Line } from "react-native-svg"
 
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, BottomSheet } from "@/src/components/ui"
 import type { RemoteTicket, RemoteTodayTickets } from "@/src/data/remote"
-import { colors, radii, spacing } from "@/src/theme"
+import { colors, line, pressFade, radii, soup, spacing, ticketInk, ticketPaperOf } from "@/src/theme"
 
 const SEOUL_OFFSET_MS = 9 * 60 * 60 * 1000
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
@@ -26,7 +27,8 @@ export function ticketIssuedAt(iso: string): string {
 
 /**
  * 오늘 뽑은 AI 식권 목록. 홈과 AI 큐레이터가 같이 쓴다. 고르면 그 식권의 추천 결과를 연다.
- * 모두 오늘 뽑은 식권이라 날짜는 머리에 한 번만 적고, 칸마다 몇 번째 식권인지와 시각, 매장 사진으로 구별한다.
+ * 발권 화면과 같은 색종이 식권(국물 색을 흰 종이에 섞은 색)으로 그리고, 오른쪽 꼬리에 몇 번째 식권인지와 시각을 적는다.
+ * 모두 오늘 뽑은 식권이라 날짜는 머리에 한 번만 적는다.
  */
 export function TodayTicketsSheet({
   visible,
@@ -52,6 +54,8 @@ export function TodayTicketsSheet({
         {today?.tickets.map((ticket, index) => {
           const first = ticket.shops[0]
           const photo = first?.photos.find(Boolean)
+          // 종이 색은 그 식권에 고른 국물. 조건에 없으면 첫 매장의 종류로 정한다
+          const type = ticket.appliedConditions.find((label) => label in soup) ?? first?.ramenTypes?.[0] ?? ""
           // 최신순 목록이라 처음 뽑은 식권이 No.1이다
           const number = count - index
           return (
@@ -61,29 +65,37 @@ export function TodayTicketsSheet({
               accessibilityRole="button"
               key={ticket.id}
               onPress={() => onSelect(ticket)}
-              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.card, { backgroundColor: ticketPaperOf(type) }, pressed && pressFade]}
               testID="ai-ticket-row"
             >
               <View style={styles.thumb}>
                 {photo ? (
                   <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={photo} />
                 ) : (
-                  <Ticket color={colors.textMuted} size={22} />
+                  <Ticket color={ticketInk.muted} size={22} />
                 )}
               </View>
-              {/* 글 묶음이 남은 폭을 모두 차지해야 오른쪽 화살표가 칸마다 같은 자리에 선다 */}
+              {/* 글 묶음이 남은 폭을 모두 차지해야 오른쪽 꼬리가 칸마다 같은 자리에 선다 */}
               <View style={styles.copy}>
-                <AppText capScale style={styles.stamp} tone="muted" variant="meta">{`No.${number} · ${seoulParts(new Date(ticket.createdAt)).time}`}</AppText>
-                <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} variant="bodyStrong">
+                <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.ink} variant="bodyStrong">
                   {first ? first.name : "지금은 보여줄 가게가 없어요"}
                 </AppText>
                 {ticket.appliedConditions.length ? (
-                  <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} tone="sub" variant="meta">
+                  <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.muted} variant="meta">
                     {ticket.appliedConditions.join(" · ")}
                   </AppText>
                 ) : null}
               </View>
-              <ChevronRight color={colors.textMuted} size={16} />
+              <View style={styles.rule}>
+                {/* iOS는 한 변짜리 dashed 테두리를 못 그려 SVG로 긋는다. 칸 높이를 정하지 않게 겹쳐 그린다 */}
+                <Svg height="100%" style={StyleSheet.absoluteFill} width={line.base}>
+                  <Line stroke={ticketInk.rule} strokeDasharray="4 4" strokeWidth={line.base} x1={line.base / 2} x2={line.base / 2} y1={0} y2="100%" />
+                </Svg>
+              </View>
+              <View style={styles.stub}>
+                <AppText capScale style={[styles.muted, styles.stamp]} variant="meta">{`No.${number}`}</AppText>
+                <AppText capScale style={[styles.muted, styles.tabular]} variant="meta">{seoulParts(new Date(ticket.createdAt)).time}</AppText>
+              </View>
             </Pressable>
           )
         })}
@@ -94,24 +106,28 @@ export function TodayTicketsSheet({
 
 const styles = StyleSheet.create({
   list: { gap: spacing.x2, paddingBottom: spacing.x2 },
+  // 실물 식권처럼 모서리가 거의 서 있다(발권 화면의 식권과 같다)
   card: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.x3,
     padding: spacing.x3,
-    borderRadius: radii.md,
-    backgroundColor: colors.canvasSoft,
+    borderRadius: radii.xs,
   },
-  pressed: { backgroundColor: colors.surfacePressed },
   thumb: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    borderRadius: radii.md,
-    backgroundColor: colors.canvas,
+    borderRadius: radii.xs,
+    backgroundColor: colors.white,
   },
   copy: { flex: 1, minWidth: 0, gap: 2 },
+  ink: { color: ticketInk.text },
+  muted: { color: ticketInk.muted },
+  rule: { alignSelf: "stretch", width: line.base },
+  stub: { width: 48, alignItems: "center", gap: 2 },
   stamp: { fontWeight: "700", fontVariant: ["tabular-nums"] },
+  tabular: { fontVariant: ["tabular-nums"] },
 })

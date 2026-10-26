@@ -12,10 +12,12 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type ViewProps,
   findNodeHandle,
   useWindowDimensions,
 } from "react-native"
 import Animated, { Easing, cancelAnimation, interpolateColor, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from "react-native-reanimated"
+import Svg, { Line } from "react-native-svg"
 import type { Edge } from "react-native-safe-area-context"
 
 import { type Shop, type ShopCatalogItem, type TasteReport } from "@raota/shared"
@@ -25,13 +27,13 @@ import { isRemote } from "@/src/api/config"
 import type { RecommendationRequest } from "@/src/api/types"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { TodayTicketsSheet } from "@/src/components/TodayTicketsSheet"
-import { AppText, Button, ConfirmDialog, EmptyState, Header, LoadingState, Screen, StickyActionBar, TicketCut, Toast } from "@/src/components/ui"
+import { AppText, Button, ConfirmDialog, EmptyState, Header, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
 import { useAllShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
 import { remoteReads, remoteWrites, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
 import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
 import { curatorTasteReport } from "@/src/domain/curatorTaste"
 import { useRaota } from "@/src/state/RaotaStore"
-import { colors, line, maxFontScale, radii, soupColorOf, spacing, touchTarget, typography, usePalette } from "@/src/theme"
+import { colors, line, maxFontScale, radii, soupColorOf, spacing, ticketInk, ticketPaperOf, touchTarget, typography, usePalette } from "@/src/theme"
 
 /** 식권 자판기 버튼이 눌려 들어가는 깊이 */
 const BUTTON_SINK = 2
@@ -83,9 +85,11 @@ const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
 
 const LOADING_MESSAGES = ["선택한 조건을 확인하고 있어요", "어울리는 라멘집을 찾고 있어요", "식권을 뽑고 있어요", "오늘의 추천이 준비됐어요"]
 /**
- * 조건 칩을 하나씩 밝히고 식권 윗부분을 먼저 보인 다음 전체를 올린다.
- * 결과 화면으로는 완성된 식권을 RESULT_HOLD만큼 보여 준 뒤 넘어간다.
+ * 조건 칩을 하나씩 밝히면 식권기 투입구에서 색종이 식권이 아랫단(날짜·매수)부터 내려온다(사용자 결정 2026.10.26, 식권 B안).
+ * 결과가 준비되면 가게 이름까지 다 내려오고, 결과 화면으로는 완성된 식권을 RESULT_HOLD만큼 보여 준 뒤 넘어간다.
  */
+/** 식권이 나오는 투입구 두께. 식권은 투입구 가운데 줄 아래에서 나타난다 */
+const SLOT_HEIGHT = 12
 const KEY_START = 300
 const KEY_INTERVAL = 500
 const STUB_SLIDE = 600
@@ -984,7 +988,8 @@ export default function AIRecommendScreen() {
               <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultTitle} variant="screenTitle">{nickname ? `오늘 ${nickname}님을 위한 라멘집` : "오늘의 추천"}</AppText>
             </View>
 
-            <View style={styles.resultCard}>
+            {/* 뽑은 식권: 발권 화면에서 내려온 것과 같은 색종이 식권에 매장 사진을 얹는다 */}
+            <View style={[styles.resultCard, { backgroundColor: ticketPaperOf(resultType) }]} testID="ai-result-ticket">
               <View style={styles.resultPhotoWrap}>
                 <ResilientUriImage accessibilityLabel={`${result.shop.name} 대표 사진`} style={styles.resultPhoto} transition={0} uri={result.shop.photos[0]} />
                 {resultType ? (
@@ -993,27 +998,26 @@ export default function AIRecommendScreen() {
                   </View>
                 ) : null}
               </View>
-              <View style={styles.resultBody}>
-                <AppText tone="muted" variant="meta">RAOTA 식권 · 오늘의 한 그릇</AppText>
-                <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultName} variant="sectionTitle">
+              <View style={styles.ticketMain}>
+                <AppText style={styles.ticketMuted} variant="meta">오늘의 한 그릇</AppText>
+                <AppText lineBreakStrategyIOS="hangul-word" style={[styles.resultName, styles.ticketText]} variant="sectionTitle">
                   {result.shop.name}
                   {result.shop.branch ? (
-                    <AppText tone="muted" variant="cardTitle">{` · ${result.shop.branch}`}</AppText>
+                    <AppText style={styles.ticketMuted} variant="cardTitle">{` · ${result.shop.branch}`}</AppText>
                   ) : null}
                 </AppText>
                 {result.shop.spec || result.shop.distanceM > 0 ? (
-                  <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultSpec} tone="sub" variant="secondary">
+                  <AppText lineBreakStrategyIOS="hangul-word" style={[styles.ticketPlace, styles.ticketText]} variant="secondary">
                     {[result.shop.spec, result.shop.distanceM > 0 ? result.shop.distanceM >= 1000 ? `${(result.shop.distanceM / 1000).toFixed(1)}km` : `${result.shop.distanceM}m` : null].filter(Boolean).join(" · ")}
                   </AppText>
                 ) : null}
+                {result.shop.description ? (
+                  <AppText lineBreakStrategyIOS="hangul-word" style={[styles.resultDescription, styles.ticketText, styles.ticketMuted]} variant="meta">
+                    {result.shop.description}
+                  </AppText>
+                ) : null}
               </View>
-              <TicketCut />
-              <View style={styles.resultFoot}>
-                <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultDescription} tone="sub" variant="meta">
-                  {result.shop.description}
-                </AppText>
-                <AppText capScale style={styles.resultDate} tone="muted" variant="meta">{issueDate} · 1매</AppText>
-              </View>
+              <MealTicketFoot issueDate={issueDate} />
             </View>
 
             {result.reason ? (
@@ -1182,8 +1186,8 @@ interface TicketCondition {
 }
 
 /**
- * 준비 신호와 연출은 독립적이다. 식권 윗부분을 보여 준 뒤에도 응답이 늦으면
- * 그대로 기다리고, 준비가 끝났을 때만 식권 전체를 올린다.
+ * 준비 신호와 연출은 독립적이다. 식권 아랫단을 보여 준 뒤에도 응답이 늦으면
+ * 그대로 기다리고, 준비가 끝났을 때만 식권 전체를 내린다.
  */
 function CurationLoading({
   conditions,
@@ -1197,7 +1201,7 @@ function CurationLoading({
   onBack: () => void
   onComplete: () => void
   resultReady: Promise<Curation | null>
-  /** 서버 응답 전에는 null이다. 그동안은 식권 윗부분까지만 보여서 매장 칸이 비어 있어도 드러나지 않는다 */
+  /** 서버 응답 전에는 null이다. 그동안은 식권 아랫단까지만 내려와서 매장 칸이 비어 있어도 드러나지 않는다 */
   shop: CuratorShop | null
   typeLabel: string
 }) {
@@ -1242,7 +1246,7 @@ function CurationLoading({
 
   useEffect(() => {
     if (phase !== "stub") return
-    // 응답이 이미 준비됐어도 식권 윗부분을 STUB_HOLD 동안 보여 준다.
+    // 응답이 이미 준비됐어도 식권 아랫단을 STUB_HOLD 동안 보여 준다.
     const timer = setTimeout(() => setStubWaited(true), STUB_HOLD)
     return () => clearTimeout(timer)
   }, [phase])
@@ -1251,6 +1255,7 @@ function CurationLoading({
     if (phase === "stub" && stubWaited && ready) setPhase("out")
   }, [phase, ready, stubWaited])
 
+  // 투입구 위(음수)에 숨어 있다가 아랫단만큼, 그다음 전체가 내려온다
   useEffect(() => {
     if (!ticketHeight || !stubHeight) return
     if (reducedMotion) {
@@ -1258,9 +1263,9 @@ function CurationLoading({
     } else if (phase === "out") {
       ticketShift.value = withTiming(0, { duration: TICKET_SETTLE, easing: Easing.out(Easing.cubic) })
     } else if (phase === "stub") {
-      ticketShift.value = withTiming(ticketHeight - stubHeight, { duration: STUB_SLIDE, easing: Easing.out(Easing.cubic) })
+      ticketShift.value = withTiming(stubHeight - ticketHeight, { duration: STUB_SLIDE, easing: Easing.out(Easing.cubic) })
     } else {
-      ticketShift.value = ticketHeight + spacing.x3
+      ticketShift.value = -(ticketHeight + spacing.x3)
     }
   }, [phase, reducedMotion, stubHeight, ticketHeight, ticketShift])
 
@@ -1333,31 +1338,26 @@ function CurationLoading({
           })}
         </View>
 
-        {/* 슬롯은 잘린 창 위에 두고, 식권은 실제 높이를 재서 윗부분부터 올린다. */}
-        <View style={[styles.ticketFeed, { width: ticketWidth, height: ticketHeight ? ticketHeight + line.base : 224 }]}>
+        {/* 투입구는 잘린 창 맨 위에 두고, 식권은 실제 높이를 재서 아랫단부터 내려보낸다. */}
+        <View style={[styles.ticketFeed, { width: ticketWidth, height: ticketHeight ? SLOT_HEIGHT / 2 + ticketHeight + spacing.x1 : 224 }]}>
           <Animated.View
             onLayout={({ nativeEvent }) => {
               const height = Math.ceil(nativeEvent.layout.height)
-              if (!ticketHeight) ticketShift.value = reducedMotion || phase === "out" ? 0 : height + spacing.x3
+              if (!ticketHeight) ticketShift.value = reducedMotion || phase === "out" ? 0 : -(height + spacing.x3)
               setTicketHeight(height)
             }}
             accessibilityElementsHidden={phase !== "out"}
             importantForAccessibility={phase === "out" ? "auto" : "no-hide-descendants"}
-            style={[styles.ticket, ticketStyle]}
+            style={[styles.ticket, { backgroundColor: ticketPaperOf(typeLabel) }, ticketStyle]}
           >
-            <View onLayout={({ nativeEvent }) => setStubHeight(Math.ceil(nativeEvent.layout.height))} style={styles.ticketHead}>
-              <AppText variant="bodyStrong">RAOTA 식권</AppText>
-              <AppText capScale tone="muted" variant="meta">{issueDate} · 1매</AppText>
-            </View>
             <View style={styles.ticketMain}>
-              <AppText tone="muted" variant="meta">오늘의 한 그릇</AppText>
-              <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketName} variant="headline">{shop?.name ?? ""}</AppText>
-              <AppText lineBreakStrategyIOS="hangul-word" style={styles.ticketPlace} tone="sub" variant="secondary">
+              <AppText style={styles.ticketMuted} variant="meta">오늘의 한 그릇</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" style={[styles.ticketName, styles.ticketText]} variant="headline">{shop?.name ?? ""}</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" style={[styles.ticketPlace, styles.ticketText]} variant="secondary">
                 {[typeLabel, place].filter(Boolean).join(" · ")}
               </AppText>
             </View>
-            <TicketCut />
-            <AppText style={styles.ticketFoot} tone="muted" variant="meta">고른 취향이 한 장의 식권이 되었어요</AppText>
+            <MealTicketFoot issueDate={issueDate} onLayout={({ nativeEvent }) => setStubHeight(Math.ceil(nativeEvent.layout.height))} />
           </Animated.View>
           <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.ticketSlot} />
         </View>
@@ -1385,6 +1385,22 @@ function CurationLoading({
         </View>
       </ScrollView>
     </Screen>
+  )
+}
+
+/** 식권 아랫단: 절취선과 "RAOTA 식권 · {날짜} · 1매". 발권 중인 식권(아랫단부터 내려온다)과 뽑은 식권이 같이 쓴다 */
+function MealTicketFoot({ issueDate, onLayout }: { issueDate: string; onLayout?: ViewProps["onLayout"] }) {
+  return (
+    <View onLayout={onLayout} style={styles.ticketFoot}>
+      {/* iOS는 한 변짜리 dashed 테두리를 그리지 못해 절취선을 SVG로 긋는다 */}
+      <Svg height={line.base} width="100%">
+        <Line stroke={ticketInk.rule} strokeDasharray="4 4" strokeWidth={line.base} x1={0} x2="100%" y1={line.base / 2} y2={line.base / 2} />
+      </Svg>
+      <View style={styles.ticketFootRow}>
+        <AppText capScale style={[styles.ticketMuted, styles.ticketBrand]} variant="meta">RAOTA 식권</AppText>
+        <AppText capScale style={[styles.ticketMuted, styles.tabular]} variant="meta">{issueDate} · 1매</AppText>
+      </View>
+    </View>
   )
 }
 
@@ -1484,13 +1500,8 @@ const styles = StyleSheet.create({
   resultTitle: { fontSize: 21, lineHeight: 27 },
   stickyButton: { paddingHorizontal: spacing.x3 },
 
-  resultCard: { marginTop: spacing.x4, borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
-  resultPhotoWrap: {
-    height: 154,
-    overflow: "hidden",
-    borderTopLeftRadius: radii.sm,
-    borderTopRightRadius: radii.sm,
-  },
+  resultCard: { marginTop: spacing.x4, borderRadius: radii.xs, overflow: "hidden" },
+  resultPhotoWrap: { height: 154, overflow: "hidden" },
   resultPhoto: { width: "100%", height: "100%" },
   resultPhotoTag: {
     position: "absolute",
@@ -1502,12 +1513,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.photoPill,
   },
   resultPhotoTagText: { color: colors.onPhotoPill },
-  resultBody: { paddingHorizontal: spacing.x4, paddingVertical: spacing.x4 },
   resultName: { marginTop: spacing.x1 },
-  resultSpec: { marginTop: spacing.x1 },
-  resultFoot: { gap: spacing.x2, paddingHorizontal: spacing.x4, paddingVertical: spacing.x4 },
-  resultDescription: { fontSize: 12, lineHeight: 17 },
-  resultDate: { alignSelf: "flex-end" },
+  resultDescription: { marginTop: spacing.x3, fontSize: 12, lineHeight: 17 },
 
   conditions: { marginTop: spacing.section },
   conditionsTitle: { marginBottom: spacing.x3, fontSize: 17, lineHeight: 22 },
@@ -1559,31 +1566,31 @@ const styles = StyleSheet.create({
   loadingChipText: { flexShrink: 1 },
   ticketFeed: {
     overflow: "hidden",
+    alignItems: "center",
     marginTop: spacing.section,
-    paddingBottom: line.base,
+    paddingTop: SLOT_HEIGHT / 2,
   },
+  // 식권보다 양옆으로 조금 넓어 종이가 그 틈에서 나오는 것처럼 보인다
   ticketSlot: {
     position: "absolute",
-    bottom: 0,
-    left: spacing.x1,
-    right: spacing.x1,
-    height: 4,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: SLOT_HEIGHT,
     borderRadius: radii.pill,
     backgroundColor: colors.ink,
   },
-  ticket: { width: "100%", borderRadius: radii.sm, backgroundColor: colors.canvasSoft },
-  ticketHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.x5,
-    paddingTop: spacing.x5,
-    paddingBottom: spacing.x4,
-  },
-  ticketMain: { paddingHorizontal: spacing.x5, paddingBottom: spacing.x5 },
-  ticketName: { marginTop: spacing.x1, fontSize: 28, lineHeight: 34 },
+  // 실물 식권처럼 작고 모서리가 거의 서 있다
+  ticket: { width: "86%", borderRadius: radii.xs },
+  ticketMain: { alignItems: "center", paddingHorizontal: spacing.x4, paddingTop: spacing.x6, paddingBottom: spacing.x4 },
+  ticketText: { color: ticketInk.text, textAlign: "center" },
+  ticketMuted: { color: ticketInk.muted },
+  ticketName: { marginTop: spacing.x1, fontSize: 26, lineHeight: 32 },
   ticketPlace: { marginTop: spacing.x1 },
-  ticketFoot: { paddingHorizontal: spacing.x5, paddingTop: spacing.x5, paddingBottom: spacing.x5 },
+  ticketFoot: { paddingHorizontal: spacing.x3, paddingBottom: spacing.x3 },
+  ticketFootRow: { flexDirection: "row", justifyContent: "space-between", gap: spacing.x2, marginTop: spacing.x2_5 },
+  ticketBrand: { fontWeight: "700" },
+  tabular: { fontVariant: ["tabular-nums"] },
   loadingActions: { alignItems: "center", gap: spacing.x1, marginTop: spacing.section },
   statusLine: { minHeight: touchTarget, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.x1_5 },
   statusText: { textAlign: "center", flexShrink: 1 },
