@@ -33,12 +33,12 @@ beforeEach(() => jest.useFakeTimers())
 afterEach(() => jest.useRealTimers())
 
 describe("앱을 켤 때 덮는 화면", () => {
-  it("홈이 바로 준비돼도 1초는 보여 주고 걷는다", async () => {
+  it("홈이 바로 준비돼도 1.5초는 보여 주고 걷는다", async () => {
     const app = await launch()
     await app.homeReady()
     expect(app.covered()).toBe(true)
 
-    await app.advance(999)
+    await app.advance(1_499)
     expect(app.covered()).toBe(true)
     await app.advance(1)
     expect(app.covered()).toBe(false)
@@ -54,7 +54,7 @@ describe("앱을 켤 때 덮는 화면", () => {
 
   it("알림으로 홈이 아닌 화면부터 열리면 홈을 기다리지 않는다", async () => {
     const app = await launch(["(flows)", "record"])
-    await app.advance(1_000)
+    await app.advance(1_500)
     expect(app.covered()).toBe(false)
   })
 })
