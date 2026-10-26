@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.raota.app",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -71,11 +71,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
+          "image": "./assets/images/splash.png",
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF",
           "dark": {
-            "image": "./assets/images/logo.png",
+            "image": "./assets/images/splash-dark.png",
             "backgroundColor": "#121211"
           }
         }

@@ -4,16 +4,17 @@ import { ErrorBoundary as RouterErrorBoundary, Redirect, Stack, router, useSegme
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
 import { useEffect, useRef } from "react"
-import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View } from "react-native"
+import { AppState, Platform, StyleSheet, View } from "react-native"
 import "react-native-reanimated"
 
 import { track } from "@/src/analytics"
 import { startPostHogAnalytics } from "@/src/analytics/posthog"
 import { Toast } from "@/src/components/ui"
+import LaunchCover from "@/src/components/LaunchCover"
 import { cancelRecordReminders, configureReminderPresentation, deepLinkToPath } from "@/src/notifications"
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
 import { reportError, startErrorMonitoring, withErrorMonitoring } from "@/src/monitoring"
-import { colors, spacing, typography } from "@/src/theme"
+import { colors } from "@/src/theme"
 
 ;(globalThis as typeof globalThis & { Buffer?: typeof Buffer }).Buffer ??=
   Buffer
@@ -89,15 +90,14 @@ function ReminderDeepLinks() {
 }
 
 function RootLayout() {
-  useEffect(() => {
-    void SplashScreen.hideAsync()
-  }, [])
   useAppOpenTracking()
 
+  // 네이티브 스플래시는 LaunchCover가 같은 로고를 그린 뒤에 내린다
   return (
     <View style={styles.root}>
       <RaotaProvider>
         <HydratedNavigation />
+        <LaunchCover />
       </RaotaProvider>
     </View>
   )
@@ -115,20 +115,8 @@ function HydratedNavigation() {
     if (isHydrated && !signedIn) void cancelRecordReminders()
   }, [isHydrated, signedIn])
 
-  if (!isHydrated) {
-    return (
-      <View
-        accessibilityLabel="RAOTA 데이터 불러오는 중"
-        style={styles.loading}
-      >
-        <StatusBar style="auto" />
-        <Text style={styles.wordmark}>
-          RAOTA<Text style={styles.dot}>.</Text>
-        </Text>
-        <ActivityIndicator color={colors.ink} size="small" />
-      </View>
-    )
-  }
+  // 저장소와 로그인을 불러오는 동안은 LaunchCover가 덮고 있다. 그 아래에 아무것도 그리지 않는다
+  if (!isHydrated) return <View style={styles.root} />
 
   const isOnboardingRoute =
     segments[0] === "(flows)" &&
@@ -180,13 +168,4 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.canvas },
   navigationRoot: { flex: 1 },
   storageToast: { bottom: 92, zIndex: 100 },
-  loading: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.x4,
-    backgroundColor: colors.canvas,
-  },
-  wordmark: { ...typography.headline, color: colors.ink },
-  dot: { color: colors.brand },
 })
