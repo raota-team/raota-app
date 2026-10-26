@@ -218,26 +218,25 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   const tasteProfile = useTasteProfile()
   const tasteIdentity = useTasteIdentity()
   const origin = useKnownLocation()
-  // 위쪽 내용(매장 목록·오늘의 큐레이션)을 다 받으면 앱을 켤 때 덮어 둔 화면을 걷는다
-  useEffect(() => {
-    if (!shopsQuery.isLoading && !curation.isLoading) markLaunchReady()
-  }, [curation.isLoading, shopsQuery.isLoading])
   const loggedIn = Boolean(currentUser?.isLoggedIn)
   // 오늘 뽑은 AI 식권. 큐레이터에서 뽑고 돌아오면 다시 읽어야 해서 화면에 들어올 때마다 읽는다
   const ticketsEnabled = isRemote("recommendations") && loggedIn
   const [todayTickets, setTodayTickets] = useState<RemoteTodayTickets | null>(null)
+  /** 식권을 한 번이라도 다 읽었는가(실패도 끝난 것으로 본다). 앱을 켤 때 덮개가 이것까지 기다린다 */
+  const [ticketsSettled, setTicketsSettled] = useState(false)
   const [ticketsOpen, setTicketsOpen] = useState(false)
   useFocusEffect(
     useCallback(() => {
       if (!ticketsEnabled) {
         setTodayTickets(null)
+        setTicketsSettled(true)
         return
       }
       let active = true
       remoteReads.recommendationTickets().then(
         (tickets) => { if (active) setTodayTickets(tickets) },
         () => { if (active) setTodayTickets(null) },
-      )
+      ).finally(() => { if (active) setTicketsSettled(true) })
       return () => { active = false }
     }, [ticketsEnabled]),
   )
@@ -298,6 +297,13 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
     () => loungeFeed.data.filter((log) => logPhoto(log) && log.shop.id !== todayPick?.id).slice(0, 5),
     [loungeFeed.data, todayPick?.id],
   )
+
+  // 홈이 부르는 것(매장·오늘의 큐레이션·내 기록·라운지 미리보기·오늘 식권)을 다 받으면 앱을 켤 때 덮어 둔 화면을 걷는다.
+  // 늦으면 덮개가 정한 최대 시간 뒤에 그냥 연다
+  const homeLoading = shopsQuery.isLoading || curation.isLoading || bowls.isLoading || tasteProfile.isLoading || loungeFeed.isLoading || !ticketsSettled
+  useEffect(() => {
+    if (!homeLoading) markLaunchReady()
+  }, [homeLoading])
   const pickCatalog = todayPick ? catalogOf(todayPick) : {}
   const pickMeta = todayPick
     ? curation.remote
