@@ -1,12 +1,12 @@
 import { useSegments } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { useEffect, useRef, useState } from "react"
-import { Animated, Easing, Image, StyleSheet, View, useColorScheme } from "react-native"
+import { Animated, Easing, Image, StyleSheet, View } from "react-native"
 import { useReducedMotion } from "react-native-reanimated"
 
 import { onLaunchReady } from "../launch"
 import { useRaota } from "../state/RaotaStore"
-import { colors } from "../theme"
+import { colors, palettes, usePalette } from "../theme"
 
 /** 앱을 켠 뒤 덮개를 최소한 보여 주는 시간. 홈이 이보다 빨리 준비돼도 로고가 깜빡 지나가지 않게 한다(사용자 결정 2026.10.26) */
 const MIN_VISIBLE_MS = 1_500
@@ -32,7 +32,8 @@ const launchedAt = Date.now()
 export default function LaunchCover() {
   const { isHydrated } = useRaota()
   const segments = useSegments()
-  const dark = useColorScheme() === "dark"
+  // 앱 색과 같은 규칙: 어두운 색은 iOS 다크 모드에서만. 안드로이드는 늘 밝은 바탕이라 검은 로고 글씨를 쓴다
+  const dark = usePalette() === palettes.dark
   const reduceMotion = useReducedMotion()
   const opacity = useRef(new Animated.Value(1)).current
   const progress = useRef(new Animated.Value(0)).current
