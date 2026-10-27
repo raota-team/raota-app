@@ -704,7 +704,8 @@ const styles = StyleSheet.create({
   },
   accountSuffix: { fontWeight: "600" },
   authRow: { flexDirection: "row", gap: spacing.x2, alignSelf: "flex-end" },
-  loginButton: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x2 },
+  // 누를 때 깔리는 회색(pressedWash)이 각진 네모로 보이지 않게 옆의 회원가입과 같은 반경을 준다
+  loginButton: { minHeight: touchTarget, justifyContent: "center", paddingHorizontal: spacing.x3, borderRadius: radii.sm },
   signupButton: {
     minHeight: touchTarget,
     justifyContent: "center",
