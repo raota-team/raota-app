@@ -199,12 +199,13 @@ export const line = {
 
 /**
  * Pin Sans 대신 Pretendard. 글자 폭과 x높이가 비슷하고 한글이 함께 들어 있다.
- * iOS는 app.json의 expo-font 플러그인으로 네 굵기(400·500·600·700)를 앱에 넣어 "Pretendard" 한 이름에서 fontWeight로 고른다.
+ * app.json의 expo-font 플러그인으로 네 굵기(400·500·600·700)를 앱에 넣어 "Pretendard" 한 이름에서 fontWeight로 고른다.
+ * iOS는 글꼴 파일의 이름표로, 안드로이드는 굵기별 XML 글꼴 묶음(res/font)으로 같은 이름을 쓴다.
  */
 export const fonts = {
   body: Platform.select({
     ios: "Pretendard",
-    android: "sans-serif",
+    android: "Pretendard",
     web: 'Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif',
     default: "Pretendard",
   }),
