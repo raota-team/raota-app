@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
-    "export:ios": "expo export --platform ios"
+    "export:ios": "expo export --platform ios",
+    "testflight": "node scripts/testflight-external.mjs"
   },
   "dependencies": {
     "@mj-studio/react-native-naver-map": "^2.9.1",
