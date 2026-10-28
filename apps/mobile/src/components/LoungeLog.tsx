@@ -18,10 +18,10 @@ import {
 } from "react-native"
 import Animated, {
   Easing,
-  FadeInUp,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withDelay,
   withSequence,
   withTiming,
 } from "react-native-reanimated"
@@ -258,8 +258,11 @@ export interface LoungeLogCardProps {
 /** 공개 기록은 사진(또는 인용문)과 한 줄·작성자만 먼저 보여 준다. 공감·댓글·신고는 상세에 있다. */
 export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, batchIndex = 0 }: LoungeLogCardProps) {
   const reducedMotion = useReducedMotion()
-  // 마운트할 때 한 번만 정한다. entering은 처음 그릴 때만 쓰인다
+  // 마운트할 때 한 번만 정한다
   const [isNew] = useState(() => !shownLogsByFeed.get(feedKey)?.has(log.id))
+  // 떠오름은 layout animation(entering) 대신 이 값으로 직접 튼다. FlashList가 같은 기록의 칸을 피드를 바꿔 옮기면
+  // entering이 시작값(opacity 0)에 멈춰, 인기순 → 최신순처럼 캐시된 피드로 돌아올 때 카드가 안 보였다(2026.10.28 제보)
+  const appear = useSharedValue(isNew && !reducedMotion ? 0 : 1)
   useEffect(() => {
     let shown = shownLogsByFeed.get(feedKey)
     if (!shown) {
@@ -268,6 +271,16 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
     }
     shown.add(log.id)
   }, [feedKey, log.id])
+  useEffect(() => {
+    if (appear.value === 1) return
+    appear.value = withDelay(Math.min(Math.max(batchIndex, 0) * 50, 400), withTiming(1, { duration: 450, easing: EASE_OUT }))
+    // 마운트할 때 한 번만 튼다. 끝나면 1에 머문다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const appearStyle = useAnimatedStyle(() => ({
+    opacity: appear.value,
+    transform: [{ translateY: (1 - appear.value) * 14 }],
+  }))
   const photos = photosOf(log)
   const summary = compactTasteSummary(log)
   const bodyLabel = [
@@ -278,14 +291,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
   ].filter(Boolean).join(". ")
 
   return (
-    <Animated.View
-      entering={reducedMotion || !isNew
-        ? undefined
-        : FadeInUp.duration(450)
-            .delay(Math.min(Math.max(batchIndex, 0) * 50, 400))
-            .easing(EASE_OUT)
-            .withInitialValues({ opacity: 0, transform: [{ translateY: 14 }] })}
-    >
+    <Animated.View style={appearStyle}>
       <Pressable
         accessibilityHint="라멘로그와 댓글을 봐요"
         accessibilityLabel={bodyLabel}
