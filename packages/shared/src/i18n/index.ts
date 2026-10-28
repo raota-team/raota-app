@@ -3,12 +3,12 @@ import { mobileFlowMessages } from "./mobile-flows"
 import { mobileSurfaceMessages } from "./mobile-surfaces"
 import { webMessages } from "./web"
 
-export const SUPPORTED_LOCALES = ["ko", "en", "zh", "ja"] as const
+export const SUPPORTED_LOCALES = ["ko", "en", "zh", "ja", "es"] as const
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number]
 export const DEFAULT_LOCALE: AppLocale = "ko"
 
-const intlLocales: Record<AppLocale, string> = { ko: "ko-KR", en: "en-US", zh: "zh-CN", ja: "ja-JP" }
-export const translationCatalog: Record<string, readonly [string, string, string]> = {
+const intlLocales: Record<AppLocale, string> = { ko: "ko-KR", en: "en-US", zh: "zh-CN", ja: "ja-JP", es: "es-ES" }
+export const translationCatalog: Record<string, readonly [string, string, string, string]> = {
   ...webMessages,
   ...mobileFlowMessages,
   ...mobileSurfaceMessages,
@@ -44,7 +44,7 @@ export type TranslationParams = Readonly<Record<string, string | number>>
 
 /** Only app-authored copy is passed here. Persisted enums and user content stay unchanged. */
 export function t(source: string, params: TranslationParams = {}, locale: AppLocale = currentLocale): string {
-  const index = { en: 0, zh: 1, ja: 2 }[locale as "en" | "zh" | "ja"]
+  const index = { en: 0, zh: 1, ja: 2, es: 3 }[locale as "en" | "zh" | "ja" | "es"]
   const message = locale === "ko" ? source : (translationCatalog[source]?.[index] ?? source)
   return message.replace(/\{(\w+)\}/g, (placeholder, key: string) =>
     Object.prototype.hasOwnProperty.call(params, key) ? String(params[key]) : placeholder,

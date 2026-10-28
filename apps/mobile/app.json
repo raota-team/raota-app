@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.raota.app",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -56,13 +56,15 @@
               "ko",
               "en",
               "zh-Hans",
-              "ja"
+              "ja",
+              "es"
             ],
             "android": [
               "ko",
               "en",
               "zh-Hans",
-              "ja"
+              "ja",
+              "es"
             ]
           },
           "supportsRTL": false,
@@ -170,7 +172,8 @@
       "ko": "./locales/ko.json",
       "en": "./locales/en.json",
       "zh-Hans": "./locales/zh-Hans.json",
-      "ja": "./locales/ja.json"
+      "ja": "./locales/ja.json",
+      "es": "./locales/es.json"
     }
   }
 }

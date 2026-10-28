@@ -1051,10 +1051,11 @@ function MonthlyTasteEntry({ onOpen }: { onOpen: () => void }) {
 
 /** 다른 날 뽑은 AI 식권을 찾을 곳. 오늘 식권은 홈 카드 아래 줄에서 연다 */
 function PastTicketsEntry({ onOpen }: { onOpen: () => void }) {
+  useLocale()
   return (
     <Pressable
-      accessibilityHint="지금까지 뽑은 AI 식권을 날짜별로 다시 봐요"
-      accessibilityLabel="지난 식권"
+      accessibilityHint={t("지금까지 뽑은 AI 식권을 날짜별로 다시 봐요")}
+      accessibilityLabel={t("지난 식권")}
       accessibilityRole="button"
       onPress={onOpen}
       style={({ pressed }) => [styles.monthlyCard, pressed && styles.pressedWash]}
@@ -1064,8 +1065,8 @@ function PastTicketsEntry({ onOpen }: { onOpen: () => void }) {
         <Ticket color={colors.ink} size={20} strokeWidth={2.1} />
       </View>
       <View style={styles.flex}>
-        <AppText variant="cardTitle">지난 식권</AppText>
-        <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} tone="muted" variant="secondary">AI 큐레이터에서 뽑은 식권을 날짜별로 다시 봐요</AppText>
+        <AppText variant="cardTitle">{t("지난 식권")}</AppText>
+        <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} tone="muted" variant="secondary">{t("AI 큐레이터에서 뽑은 식권을 날짜별로 다시 봐요")}</AppText>
       </View>
       <ChevronRight color={colors.textMuted} size={20} />
     </Pressable>

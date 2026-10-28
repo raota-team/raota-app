@@ -84,7 +84,7 @@ function bowlComment(log: RamenLog, scores: TasteScores | null, before: TastePro
     case "brothDensity":
       return t("평소보다 육수를 {v1} 느낀 그릇이에요.", { v1: higher ? t("진하게") : t("맑게") })
     case "noodleFirmness":
-      return t("평소보다 면을 {v1} 느낀 그릇이에요.", { v1: higher ? t("단단하게") : t("부드럽게") })
+      return higher ? t("평소보다 면을 단단하게 느낀 그릇이에요.") : t("평소보다 면을 부드럽게 느낀 그릇이에요.")
     case "topping":
       return t("평소보다 토핑 점수를 {v1} 남긴 그릇이에요.", { v1: higher ? t("높게") : t("낮게") })
     case "revisit":

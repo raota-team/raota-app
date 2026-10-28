@@ -47,7 +47,7 @@ export function TicketCard({ ticket, number, onPress }: { ticket: RemoteTicket; 
   return (
     <Pressable
       accessibilityHint={t("이 식권의 추천을 다시 봐요")}
-      accessibilityLabel={t("{p0}에 뽑은 식권, {p1}, {p2}", { p0: ticketIssuedAt(ticket.createdAt), p1: first ? first.name : t("보여줄 가게 없음"), p2: ticket.appliedConditions.map((condition) => t(condition)).join(", ") })}
+      accessibilityLabel={t("{p0}에 뽑은 식권, {p1}, {p2}", { p0: ticketIssuedAt(ticket.createdAt), p1: first ? first.name : t("보여줄 가게 없음"), p2: ticket.appliedConditions.join(", ") })}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.card, { backgroundColor: ticketPaperOf(type) }, pressed && pressFade]}
@@ -67,7 +67,7 @@ export function TicketCard({ ticket, number, onPress }: { ticket: RemoteTicket; 
         </AppText>
         {ticket.appliedConditions.length ? (
           <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.muted} variant="meta">
-            {ticket.appliedConditions.map((condition) => t(condition)).join(" · ")}
+            {ticket.appliedConditions.join(" · ")}
           </AppText>
         ) : null}
       </View>

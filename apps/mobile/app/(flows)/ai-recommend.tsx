@@ -1,4 +1,4 @@
-import { t } from "@raota/shared"
+import { formatDate, getLocale, t } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
 import * as Location from "expo-location"
@@ -554,7 +554,7 @@ function issuedDay(iso: string): { foot: string; day: string; today: boolean } {
   const date = at.getUTCDate()
   return {
     foot: `${String(at.getUTCFullYear()).slice(-2)}.${String(month).padStart(2, "0")}.${String(date).padStart(2, "0")}`,
-    day: `${month}월 ${date}일`,
+    day: getLocale() === "ko" ? `${month}월 ${date}일` : formatDate(iso, { month: "short", day: "numeric", timeZone: "Asia/Seoul" }),
     today: at.getUTCFullYear() === now.getUTCFullYear() && month === now.getUTCMonth() + 1 && date === now.getUTCDate(),
   }
 }
@@ -1367,7 +1367,7 @@ function CurationLoading({
             return (
               <View
                 accessible
-                accessibilityLabel={t("{v1}, {v2}, {v3}", { v1: label, v2: value, v3: lit ? "확인했어요" : "확인 중" })}
+                accessibilityLabel={t("{v1}, {v2}, {v3}", { v1: label, v2: value, v3: lit ? t("확인했어요") : t("확인 중") })}
                 accessibilityRole="text"
                 key={label}
                 style={[styles.loadingChip, lit && styles.loadingChipOn]}

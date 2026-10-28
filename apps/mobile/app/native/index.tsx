@@ -459,10 +459,10 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
           </Pressable>
         ) : todayTickets && todayTickets.tickets.length === 0 && todayTickets.remaining > 0 ? (
           // 오늘 아직 안 뽑았어도 몇 장 남았는지 알린다. 뽑을 식권이 없어 열 것이 없으니 누르는 줄이 아니다(큐레이터는 위 카드가 연다)
-          <View accessibilityLabel={`오늘 식권 ${todayTickets.remaining}장 남았어요`} style={styles.ticketLine} testID="home-tickets-left">
+          <View accessibilityLabel={t("오늘 식권 {count}장 남았어요", { count: todayTickets.remaining })} style={styles.ticketLine} testID="home-tickets-left">
             <Ticket color={colors.textMuted} size={16} />
             <AppText capScale style={styles.flexShrink} tone="sub" variant="secondary">
-              {`오늘 식권 ${todayTickets.remaining}장 남았어요`}
+              {t("오늘 식권 {count}장 남았어요", { count: todayTickets.remaining })}
             </AppText>
           </View>
         ) : null}

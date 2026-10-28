@@ -29,6 +29,8 @@ afterEach(() => {
 
 describe("language preferences", () => {
   test.each([
+    [["es-ES"], "es"], [["es_MX"], "es"], [["es-AR"], "es"],
+    [["fr-FR", "es-419", "en-US"], "es"],
     [["en-US"], "en"], [["en-GB"], "en"], [["ja-JP"], "ja"],
     [["zh-Hans-CN"], "zh"], [["zh-TW"], "zh"], [["KO_kr"], "ko"],
     [["fr-FR", "ja-JP", "en"], "ja"], [["de-DE"], "ko"], [[], "ko"],
@@ -47,22 +49,22 @@ describe("language preferences", () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
-  it("updates mounted screens when the OS app language changes", async () => {
+  test.each(["ja", "es"] as const)("updates mounted screens when the OS app language changes to %s", async (language) => {
     const { result, rerender } = await renderHook(() => {
       useDeviceLocale()
       return useLocale()
     })
     expect(result.current).toBe("ko")
-    const japanese = [{ languageTag: "ja-JP", languageCode: "ja" }]
-    jest.mocked(getLocales).mockReturnValue(japanese as ReturnType<typeof getLocales>)
-    jest.mocked(useLocales).mockReturnValue(japanese as ReturnType<typeof useLocales>)
+    const deviceLocale = [{ languageTag: getIntlLocale(language), languageCode: language }]
+    jest.mocked(getLocales).mockReturnValue(deviceLocale as ReturnType<typeof getLocales>)
+    jest.mocked(useLocales).mockReturnValue(deviceLocale as ReturnType<typeof useLocales>)
     await act(async () => { await rerender({}) })
-    expect(result.current).toBe("ja")
+    expect(result.current).toBe(language)
   })
 })
 
 describe("app copy", () => {
-  test.each(["en", "zh", "ja"] as const)("translates navigation and interpolated copy in %s", (locale) => {
+  test.each(["en", "zh", "ja", "es"] as const)("translates navigation and interpolated copy in %s", (locale) => {
     setLocale(locale)
     expect(t("홈")).not.toBe("홈")
     expect(t("{scope} 0그릇", { scope: "TEST" })).toContain("TEST")
@@ -83,7 +85,7 @@ describe("app copy", () => {
     const placeholders = (value: string) => [...new Set(value.match(/\{\w+\}/g) ?? [])].sort()
     const invalid: string[] = []
     for (const [source, translations] of Object.entries(translationCatalog)) {
-      if (translations.length !== 3) invalid.push(`${source}: missing language`)
+      if (translations.length !== 4) invalid.push(`${source}: missing language`)
       translations.forEach((value, index) => {
         if (!value.trim() || JSON.stringify(placeholders(value)) !== JSON.stringify(placeholders(source))) {
           invalid.push(`${source} [${index}]: ${value}`)
@@ -102,6 +104,10 @@ describe("app copy", () => {
     setLocale("ja")
     expect(getIntlLocale()).toBe("ja-JP")
     expect(formatDate("2026-10-28", { month: "long" })).toBe("10月")
+    setLocale("es")
+    expect(getIntlLocale()).toBe("es-ES")
+    expect(formatDate("2026-10-28", { month: "long", day: "numeric", year: "numeric" })).toBe("28 de octubre de 2026")
+    expect(formatNumber(12345.6)).toBe("12.345,6")
   })
 })
 
@@ -119,6 +125,9 @@ it("sends the current app language on each API request, leaving the response con
   setLocale("en")
   await client.get("/shops", { auth: "none" })
   expect((fetchMock.mock.calls[1] as unknown as [string, RequestInit])[1].headers).toEqual(expect.objectContaining({ "Accept-Language": "en-US" }))
+  setLocale("es")
+  await client.get("/shops", { auth: "none" })
+  expect((fetchMock.mock.calls[2] as unknown as [string, RequestInit])[1].headers).toEqual(expect.objectContaining({ "Accept-Language": "es-ES" }))
 })
 
 it("preserves a server error even when its text matches an app translation key", async () => {
