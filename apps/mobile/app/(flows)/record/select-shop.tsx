@@ -358,7 +358,8 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
       <View accessibilityLabel="가게 찾는 방법" accessibilityRole="tablist" style={styles.tabs}>
         {MODES.map(({ id, label }) => {
           const active = mode === id
-          const count = id === "saved" ? savedShops.length : id === "nearby" ? allShops.length : null
+          // 주변은 20곳씩 이어 불러오는 목록이라 전체 수를 모른다. 불러온 수를 세면 스크롤할 때 60곳, 80곳으로 늘었다
+          const count = id === "saved" ? savedShops.length : null
           return (
             <Pressable
               accessibilityLabel={count === null ? label : `${label} ${count}곳`}
