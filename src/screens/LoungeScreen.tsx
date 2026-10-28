@@ -1404,7 +1404,9 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            aria-label={t`${ph({ v0: commentsOpen ? '댓글 입력 닫기' : '댓글 작성' })}${ph({ v1: comments.length ? `, 댓글 ${comments.length}개` : '' })}`}
+                            aria-label={comments.length
+                              ? commentsOpen ? t`댓글 입력 닫기, 댓글 ${ph({ count: comments.length })}개` : t`댓글 작성, 댓글 ${ph({ count: comments.length })}개`
+                              : commentsOpen ? t`댓글 입력 닫기` : t`댓글 작성`}
                             aria-expanded={commentsOpen}
                             aria-controls={`log-comments-${log.id}`}
                             onClick={() => handleToggleLogComments(log.id)}

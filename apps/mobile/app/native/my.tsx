@@ -591,7 +591,7 @@ function MemberView() {
                     moreLabel={t`기록 더 보기`}
                     moreText={t`이전 기록 더 보기`}
                     onLoadMore={loadMoreRecent}
-                    remainingUnit={t`그릇`}
+                    remainingText={(count) => t`${count}그릇 남음`}
                     testID="my-logs-list"
                     totalCount={bowls.length}
                     visibleRows={RECENT_VISIBLE_ROWS}
@@ -702,7 +702,7 @@ function MemberView() {
                     moreLabel={t`방문매장 더 보기`}
                     moreText={t`방문 매장 더 보기`}
                     onLoadMore={() => setVisitLimit((limit) => Math.min(limit + ACTIVITY_PAGE_SIZE, filteredVisits.length))}
-                    remainingUnit={t`곳`}
+                    remainingText={(count) => t`${count}곳 남음`}
                     testID="my-visits-list"
                     totalCount={filteredVisits.length}
                   >
@@ -784,7 +784,7 @@ function MemberView() {
                     moreLabel={t`저장한 매장 더 보기`}
                     moreText={t`저장한 매장 더 보기`}
                     onLoadMore={() => setSavedLimit((limit) => Math.min(limit + ACTIVITY_PAGE_SIZE, filteredSaved.length))}
-                    remainingUnit={t`곳`}
+                    remainingText={(count) => t`${count}곳 남음`}
                     testID="my-saved-list"
                     totalCount={filteredSaved.length}
                   >
@@ -1193,7 +1193,7 @@ function ActivityListFrame({
   moreLabel,
   moreText,
   onLoadMore,
-  remainingUnit,
+  remainingText,
   testID,
   totalCount,
   visibleRows = VISIBLE_ROWS,
@@ -1204,7 +1204,8 @@ function ActivityListFrame({
   moreLabel: string
   moreText: string
   onLoadMore: () => void
-  remainingUnit: string
+  /** 남은 개수 문구. 단위를 따로 붙이면 언어마다 수 일치(1 bowl/2 bowls)를 맞출 수 없어 문장째 받는다 */
+  remainingText: (count: number) => string
   testID: string
   totalCount: number
   visibleRows?: number
@@ -1235,7 +1236,7 @@ function ActivityListFrame({
       {hasMore ? (
         // 스크롤 외에도 VoiceOver·스위치 제어로 다음 줄을 요청할 수 있다
         <Pressable
-          accessibilityLabel={t`${ph({ p0: moreLabel })}, ${ph({ p1: totalCount - loadedCount })}${ph({ p2: remainingUnit })} 남음`}
+          accessibilityLabel={`${moreLabel}, ${remainingText(totalCount - loadedCount)}`}
           accessibilityRole="button"
           onPress={onLoadMore}
           style={({ pressed }) => [styles.loadMore, pressed && styles.pressedWash]}

@@ -117,6 +117,18 @@ describe("app copy", () => {
     expect(labelOf("손님이 쓴 가게 후기")).toBe("손님이 쓴 가게 후기")
   })
 
+  it("agrees counted words with the number where the language has singular forms", () => {
+    const when = "TODAY"
+    // 숫자만 N으로 바꿔 비교한다. 단수형이 있는 언어는 1일 때 문장이 달라야 하고, 한국어는 같아야 한다
+    const sentence = (count: number) => t`이번 달 ${count}그릇 · 마지막 기록 ${when}`.replace(String(count), "N")
+    expect(sentence(1)).toBe(sentence(2))
+    for (const locale of ["en", "es"] as const) {
+      setLocale(locale)
+      expect(sentence(1)).not.toBe(sentence(2))
+      expect(sentence(2)).toBe(sentence(7))
+    }
+  })
+
   it("has a translation for every extracted message, keeping the same placeholders", () => {
     // {이름} 또는 {이름, plural|select …}의 이름만 센다(갈래 안의 글자는 세지 않는다)
     const placeholders = (value: string) => [...new Set([...value.matchAll(/\{\s*(\w+)\s*[,}]/g)].map((match) => match[1]))].sort()

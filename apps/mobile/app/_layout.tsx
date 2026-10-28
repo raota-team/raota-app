@@ -1,3 +1,4 @@
+import "@/src/polyfills"
 import { Buffer } from "buffer"
 import * as Notifications from "expo-notifications"
 import { ErrorBoundary as RouterErrorBoundary, Redirect, Stack, router, useSegments, type ErrorBoundaryProps } from "expo-router"
