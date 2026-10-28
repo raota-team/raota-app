@@ -10,7 +10,8 @@
 
 - 전체 자동 검사: 32개 스위트, 400개 테스트 통과. 마지막 문구 보완 후 i18n 관련 34개 검사도 다시 통과했습니다.
 - 모바일·공유·웹 TypeScript 및 웹 프로덕션 빌드 통과.
-- iOS 앱 버전 `1.0.0`, 빌드 번호 `11`로 설정했습니다.
+- iOS 앱 버전 `1.0.0`, 빌드 번호 `11`의 Release 아카이브 생성 성공 및 정상 서명 검증 통과. 최소 iOS 버전은 16.4입니다.
+- 아카이브의 지원 언어 `ko/en/zh-Hans/ja/es`, 스페인어 `InfoPlist.strings`, 최신 라멘 선택지까지 포함한 내장 JS 번들을 확인했습니다.
 - 전용 iOS 시뮬레이터에서 스페인어 홈 화면과 날짜·탭 라벨이 오류 없이 표시됨을 확인했습니다.
 - 웹 스페인어 홈·마이·가입 화면을 390px/1280px에서 확인했습니다. 가로 넘침과 자바스크립트 오류가 없으며, 닉네임 안내·라멘 종류 선택지도 현지화했습니다.
 
@@ -60,6 +61,10 @@ Metro는 이 워크트리의 앱·공유 소스를 사용하고, 외부로 연�
 - iOS 정상 서명 빌드 로그: `/tmp/raota-i18n-xcode-signed.log`
 - Android 이미지/XML/결과/재현 기록: `/private/tmp/raota-i18n-android/`
 - Android APK: `/private/tmp/raota-i18n-android/app-debug.apk`
+- 빌드 11 아카이브: `/private/tmp/RAOTA-build11.xcarchive`
+- 빌드 11 컴파일 로그: `/private/tmp/raota-build11-archive.log`
+- 빌드 11 스페인어 iOS 화면: `/private/tmp/raota-build11-ios-evidence/`
+- 빌드 11 테스트 결과: `/private/tmp/raota-build11-tests.json`
 - 전체 자동 테스트 결과: `/tmp/raota-i18n-isolated-tests.json`
 
 이 경로들은 검증 머신의 임시 산출물이며 소스에 포함된 제품 이미지가 아닙니다.
