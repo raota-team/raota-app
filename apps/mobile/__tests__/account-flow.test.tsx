@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native"
 import type { ReactElement } from "react"
 import { Pressable, Text } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
+import { setLocale, t, type AppLocale } from "@raota/shared"
 
 import type { MemberMe } from "@/src/api/types"
 import { idempotencyOutbox } from "@/src/api/outbox"
@@ -197,10 +198,13 @@ function SessionProbe() {
 
 beforeEach(async () => {
   jest.clearAllMocks()
+  setLocale("ko")
   useLocalSearchParams.mockReturnValue({})
   await tokenStore.clear()
   await idempotencyOutbox.clear()
 })
+
+afterEach(() => setLocale("ko"))
 
 describe("서버 로그인 화면", () => {
   it("새 회원(ONBOARDING)은 온보딩으로 보낸다", async () => {
@@ -268,6 +272,29 @@ describe("서버 로그인 화면", () => {
     expect(await view.findByText("로그인하지 못했어요. 잠시 후 다시 시도해 주세요.")).toBeTruthy()
     expect(tokenStore.peek()).toBeNull()
     expect(router.replace).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { locale: "en", failure: "credentials", expected: "Couldn’t sign in. Please try again shortly." },
+    { locale: "zh", failure: "unavailable", expected: "无法使用此账号登录，注销满30天后方可重新注册。" },
+    { locale: "ja", failure: "offline", expected: "インターネット接続を確認して、もう一度お試しください。" },
+    { locale: "en", failure: "canceled", expected: "Sign-in canceled." },
+  ])("$locale 로그인 $failure 안내는 앱 언어로 표시한다", async ({ locale, failure, expected }) => {
+    setLocale(locale as AppLocale)
+    serve(on("POST", "/auth/oauth/login", () => fail(401, failure === "unavailable" ? "UNAUTHORIZED" : "OAUTH_CREDENTIAL_INVALID")))
+    if (failure === "canceled") {
+      social.socialCredential.mockRejectedValueOnce(new social.SocialSignInCancelled())
+    } else if (failure === "offline") {
+      fetchMock.mockRejectedValueOnce(new TypeError("Network connection lost"))
+    }
+    const view = await renderWithStore(<LoginScreen />)
+
+    await fireEvent.press(await view.findByRole("button", { name: t("카카오로 계속하기") }))
+
+    expect(await view.findByText(expected)).toBeTruthy()
+    expect(tokenStore.peek()).toBeNull()
+    expect(router.replace).not.toHaveBeenCalled()
+    if (failure === "canceled") expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 

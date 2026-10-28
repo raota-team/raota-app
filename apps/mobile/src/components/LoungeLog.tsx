@@ -1,3 +1,5 @@
+import { useLocale } from "@/src/i18n"
+import { t } from "@raota/shared"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { router } from "expo-router"
@@ -65,6 +67,7 @@ function shopLabel(shop: RamenLog["shop"]) {
 
 /** 사진 또는 이름 첫 글자. 장식이라 VoiceOver는 건너뛴다. */
 export function Avatar({ name, uri, size = 36, tone = "dark" }: { name: string; uri?: string | null; size?: number; tone?: "dark" | "soft" }) {
+  useLocale()
   const frame = { width: size, height: size, borderRadius: radii.pill }
   if (uri) {
     return <Image accessibilityIgnoresInvertColors accessible={false} contentFit="cover" source={{ uri: sizedImageUri(uri, size) }} style={[frame, styles.avatarImage]} />
@@ -84,6 +87,7 @@ export function Avatar({ name, uri, size = 36, tone = "dark" }: { name: string; 
 
 /** 상세 사진 아래의 작성자와 방문 시점. */
 export function LogAuthorRow({ log }: { log: RamenLog }) {
+  useLocale()
   const grade = gradeTitleOf(log.author.level)
   return (
     <View style={styles.authorRow}>
@@ -91,7 +95,7 @@ export function LogAuthorRow({ log }: { log: RamenLog }) {
       <View style={styles.authorText}>
         <AppText lineBreakStrategyIOS="hangul-word" variant="bodyStrong">{log.author.name}</AppText>
         <AppText capScale numberOfLines={1} tone="muted" variant="meta">
-          {[grade, formatVisitDate(log.visitedAt)].filter(Boolean).join(" · ")}
+          {[t(grade), formatVisitDate(log.visitedAt)].filter(Boolean).join(" · ")}
         </AppText>
       </View>
     </View>
@@ -104,6 +108,7 @@ export function LogAuthorRow({ log }: { log: RamenLog }) {
 
 /** 공감 수는 누를 수 있는 한 줄로 남기고, 좋아요만 빨간 하트로 표시한다. */
 export function LikeButton({ liked, count, onPress }: { liked: boolean; count: number; onPress: () => void }) {
+  useLocale()
   const reducedMotion = useReducedMotion()
   const previous = useRef({ liked, count })
   const [numbers, setNumbers] = useState({ from: count, to: count, direction: 1 })
@@ -147,8 +152,8 @@ export function LikeButton({ liked, count, onPress }: { liked: boolean; count: n
 
   return (
     <Pressable
-      accessibilityLabel={`공감 ${count}개`}
-      accessibilityHint={liked ? "누르면 공감을 취소해요" : "누르면 공감해요"}
+      accessibilityLabel={t("공감 {p0}개", { p0: count })}
+      accessibilityHint={liked ? t("누르면 공감을 취소해요") : t("누르면 공감해요")}
       accessibilityRole="button"
       accessibilityState={{ selected: liked }}
       onPress={onPress}
@@ -191,7 +196,7 @@ export function useLikeLog() {
       try {
         await actions.toggleLogLike(log)
       } catch (failure) {
-        setError(failure instanceof Error ? failure.message : "공감을 반영하지 못했어요. 다시 시도해 주세요.")
+        setError(failure instanceof Error ? failure.message : t("공감을 반영하지 못했어요. 다시 시도해 주세요."))
       }
     },
     [actions, currentUser],
@@ -205,16 +210,18 @@ export function useLikeLog() {
 // ---------------------------------------------------------------------------
 
 export function TasteTags({ tags, style }: { tags: string[]; style?: StyleProp<ViewStyle> }) {
+  useLocale()
   if (tags.length === 0) return null
   return (
-    <ScrollView accessibilityLabel={`맛 태그: ${tags.join(", ")}`} accessible contentContainerStyle={styles.tags} horizontal showsHorizontalScrollIndicator={false} style={style}>
-      {tags.map((tag) => <Tag key={tag} label={`#${tag}`} />)}
+    <ScrollView accessibilityLabel={t("맛 태그: {p0}", { p0: tags.map((tag) => t(tag)).join(", ") })} accessible contentContainerStyle={styles.tags} horizontal showsHorizontalScrollIndicator={false} style={style}>
+      {tags.map((tag) => <Tag key={tag} label={`#${t(tag)}`} />)}
     </ScrollView>
   )
 }
 
 /** 기록의 다섯 평가를 맛 지문으로 표시한다. 꼭짓점에는 점수 대신 그 점수의 말("진한 편")을 둔다 */
 export function LogTasteFingerprint({ log }: { log: RamenLog }) {
+  useLocale()
   const scores = scoresFromLog(log)
   if (!scores) return null
   const words = tasteSummaryOf(log)
@@ -224,11 +231,12 @@ export function LogTasteFingerprint({ log }: { log: RamenLog }) {
     value: scores[key],
     text: words[index].word,
   }))
-  return <TasteFingerprint meta={`${log.author.name}의 기록`} rows={rows} style={styles.fingerprint} />
+  return <TasteFingerprint meta={t("{p0}의 기록", { p0: log.author.name })} rows={rows} style={styles.fingerprint} />
 }
 
 /** 메모는 기록 본문으로 이어 놓는다. */
 export function LogNote({ note, numberOfLines }: { note: string; numberOfLines?: number }) {
+  useLocale()
   if (!note.trim()) return null
   return (
     <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={numberOfLines} style={styles.detailNote} variant="body">
@@ -257,6 +265,7 @@ export interface LoungeLogCardProps {
 
 /** 공개 기록은 사진(또는 인용문)과 한 줄·작성자만 먼저 보여 준다. 공감·댓글·신고는 상세에 있다. */
 export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, batchIndex = 0 }: LoungeLogCardProps) {
+  useLocale()
   const reducedMotion = useReducedMotion()
   // 마운트할 때 한 번만 정한다
   const [isNew] = useState(() => !shownLogsByFeed.get(feedKey)?.has(log.id))
@@ -284,8 +293,8 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
   const photos = photosOf(log)
   const summary = compactTasteSummary(log)
   const bodyLabel = [
-    `${log.author.name}님의 ${log.menuName}`,
-    `${log.ramenType}, ${formatVisitDate(log.visitedAt)} 방문`,
+    t("{name}님의 {menu}", { name: log.author.name, menu: log.menuName }),
+    t("{type}, {date} 방문", { type: t(log.ramenType), date: formatVisitDate(log.visitedAt) }),
     summary?.label,
     log.note,
   ].filter(Boolean).join(". ")
@@ -293,7 +302,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
   return (
     <Animated.View style={appearStyle}>
       <Pressable
-        accessibilityHint="라멘로그와 댓글을 봐요"
+        accessibilityHint={t("라멘로그와 댓글을 봐요")}
         accessibilityLabel={bodyLabel}
         accessibilityRole="button"
         onPress={() => openLogDetail(log.id)}
@@ -304,7 +313,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
           <View style={[styles.feedPhoto, { height: tall ? 250 : 180 }]}>
             <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={photos[0]} />
             <View style={styles.typePill}>
-              <AppText capScale style={styles.onPhotoText} variant="meta">{log.ramenType}</AppText>
+              <AppText capScale style={styles.onPhotoText} variant="meta">{t(log.ramenType)}</AppText>
             </View>
             {photos.length > 1 ? (
               <View style={styles.photoCount}>
@@ -338,6 +347,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
 // ---------------------------------------------------------------------------
 
 export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; menuName: string; onBack: () => void }) {
+  useLocale()
   const { width } = useWindowDimensions()
   const pageWidth = width - 16
   const [index, setIndex] = useState(0)
@@ -349,7 +359,7 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
   if (photos.length === 0) {
     return (
       <View style={styles.noPhotoHeader}>
-        <IconButton accessibilityLabel="뒤로가기" icon={<ChevronLeft color={colors.ink} size={24} />} onPress={onBack} />
+        <IconButton accessibilityLabel={t("뒤로가기")} icon={<ChevronLeft color={colors.ink} size={24} />} onPress={onBack} />
       </View>
     )
   }
@@ -360,7 +370,7 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
   return (
     <View style={styles.pager}>
       <ScrollView
-        accessibilityLabel={`${menuName} 사진 ${photos.length}장`}
+        accessibilityLabel={t("{p0} 사진 {p1}장", { p0: menuName, p1: photos.length })}
         horizontal
         onMomentumScrollEnd={onEnd}
         pagingEnabled
@@ -369,7 +379,7 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
       >
         {photos.map((uri, photoIndex) => (
           <Pressable
-            accessibilityHint="사진을 크게 봐요"
+            accessibilityHint={t("사진을 크게 봐요")}
             accessibilityRole="imagebutton"
             collapsable={false}
             key={`${uri}-${photoIndex}`}
@@ -389,14 +399,14 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
             style={viewing?.index === photoIndex && viewing.origin && !viewing.released && !reducedMotion ? styles.hiddenSource : undefined}
           >
             <ResilientUriImage
-              accessibilityLabel={`${menuName} 사진 ${photoIndex + 1}`}
+              accessibilityLabel={t("{p0} 사진 {p1}", { p0: menuName, p1: photoIndex + 1 })}
               style={{ width: pageWidth, height: 200 }}
               uri={uri}
             />
           </Pressable>
         ))}
       </ScrollView>
-      <Pressable accessibilityLabel="뒤로가기" accessibilityRole="button" onPress={onBack} style={styles.pagerBack}>
+      <Pressable accessibilityLabel={t("뒤로가기")} accessibilityRole="button" onPress={onBack} style={styles.pagerBack}>
         <ChevronLeft color={colors.onPhotoPill} size={24} />
       </Pressable>
       {photos.length > 1 ? (
@@ -407,7 +417,7 @@ export function LogPhotoPager({ photos, menuName, onBack }: { photos: string[]; 
       {viewing !== null ? (
         <PhotoViewer
           index={viewing.index}
-          label={`${menuName} 사진`}
+          label={t("{p0} 사진", { p0: menuName })}
           onClose={() => setViewing(null)}
           onFadeClose={() => setViewing((current) => current && { ...current, released: true })}
           // 크게 보며 넘긴 사진으로 원래 넘기기와 번호도 옮겨 두어, 닫을 때 같은 사진 자리로 줄어들게 한다
@@ -481,10 +491,10 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
       }
       const author = target.authorId ? { id: target.authorId, name: target.authorName, avatar: target.authorAvatar ?? null } : null
       if (!author || !(await actions.hideAuthor(author))) {
-        setToast({ message: "이 사용자를 숨기지 못했어요. 다시 시도해 주세요." })
+        setToast({ message: t("이 사용자를 숨기지 못했어요. 다시 시도해 주세요.") })
         return
       }
-      setToast({ message: `${target.authorName}님의 글을 더 이상 보여주지 않아요.`, undoAuthorId: target.authorId })
+      setToast({ message: t("{name}님의 글을 더 이상 보여주지 않아요.", { name: target.authorName }), undoAuthorId: target.authorId })
       onHidden?.(target)
     },
     [actions, currentUser, onHidden],
@@ -492,12 +502,12 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
 
   const openMenu = useCallback(
     (target: ModerationTarget) => {
-      const noun = target.kind === "log" ? "라멘로그" : "댓글"
+      const noun = target.kind === "log" ? t("라멘로그") : t("댓글")
       if (Platform.OS === "ios") {
         ActionSheetIOS.showActionSheetWithOptions(
           {
-            title: `${target.authorName}님의 ${noun}`,
-            options: ["신고하기", "이 사용자 숨기기", "취소"],
+            title: t("{p0}님의 {p1}", { p0: target.authorName, p1: noun }),
+            options: [t("신고하기"), t("이 사용자 숨기기"), t("취소")],
             destructiveButtonIndex: 0,
             cancelButtonIndex: 2,
           },
@@ -520,14 +530,14 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
     try {
       const report = await actions.reportContent({ kind: target.kind, id: target.id, reason })
       if (!report) {
-        setToast({ message: "신고를 보내지 못했어요. 로그인 상태를 확인해 주세요." })
+        setToast({ message: t("신고를 보내지 못했어요. 로그인 상태를 확인해 주세요.") })
         return
       }
     } catch (failure) {
-      setToast({ message: failure instanceof Error ? failure.message : "신고를 보내지 못했어요. 다시 시도해 주세요." })
+      setToast({ message: failure instanceof Error ? failure.message : t("신고를 보내지 못했어요. 다시 시도해 주세요.") })
       return
     }
-    setToast({ message: "신고를 접수했어요. 검토 후 조치할게요." })
+    setToast({ message: t("신고를 접수했어요. 검토 후 조치할게요.") })
     onReported?.(target)
   }
 
@@ -535,22 +545,22 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
     try {
       await actions.unhideAuthor(authorId)
     } catch (failure) {
-      setToast({ message: failure instanceof Error ? failure.message : "숨김을 풀지 못했어요. 다시 시도해 주세요." })
+      setToast({ message: failure instanceof Error ? failure.message : t("숨김을 풀지 못했어요. 다시 시도해 주세요.") })
     }
   }
 
-  const menuNoun = menuTarget?.kind === "comment" ? "댓글" : "라멘로그"
+  const menuNoun = menuTarget?.kind === "comment" ? t("댓글") : t("라멘로그")
   const element: ReactNode = (
     <>
       <BottomSheet
         onClose={() => setMenuTarget(null)}
-        title={menuTarget ? `${menuTarget.authorName}님의 ${menuNoun}` : undefined}
+        title={menuTarget ? t("{p0}님의 {p1}", { p0: menuTarget.authorName, p1: menuNoun }) : undefined}
         visible={Boolean(menuTarget)}
       >
         <MenuRow
-          description="운영 정책에 어긋나는 글을 알려주세요"
+          description={t("운영 정책에 어긋나는 글을 알려주세요")}
           icon={<Flag color={colors.critical} size={20} />}
-          label="신고하기"
+          label={t("신고하기")}
           onPress={() => {
             const target = menuTarget
             setMenuTarget(null)
@@ -558,9 +568,9 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
           }}
         />
         <MenuRow
-          description="이 사람의 라멘로그와 댓글이 보이지 않아요"
+          description={t("이 사람의 라멘로그와 댓글이 보이지 않아요")}
           icon={<EyeOff color={colors.ink} size={20} />}
-          label="이 사용자 숨기기"
+          label={t("이 사용자 숨기기")}
           onPress={() => {
             const target = menuTarget
             setMenuTarget(null)
@@ -570,7 +580,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
       </BottomSheet>
 
       <BottomSheet
-        description="검토 후 운영 정책에 따라 조치해요. 신고한 글은 더 이상 보이지 않아요."
+        description={t("검토 후 운영 정책에 따라 조치해요. 신고한 글은 더 이상 보이지 않아요.")}
         footer={
           <View style={styles.reportFooter}>
             <AppText
@@ -581,21 +591,20 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
               tone="muted"
               variant="meta"
             >
-              신고 사유를 고르면 보낼 수 있어요
-            </AppText>
-            <Button disabled={!reason} fullWidth onPress={() => void submitReport()} title="신고하기" />
+              {t("신고 사유를 고르면 보낼 수 있어요")}</AppText>
+            <Button disabled={!reason} fullWidth onPress={() => void submitReport()} title={t("신고하기")} />
           </View>
         }
         onClose={() => setReportTarget(null)}
-        title={reportTarget?.kind === "comment" ? "댓글 신고하기" : "라멘로그 신고하기"}
+        title={reportTarget?.kind === "comment" ? t("댓글 신고하기") : t("라멘로그 신고하기")}
         visible={Boolean(reportTarget)}
       >
-        <View accessibilityLabel="신고 사유" accessibilityRole="radiogroup">
+        <View accessibilityLabel={t("신고 사유")} accessibilityRole="radiogroup">
           {REPORT_REASONS.map((item) => {
             const checked = reason === item.value
             return (
               <Pressable
-                accessibilityLabel={item.label}
+                accessibilityLabel={t(item.label)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked }}
                 key={item.value}
@@ -604,7 +613,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
               >
                 <View style={[styles.radio, checked && styles.radioChecked]}>{checked ? <View style={styles.radioDot} /> : null}</View>
                 <AppText style={styles.bold} variant="body">
-                  {item.label}
+                  {t(item.label)}
                 </AppText>
               </Pressable>
             )
@@ -613,7 +622,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
       </BottomSheet>
 
       <Toast
-        actionLabel={toast?.undoAuthorId ? "되돌리기" : undefined}
+        actionLabel={toast?.undoAuthorId ? t("되돌리기") : undefined}
         message={toast?.message ?? ""}
         onAction={() => {
           const authorId = toast?.undoAuthorId
@@ -631,6 +640,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
 }
 
 function MenuRow({ icon, label, description, onPress }: { icon: ReactNode; label: string; description: string; onPress: () => void }) {
+  useLocale()
   return (
     <Pressable
       accessibilityHint={description}

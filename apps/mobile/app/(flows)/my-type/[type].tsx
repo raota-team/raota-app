@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import { Image } from "expo-image"
 import { router, useLocalSearchParams } from "expo-router"
 import { useEffect, useMemo } from "react"
@@ -16,6 +18,7 @@ import { colors, radii, spacing, typography } from "@/src/theme"
  * 카드를 누르면 서버 기록은 기록 상세, 기기 기록은 매장을 연다. 비회원은 (flows)/_layout.tsx가 로그인으로 보낸다.
  */
 export default function MyTypeScreen() {
+  const locale = useLocale()
   const { type: rawType } = useLocalSearchParams<{ type?: string }>()
   const type = rawType ?? ""
   const insets = useSafeAreaInsets()
@@ -38,31 +41,30 @@ export default function MyTypeScreen() {
     if (missingPhotos && hasMore) loadMore()
   }, [hasMore, loadMore, missingPhotos, knownLogs.length])
 
-  const summary = useMemo(() => summarize(rows), [rows])
+  const summary = useMemo(() => summarize(rows), [rows, locale])
   const cardWidth = (width - spacing.gutter * 2 - spacing.x3) / 2
 
   const body = () => {
     if (!summary) {
-      if (bowlsQuery.isLoading) return <LoadingState label="기록을 불러오는 중…" style={styles.state} />
+      if (bowlsQuery.isLoading) return <LoadingState label={t("기록을 불러오는 중…")} style={styles.state} />
       return (
         <EmptyState
-          description="이 종류로 남긴 기록이 생기면 여기에 모여요."
+          description={t("이 종류로 남긴 기록이 생기면 여기에 모여요.")}
           style={styles.state}
-          title={`${type} 기록이 없어요`}
+          title={t("{v1} 기록이 없어요", { v1: t(type) })}
         />
       )
     }
     return (
       <>
         <View style={styles.summary}>
-          <AppText variant="headline">{rows.length}그릇</AppText>
+          <AppText variant="headline">{rows.length}{t("그릇")}</AppText>
           <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
             {summary.line}
           </AppText>
           {summary.favorite ? (
             <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
-              자주 간 곳 <AppText variant="bodyStrong">{summary.favorite.name}</AppText> {summary.favorite.count}번
-            </AppText>
+              {t("자주 간 곳 ")}<AppText variant="bodyStrong">{summary.favorite.name}</AppText> {summary.favorite.count}{t("번 ")}</AppText>
           ) : null}
         </View>
         <View style={styles.grid}>
@@ -78,9 +80,9 @@ export default function MyTypeScreen() {
     <Screen>
       <Header
         align="center"
-        backLabel="뒤로가기"
+        backLabel={t("뒤로가기")}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/native/my"))}
-        title={`${type} 모아 보기`}
+        title={t("{v1} 모아 보기", { v1: t(type) })}
         titleStyle={typography.sectionTitle}
       />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.section }]} style={styles.scroll}>
@@ -136,7 +138,7 @@ function summarize(rows: BowlRow[]): { line: string; favorite: { name: string; c
     visits.set(key, { name: row.name, count: (seen?.count ?? 0) + 1 })
   }
   const dates = rows.map((row) => row.date).sort()
-  const line = [`가게 ${visits.size}곳`, `처음 ${dotted(dates[0])}`, rows.length > 1 ? `최근 ${dotted(dates[dates.length - 1])}` : null]
+  const line = [t("가게 {count}곳", { count: visits.size }), t("처음 {date}", { date: dotted(dates[0]) }), rows.length > 1 ? t("최근 {date}", { date: dotted(dates[dates.length - 1]) }) : null]
     .filter(Boolean)
     .join(" · ")
   const top = [...visits.values()].sort((a, b) => b.count - a.count)[0]

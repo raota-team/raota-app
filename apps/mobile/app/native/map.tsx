@@ -1,3 +1,5 @@
+import { useLocale } from "@/src/i18n"
+import { getLocale, t } from "@raota/shared"
 import { NaverMapMarkerOverlay, NaverMapView, type NaverMapViewRef } from "@mj-studio/react-native-naver-map"
 import * as Haptics from "expo-haptics"
 import { useIsFocused, useLocalSearchParams } from "expo-router"
@@ -96,6 +98,7 @@ type LocationStatus = "loading" | "granted" | "denied"
  * 위치 권한을 이 화면에서 묻고, 거절하면 기본 지역과 설정 경로를 보여준다.
  */
 export default function MapScreen() {
+  useLocale()
   const [retryKey, setRetryKey] = useState(0)
   return <MapBody key={retryKey} onRetry={() => setRetryKey((key) => key + 1)} />
 }
@@ -105,6 +108,7 @@ export default function MapScreen() {
  * 데이터 hook에 refetch가 생기면 이 key 대신 그것을 부른다.
  */
 function MapBody({ onRetry }: { onRetry: () => void }) {
+  useLocale()
   const insets = useSafeAreaInsets()
   const mapRef = useRef<NaverMapViewRef>(null)
   const [mapReady, setMapReady] = useState(false)
@@ -176,7 +180,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
 
   const filtered = filters.filtered
   // 좌표 없는 매장도 목록에 남기되, 지도 마커는 좌표가 있는 매장만 사용한다.
-  const markerShops = useMemo(() => filtered.filter((shop) => shop.lat && shop.lng), [filtered])
+  const markerShops = useMemo(() => filtered.filter((shop) => shop.lat && shop.lng), [filtered, getLocale()])
   const selectedInList = filtered.find((shop) => shop.id === selectedId)
   const selectedShop = useShop(selectedInList ? null : selectedId).data
   // 처음에는 아무 가게도 고르지 않는다. 핀을 눌러야 고르고, 카드의 ✕나 지도 빈 곳을 누르면 풀린다(사용자 결정 2026.10.21)
@@ -207,15 +211,15 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
         { latitudeDelta: region.latitudeDelta, longitudeDelta: region.longitudeDelta },
         { width: frame.width, height: frame.height },
       ),
-    [markerShops, selectedId, region.latitudeDelta, region.longitudeDelta, frame.width, frame.height],
+    [markerShops, selectedId, region.latitudeDelta, region.longitudeDelta, frame.width, frame.height, getLocale()],
   )
   // 보이는 곳(과 둘레 반 화면씩)의 묶음·핀만 마커로 그린다. 묶음 숫자는 뷰 마커라 전부 그리면 무거워진다.
   // 지도를 옮기고 멈추면(onCameraIdle) 새로 보이는 곳의 마커가 붙는다
   const visibleClusters = useMemo(
     () => clusters.filter((cluster) => inViewport({ lat: cluster.latitude, lng: cluster.longitude }, region)),
-    [clusters, region],
+    [clusters, region, getLocale()],
   )
-  const shopById = useMemo(() => new Map(markerShops.map((shop) => [shop.id, shop])), [markerShops])
+  const shopById = useMemo(() => new Map(markerShops.map((shop) => [shop.id, shop])), [markerShops, getLocale()])
   // 카메라 이동은 짧게(빠릿하게). 동작 줄이기에서는 바로 옮긴다
   const cameraMs = reducedMotion ? 0 : CAMERA_MS
   const animateTo = (target: Region) =>
@@ -296,7 +300,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
 
   const deniedNotice =
     locationStatus === "denied" ? (
-      <MapNotice actionLabel="설정 열기" icon={<MapPin color={colors.inkSub} size={16} />} message="위치 권한이 없어 망원·합정 일대를 보여드려요." onAction={() => void Linking.openSettings()} />
+      <MapNotice actionLabel={t("설정 열기")} icon={<MapPin color={colors.inkSub} size={16} />} message={t("위치 권한이 없어 망원·합정 일대를 보여드려요.")} onAction={() => void Linking.openSettings()} />
     ) : null
 
   // 고른 가게 카드(또는 "없어요" 카드)가 떠 있는지. 네이버 로고는 가리면 안 되므로 카드 위로 올린다
@@ -315,7 +319,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
         >
             {startResolved ? (
             <NaverMapView
-              accessibilityLabel="라멘집 지도"
+              accessibilityLabel={t("라멘집 지도")}
               customStyleId={RAOTA_STYLE_ID}
               // 목록에서 돌아와 다시 그려질 때 보던 자리(내 위치 포함)를 그대로 잇는다
               initialRegion={toNaverRegion(region)}
@@ -325,7 +329,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
               isShowScaleBar={false}
               isShowZoomControls={false}
               isTiltGesturesEnabled={false}
-              locale="ko"
+              locale={getLocale()}
               logoMargin={{ left: spacing.x3, bottom: cardShown ? QUICK_VIEW_HEIGHT + spacing.x2 : spacing.x2 }}
               onCameraIdle={({ region: visible }) => setRegion(fromNaverRegion(visible))}
               onInitialized={() => {
@@ -437,15 +441,15 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                 <View style={styles.noticeWrap}>
                   <MapNotice
                     // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
-                    actionLabel={filters.remote ? "다시 불러오기" : undefined}
-                    message={filters.remote ? "라멘집을 불러오지 못했어요." : "라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요."}
+                    actionLabel={filters.remote ? t("다시 불러오기") : undefined}
+                    message={filters.remote ? t("라멘집을 불러오지 못했어요.") : t("라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요.")}
                     onAction={onRetry}
                   />
                 </View>
               ) : null}
               {locationStatus !== "loading" ? (
                 <View style={styles.controls}>
-                  <ControlButton label={locationStatus === "granted" ? "내 위치로 이동" : "기본 지역으로 이동"} onPress={goToUser}>
+                  <ControlButton label={locationStatus === "granted" ? t("내 위치로 이동") : t("기본 지역으로 이동")} onPress={goToUser}>
                     <Navigation color={colors.ink} size={20} />
                   </ControlButton>
                 </View>
@@ -477,6 +481,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
 
 /** 네이티브 지도에서는 권한·불러오기 안내를 얇은 정보 행으로 두어 지도를 더 보여준다 */
 function MapNotice({ icon, message, actionLabel, onAction }: { icon?: React.ReactNode; message: string; actionLabel?: string; onAction: () => void }) {
+  useLocale()
   return (
     <View accessibilityLiveRegion="polite" style={styles.mapNotice}>
       {icon}
@@ -501,6 +506,7 @@ function MapNotice({ icon, message, actionLabel, onAction }: { icon?: React.Reac
 
 /** 지도의 조작은 서로 떨어진 44pt 흰 원으로 둔다. */
 function ControlButton({ label, onPress, children }: { label: string; onPress: () => void; children: React.ReactNode }) {
+  useLocale()
   return (
     <Pressable
       accessibilityLabel={label}

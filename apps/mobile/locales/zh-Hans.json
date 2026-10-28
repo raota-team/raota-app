@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "使用你的位置来显示附近的拉面店及其距离。",
+    "NSCameraUsageDescription": "使用相机为拉面记录拍摄照片。",
+    "NSPhotoLibraryUsageDescription": "访问照片图库，为拉面记录和个人资料添加照片。"
+  }
+}

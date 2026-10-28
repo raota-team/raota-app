@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import { Image, type ImageProps } from "expo-image"
 import { ImageIcon } from "lucide-react-native"
 import { useEffect, useLayoutEffect, useState, type ReactNode } from "react"
@@ -45,6 +47,7 @@ export function ResilientUriImage({
   fallbackBackgroundColor = colors.canvasSoft,
   fallbackTintColor = colors.textMuted,
 }: ResilientUriImageProps) {
+  useLocale()
   const normalizedUri = uri?.trim() ?? ""
   const [loadState, setLoadState] = useState<{ uri: string; status: ImageStatus }>({
     uri: normalizedUri,
@@ -83,7 +86,7 @@ export function ResilientUriImage({
 
   const unavailable = status === "empty" || status === "error"
   const stateLabel = unavailable
-    ? `${accessibilityLabel}. 이미지를 불러올 수 없습니다.`
+    ? t("{label}. 이미지를 불러올 수 없습니다.", { label: accessibilityLabel ?? "" })
     : accessibilityLabel
 
   return (

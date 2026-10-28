@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 import { useId } from 'react'
 import { ArrowRight } from 'lucide-react'
 import type { PastReportItem } from '../data/tasteReports'
@@ -24,19 +25,19 @@ export default function MonthlyTastePreview({ reports, current, onOpen }: Props)
   return (
     <section aria-labelledby={titleId} className="rounded-md border border-line bg-white p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 id={titleId} className="text-[17px] font-extrabold text-ink">월별 취향 변화</h2>
-        <span className="text-[12px] font-medium text-ink-sub">종류별 분포</span>
+        <h2 id={titleId} className="text-[17px] font-extrabold text-ink">{t("월별 취향 변화")}</h2>
+        <span className="text-[12px] font-medium text-ink-sub">{t("종류별 분포")}</span>
       </div>
       {latest ? <>
         <p className="mt-2 text-[14px] leading-6 text-ink-sub">
           {distribution.total
-            ? <>{shortReportMonth(latest)}{latestIsCurrent ? '은 지금까지' : '에'} <strong className="font-bold text-ink">{leaders.map(item => item.name).join('·')}</strong>를 가장 많이 먹었어요.</>
-            : '아직 이 달의 메뉴 기록이 없어요.'}
+            ? t(latestIsCurrent ? "{period}은 지금까지 {styles}를 가장 많이 먹었어요." : "{period}에 {styles}를 가장 많이 먹었어요.", {period: shortReportMonth(latest), styles: leaders.map(item => t(item.name)).join(' · ')})
+            : t("아직 이 달의 메뉴 기록이 없어요.")}
         </p>
         <div className="mt-4"><MenuDistributionChart reports={months} selectedId={latest.id} compact /></div>
-      </> : <p className="mt-2 text-[14px] leading-6 text-ink-sub">아직 모인 월별 기록이 없어요. 먹은 라멘이 쌓이면 달마다 어떤 종류를 즐겼는지 비교할 수 있어요.</p>}
+      </> : <p className="mt-2 text-[14px] leading-6 text-ink-sub">{t("아직 모인 월별 기록이 없어요. 먹은 라멘이 쌓이면 달마다 어떤 종류를 즐겼는지 비교할 수 있어요.")}</p>}
       <button type="button" onClick={onOpen} className="report-control mt-4 flex min-h-11 w-full items-center justify-between gap-3 border-t border-line pt-3 text-left text-[14px] font-bold text-ink transition-colors hover:text-brand active:text-brand">
-        {months.length > 1 ? '월별 분포 비교하기' : '월별 분포 보기'}
+        {months.length > 1 ? t("월별 분포 비교하기") : t("월별 분포 보기")}
         <ArrowRight size={16} className="shrink-0" aria-hidden="true" />
       </button>
     </section>

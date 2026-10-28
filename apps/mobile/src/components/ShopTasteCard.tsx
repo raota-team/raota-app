@@ -1,3 +1,5 @@
+import { useLocale } from "@/src/i18n"
+import { t } from "@raota/shared"
 import { useEffect, useRef, type ReactNode } from "react"
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native"
 import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated"
@@ -22,6 +24,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle)
  * `play`가 처음 true가 될 때 원이 차오르고 칸이 차례로 나온다. 그 전에는 자리만 잡아 둔다.
  */
 export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTasteSummary; play?: boolean; style?: StyleProp<ViewStyle> }) {
+  useLocale()
   const palette = usePalette()
   const axis = useTasteAxisPalette()
   const reducedMotion = useReducedMotion()
@@ -47,25 +50,25 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
   }))
 
   const rest = [
-    revisit.sometimes > 0 ? `가끔 생각남 ${revisit.sometimes}명` : null,
-    revisit.once > 0 ? `한 번이면 충분 ${revisit.once}명` : null,
+    revisit.sometimes > 0 ? t("가끔 생각남 {count}명", { count: revisit.sometimes }) : null,
+    revisit.once > 0 ? t("한 번이면 충분 {count}명", { count: revisit.once }) : null,
   ].filter(Boolean).join(" · ")
   const headline = revisitHeadlineOf(summary)
-  const sampleNote = showRatio ? null : `기록이 ${SHOP_TASTE_RATIO_MIN_LOGS}개 이상 쌓이면 비율로 보여드려요`
+  const sampleNote = showRatio ? null : t("기록이 {count}개 이상 쌓이면 비율로 보여드려요", { count: SHOP_TASTE_RATIO_MIN_LOGS })
   const cells = [
-    { label: "많이 먹은 메뉴", value: summary.topMenuCount > 1 ? `${summary.topMenu} · ${summary.topMenuCount}명` : summary.topMenu },
+    { label: "많이 먹은 메뉴", value: summary.topMenuCount > 1 ? t("{menu} · {count}명", { menu: summary.topMenu, count: summary.topMenuCount }) : summary.topMenu },
     { label: "육수", value: summary.broth },
     { label: "면", value: summary.noodle },
     { label: "토핑", value: summary.topping },
   ]
-  const label = `이 가게의 맛. 공개 라멘로그 ${count}개. ${showRatio ? `또 갈래요 ${percent}%, ` : ""}${headline}${rest ? `, ${rest}` : ""}${sampleNote ? `. ${sampleNote}` : ""}. ${cells.map((cell) => `${cell.label} ${cell.value}`).join(", ")}`
+  const label = `${t("이 가게의 맛")}. ${t("공개 라멘로그 {p0}개", { p0: count })}. ${showRatio ? `${t("또 갈래요")} ${percent}%, ` : ""}${headline}${rest ? `, ${rest}` : ""}${sampleNote ? `. ${sampleNote}` : ""}. ${cells.map((cell) => `${t(cell.label)} ${cell.value}`).join(", ")}`
 
   return (
     <View accessibilityLabel={label} accessibilityRole="text" accessible style={[styles.card, style]}>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.header}>
-          <AppText variant="cardTitle">이 가게의 맛</AppText>
-          <AppText capScale tone="muted" variant="meta">{`공개 라멘로그 ${count}개`}</AppText>
+          <AppText variant="cardTitle">{t("이 가게의 맛")}</AppText>
+          <AppText capScale tone="muted" variant="meta">{t("공개 라멘로그 {p0}개", { p0: count })}</AppText>
         </View>
         <View style={styles.revisit}>
           {showRatio ? (
@@ -88,7 +91,7 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
               </Svg>
               <View style={styles.ringCenter}>
                 <AppText capScale style={styles.ringValue} variant="sectionTitle">{`${percent}%`}</AppText>
-                <AppText capScale tone="muted" variant="meta">또 갈래요</AppText>
+                <AppText capScale tone="muted" variant="meta">{t("또 갈래요")}</AppText>
               </View>
             </View>
           ) : null}
@@ -101,7 +104,7 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
         <View style={styles.grid}>
           {cells.map((cell, index) => (
             <Reveal from={0.35 + index * 0.08} key={cell.label} progress={progress} style={[styles.cell, index % 2 === 1 && styles.cellRight, index >= 2 && styles.cellBottom]} to={0.75 + index * 0.06}>
-              <AppText capScale tone="muted" variant="meta">{cell.label}</AppText>
+              <AppText capScale tone="muted" variant="meta">{t(cell.label)}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.cellValue} variant="bodyStrong">{cell.value}</AppText>
             </Reveal>
           ))}
@@ -113,6 +116,7 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
 
 /** progress의 [from, to] 구간에서 6pt 아래에서 떠오르며 나타난다. 자리는 처음부터 잡혀 있어 아래가 밀리지 않는다 */
 function Reveal({ progress, from, to, style, children }: { progress: { value: number }; from: number; to: number; style?: StyleProp<ViewStyle>; children: ReactNode }) {
+  useLocale()
   const animated = useAnimatedStyle(() => {
     const t = Math.min(1, Math.max(0, (progress.value - from) / (to - from)))
     return { opacity: t, transform: [{ translateY: 6 * (1 - t) }] }

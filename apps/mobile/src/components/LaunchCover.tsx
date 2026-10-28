@@ -1,3 +1,5 @@
+import { useLocale } from "@/src/i18n"
+import { t } from "@raota/shared"
 import { useSegments } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { useEffect, useRef, useState } from "react"
@@ -30,6 +32,7 @@ const launchedAt = Date.now()
  * 홈이 위쪽 내용을 다 받으면(또는 HOME_WAIT_MS가 지나면) 걷어 낸다.
  */
 export default function LaunchCover() {
+  useLocale()
   const { isHydrated } = useRaota()
   const segments = useSegments()
   // 앱 색과 같은 규칙: 어두운 색은 iOS 다크 모드에서만. 안드로이드는 늘 밝은 바탕이라 검은 로고 글씨를 쓴다
@@ -81,7 +84,7 @@ export default function LaunchCover() {
   if (gone) return null
   return (
     <Animated.View
-      accessibilityLabel="RAOTA 불러오는 중"
+      accessibilityLabel={t("RAOTA 불러오는 중")}
       accessible
       pointerEvents={reveal ? "none" : "auto"}
       style={[styles.cover, { opacity }]}

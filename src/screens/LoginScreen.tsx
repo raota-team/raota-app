@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 import { useEffect, useState } from 'react'
 import { ChevronLeft, Eye, EyeOff, KeyRound, Mail, Compass } from 'lucide-react'
 import RamenIcon from '../components/icons/RamenIcon'
@@ -75,7 +76,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
     if (!trimmed) next.email = '이메일 주소를 입력해 주세요. 예: ramen@example.com'
     else if (!EMAIL_PATTERN.test(trimmed)) next.email = '이메일 형식이 아닙니다. @와 도메인을 포함해 다시 입력해 주세요.'
     if (!password) next.password = '비밀번호를 입력해 주세요.'
-    else if (password.length < 8) next.password = `비밀번호는 8자 이상입니다. 지금 ${password.length}자예요.`
+    else if (password.length < 8) next.password = t("비밀번호는 8자 이상입니다. 지금 {count}자예요.", {count: password.length})
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -98,18 +99,17 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
           type="button"
           onClick={onBack}
           className="flex h-11 w-11 items-center justify-center rounded-full text-[#25282B] transition-colors hover:bg-[#F2F2F2]"
-          aria-label="뒤로가기"
+          aria-label={t("뒤로가기")}
         >
           <ChevronLeft className="h-6 w-6" aria-hidden="true" />
         </button>
-        <h1 className="text-[17px] font-black tracking-tight text-[#25282B]">로그인</h1>
+        <h1 className="text-[17px] font-black tracking-tight text-[#25282B]">{t("로그인")}</h1>
         <button
           type="button"
           onClick={onRegisterClick}
           className="flex min-h-11 items-center rounded-[6px] px-2.5 text-[14px] font-black text-[#E60000]"
         >
-          회원가입
-        </button>
+          {t("회원가입")}</button>
       </header>
 
       <div className="no-scrollbar flex-1 overflow-y-auto">
@@ -118,12 +118,11 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
           <div className="mb-7 text-center">
             <img src="/logo.png" alt="RAOTA" className="mx-auto mb-3 h-14 w-14 object-contain" />
             <h2 className="mx-auto mb-2 max-w-[18rem] break-keep text-[24px] font-black leading-tight text-[#25282B]">
-              <span className="block">좋았던 한 그릇을</span>
-              <span className="block text-[#E60000]">잊지 않도록</span>
+              <span className="block">{t("좋았던 한 그릇을")}</span>
+              <span className="block text-[#E60000]">{t("잊지 않도록")}</span>
             </h2>
             <p className="mx-auto max-w-xs break-keep text-[14px] leading-relaxed text-[#6B6E73]">
-              가고 싶은 곳, 다녀온 곳, 다시 먹고 싶은 한 그릇을 라오타에 모아두세요.
-            </p>
+              {t("가고 싶은 곳, 다녀온 곳, 다시 먹고 싶은 한 그릇을 라오타에 모아두세요.")}</p>
           </div>
 
           {/* 간편 로그인 */}
@@ -142,10 +141,9 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
               {loadingProvider === 'kakao' ? (
                 <span className="flex items-center gap-2">
                   <Spinner dark />
-                  카카오 로그인 중
-                </span>
+                  {t("카카오 로그인 중")}</span>
               ) : (
-                <span>카카오로 시작하기</span>
+                <span>{t("카카오로 시작하기")}</span>
               )}
             </button>
 
@@ -164,10 +162,9 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
               {loadingProvider === 'google' ? (
                 <span className="flex items-center gap-2">
                   <Spinner dark />
-                  Google 로그인 중
-                </span>
+                  {t("Google 로그인 중")}</span>
               ) : (
-                <span>Google로 시작하기</span>
+                <span>{t("Google로 시작하기")}</span>
               )}
             </button>
 
@@ -181,10 +178,9 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
               {loadingProvider === 'passkey' ? (
                 <span className="flex items-center gap-2">
                   <Spinner />
-                  패스키 인증 중
-                </span>
+                  {t("패스키 인증 중")}</span>
               ) : (
-                <span>패스키로 시작하기</span>
+                <span>{t("패스키로 시작하기")}</span>
               )}
             </button>
 
@@ -193,7 +189,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                 <div className="w-full border-t border-[#E2E2E2]" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-white px-3 text-[13px] font-bold text-[#6B6E73]">또는</span>
+                <span className="bg-white px-3 text-[13px] font-bold text-[#6B6E73]">{t("또는")}</span>
               </div>
             </div>
 
@@ -206,7 +202,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                 className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[6px] border border-[#E2E2E2] bg-white text-[14px] font-bold text-[#25282B] transition-colors hover:border-[#BEBEBE]"
               >
                 <Mail className="h-4 w-4 text-[#6B6E73]" aria-hidden="true" />
-                {showEmailForm ? '이메일 로그인 접기' : '이메일로 로그인'}
+                {showEmailForm ? t("이메일 로그인 접기") : t("이메일로 로그인")}
               </button>
               <button
                 type="button"
@@ -217,12 +213,12 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                 {loadingProvider === 'demo' ? (
                   <>
                     <Spinner />
-                    <span>접속 중</span>
+                    <span>{t("접속 중")}</span>
                   </>
                 ) : (
                   <>
                     <RamenIcon className="h-4 w-4" aria-hidden="true" />
-                    <span>데모 계정으로 체험</span>
+                    <span>{t("데모 계정으로 체험")}</span>
                   </>
                 )}
               </button>
@@ -232,8 +228,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
               <form id="email-login-form" onSubmit={handleEmailSubmit} noValidate className="anim-fade-in space-y-3 border-t border-[#F2F2F2] pt-3 text-left">
                 <div>
                   <label htmlFor="login-email" className="mb-1 block text-[13px] font-bold text-[#4A4D52]">
-                    이메일 주소
-                  </label>
+                    {t("이메일 주소")}</label>
                   <input
                     id="login-email"
                     type="email"
@@ -252,22 +247,20 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                   />
                   {errors.email && (
                     <p id="login-email-error" role="alert" className="mt-1 text-[13px] font-medium text-[#E60000]">
-                      {errors.email}
+                      {errors.email && t(errors.email)}
                     </p>
                   )}
                 </div>
                 <div>
                   <div className="mb-1 flex items-center justify-between">
                     <label htmlFor="login-password" className="text-[13px] font-bold text-[#4A4D52]">
-                      비밀번호
-                    </label>
+                      {t("비밀번호")}</label>
                     <button
                       type="button"
                       onClick={() => setToastMessage('가입한 이메일로 재설정 링크를 보내드립니다.')}
                       className="-my-2 min-h-11 px-1 text-[13px] font-bold text-[#6B6E73] transition-colors hover:text-[#E60000]"
                     >
-                      비밀번호 찾기
-                    </button>
+                      {t("비밀번호 찾기")}</button>
                   </div>
                   <div className="relative">
                     <input
@@ -279,7 +272,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                         setPassword(e.target.value)
                         if (errors.password) setErrors(prev => ({ ...prev, password: undefined }))
                       }}
-                      placeholder="8자 이상"
+                      placeholder={t("8자 이상")}
                       aria-invalid={Boolean(errors.password)}
                       aria-describedby={errors.password ? 'login-password-error' : undefined}
                       className={`h-12 w-full rounded-[6px] border bg-white pl-3.5 pr-12 text-[15px] text-[#25282B] outline-none transition-colors placeholder:text-[#6B6E73] ${
@@ -289,7 +282,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                     <button
                       type="button"
                       onClick={() => setShowPassword(prev => !prev)}
-                      aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                      aria-label={showPassword ? t("비밀번호 숨기기") : t("비밀번호 보기")}
                       aria-pressed={showPassword}
                       className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-[#6B6E73] hover:text-[#25282B]"
                     >
@@ -298,14 +291,14 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                   </div>
                   {errors.password && (
                     <p id="login-password-error" role="alert" className="mt-1 text-[13px] font-medium text-[#E60000]">
-                      {errors.password}
+                      {errors.password && t(errors.password)}
                     </p>
                   )}
                 </div>
 
                 <label className="flex min-h-11 cursor-pointer items-center gap-2">
                   <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="h-5 w-5 cursor-pointer accent-[#E60000]" />
-                  <span className="text-[14px] font-medium text-[#4A4D52]">로그인 상태 유지</span>
+                  <span className="text-[14px] font-medium text-[#4A4D52]">{t("로그인 상태 유지")}</span>
                 </label>
 
                 <button
@@ -316,10 +309,9 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                   {loadingProvider === 'email' ? (
                     <>
                       <Spinner />
-                      로그인 중
-                    </>
+                      {t("로그인 중")}</>
                   ) : (
-                    '로그인'
+                    t("로그인")
                   )}
                 </button>
               </form>
@@ -335,14 +327,11 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                 className="mx-auto flex min-h-11 items-center justify-center gap-1.5 px-3 text-[14px] font-bold text-[#4A4D52] transition-colors hover:text-[#25282B]"
               >
                 <Compass className="h-4 w-4" aria-hidden="true" />
-                로그인 없이 둘러보기
-              </button>
+                {t("로그인 없이 둘러보기")}</button>
             )}
             <p className="flex min-h-11 items-center justify-center gap-1 text-[14px] text-[#6B6E73]">
-              아직 계정이 없으신가요?
-              <button type="button" onClick={onRegisterClick} className="min-h-11 px-1 font-black text-[#E60000] underline-offset-2 hover:underline">
-                회원가입
-              </button>
+              {t("아직 계정이 없으신가요?")}<button type="button" onClick={onRegisterClick} className="min-h-11 px-1 font-black text-[#E60000] underline-offset-2 hover:underline">
+                {t("회원가입")}</button>
             </p>
           </div>
         </div>
@@ -354,7 +343,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
           className="anim-fade-in-up pointer-events-none absolute bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[32px] bg-[#25282B] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <RamenIcon className="h-4 w-4 shrink-0 text-[#E60000]" aria-hidden="true" />
-          <span>{toastMessage}</span>
+          <span>{t(toastMessage)}</span>
         </div>
       )}
     </div>

@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import { router } from "expo-router"
 import { useState } from "react"
 import { ScrollView, StyleSheet, View } from "react-native"
@@ -15,6 +17,7 @@ import { colors, line, spacing, typography } from "@/src/theme"
  * 비회원은 (flows)/_layout.tsx가 로그인으로 보낸다.
  */
 export default function HiddenAuthorsScreen() {
+  useLocale()
   const { currentUser, actions } = useRaota()
   const insets = useSafeAreaInsets()
   const hidden = useHiddenAuthors()
@@ -26,9 +29,9 @@ export default function HiddenAuthorsScreen() {
     setPendingIds((ids) => [...ids, author.id])
     try {
       await actions.unhideAuthor(author.id)
-      setToast(`${author.name} 님의 숨김을 풀었어요.`)
+      setToast(t("{v1} 님의 숨김을 풀었어요.", { v1: author.name }))
     } catch (error) {
-      setToast(error instanceof Error ? error.message : "숨김을 풀지 못했어요. 다시 시도해 주세요.")
+      setToast(error instanceof Error ? error.message : t("숨김을 풀지 못했어요. 다시 시도해 주세요."))
     } finally {
       setPendingIds((ids) => ids.filter((id) => id !== author.id))
     }
@@ -40,15 +43,15 @@ export default function HiddenAuthorsScreen() {
       if (hidden.error) {
         return (
           <EmptyState
-            actionLabel="다시 시도"
+            actionLabel={t("다시 시도")}
             description={hidden.error}
             onAction={() => void actions.refreshAccount()}
             style={styles.state}
-            title="숨긴 사용자를 불러오지 못했어요"
+            title={t("숨긴 사용자를 불러오지 못했어요")}
           />
         )
       }
-      return <EmptyState description="라운지에서 숨긴 사람이 여기에 모여요." style={styles.state} title="숨긴 사용자가 없어요" />
+      return <EmptyState description={t("라운지에서 숨긴 사람이 여기에 모여요.")} style={styles.state} title={t("숨긴 사용자가 없어요")} />
     }
     return (
       <View>
@@ -61,11 +64,11 @@ export default function HiddenAuthorsScreen() {
                 {author.name}
               </AppText>
               <Button
-                accessibilityLabel={`${author.name} 숨김 해제`}
+                accessibilityLabel={t("{v1} 숨김 해제", { v1: author.name })}
                 loading={pending}
                 onPress={() => void unhide(author)}
                 size="small"
-                title="숨김 해제"
+                title={t("숨김 해제")}
                 variant="secondary"
               />
             </View>
@@ -78,16 +81,15 @@ export default function HiddenAuthorsScreen() {
     <Screen>
       <Header
         align="center"
-        backLabel="뒤로가기"
+        backLabel={t("뒤로가기")}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/settings"))}
-        title="숨긴 사용자"
+        title={t("숨긴 사용자")}
         titleStyle={typography.sectionTitle}
       />
       {currentUser ? (
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.section }]} style={styles.scroll}>
           <AppText lineBreakStrategyIOS="hangul-word" tone="muted" variant="secondary">
-            숨긴 사람의 라멘로그와 댓글은 라운지에 보이지 않아요. 숨김을 풀면 다시 보여요.
-          </AppText>
+            {t("숨긴 사람의 라멘로그와 댓글은 라운지에 보이지 않아요. 숨김을 풀면 다시 보여요. ")}</AppText>
           {renderBody()}
         </ScrollView>
       ) : null}

@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import { router, useLocalSearchParams } from "expo-router"
 import { LogIn, MoreHorizontal, Soup } from "lucide-react-native"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -80,7 +82,7 @@ function CommentRow({ comment, own, onMore }: { comment: RamenLogComment; own: b
         </AppText>
       </View>
       <IconButton
-        accessibilityLabel={own ? "내 댓글 메뉴" : `${comment.author.name}님의 댓글 메뉴`}
+        accessibilityLabel={own ? t("내 댓글 메뉴") : t("{v1}님의 댓글 메뉴", { v1: comment.author.name })}
         icon={<MoreHorizontal color={colors.inkSub} size={18} />}
         onPress={() => onMore(comment)}
         style={styles.commentMore}
@@ -108,7 +110,7 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
           fullWidth
           leftIcon={<LogIn color={colors.ink} size={18} />}
           onPress={() => router.push("/auth/login")}
-          title="로그인하고 댓글 남기기"
+          title={t("로그인하고 댓글 남기기")}
           variant="secondary"
         />
       </View>
@@ -128,7 +130,7 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
     } catch (error) {
       // 이미 처리된 댓글이면 목록은 스토어가 다시 읽으므로 입력만 비우고 안내한다
       if (error instanceof AlreadyHandledError) setText("")
-      onError(error instanceof Error ? error.message : "댓글을 등록하지 못했어요. 다시 시도해 주세요.")
+      onError(error instanceof Error ? error.message : t("댓글을 등록하지 못했어요. 다시 시도해 주세요."))
       return
     } finally {
       setSending(false)
@@ -162,8 +164,7 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
             tone="muted"
             variant="meta"
           >
-            댓글을 등록하지 못했어요. 다시 시도해 주세요.
-          </AppText>
+            {t("댓글을 등록하지 못했어요. 다시 시도해 주세요. ")}</AppText>
           {hint ? (
             <AppText
               accessibilityLiveRegion="polite"
@@ -173,7 +174,7 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
               tone={failed || atLimit ? "critical" : "muted"}
               variant="meta"
             >
-              {hint}
+              {t(hint)}
             </AppText>
           ) : null}
         </View>
@@ -183,7 +184,7 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
           </AppText>
           {nearLimit ? (
             <AppText
-              accessibilityLabel={`${COMMENT_MAX_LENGTH}자 중 ${text.length}자`}
+              accessibilityLabel={t("{v1}자 중 {v2}자", { v1: COMMENT_MAX_LENGTH, v2: text.length })}
               capScale
               style={[styles.tabular, styles.currentCounter]}
               tone={atLimit ? "critical" : "muted"}
@@ -196,8 +197,8 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
       </View>
       <View style={styles.composerRow}>
         <TextInput
-          accessibilityHint={`${COMMENT_MAX_LENGTH}자까지 쓸 수 있어요`}
-          accessibilityLabel="댓글 입력"
+          accessibilityHint={t("{v1}자까지 쓸 수 있어요", { v1: COMMENT_MAX_LENGTH })}
+          accessibilityLabel={t("댓글 입력")}
           maxLength={COMMENT_MAX_LENGTH}
           multiline
           scrollEnabled
@@ -207,18 +208,18 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
             if (failed) setFailed(false)
           }}
           onFocus={() => setFocused(true)}
-          placeholder="이 기록에 댓글을 남겨보세요"
+          placeholder={t("이 기록에 댓글을 남겨보세요")}
           placeholderTextColor={colors.textMuted}
           style={styles.input}
           value={text}
         />
         <Button
-          accessibilityHint={canSubmit || sending ? undefined : trimmed ? "댓글을 2자 이상 입력해 주세요" : "내용을 입력하면 등록할 수 있어요"}
+          accessibilityHint={canSubmit || sending ? undefined : trimmed ? t("댓글을 2자 이상 입력해 주세요") : t("내용을 입력하면 등록할 수 있어요")}
           disabled={!canSubmit}
           loading={sending}
           onPress={() => void submit()}
           size="small"
-          title="등록"
+          title={t("등록")}
           variant={canSubmit || sending ? "primary" : "secondary"}
         />
       </View>
@@ -227,6 +228,7 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
 }
 
 export default function LogDetailScreen() {
+  useLocale()
   const { logId } = useLocalSearchParams<{ logId?: string }>()
   const query = useLoungeLog(typeof logId === "string" && logId.length > 0 ? logId : null)
   const detail = query.data
@@ -268,7 +270,7 @@ export default function LogDetailScreen() {
       return
     }
     ActionSheetIOS.showActionSheetWithOptions(
-      { title: "내 댓글", options: ["삭제하기", "취소"], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
+      { title: t("내 댓글"), options: [t("삭제하기"), t("취소")], destructiveButtonIndex: 0, cancelButtonIndex: 1 },
       (index) => {
         if (index === 0) setConfirmingComment(comment)
       },
@@ -301,7 +303,7 @@ export default function LogDetailScreen() {
     try {
       await actions.deleteLogComment(detail.log.id, confirmingComment.id)
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "댓글을 지우지 못했어요. 다시 시도해 주세요.")
+      setNotice(error instanceof Error ? error.message : t("댓글을 지우지 못했어요. 다시 시도해 주세요."))
     } finally {
       setDeletingComment(false)
       setConfirmingComment(null)
@@ -316,7 +318,7 @@ export default function LogDetailScreen() {
     } catch (error) {
       setDeleting(false)
       setConfirmingDelete(false)
-      setNotice(error instanceof Error ? error.message : "라멘로그를 삭제하지 못했어요. 다시 시도해 주세요.")
+      setNotice(error instanceof Error ? error.message : t("라멘로그를 삭제하지 못했어요. 다시 시도해 주세요."))
       return
     }
     // 뒤로 가는 애니메이션 동안 "볼 수 없어요"가 비치지 않게 삭제한 결과를 먼저 남긴다
@@ -330,7 +332,7 @@ export default function LogDetailScreen() {
     try {
       await actions.unhideAuthor(authorId)
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "숨김을 풀지 못했어요. 다시 시도해 주세요.")
+      setNotice(error instanceof Error ? error.message : t("숨김을 풀지 못했어요. 다시 시도해 주세요."))
     }
   }
 
@@ -348,46 +350,46 @@ export default function LogDetailScreen() {
   )
 
   if (!detail) {
-    let body = <LoadingState fullScreen label="라멘로그를 불러오는 중…" />
+    let body = <LoadingState fullScreen label={t("라멘로그를 불러오는 중…")} />
     if (!query.isLoading) {
       body =
         outcome?.kind === "hidden" ? (
           <EmptyState
-            actionLabel="되돌리기"
-            description="이 사람의 라멘로그와 댓글은 라운지에 보이지 않아요."
+            actionLabel={t("되돌리기")}
+            description={t("이 사람의 라멘로그와 댓글은 라운지에 보이지 않아요.")}
             icon={<Soup color={colors.textMuted} size={32} />}
             onAction={() => void undoHidden(outcome.authorId)}
-            title={`${outcome.authorName}님의 글을 숨겼어요`}
+            title={t("{v1}님의 글을 숨겼어요", { v1: outcome.authorName })}
           />
         ) : outcome?.kind === "reported" ? (
           <EmptyState
-            actionLabel="라운지로 돌아가기"
-            description="검토 후 조치할게요. 신고한 라멘로그는 더 이상 보이지 않아요."
+            actionLabel={t("라운지로 돌아가기")}
+            description={t("검토 후 조치할게요. 신고한 라멘로그는 더 이상 보이지 않아요.")}
             icon={<Soup color={colors.textMuted} size={32} />}
             onAction={goBack}
-            title="신고를 접수했어요"
+            title={t("신고를 접수했어요")}
           />
         ) : outcome?.kind === "deleted" ? (
           <EmptyState
-            actionLabel="라운지로 돌아가기"
-            description="라운지와 내 기록에서 사라졌어요."
+            actionLabel={t("라운지로 돌아가기")}
+            description={t("라운지와 내 기록에서 사라졌어요.")}
             icon={<Soup color={colors.textMuted} size={32} />}
             onAction={goBack}
-            title="라멘로그를 삭제했어요"
+            title={t("라멘로그를 삭제했어요")}
           />
         ) : (
           <EmptyState
-            actionLabel="라운지로 돌아가기"
-            description={query.error ? "잠시 후 다시 열어 주세요." : "삭제됐거나 비공개로 바뀐 기록이에요."}
+            actionLabel={t("라운지로 돌아가기")}
+            description={query.error ? t("잠시 후 다시 열어 주세요.") : t("삭제됐거나 비공개로 바뀐 기록이에요.")}
             icon={<Soup color={colors.textMuted} size={32} />}
             onAction={goBack}
-            title={query.error ? "라멘로그를 불러오지 못했어요" : "라멘로그를 볼 수 없어요"}
+            title={query.error ? t("라멘로그를 불러오지 못했어요") : t("라멘로그를 볼 수 없어요")}
           />
         )
     }
     return (
       <Screen>
-        <Header backLabel="뒤로가기" onBack={goBack} title="라멘로그" />
+        <Header backLabel={t("뒤로가기")} onBack={goBack} title={t("라멘로그")} />
         <View style={styles.flex}>{body}</View>
         {moderationElement}
         {noticeToast}
@@ -407,7 +409,7 @@ export default function LogDetailScreen() {
       return
     }
     ActionSheetIOS.showActionSheetWithOptions(
-      { title: "내 라멘로그", options: ["수정하기", "삭제하기", "취소"], destructiveButtonIndex: 1, cancelButtonIndex: 2 },
+      { title: t("내 라멘로그"), options: [t("수정하기"), t("삭제하기"), t("취소")], destructiveButtonIndex: 1, cancelButtonIndex: 2 },
       (index) => {
         if (index === 0) editOwnLog()
         if (index === 1) setConfirmingDelete(true)
@@ -421,13 +423,12 @@ export default function LogDetailScreen() {
       <FlatList
         ListEmptyComponent={
           <AppText lineBreakStrategyIOS="hangul-word" style={styles.noComments} tone="sub" variant="secondary">
-            첫 댓글을 남겨 대화를 시작해 보세요.
-          </AppText>
+            {t("첫 댓글을 남겨 대화를 시작해 보세요. ")}</AppText>
         }
         ListHeaderComponent={<LogDetailHeader commentCount={detail.commentCount} log={log} onLike={() => void like(log)} onMore={own ? openOwnLogMenu : openLogMenu} own={own} />}
         ListFooterComponent={query.error ? (
-          <EmptyState actionLabel="다시 불러오기" onAction={query.loadMoreComments} title="댓글을 불러오지 못했어요" />
-        ) : query.isLoading && query.hasMoreComments ? <LoadingState label="댓글을 더 불러오는 중…" /> : null}
+          <EmptyState actionLabel={t("다시 불러오기")} onAction={query.loadMoreComments} title={t("댓글을 불러오지 못했어요")} />
+        ) : query.isLoading && query.hasMoreComments ? <LoadingState label={t("댓글을 더 불러오는 중…")} /> : null}
         contentContainerStyle={styles.listContent}
         data={comments}
         keyExtractor={(comment) => comment.id}
@@ -448,7 +449,7 @@ export default function LogDetailScreen() {
         onPosted={() => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80)}
       />
       {moderationElement}
-      <BottomSheet onClose={() => setOwnMenuOpen(false)} title="내 라멘로그" visible={ownMenuOpen}>
+      <BottomSheet onClose={() => setOwnMenuOpen(false)} title={t("내 라멘로그")} visible={ownMenuOpen}>
         <View style={styles.ownMenu}>
           <Button
             fullWidth
@@ -456,7 +457,7 @@ export default function LogDetailScreen() {
               setOwnMenuOpen(false)
               editOwnLog()
             }}
-            title="수정하기"
+            title={t("수정하기")}
             variant="secondary"
           />
           <Button
@@ -465,29 +466,29 @@ export default function LogDetailScreen() {
               setOwnMenuOpen(false)
               setConfirmingDelete(true)
             }}
-            title="삭제하기"
+            title={t("삭제하기")}
             variant="danger"
           />
         </View>
       </BottomSheet>
       <ConfirmDialog
-        confirmLabel="삭제"
+        confirmLabel={t("삭제")}
         destructive
         loading={deleting}
-        message="사진과 메모, 받은 댓글과 공감이 모두 사라지고 되돌릴 수 없어요."
+        message={t("사진과 메모, 받은 댓글과 공감이 모두 사라지고 되돌릴 수 없어요.")}
         onCancel={() => setConfirmingDelete(false)}
         onConfirm={() => void deleteOwnLog()}
-        title="이 라멘로그를 삭제할까요?"
+        title={t("이 라멘로그를 삭제할까요?")}
         visible={confirmingDelete}
       />
       <ConfirmDialog
-        confirmLabel="삭제"
+        confirmLabel={t("삭제")}
         destructive
         loading={deletingComment}
-        message="삭제한 댓글은 되돌릴 수 없어요."
+        message={t("삭제한 댓글은 되돌릴 수 없어요.")}
         onCancel={() => setConfirmingComment(null)}
         onConfirm={() => void deleteOwnComment()}
-        title="이 댓글을 삭제할까요?"
+        title={t("이 댓글을 삭제할까요?")}
         visible={Boolean(confirmingComment)}
       />
       {noticeToast}
@@ -519,7 +520,7 @@ function LogDetailHeader({
           <LogAuthorRow log={log} />
           {onMore ? (
             <IconButton
-              accessibilityLabel={own ? "내 라멘로그 메뉴" : `${log.author.name}님의 라멘로그 메뉴`}
+              accessibilityLabel={own ? t("내 라멘로그 메뉴") : t("{v1}님의 라멘로그 메뉴", { v1: log.author.name })}
               icon={<MoreHorizontal color={colors.inkSub} size={20} />}
               onPress={onMore}
             />
@@ -531,8 +532,8 @@ function LogDetailHeader({
           <View style={styles.typeLine}>
             <AppText capScale tone="sub" variant="secondary">{`${log.ramenType} ·`}</AppText>
             <Pressable
-              accessibilityHint="매장 정보로 이동해요"
-              accessibilityLabel={`${shopName} 매장 정보`}
+              accessibilityHint={t("매장 정보로 이동해요")}
+              accessibilityLabel={t("{v1} 매장 정보", { v1: shopName })}
               accessibilityRole="button"
               hitSlop={{ top: 10, bottom: 10 }}
               onPress={() => openShopDetail(log.shop.id)}
@@ -548,11 +549,10 @@ function LogDetailHeader({
       </View>
       <View style={styles.commentsHead}>
         <AppText accessibilityRole="header" style={styles.tabular} variant="bodyStrong">
-          {`댓글 ${commentCount}`}
+          {t("댓글 {v1}", { v1: commentCount })}
         </AppText>
         <AppText capScale tone="sub" variant="meta">
-          등록순
-        </AppText>
+          {t("등록순 ")}</AppText>
       </View>
     </View>
   )

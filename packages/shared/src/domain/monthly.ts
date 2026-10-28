@@ -12,6 +12,7 @@ import {
   type PastReportItem,
 } from "./ledger"
 import { TASTE_AXES } from "./taste"
+import { formatDate, getLocale, t } from "../i18n"
 
 export const MONTHLY_REPORT_TARGET = 3
 
@@ -81,6 +82,10 @@ export function chronologicalReports<T extends DistributionSource>(reports: T[])
 }
 
 export function shortReportMonth(report: DistributionSource, includeYear = false) {
+  if (getLocale() !== 'ko') {
+    const [year, month] = report.period.match(/\d+/g)?.map(Number) ?? []
+    if (year && month) return formatDate(new Date(year, month - 1, 1), { month: 'short', ...(includeYear ? { year: 'numeric' as const } : {}) })
+  }
   const parts = report.period.split(' ')
   return includeYear ? report.period : parts[parts.length - 1]
 }
@@ -149,7 +154,7 @@ export function pastReportsFromBowls(bowls: DemoBowl[], now = new Date()): PastR
       scores,
       styleRows,
       topShops: shopVisitsOf(monthBowls).slice(0, 3),
-      note: top ? `${top.name}를 ${top.count}그릇으로 가장 많이 먹은 달이에요.` : '',
+      note: top ? t('{type}를 {count}그릇으로 가장 많이 먹은 달이에요.', { type: t(top.name), count: top.count }) : '',
     }]
   })
 }

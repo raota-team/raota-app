@@ -15,6 +15,7 @@ import { cancelRecordReminders, configureReminderPresentation, deepLinkToPath } 
 import { RaotaProvider, useRaota } from "@/src/state/RaotaStore"
 import { reportError, startErrorMonitoring, withErrorMonitoring } from "@/src/monitoring"
 import { colors } from "@/src/theme"
+import { useDeviceLocale, useLocale } from "@/src/i18n"
 
 ;(globalThis as typeof globalThis & { Buffer?: typeof Buffer }).Buffer ??=
   Buffer
@@ -90,6 +91,8 @@ function ReminderDeepLinks() {
 }
 
 function RootLayout() {
+  useDeviceLocale()
+  useLocale()
   useAppOpenTracking()
 
   // 네이티브 스플래시는 LaunchCover가 같은 로고를 그린 뒤에 내린다

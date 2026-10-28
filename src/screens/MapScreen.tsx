@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import L from 'leaflet'
 import { ChevronDown, ChevronRight, Check, Search, X, MapPin, List, Navigation, Map, Plus, Minus } from 'lucide-react'
@@ -495,13 +496,13 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
             <Search className="w-4 h-4 text-[#6B6E73] shrink-0" aria-hidden="true" />
             <input
               className="flex-1 min-w-0 h-full bg-transparent text-[14px] font-medium text-[#25282B] placeholder-[#6B6E73] outline-none"
-              placeholder="라멘집 이름, 계보, 지점 검색"
+              placeholder={t("라멘집 이름, 계보, 지점 검색")}
               value={search}
               onChange={e => { setSearch(e.target.value); setSearching(e.target.value.length > 0) }}
-              aria-label="라멘집 검색"
+              aria-label={t("라멘집 검색")}
             />
             {searching && (
-              <button type="button" onClick={() => { setSearch(''); setSearching(false) }} className="w-10 h-10 flex items-center justify-center text-[#6B6E73]" aria-label="검색어 지우기">
+              <button type="button" onClick={() => { setSearch(''); setSearching(false) }} className="w-10 h-10 flex items-center justify-center text-[#6B6E73]" aria-label={t("검색어 지우기")}>
                 <X className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
@@ -511,10 +512,10 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
             type="button"
             onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
             className="h-11 px-3.5 rounded-[6px] bg-[#25282B] text-white text-[13px] font-bold flex items-center gap-1.5 active:scale-95 transition-transform flex-shrink-0"
-            aria-label={viewMode === 'map' ? '목록으로 보기' : '지도로 보기'}
+            aria-label={viewMode === 'map' ? t("목록으로 보기") : t("지도로 보기")}
           >
             {viewMode === 'map' ? <List className="w-4 h-4" aria-hidden="true" /> : <Map className="w-4 h-4" aria-hidden="true" />}
-            <span>{viewMode === 'map' ? '목록' : '지도'}</span>
+            <span>{viewMode === 'map' ? t("목록") : t("지도")}</span>
           </button>
         </div>
 
@@ -527,22 +528,22 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
               aria-expanded={isRegionDropdownOpen}
               aria-haspopup="listbox"
               aria-controls="map-region-options"
-              aria-label={`지역 필터: ${regionLabel}`}
+              aria-label={t("지역 필터: {v0}", { v0: t(regionLabel) })}
               className={filterButtonClass(regionFilter !== 'ALL')}
             >
               <span className="flex items-center gap-1.5 min-w-0">
                 <MapPin className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">{regionLabel}</span>
+                <span className="truncate">{t(regionLabel)}</span>
               </span>
               <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isRegionDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
 
             {isRegionDropdownOpen && (
-              <ul id="map-region-options" role="listbox" aria-label="지역 선택" className="absolute left-0 top-full mt-1.5 z-40 w-48 rounded-[6px] border border-[#E2E2E2] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] overflow-hidden anim-fade-in-up py-1">
+              <ul id="map-region-options" role="listbox" aria-label={t("지역 선택")} className="absolute left-0 top-full mt-1.5 z-40 w-48 rounded-[6px] border border-[#E2E2E2] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] overflow-hidden anim-fade-in-up py-1">
                 {REGION_OPTIONS.map(reg => (
                   <li key={reg.value} role="option" aria-selected={regionFilter === reg.value}>
                     <button type="button" onClick={() => { setRegionFilter(reg.value); setIsRegionDropdownOpen(false) }} className={optionClass(regionFilter === reg.value)}>
-                      <span>{reg.label}</span>
+                      <span>{t(reg.label)}</span>
                       {regionFilter === reg.value && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
                     </button>
                   </li>
@@ -559,22 +560,22 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
               aria-expanded={isMenuDropdownOpen}
               aria-haspopup="listbox"
               aria-controls="map-menu-options"
-              aria-label={`메뉴 필터: ${menuLabel}`}
+              aria-label={t("메뉴 필터: {v0}", { v0: t(menuLabel) })}
               className={filterButtonClass(menuFilter !== 'ALL')}
             >
               <span className="flex items-center gap-1.5 min-w-0">
                 <RamenIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                <span className="truncate">{menuLabel}</span>
+                <span className="truncate">{t(menuLabel)}</span>
               </span>
               <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isMenuDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
 
             {isMenuDropdownOpen && (
-              <ul id="map-menu-options" role="listbox" aria-label="메뉴 선택" className="absolute right-0 top-full mt-1.5 z-40 w-52 rounded-[6px] border border-[#E2E2E2] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] overflow-hidden anim-fade-in-up py-1">
+              <ul id="map-menu-options" role="listbox" aria-label={t("메뉴 선택")} className="absolute right-0 top-full mt-1.5 z-40 w-52 rounded-[6px] border border-[#E2E2E2] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] overflow-hidden anim-fade-in-up py-1">
                 {MENU_OPTIONS.map(menu => (
                   <li key={menu.value} role="option" aria-selected={menuFilter === menu.value}>
                     <button type="button" onClick={() => { setMenuFilter(menu.value); setIsMenuDropdownOpen(false) }} className={optionClass(menuFilter === menu.value)}>
-                      <span>{menu.label}</span>
+                      <span>{t(menu.label)}</span>
                       {menuFilter === menu.value && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
                     </button>
                   </li>
@@ -593,7 +594,7 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
             }`}
           >
             <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${onlyOpen ? 'bg-white' : 'bg-[#2E7D32]'}`} />
-            <span>영업 중</span>
+            <span>{t("영업 중")}</span>
           </button>
 
           {hasActiveFilter && (
@@ -601,7 +602,7 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
               type="button"
               onClick={() => { setRegionFilter('ALL'); setMenuFilter('ALL'); setOnlyOpen(false) }}
               className="h-11 w-11 rounded-[6px] bg-[#F2F2F2] text-[#25282B] flex items-center justify-center shrink-0 active:bg-[#E2E2E2] transition-colors"
-              aria-label="필터 초기화"
+              aria-label={t("필터 초기화")}
             >
               <X className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -621,15 +622,15 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                 type="button"
                 onClick={handleGoToUserLocation}
                 className="w-11 h-11 rounded-[6px] bg-white border border-[#E2E2E2] text-[#25282B] shadow-[0_4px_16px_rgba(0,0,0,0.12)] flex items-center justify-center active:bg-[#F2F2F2] transition-colors"
-                aria-label="내 위치로 이동"
+                aria-label={t("내 위치로 이동")}
               >
                 <Navigation className="w-4.5 h-4.5" aria-hidden="true" />
               </button>
               <div className="bg-white border border-[#E2E2E2] rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] overflow-hidden flex flex-col divide-y divide-[#E2E2E2]">
-                <button type="button" onClick={handleZoomIn} className="w-11 h-11 flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2] transition-colors" aria-label="확대">
+                <button type="button" onClick={handleZoomIn} className="w-11 h-11 flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2] transition-colors" aria-label={t("확대")}>
                   <Plus className="w-5 h-5" aria-hidden="true" />
                 </button>
-                <button type="button" onClick={handleZoomOut} className="w-11 h-11 flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2] transition-colors" aria-label="축소">
+                <button type="button" onClick={handleZoomOut} className="w-11 h-11 flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2] transition-colors" aria-label={t("축소")}>
                   <Minus className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
@@ -667,13 +668,13 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                   </div>
                   <p className="text-[13px] text-[#6B6E73] mt-0.5 truncate">{selected.spec}</p>
                   <div className="flex items-center gap-1.5 mt-1 text-[12px] font-bold">
-                    <span className={selected.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {selected.status}</span>
+                    <span className={selected.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {t(selected.status)}</span>
                     <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
                     <span className="text-[#6B6E73]">{selected.dist}</span>
                     {selected.match > 0 && (
                       <>
                         <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
-                        <span className="text-[#E60000]">일치도 {selected.match}%</span>
+                        <span className="text-[#E60000]">{t("일치도")} {selected.match}%</span>
                       </>
                     )}
                   </div>
@@ -682,8 +683,8 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
               </button>
             ) : (
               <div className="py-3 text-center">
-                <p className="text-[15px] font-bold">조건에 맞는 라멘집이 없어요</p>
-                <p className="mt-1 text-[13px] text-[#6B6E73]">검색어나 필터를 바꿔 다시 찾아보세요.</p>
+                <p className="text-[15px] font-bold">{t("조건에 맞는 라멘집이 없어요")}</p>
+                <p className="mt-1 text-[13px] text-[#6B6E73]">{t("검색어나 필터를 바꿔 다시 찾아보세요.")}</p>
               </div>
             )}
           </footer>
@@ -692,10 +693,10 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
         <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-4">
           <div className="flex items-center justify-between pb-2 border-b border-[#E2E2E2]">
             <span className="text-[13px] font-bold text-[#6B6E73]">
-              총 <span className="text-[#25282B] font-extrabold">{filteredShops.length}곳</span>
+              {t("총")} <span className="text-[#25282B] font-extrabold">{filteredShops.length}{t("곳")}</span>
             </span>
-            <div className="flex items-center gap-1 text-[13px] font-bold" role="group" aria-label="정렬">
-              {([['dist', '거리순'], ['match', '취향순'], ['name', '이름순']] as const).map(([key, label]) => (
+            <div className="flex items-center gap-1 text-[13px] font-bold" role="group" aria-label={t("정렬")}>
+              {([['dist', t("거리순")], ['match', t("취향순")], ['name', t("이름순")]] as const).map(([key, label]) => (
                 <button
                   key={key}
                   type="button"
@@ -703,7 +704,7 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                   aria-pressed={sortBy === key}
                   className={`min-h-11 px-2.5 rounded-[4px] transition-colors ${sortBy === key ? 'bg-[#25282B] text-white' : 'text-[#6B6E73]'}`}
                 >
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
@@ -730,13 +731,13 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                     </div>
                     <p className="text-[13px] text-[#6B6E73] mt-0.5 truncate">{shop.style} · {shop.spec}</p>
                     <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#F2F2F2] text-[12px] font-bold text-[#6B6E73] whitespace-nowrap overflow-hidden">
-                      <span className={shop.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {shop.status}</span>
+                      <span className={shop.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {t(shop.status)}</span>
                       <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
                       <span>{shop.dist}</span>
                       {shop.lastOrder && (
                         <>
                           <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
-                          <span>라스트오더 {shop.lastOrder}</span>
+                          <span>{t("라스트오더")} {shop.lastOrder}</span>
                         </>
                       )}
                     </div>
@@ -747,8 +748,8 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
           </ul>
           {filteredShops.length === 0 && (
             <div className="mt-3 rounded-[6px] border border-dashed border-[#BEBEBE] px-5 py-10 text-center">
-              <p className="text-[15px] font-bold">검색 결과가 없어요</p>
-              <p className="mt-1 text-[13px] text-[#6B6E73]">다른 매장명이나 라멘 종류로 찾아보세요.</p>
+              <p className="text-[15px] font-bold">{t("검색 결과가 없어요")}</p>
+              <p className="mt-1 text-[13px] text-[#6B6E73]">{t("다른 매장명이나 라멘 종류로 찾아보세요.")}</p>
             </div>
           )}
         </div>

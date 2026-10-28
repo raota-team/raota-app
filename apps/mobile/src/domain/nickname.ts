@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+
 /** 서버 Nickname.of와 같은 순서로 trim → NFKC → 길이·문자를 확인한다. */
 export const NICKNAME_MIN = 2
 export const NICKNAME_MAX = 12
@@ -19,13 +21,13 @@ export function validateNickname(raw: string | null | undefined): NicknameValida
   let length = 0
   for (const _point of display) length++
   const error = length === 0
-    ? NICKNAME_REQUIRED_ERROR
+    ? t(NICKNAME_REQUIRED_ERROR)
     : length < NICKNAME_MIN
-      ? `닉네임이 너무 짧아요. ${NICKNAME_MIN - length}자만 더 적어 주세요.`
+      ? t("닉네임이 너무 짧아요. {count}자만 더 적어 주세요.", { count: NICKNAME_MIN - length })
       : length > NICKNAME_MAX
-        ? `닉네임은 ${NICKNAME_MAX}자까지예요. 지금 ${length}자예요.`
+        ? t("닉네임은 {max}자까지예요. 지금 {count}자예요.", { max: NICKNAME_MAX, count: length })
         : !ALLOWED_NICKNAME.test(display)
-          ? "닉네임은 한글·영문·숫자·밑줄만 쓸 수 있어요."
+          ? t("닉네임은 한글·영문·숫자·밑줄만 쓸 수 있어요.")
           : null
   return { display, normalized: display.toLowerCase(), length, error }
 }

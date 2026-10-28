@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
 import { router, useLocalSearchParams } from "expo-router"
 import { CalendarCheck, ChevronLeft, ChevronRight, Ellipsis, Heart, ImageOff, Map as MapIcon, MapPin, Phone, Share2, Sparkles } from "lucide-react-native"
@@ -48,13 +50,13 @@ function formatDistance(meters: number) {
 function businessLabel(shop: Shop): { label: string; open: boolean } {
   switch (shop.businessStatus) {
     case "OPERATIONAL":
-      return shop.isOpen ? { label: "영업 중", open: true } : { label: "준비 중", open: false }
+      return shop.isOpen ? { label: t("영업 중"), open: true } : { label: t("준비 중"), open: false }
     case "CLOSED_TEMPORARILY":
-      return { label: "임시 휴업", open: false }
+      return { label: t("임시 휴업"), open: false }
     case "CLOSED_PERMANENTLY":
-      return { label: "폐업", open: false }
+      return { label: t("폐업"), open: false }
     default:
-      return { label: "영업 정보 확인 필요", open: false }
+      return { label: t("영업 정보 확인 필요"), open: false }
   }
 }
 
@@ -70,7 +72,7 @@ function HoursStatusLine({ status, large = false }: { status: LiveStatus; large?
     <View style={styles.statusLine}>
       <View style={[styles.statusDot, { backgroundColor: status.open ? colors.open : colors.textMuted }]} testID="shop-hours-status-dot" />
       <AppText style={[styles.flexShrink, styles.tabular]} variant={large ? "body" : "secondary"}>
-        <AppText style={styles.bold} variant={large ? "body" : "secondary"}>{status.label}</AppText>
+        <AppText style={styles.bold} variant={large ? "body" : "secondary"}>{t(status.label)}</AppText>
         {status.detail ? <AppText tone="sub" variant={large ? "body" : "secondary"}>{` · ${status.detail}`}</AppText> : null}
       </AppText>
     </View>
@@ -98,7 +100,7 @@ function TodayTimeline({ hours, nowMinute }: { hours: DayHours; nowMinute: numbe
       <View style={styles.timelineLabels}>
         <AppText capScale style={styles.tabular} tone="sub" variant="meta">{formatTime(start)}</AppText>
         {pauses.length === 1 ? (
-          <AppText capScale style={styles.tabular} tone="muted" variant="meta">{`쉬는 시간 ${formatTime(pauses[0].start)} – ${formatTime(pauses[0].end)}`}</AppText>
+          <AppText capScale style={styles.tabular} tone="muted" variant="meta">{t("쉬는 시간 {v1} – {v2}", { v1: formatTime(pauses[0].start), v2: formatTime(pauses[0].end) })}</AppText>
         ) : null}
         <AppText capScale style={styles.tabular} tone="sub" variant="meta">{formatTime(end)}</AppText>
       </View>
@@ -125,6 +127,7 @@ function goBack() {
  * 데이터 hook에 refetch가 생기면 이 key 대신 그것을 부른다.
  */
 export default function ShopDetailScreen() {
+  useLocale()
   const [retryKey, setRetryKey] = useState(0)
   return <ShopDetailLoader key={retryKey} onRetry={() => setRetryKey((key) => key + 1)} />
 }
@@ -138,7 +141,7 @@ function ShopDetailLoader({ onRetry }: { onRetry: () => void }) {
     if (shopQuery.isLoading) {
       return (
         <Screen>
-          <LoadingState fullScreen label="매장 정보를 불러오는 중…" />
+          <LoadingState fullScreen label={t("매장 정보를 불러오는 중…")} />
         </Screen>
       )
     }
@@ -146,14 +149,14 @@ function ShopDetailLoader({ onRetry }: { onRetry: () => void }) {
     const retryable = Boolean(shopQuery.error) && isRemote("shops")
     return (
       <Screen>
-        <Header backLabel="뒤로가기" onBack={goBack} title="매장 정보" />
+        <Header backLabel={t("뒤로가기")} onBack={goBack} title={t("매장 정보")} />
         <EmptyState
-          actionLabel={retryable ? "다시 불러오기" : "지도에서 다시 찾기"}
-          description={shopQuery.error ? "잠시 후 다시 열어 주세요." : "삭제되었거나 잘못된 매장 링크일 수 있어요."}
+          actionLabel={retryable ? t("다시 불러오기") : t("지도에서 다시 찾기")}
+          description={shopQuery.error ? t("잠시 후 다시 열어 주세요.") : t("삭제되었거나 잘못된 매장 링크일 수 있어요.")}
           icon={<MapPin color={colors.textMuted} size={28} />}
           onAction={retryable ? onRetry : () => router.replace("/native/map")}
           style={styles.flex}
-          title={shopQuery.error ? "매장 정보를 불러오지 못했어요" : "매장을 찾을 수 없어요"}
+          title={shopQuery.error ? t("매장 정보를 불러오지 못했어요") : t("매장을 찾을 수 없어요")}
         />
       </Screen>
     )
@@ -163,6 +166,7 @@ function ShopDetailLoader({ onRetry }: { onRetry: () => void }) {
 }
 
 function ShopDetail({ shop }: { shop: DetailShop }) {
+  const locale = useLocale()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const compact = width < 360
@@ -227,24 +231,20 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const liveStatus: LiveStatus = hoursStatus
     ? { ...statusText(hoursStatus), open: hoursStatus.kind === "open" }
     : { label: status.label, detail: null, open: status.open }
-  const todayLine = !todayHours
-    ? `오늘(${todayShort}) 영업시간 정보 없음`
-    : todayHours.closed
-      ? `오늘(${todayShort}) 휴무`
-      : `오늘(${todayShort}) ${spanText(todayHours.ranges)}${todayBreaks.map((pause) => ` · 쉬는 시간 ${formatTime(pause.start)} – ${formatTime(pause.end)}`).join("")}`
+  const todayLine = !todayHours ? t("오늘({v1}) 영업시간 정보 없음", { v1: todayShort }) : todayHours.closed ? t("오늘({v1}) 휴무", { v1: todayShort }) : t("오늘({v1}) {v2}{v3}", { v1: todayShort, v2: spanText(todayHours.ranges), v3: todayBreaks.map((pause) => ` · 쉬는 시간 ${formatTime(pause.start)} – ${formatTime(pause.end)}`).join("") })
   const photos = shop.photos.filter(Boolean)
   const perks = [
-    { label: "면 리필", value: shop.servicePerks?.noodleRefill },
-    { label: "공깃밥 리필", value: shop.servicePerks?.riceRefill },
-    { label: "육수 추가", value: shop.servicePerks?.soupRefill },
-    { label: "양념", value: shop.servicePerks?.condiments },
+    { label: t("면 리필"), value: shop.servicePerks?.noodleRefill },
+    { label: t("공깃밥 리필"), value: shop.servicePerks?.riceRefill },
+    { label: t("육수 추가"), value: shop.servicePerks?.soupRefill },
+    { label: t("양념"), value: shop.servicePerks?.condiments },
   ].filter((perk): perk is { label: string; value: string } => Boolean(perk.value))
   /** 가게별 맛 모음은 원장에 없으므로 이 화면에서 볼 수 있는 공개 라멘로그의 실제 평가만 모은다. */
   const shopTaste = useMemo(() => {
     const viewer = { userId: currentUser?.id ?? null, hiddenAuthorIds: state.hiddenAuthorIds, reports: state.contentReports }
     const publicLogs = shopsQuery.remote ? [] : state.logs.filter((log) => log.shop.id === shop.id && log.isPublic && isLogVisibleTo(log, viewer))
     return shopTasteSummaryOf(publicLogs)
-  }, [currentUser?.id, shop.id, shopsQuery.remote, state.contentReports, state.hiddenAuthorIds, state.logs])
+  }, [currentUser?.id, shop.id, shopsQuery.remote, state.contentReports, state.hiddenAuthorIds, state.logs, locale])
   /** 같은 종류의 실제 매장 두 곳. 도보 시간 데이터는 없으므로 시간은 추정하지 않는다. */
   const similarShops = useMemo(
     () => nearbyShops
@@ -290,7 +290,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
       await request
       track("bookmark_toggled", { shopId: shop.id, saved: next })
       setToastSaved(next)
-      setToast(next ? "가고 싶은 라멘집에 저장했어요" : "가고 싶어요에서 뺐어요")
+      setToast(next ? t("가고 싶은 라멘집에 저장했어요") : t("가고 싶어요에서 뺐어요"))
     } catch (error) {
       // 스토어가 되돌려 두었으므로 하트 애니메이션만 정리하고 이유를 알린다
       cancelAnimation(heartScale)
@@ -299,7 +299,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
       heartScale.value = 1
       ringOpacity.value = 0
       setToastSaved(false)
-      setToast(error instanceof Error ? error.message : "찜을 바꾸지 못했어요. 다시 시도해 주세요.")
+      setToast(error instanceof Error ? error.message : t("찜을 바꾸지 못했어요. 다시 시도해 주세요."))
     } finally {
       savePending.current = false
     }
@@ -317,7 +317,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const openUrl = (url: string) => {
     void Linking.openURL(url).catch(() => {
       setToastSaved(false)
-      setToast("링크를 열 수 없어요")
+      setToast(t("링크를 열 수 없어요"))
     })
   }
 
@@ -336,7 +336,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     const links = naverMapLinks(shop)
     void Share.share({ message: `${shop.name}${shop.branch ? ` ${shop.branch}` : ""}\n${links.fallback ?? links.primary}` }).catch(() => {
       setToastSaved(false)
-      setToast("링크를 열 수 없어요")
+      setToast(t("링크를 열 수 없어요"))
     })
   }
 
@@ -348,16 +348,16 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     shop.phone
       ? {
           key: "phone",
-          label: "전화",
-          hint: `${shop.phone}로 전화를 걸어요`,
+          label: t("전화"),
+          hint: t("{v1}로 전화를 걸어요", { v1: shop.phone }),
           icon: <Phone color={colors.ink} size={20} />,
           onPress: () => openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`),
         }
       : null,
     {
       key: "map",
-      label: "지도에서 보기",
-      hint: "라오타 지도에서 이 가게 위치를 봐요",
+      label: t("지도에서 보기"),
+      hint: t("라오타 지도에서 이 가게 위치를 봐요"),
       icon: <MapIcon color={colors.ink} size={20} />,
       // focus는 같은 가게로 다시 와도 지도가 다시 옮겨 가게 하려는 값이다(탭 파라미터가 같으면 효과가 돌지 않는다)
       onPress: () => router.navigate({ pathname: "/native/map", params: { shopId: shop.id, focus: String(Date.now()) } }),
@@ -365,8 +365,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     shop.catchTableUrl
       ? {
           key: "catchtable",
-          label: "캐치테이블",
-          hint: "캐치테이블에서 예약·웨이팅을 해요",
+          label: t("캐치테이블"),
+          hint: t("캐치테이블에서 예약·웨이팅을 해요"),
           icon: <CalendarCheck color={colors.ink} size={20} />,
           onPress: () => openUrl(shop.catchTableUrl!),
         }
@@ -374,8 +374,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
     shop.instagramUrl
       ? {
           key: "instagram",
-          label: "인스타그램",
-          hint: "매장 인스타그램을 열어요",
+          label: t("인스타그램"),
+          hint: t("매장 인스타그램을 열어요"),
           icon: <InstagramIcon color={colors.ink} size={20} />,
           onPress: () => openUrl(shop.instagramUrl!),
         }
@@ -402,7 +402,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
         <View style={[styles.hero, { width: width - 16, height: Math.min(360, width - 16), marginTop: insets.top + spacing.x4 }]}>
           {photos.length ? (
             <ScrollView
-              accessibilityLabel={`${shop.name} 사진 ${photos.length}장`}
+              accessibilityLabel={t("{v1} 사진 {v2}장", { v1: shop.name, v2: photos.length })}
               horizontal
               onMomentumScrollEnd={({ nativeEvent }) => setPhotoIndex(Math.round(nativeEvent.contentOffset.x / Math.max(1, width - 16)))}
               pagingEnabled
@@ -412,7 +412,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             >
               {photos.map((photo, index) => (
                 <Pressable
-                  accessibilityHint="사진을 크게 봐요"
+                  accessibilityHint={t("사진을 크게 봐요")}
                   accessibilityRole="imagebutton"
                   collapsable={false}
                   key={`${photo}-${index}`}
@@ -437,7 +437,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                   style={viewingPhoto?.index === index && viewingPhoto.origin && !viewingPhoto.released && !reducedMotion ? styles.hiddenSource : undefined}
                 >
                   <ResilientUriImage
-                    accessibilityLabel={`${shop.name} 사진 ${index + 1}`}
+                    accessibilityLabel={t("{v1} 사진 {v2}", { v1: shop.name, v2: index + 1 })}
                     fallback={<ImageOff color={colors.textMuted} size={28} />}
                     style={{ width: width - 16, height: "100%" }}
                     uri={photo}
@@ -446,22 +446,22 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               ))}
             </ScrollView>
           ) : (
-            <View accessibilityLabel="아직 등록된 사진이 없어요" accessibilityRole="image" style={styles.noPhoto}>
+            <View accessibilityLabel={t("아직 등록된 사진이 없어요")} accessibilityRole="image" style={styles.noPhoto}>
               <ImageOff color={colors.textMuted} size={28} />
-              <AppText tone="muted" variant="secondary">아직 등록된 사진이 없어요</AppText>
+              <AppText tone="muted" variant="secondary">{t("아직 등록된 사진이 없어요")}</AppText>
             </View>
           )}
           <View pointerEvents="box-none" style={styles.heroControls}>
-            <IconButton accessibilityLabel="뒤로가기" icon={<ChevronLeft color={colors.onPhotoPill} size={22} />} onImage onPress={goBack} />
+            <IconButton accessibilityLabel={t("뒤로가기")} icon={<ChevronLeft color={colors.onPhotoPill} size={22} />} onImage onPress={goBack} />
           </View>
           {/* 여러 장이면 왼쪽 아래 썸네일로 바로 고른다. 사진 위라 고른 칸은 모드와 상관없이 흰 테두리 */}
           {photos.length > 1 ? (
-            <View accessibilityLabel="매장 사진 선택" style={styles.thumbRow}>
+            <View accessibilityLabel={t("매장 사진 선택")} style={styles.thumbRow}>
               {photos.map((photo, index) => {
                 const active = index === photoIndex
                 return (
                   <Pressable
-                    accessibilityLabel={`사진 ${index + 1}`}
+                    accessibilityLabel={t("사진 {v1}", { v1: index + 1 })}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                     key={`${photo}-thumb-${index}`}
@@ -481,7 +481,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
         {viewingPhoto !== null ? (
           <PhotoViewer
             index={viewingPhoto.index}
-            label={`${shop.name} 사진`}
+            label={t("{v1} 사진", { v1: shop.name })}
             onClose={() => setViewingPhoto(null)}
             onFadeClose={() => setViewingPhoto((viewing) => viewing && { ...viewing, released: true })}
             // 크게 보며 넘긴 사진으로 원래 갤러리도 옮겨 두어, 닫을 때 같은 사진 자리로 줄어들게 한다
@@ -498,8 +498,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
 
         <View style={styles.actions}>
           <IconButton
-            accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
-            accessibilityLabel={saved ? "가고 싶어요 저장 취소" : "가고 싶어요에 저장"}
+            accessibilityHint={loggedIn ? undefined : t("로그인 화면으로 이동해요")}
+            accessibilityLabel={saved ? t("가고 싶어요 저장 취소") : t("가고 싶어요에 저장")}
             accessibilityState={{ selected: saved }}
             icon={
               <View pointerEvents="none" style={styles.saveGlyph}>
@@ -512,8 +512,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             onPress={toggleSave}
             style={styles.actionIcon}
           />
-          <IconButton accessibilityLabel="공유" icon={<Share2 color={colors.ink} size={22} />} onPress={shareShop} style={styles.actionIcon} />
-          <IconButton accessibilityLabel="더보기" icon={<Ellipsis color={colors.ink} size={22} />} onPress={() => setMoreOpen(true)} style={styles.actionIcon} />
+          <IconButton accessibilityLabel={t("공유")} icon={<Share2 color={colors.ink} size={22} />} onPress={shareShop} style={styles.actionIcon} />
+          <IconButton accessibilityLabel={t("더보기")} icon={<Ellipsis color={colors.ink} size={22} />} onPress={() => setMoreOpen(true)} style={styles.actionIcon} />
         </View>
 
         <View style={styles.headline}>
@@ -527,7 +527,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               <AppText capScale tone="sub" variant="meta">{shop.style}</AppText>
             ) : null}
             <AppText capScale style={styles.metaText} tone="muted" variant="meta">
-              {`${shop.style ? " · " : ""}${liveStatus.label}${shop.lastOrder ? ` · 라스트오더 ${shop.lastOrder}` : ""}${shop.distanceM > 0 ? ` · ${formatDistance(shop.distanceM)}` : ""}`}
+              {t("{v1}{v2}{v3}{v4}", { v1: shop.style ? " · " : "", v2: liveStatus.label, v3: shop.lastOrder ? ` · 라스트오더 ${shop.lastOrder}` : "", v4: shop.distanceM > 0 ? ` · ${formatDistance(shop.distanceM)}` : "" })}
             </AppText>
           </View>
         </View>
@@ -537,12 +537,12 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             데모 원장의 설명은 사람이 쓴 글이라 AI 요약이 있을 때만 붙인다 */}
         {shop.aiSummary || shop.description ? (
           <View style={styles.intro}>
-            <AppText accessibilityRole="header" style={styles.sectionTitle} variant="sectionTitle">가게 소개</AppText>
+            <AppText accessibilityRole="header" style={styles.sectionTitle} variant="sectionTitle">{t("가게 소개")}</AppText>
             <View style={styles.introCard} testID="shop-intro-card">
               {shop.aiSummary || isRemote("shops") ? (
-                <View accessibilityLabel="AI가 요약했어요" accessible style={styles.aiLabel}>
+                <View accessibilityLabel={t("AI가 요약했어요")} accessible style={styles.aiLabel}>
                   <Sparkles color={colors.ink} size={16} />
-                  <AppText capScale style={styles.aiLabelText} variant="meta">AI가 요약했어요</AppText>
+                  <AppText capScale style={styles.aiLabelText} variant="meta">{t("AI가 요약했어요")}</AppText>
                 </View>
               ) : null}
               <AppText lineBreakStrategyIOS="hangul-word" style={styles.introText} variant="secondary">
@@ -561,7 +561,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           </View>
         ) : null}
         {shop.tags.length ? (
-          <View accessibilityLabel={`특징: ${shop.tags.join(", ")}`} style={[styles.tags, !shop.aiSummary && !shop.description && styles.tagsStandalone]}>
+          <View accessibilityLabel={t("특징: {v1}", { v1: shop.tags.join(", ") })} style={[styles.tags, !shop.aiSummary && !shop.description && styles.tagsStandalone]}>
             {shop.tags.map((tag) => <View key={tag} style={styles.keyword}><AppText capScale style={styles.keywordText} tone="muted" variant="secondary">{tag}</AppText></View>)}
           </View>
         ) : null}
@@ -584,7 +584,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           {shortcuts.map((shortcut) => (
             <Pressable
               accessibilityHint={shortcut.hint}
-              accessibilityLabel={shortcut.label}
+              accessibilityLabel={t(shortcut.label)}
               accessibilityRole="link"
               key={shortcut.key}
               onPress={shortcut.onPress}
@@ -592,7 +592,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             >
               <View style={styles.shortcutIcon}>{shortcut.icon}</View>
               <AppText capScale numberOfLines={1} style={styles.bold} variant="meta">
-                {shortcut.label}
+                {t(shortcut.label)}
               </AppText>
             </Pressable>
           ))}
@@ -602,8 +602,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
         {perks.length ? (
           <View style={styles.section}>
             <AppText accessibilityRole="header" variant="sectionTitle">
-              매장 혜택
-            </AppText>
+              {t("매장 혜택 ")}</AppText>
             {perks.map((perk) => (
               <View
                 accessible
@@ -612,7 +611,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                 style={styles.perkRow}
               >
                 <AppText capScale style={styles.perkLabel} tone="sub" variant="secondary">
-                  {perk.label}
+                  {t(perk.label)}
                 </AppText>
                 <AppText lineBreakStrategyIOS="hangul-word" style={styles.perkValue} tone="sub" variant="secondary">
                   {perk.value}
@@ -625,41 +624,40 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
         {/* 주소와 영업시간은 흰 화면의 정보 줄로 두고, 영업시간만 눌러 펼친다. */}
         <View style={styles.info}>
           <AppText accessibilityRole="header" variant="sectionTitle">
-            가게 상세 정보
-          </AppText>
+            {t("가게 상세 정보 ")}</AppText>
           {shop.address ? (
             <Pressable
-              accessibilityHint="네이버 지도에서 위치와 길찾기를 열어요"
-              accessibilityLabel={`주소, ${shop.address}`}
+              accessibilityHint={t("네이버 지도에서 위치와 길찾기를 열어요")}
+              accessibilityLabel={t("주소, {v1}", { v1: shop.address })}
               accessibilityRole="link"
               onPress={openNaverMap}
               style={({ pressed }) => [styles.infoRow, pressed && styles.infoPressed]}
             >
-              <AppText style={styles.infoKey} tone="muted" variant="secondary">주소</AppText>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">{t("주소")}</AppText>
               <View style={styles.infoValue}>
                 <AppText lineBreakStrategyIOS="hangul-word" style={styles.infoText} variant="secondary">{shop.address}</AppText>
                 <View style={styles.naverHint}>
                   <MapIcon color={colors.ink} size={14} />
-                  <AppText capScale style={styles.naverText} variant="secondary">네이버 지도에서 길찾기</AppText>
+                  <AppText capScale style={styles.naverText} variant="secondary">{t("네이버 지도에서 길찾기")}</AppText>
                 </View>
               </View>
             </Pressable>
           ) : (
             <View style={styles.infoRow}>
-              <AppText style={styles.infoKey} tone="muted" variant="secondary">주소</AppText>
-              <AppText style={styles.infoValue} tone="muted" variant="body">주소 정보가 아직 없어요</AppText>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">{t("주소")}</AppText>
+              <AppText style={styles.infoValue} tone="muted" variant="body">{t("주소 정보가 아직 없어요")}</AppText>
             </View>
           )}
           {hasHours ? (
             <Pressable
-              accessibilityHint="요일별 영업시간을 시트로 열어요"
-              accessibilityLabel={`영업시간, ${liveStatus.label}${liveStatus.detail ? `, ${liveStatus.detail}` : ""}. ${todayLine}`}
+              accessibilityHint={t("요일별 영업시간을 시트로 열어요")}
+              accessibilityLabel={t("영업시간, {v1}{v2}. {v3}", { v1: liveStatus.label, v2: liveStatus.detail ? `, ${liveStatus.detail}` : "", v3: todayLine })}
               accessibilityRole="button"
               accessibilityState={{ expanded: hoursOpen }}
               onPress={() => setHoursOpen(true)}
               style={({ pressed }) => [styles.infoRow, pressed && styles.infoPressed]}
             >
-              <AppText style={styles.infoKey} tone="muted" variant="secondary">영업시간</AppText>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">{t("영업시간")}</AppText>
               <View style={styles.infoValue}>
                 <HoursStatusLine status={liveStatus} />
                 <AppText capScale lineBreakStrategyIOS="hangul-word" style={[styles.hoursToday, styles.tabular]} tone="muted" variant="meta">{todayLine}</AppText>
@@ -670,31 +668,31 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             </Pressable>
           ) : (
             <View style={styles.infoRow}>
-              <AppText style={styles.infoKey} tone="muted" variant="secondary">영업시간</AppText>
-              <AppText style={styles.infoValue} tone="muted" variant="body">영업시간 정보가 아직 없어요</AppText>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">{t("영업시간")}</AppText>
+              <AppText style={styles.infoValue} tone="muted" variant="body">{t("영업시간 정보가 아직 없어요")}</AppText>
             </View>
           )}
           {shop.lastOrder ? (
             <View style={styles.infoRow}>
-              <AppText style={styles.infoKey} tone="muted" variant="secondary">라스트오더</AppText>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">{t("라스트오더")}</AppText>
               <AppText style={[styles.infoValue, styles.infoText]} variant="secondary">{shop.lastOrder}</AppText>
             </View>
           ) : null}
           {shop.priceRange ? (
             <View style={styles.infoRow}>
-              <AppText style={styles.infoKey} tone="muted" variant="secondary">가격대</AppText>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">{t("가격대")}</AppText>
               <AppText style={[styles.infoValue, styles.infoText]} variant="secondary">{shop.priceRange}</AppText>
             </View>
           ) : null}
           {shop.phone ? (
             <Pressable
-              accessibilityHint="전화를 걸어요"
-              accessibilityLabel={`전화번호, ${shop.phone}`}
+              accessibilityHint={t("전화를 걸어요")}
+              accessibilityLabel={t("전화번호, {v1}", { v1: shop.phone })}
               accessibilityRole="link"
               onPress={() => openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`)}
               style={({ pressed }) => [styles.infoRow, pressed && styles.infoPressed]}
             >
-              <AppText style={styles.infoKey} tone="muted" variant="secondary">전화번호</AppText>
+              <AppText style={styles.infoKey} tone="muted" variant="secondary">{t("전화번호")}</AppText>
               <View style={[styles.infoValue, styles.phone]}>
                 <AppText style={styles.infoText} variant="secondary">{shop.phone}</AppText>
               </View>
@@ -704,13 +702,13 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
         {similarShops.length ? (
           <View style={styles.similar}>
             <View style={styles.similarHead}>
-              <AppText accessibilityRole="header" variant="sectionTitle">비슷한 한 그릇</AppText>
-              <AppText capScale tone="muted" variant="meta">{`${shop.style} · 가까운 가게`}</AppText>
+              <AppText accessibilityRole="header" variant="sectionTitle">{t("비슷한 한 그릇")}</AppText>
+              <AppText capScale tone="muted" variant="meta">{t("{v1} · 가까운 가게", { v1: shop.style ?? "" })}</AppText>
             </View>
             <View style={styles.similarCards}>
               {similarShops.map((other) => (
                 <Pressable
-                  accessibilityLabel={`${other.name}${other.branch ? ` ${other.branch}` : ""}, 매장 상세 보기`}
+                  accessibilityLabel={t("{v1}{v2}, 매장 상세 보기", { v1: other.name, v2: other.branch ? ` ${other.branch}` : "" })}
                   accessibilityRole="button"
                   key={other.id}
                   onPress={() => router.push({ pathname: "/shop/[shopId]", params: { shopId: other.id } })}
@@ -740,8 +738,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
       {/* 하단 고정: 가고 싶어요 / 먹은 라멘 기록하기. 웹과 같은 좌우 16, SE 폭에서도 문구를 자르지 않는다 */}
       <StickyActionBar style={styles.stickyBar}>
         <Button
-          accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
-          accessibilityLabel={saved ? "저장됨, 가고 싶어요 취소" : "가고 싶어요"}
+          accessibilityHint={loggedIn ? undefined : t("로그인 화면으로 이동해요")}
+          accessibilityLabel={saved ? t("저장됨, 가고 싶어요 취소") : t("가고 싶어요")}
           fullWidth
           leftIcon={
             compact ? undefined : (
@@ -750,26 +748,26 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           }
           onPress={toggleSave}
           style={styles.stickyButton}
-          title={saved ? "저장됨" : "가고 싶어요"}
+          title={saved ? t("저장됨") : t("가고 싶어요")}
           variant="secondary"
         />
         <Button
-          accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
+          accessibilityHint={loggedIn ? undefined : t("로그인 화면으로 이동해요")}
           fullWidth
           onPress={startRecord}
           style={[styles.stickyButton, styles.stickyPrimary]}
-          title="먹은 라멘 기록하기"
+          title={t("먹은 라멘 기록하기")}
         />
       </StickyActionBar>
-      <BottomSheet onClose={() => setMoreOpen(false)} title="더보기" visible={moreOpen}>
+      <BottomSheet onClose={() => setMoreOpen(false)} title={t("더보기")} visible={moreOpen}>
         <View style={styles.moreOptions}>
           {shop.address ? (
-            <Button onPress={() => { setMoreOpen(false); openNaverMap() }} title="네이버 지도에서 길찾기" variant="ghost" />
+            <Button onPress={() => { setMoreOpen(false); openNaverMap() }} title={t("네이버 지도에서 길찾기")} variant="ghost" />
           ) : null}
           {shop.phone ? (
-            <Button onPress={() => { setMoreOpen(false); openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`) }} title="전화" variant="ghost" />
+            <Button onPress={() => { setMoreOpen(false); openUrl(`tel:${shop.phone!.replace(/[^0-9+]/g, "")}`) }} title={t("전화")} variant="ghost" />
           ) : null}
-          <Button onPress={() => { setMoreOpen(false); shareShop() }} title="공유" variant="ghost" />
+          <Button onPress={() => { setMoreOpen(false); shareShop() }} title={t("공유")} variant="ghost" />
         </View>
       </BottomSheet>
       {/* 공용 시트를 써서 뒤판은 제자리에서 흐려지고 시트만 올라온다. 손잡이를 끌어내려 닫을 수도 있다 */}
@@ -777,7 +775,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
         description={`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}`}
         maxHeight="90%"
         onClose={() => setHoursOpen(false)}
-        title="영업시간"
+        title={t("영업시간")}
         visible={hoursOpen}
       >
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -792,15 +790,15 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
               const timeText = group.closed ? "휴무" : spanText(group.ranges)
               return (
                 <View
-                  accessibilityLabel={`${group.label}${isToday ? ", 오늘" : ""}, ${timeText}${pauses.map((pause) => `, 쉬는 시간 ${formatTime(pause.start)}부터 ${formatTime(pause.end)}까지`).join("")}`}
+                  accessibilityLabel={t("{v1}{v2}, {v3}{v4}", { v1: group.label, v2: isToday ? ", 오늘" : "", v3: timeText, v4: pauses.map((pause) => `, 쉬는 시간 ${formatTime(pause.start)}부터 ${formatTime(pause.end)}까지`).join("") })}
                   accessible
                   key={group.label}
                   style={[styles.hourRow, index > 0 && styles.hourDivider]}
                   testID="shop-hours-row"
                 >
                   <View style={styles.hourDay}>
-                    <AppText style={[styles.hourText, isToday && styles.bold]} tone={isToday ? "ink" : "sub"} variant="secondary">{group.label}</AppText>
-                    {isToday ? <AppText capScale style={styles.todayChip} variant="meta">오늘</AppText> : null}
+                    <AppText style={[styles.hourText, isToday && styles.bold]} tone={isToday ? "ink" : "sub"} variant="secondary">{t(group.label)}</AppText>
+                    {isToday ? <AppText capScale style={styles.todayChip} variant="meta">{t("오늘")}</AppText> : null}
                   </View>
                   <View style={styles.hourTimes}>
                     <AppText style={[styles.hourText, styles.tabular, isToday && styles.bold]} tone={group.closed ? "muted" : isToday ? "ink" : "sub"} variant="secondary">
@@ -808,7 +806,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                     </AppText>
                     {pauses.map((pause) => (
                       <AppText capScale key={pause.start} style={styles.tabular} tone="muted" variant="meta">
-                        {`쉬는 시간 ${formatTime(pause.start)} – ${formatTime(pause.end)}`}
+                        {t("쉬는 시간 {v1} – {v2}", { v1: formatTime(pause.start), v2: formatTime(pause.end) })}
                       </AppText>
                     ))}
                   </View>
@@ -817,7 +815,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             })}
           </View>
           {shop.lastOrder ? (
-            <AppText capScale style={styles.hoursNote} tone="muted" variant="meta">{`오늘 라스트오더 ${shop.lastOrder}`}</AppText>
+            <AppText capScale style={styles.hoursNote} tone="muted" variant="meta">{t("오늘 라스트오더 {v1}", { v1: shop.lastOrder })}</AppText>
           ) : null}
         </ScrollView>
       </BottomSheet>
