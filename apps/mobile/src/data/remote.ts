@@ -47,6 +47,7 @@ import {
   type OnboardingRequest,
   type RamenLogDetail,
   type RamenLogSummary,
+  type RecommendationTicket,
   type ReportReason,
   type ShopListParams,
   type ShopMapParams,
@@ -54,6 +55,7 @@ import {
   type TasteNoteField,
 } from "../api"
 import { LOUNGE_ALL_TYPES, type HiddenAuthor, type LoungeSort } from "../domain/lounge"
+import { remoteCache, ticketKey, TICKET_HISTORY_KEY } from "./remoteCache"
 
 /**
  * 서버 읽기/쓰기 함수. 공개 읽기는 src/data/hooks.ts에서, 계정과 회원 데이터·쓰기는
@@ -331,6 +333,8 @@ export const remoteReads = {
     request: Parameters<typeof recommendationApi.recommend>[0],
   ): Promise<{ recommendationId: string | null; shops: Shop[]; appliedConditions: string[]; reasons: Record<string, string> }> {
     const result = await recommendationApi.recommend(request)
+    // 식권이 한 장 늘었다. 지난 식권 목록을 다시 읽게 한다
+    if (result.recommendationId) remoteCache.invalidate(TICKET_HISTORY_KEY)
     return {
       recommendationId: result.recommendationId ?? null,
       shops: (result.shops ?? []).map(toAppShopSummary),
@@ -345,16 +349,36 @@ export const remoteReads = {
     return {
       dailyLimit: today.dailyLimit,
       remaining: today.remaining,
-      tickets: (today.tickets ?? []).map((ticket) => ({
-        id: ticket.recommendationId,
-        createdAt: ticket.createdAt,
-        shops: (ticket.shops ?? []).map(toAppShopSummary),
-        appliedConditions: ticket.appliedConditions ?? [],
-        reasons: ticket.reasons ?? {},
-      })),
+      tickets: (today.tickets ?? []).map(toRemoteTicket),
     }
   },
+
+  /** 지금까지 뽑은 식권 한 쪽(오늘 포함, 최신순). 받은 식권은 큐레이터가 id로 다시 열 수 있게 캐시에 둔다 */
+  async recommendationHistory(cursor?: string): Promise<RemotePage<RemoteTicket>> {
+    const page = toPage(await recommendationApi.history({ cursor, size: TICKET_HISTORY_PAGE_SIZE }), toRemoteTicket)
+    for (const ticket of page.items) remoteCache.put(ticketKey(ticket.id), ticket)
+    return page
+  },
 } as const
+
+/** 지난 식권 한 쪽. 하루 3장이라 일주일치쯤 */
+export const TICKET_HISTORY_PAGE_SIZE = 20
+
+function toRemoteTicket(ticket: RecommendationTicket): RemoteTicket {
+  return {
+    id: ticket.recommendationId,
+    createdAt: ticket.createdAt,
+    shops: (ticket.shops ?? []).map(toAppShopSummary),
+    appliedConditions: ticket.appliedConditions ?? [],
+    reasons: ticket.reasons ?? {},
+  }
+}
+
+/** 지난 식권 목록에서 받아 둔 식권. 큐레이터가 ?ticket=id로 열 때 오늘 식권에 없으면 여기서 찾는다 */
+export function knownTicket(id: string): RemoteTicket | null {
+  const entry = remoteCache.get(ticketKey(id))
+  return entry && "value" in entry ? (entry.value as RemoteTicket) : null
+}
 
 export interface RemoteTicket {
   id: string

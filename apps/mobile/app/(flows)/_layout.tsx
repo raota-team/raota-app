@@ -14,7 +14,7 @@ export default function FlowLayout() {
   const segments = useSegments()
   const pathname = usePathname()
   const section = segments[1]
-  const needsAccount = section === "record" || section === "taste" || section === "hidden-authors" || section === "my-type"
+  const needsAccount = section === "record" || section === "taste" || section === "hidden-authors" || section === "my-type" || section === "tickets"
   // 취향 리포트를 숨긴 빌드에서는 주소(딥링크·알림 포함)로 들어와도 홈으로 보낸다. 로그인보다 먼저 본다
   const hidden = section === "taste" && !TASTE_REPORT_ENABLED
   const blocked = needsAccount && !currentUser

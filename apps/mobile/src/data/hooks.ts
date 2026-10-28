@@ -33,8 +33,8 @@ import {
 } from "@raota/shared"
 
 import { currentTasteNoteFields, isRemote, isRemoteWithAccount, type ShopListParams, type ShopMapParams, type TasteNoteField } from "../api"
-import { remoteReads, type RemoteLoungeLogDetail, type RemotePage } from "./remote"
-import { MY_LOGS_OF_TYPE_KEY, remoteCache } from "./remoteCache"
+import { remoteReads, type RemoteLoungeLogDetail, type RemotePage, type RemoteTicket } from "./remote"
+import { MY_LOGS_OF_TYPE_KEY, remoteCache, TICKET_HISTORY_KEY } from "./remoteCache"
 
 import {
   LOUNGE_PAGE_SIZE,
@@ -543,6 +543,8 @@ export interface LoungeFeed extends Query<RamenLog[]> {
   hasMore: boolean
   /** 다음 쪽을 이어 붙인다. 필터·정렬이 바뀌면 첫 쪽부터 다시 */
   loadMore(): void
+  /** 당겨서 새로고침. remote는 지금 피드의 첫 쪽을 버리고 다시 읽는다(보던 목록은 다 읽을 때까지 그대로). 실패해도 보던 목록을 둔다 */
+  refresh(): Promise<void>
 }
 
 /** 공개 라멘로그 피드. remote에서는 필터·정렬마다 독립적으로 커서를 이어 읽는다. */
@@ -553,7 +555,8 @@ export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: Loung
   const overlay = useAccountLogOverlay()
   const remote = isRemote("lounge")
   const remoteKey = remote ? `lounge:${type}|${sort}|${pageSize}` : null
-  const first = useRemoteResult(remoteKey, EMPTY_PAGE as RemotePage<RamenLog>, () => remoteReads.loungeLogs({ type, sort, size: pageSize }))
+  const readFirst = () => remoteReads.loungeLogs({ type, sort, size: pageSize })
+  const first = useRemoteResult(remoteKey, EMPTY_PAGE as RemotePage<RamenLog>, readFirst)
   const pages = useRemoteContinuation(remoteKey, first, (cursor) => remoteReads.loungeLogs({ type, sort, cursor, size: pageSize }))
   // mock에서는 댓글도 숨긴 사람·신고한 댓글을 제외해 카드와 상세의 수를 맞춘다.
   const all = useMemo(
@@ -583,9 +586,37 @@ export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: Loung
   }, [key, pageSize])
 
   const data = useMemo(() => all.slice(0, count), [all, count])
+  const refresh = async () => {
+    if (!remoteKey) return
+    remoteCache.invalidate(remoteKey)
+    await remoteCache.load(remoteKey, readFirst).catch(() => undefined)
+  }
   return remote
-    ? { ...pages, data: remoteData, total: remoteData.length }
-    : { data, ...status, total: all.length, hasMore: all.length > count, loadMore }
+    ? { ...pages, data: remoteData, total: remoteData.length, refresh }
+    : { data, ...status, total: all.length, hasMore: all.length > count, loadMore, refresh }
+}
+
+export interface TicketHistory extends RemotePaging<RemoteTicket> {
+  /** 서버 추천을 쓰는 로그인 회원만 식권이 있다. 아니면 읽지 않고 빈 목록이다 */
+  enabled: boolean
+  /** 당겨서 새로고침. 첫 쪽부터 다시 읽고, 실패해도 보던 목록을 둔다 */
+  refresh(): Promise<void>
+}
+
+/** 지금까지 뽑은 AI 식권(오늘 포함, 최신순). 식권을 새로 뽑으면 캐시가 버려져 다음에 열 때 다시 읽는다 */
+export function useTicketHistory(): TicketHistory {
+  const { currentUser } = useRaota()
+  const enabled = isRemote("recommendations") && Boolean(currentUser?.isLoggedIn)
+  const key = enabled ? TICKET_HISTORY_KEY : null
+  const readFirst = () => remoteReads.recommendationHistory()
+  const first = useRemoteResult(key, EMPTY_PAGE as RemotePage<RemoteTicket>, readFirst)
+  const pages = useRemoteContinuation(key, first, (cursor) => remoteReads.recommendationHistory(cursor))
+  const refresh = async () => {
+    if (!key) return
+    remoteCache.invalidate(key)
+    await remoteCache.load(key, readFirst).catch(() => undefined)
+  }
+  return { ...pages, enabled, refresh }
 }
 
 export interface LoungeLogDetail {

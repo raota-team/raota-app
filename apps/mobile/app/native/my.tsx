@@ -6,7 +6,7 @@ import { StatusBar } from "expo-status-bar"
 import { Image } from "expo-image"
 import * as Haptics from "expo-haptics"
 import * as ImagePicker from "expo-image-picker"
-import { ArrowRight, Bookmark, ChartColumnStacked, ChevronRight, MapPin, Pencil, Search, Settings } from "lucide-react-native"
+import { ArrowRight, Bookmark, ChartColumnStacked, ChevronRight, MapPin, Pencil, Search, Settings, Ticket } from "lucide-react-native"
 import {
   Alert,
   Linking,
@@ -47,6 +47,7 @@ import {
   useVisitedShops,
 } from "@/src/data"
 import { useRaota } from "@/src/state/RaotaStore"
+import { isRemote } from "@/src/api"
 import { sizedImageUri } from "@/src/api/imageSize"
 import { TASTE_REPORT_ENABLED } from "@/src/features"
 import { colors, line, maxFontScale, radii, ramenHeat, spacing, touchTarget, typography } from "@/src/theme"
@@ -475,6 +476,8 @@ function MemberView() {
                 </>
               ) : null}
               <TasteBoards bowls={bowls} myLogs={myLogs} shops={shops} />
+              {/* AI 식권은 서버 추천을 쓰는 로그인 회원만 있다. 오늘 식권은 홈에서, 다른 날 식권은 여기서 본다 */}
+              {isRemote("recommendations") && user?.isLoggedIn ? <PastTicketsEntry onOpen={() => router.push("/tickets")} /> : null}
               <View style={styles.infoSection}>
                 <View style={styles.rowBetween}>
                   <AppText accessibilityRole="header" style={styles.calendarHeading} variant="sectionTitle">{t("라멘로그 캘린더")}</AppText>
@@ -1040,6 +1043,29 @@ function MonthlyTasteEntry({ onOpen }: { onOpen: () => void }) {
       <View style={styles.flex}>
         <AppText variant="cardTitle">{t("월별 취향 변화")}</AppText>
         <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} tone="muted" variant="secondary">{summary}</AppText>
+      </View>
+      <ChevronRight color={colors.textMuted} size={20} />
+    </Pressable>
+  )
+}
+
+/** 다른 날 뽑은 AI 식권을 찾을 곳. 오늘 식권은 홈 카드 아래 줄에서 연다 */
+function PastTicketsEntry({ onOpen }: { onOpen: () => void }) {
+  return (
+    <Pressable
+      accessibilityHint="지금까지 뽑은 AI 식권을 날짜별로 다시 봐요"
+      accessibilityLabel="지난 식권"
+      accessibilityRole="button"
+      onPress={onOpen}
+      style={({ pressed }) => [styles.monthlyCard, pressed && styles.pressedWash]}
+      testID="my-tickets-entry"
+    >
+      <View style={styles.monthlyIcon}>
+        <Ticket color={colors.ink} size={20} strokeWidth={2.1} />
+      </View>
+      <View style={styles.flex}>
+        <AppText variant="cardTitle">지난 식권</AppText>
+        <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} tone="muted" variant="secondary">AI 큐레이터에서 뽑은 식권을 날짜별로 다시 봐요</AppText>
       </View>
       <ChevronRight color={colors.textMuted} size={20} />
     </Pressable>

@@ -31,7 +31,7 @@ import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { TodayTicketsSheet } from "@/src/components/TodayTicketsSheet"
 import { AppText, Button, ConfirmDialog, EmptyState, Header, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
 import { useAllShops, useMyBowls, useTasteProfile } from "@/src/data/hooks"
-import { remoteReads, remoteWrites, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
+import { knownTicket, remoteReads, remoteWrites, type RemoteTicket, type RemoteTodayTickets } from "@/src/data/remote"
 import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "@/src/domain/ai-recommendation"
 import { curatorTasteReport } from "@/src/domain/curatorTaste"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -160,6 +160,8 @@ interface Curation extends Candidate {
   index: number
   /** 서버 추천의 노출 기록 ID. 매장을 열면 이 ID로 알린다. 로컬·대체(인기순) 추천과 기록 실패는 null */
   recommendationId: string | null
+  /** 뽑아 둔 식권을 다시 열 때 그 식권을 뽑은 시각(ISO). 지난 식권이면 머리글과 식권 날짜를 그날로 적는다 */
+  issuedAt?: string
 }
 
 /**
@@ -540,7 +542,21 @@ function curationFromTicket(ticket: RemoteTicket): Curation | null {
   const candidates = ticket.shops.map((shop) => candidateFor(shop, soup, ticket.reasons[shop.id]?.trim() || null))
   if (!candidates.length) return null
   const conditions = ticket.appliedConditions.map((label) => ({ label, applied: true, note: "" }))
-  return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId: ticket.id }
+  return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId: ticket.id, issuedAt: ticket.createdAt }
+}
+
+/** 식권을 뽑은 날(서울). foot은 식권 아랫단의 "26.10.27", day는 "10월 27일", today는 오늘 뽑았는지 */
+function issuedDay(iso: string): { foot: string; day: string; today: boolean } {
+  const seoul = (date: Date) => new Date(date.getTime() + 9 * 60 * 60 * 1000)
+  const at = seoul(new Date(iso))
+  const now = seoul(new Date())
+  const month = at.getUTCMonth() + 1
+  const date = at.getUTCDate()
+  return {
+    foot: `${String(at.getUTCFullYear()).slice(-2)}.${String(month).padStart(2, "0")}.${String(date).padStart(2, "0")}`,
+    day: `${month}월 ${date}일`,
+    today: at.getUTCFullYear() === now.getUTCFullYear() && month === now.getUTCMonth() + 1 && date === now.getUTCDate(),
+  }
 }
 
 type Coordinates = { latitude: number; longitude: number }
@@ -640,7 +656,8 @@ export default function AIRecommendScreen() {
   useEffect(() => {
     if (!ticketPending || (ticketsEnabled && !ticketsSettled)) return
     setTicketPending(false)
-    const picked = todayTickets?.tickets.find((ticket) => ticket.id === ticketParam)
+    // 홈의 오늘 식권이 아니면 지난 식권 화면에서 받아 둔 식권이다
+    const picked = todayTickets?.tickets.find((ticket) => ticket.id === ticketParam) ?? (ticketParam ? knownTicket(ticketParam) : null)
     const next = picked ? curationFromTicket(picked) : null
     if (!next) {
       setToast(t("이 식권을 지금은 보여드릴 수 없어요"))
@@ -748,6 +765,10 @@ export default function AIRecommendScreen() {
     setCuration(next)
     setStep("result")
   }
+  const openHistory = () => {
+    setTicketsOpen(false)
+    router.push("/tickets")
+  }
 
   /** 같은 답으로 다음 순위 후보를 보여 준다. 끝까지 보면 처음 후보로 돌아간다 */
   const showNextCandidate = () => {
@@ -797,7 +818,7 @@ export default function AIRecommendScreen() {
           style={styles.flex}
           title={t("오늘 식권을 다 뽑았어요")}
         />
-        <TodayTicketsSheet onClose={() => setTicketsOpen(false)} onSelect={openTicket} today={todayTickets} visible={ticketsOpen} />
+        <TodayTicketsSheet onClose={() => setTicketsOpen(false)} onHistory={openHistory} onSelect={openTicket} today={todayTickets} visible={ticketsOpen} />
       </Screen>
     )
   }
@@ -820,6 +841,9 @@ export default function AIRecommendScreen() {
 
   const result = step === "result" ? curation : null
   const resultType = result?.typeLabel ?? ""
+  // 지난 날 뽑은 식권을 다시 열었으면 "오늘"이 아니라 그날로 적는다
+  const issued = result?.issuedAt ? issuedDay(result.issuedAt) : null
+  const pastDay = issued && !issued.today ? issued : null
   const numericStep = typeof step === "number" ? step : null
   // 4단계(직접 입력)는 선택 사항이라 비워 두고 넘어갈 수 있다
   const stepAnswered =
@@ -1007,7 +1031,11 @@ export default function AIRecommendScreen() {
         {result ? (
           <View>
             <View accessible accessibilityRole="header" ref={headingRef}>
-              <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultTitle} variant="screenTitle">{nickname ? t("오늘 {v1}님을 위한 라멘집", { v1: nickname }) : t("오늘의 추천")}</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultTitle} variant="screenTitle">
+                {pastDay
+                  ? (nickname ? t("{day} {nickname}님을 위한 라멘집", { day: pastDay.day, nickname }) : t("{day}의 추천", { day: pastDay.day }))
+                  : nickname ? t("오늘 {v1}님을 위한 라멘집", { v1: nickname }) : t("오늘의 추천")}
+              </AppText>
             </View>
 
             {/* 뽑은 식권: 발권 화면에서 내려온 것과 같은 색종이 식권에 매장 사진을 얹는다 */}
@@ -1021,7 +1049,7 @@ export default function AIRecommendScreen() {
                 ) : null}
               </View>
               <View style={styles.ticketMain}>
-                <AppText style={styles.ticketMuted} variant="meta">{t("오늘의 한 그릇")}</AppText>
+                <AppText style={styles.ticketMuted} variant="meta">{pastDay ? t("{day}의 한 그릇", { day: pastDay.day }) : t("오늘의 한 그릇")}</AppText>
                 <AppText lineBreakStrategyIOS="hangul-word" style={[styles.resultName, styles.ticketText]} variant="sectionTitle">
                   {result.shop.name}
                   {result.shop.branch ? (
@@ -1039,7 +1067,7 @@ export default function AIRecommendScreen() {
                   </AppText>
                 ) : null}
               </View>
-              <MealTicketFoot issueDate={issueDate} />
+              <MealTicketFoot issueDate={issued?.foot ?? issueDate} />
             </View>
 
             {result.reason ? (
@@ -1136,7 +1164,7 @@ export default function AIRecommendScreen() {
           />
         </StickyActionBar>
       ) : null}
-      <TodayTicketsSheet onClose={() => setTicketsOpen(false)} onSelect={openTicket} today={todayTickets} visible={ticketsOpen} />
+      <TodayTicketsSheet onClose={() => setTicketsOpen(false)} onHistory={openHistory} onSelect={openTicket} today={todayTickets} visible={ticketsOpen} />
       <ConfirmDialog
         cancelLabel={t("취소")}
         confirmLabel={t("식권 쓰기")}

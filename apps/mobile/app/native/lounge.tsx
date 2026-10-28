@@ -60,6 +60,15 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
   const feed = useLoungeLogs({ type, sort })
   const listRef = useRef<FlashListRef<RamenLog>>(null)
   const sortChipRef = useRef<View>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const refresh = async () => {
+    setRefreshing(true)
+    try {
+      await feed.refresh()
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   const changeType = (next: string) => {
     setType(next)
@@ -182,7 +191,9 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
           if (feed.hasMore && !feed.isLoading && !feed.error) feed.loadMore()
         }}
         onEndReachedThreshold={0.6}
+        onRefresh={() => void refresh()}
         ref={listRef}
+        refreshing={refreshing}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         testID="lounge-feed"

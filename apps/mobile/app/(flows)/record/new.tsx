@@ -1,7 +1,7 @@
 import { t, getLocale, getIntlLocale, formatDate as formatLocaleDate } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { router, useLocalSearchParams, useNavigation } from "expo-router"
 import { usePreventRemove, type NavigationAction } from "expo-router/react-navigation"
 import { StatusBar } from "expo-status-bar"
@@ -56,7 +56,7 @@ import {
   type TasteScores,
 } from "@raota/shared"
 import { track } from "@/src/analytics"
-import { useLog, useShop, useShops, useTasteNoteFields } from "@/src/data"
+import { useLog, useShop, useTasteNoteFields } from "@/src/data"
 import {
   RECORD_NOTE_MAX_LENGTH,
   validateRecordDraft,
@@ -477,7 +477,6 @@ export default function NewRecordScreen() {
   const selectedShopId = isEdit ? null : (state.recordDraft?.shopId ?? initialShopId)
   const catalogShop = useShop(selectedShopId).data
   const shop: { id: string; name: string; branch?: string } | null = isEdit ? (editLog?.shop ?? null) : catalogShop
-  const shops = useShops().data
   const shopStyle = styleOf(catalogShop)
   const tasteFields = useTasteNoteFields()
 
@@ -590,9 +589,9 @@ export default function NewRecordScreen() {
     imageUrl: photos[0] ?? null,
     isPublic,
   }
-  const validShopIds = useMemo(() => shops.map((item) => item.id), [shops])
-  // 고치기에서는 가게가 기록에 고정이라 매장 목록과 맞춰 보지 않는다
-  const missing: MissingField[] = validateRecordDraft(draft, { validShopIds: isEdit ? undefined : validShopIds, now: new Date() }).flatMap(
+  // 가게가 있는지는 useShop이 이미 확인했다(못 찾으면 draft.shopId가 null). 불러온 목록(첫 20곳)과 맞춰 보면
+  // 목록 밖 가게를 골랐을 때 "가게를 골라주세요"가 떴다(2026.10.28 제보). 저장(RaotaStore)도 remote에서는 목록과 맞춰 보지 않는다
+  const missing: MissingField[] = validateRecordDraft(draft, { now: new Date() }).flatMap(
     (error): MissingField[] => {
       switch (error.field) {
         case "shopId":

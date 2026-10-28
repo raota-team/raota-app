@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.raota.app",
-      "buildNumber": "8",
+      "buildNumber": "10",
       "config": {
         "usesNonExemptEncryption": false
       },
