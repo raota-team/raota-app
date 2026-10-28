@@ -31,8 +31,8 @@ import {
 } from "@raota/shared"
 
 import { currentTasteNoteFields, isRemote, isRemoteWithAccount, type ShopListParams, type ShopMapParams, type TasteNoteField } from "../api"
-import { remoteReads, type RemoteLoungeLogDetail, type RemotePage } from "./remote"
-import { MY_LOGS_OF_TYPE_KEY, remoteCache } from "./remoteCache"
+import { remoteReads, type RemoteLoungeLogDetail, type RemotePage, type RemoteTicket } from "./remote"
+import { MY_LOGS_OF_TYPE_KEY, remoteCache, TICKET_HISTORY_KEY } from "./remoteCache"
 
 import {
   LOUNGE_PAGE_SIZE,
@@ -589,6 +589,29 @@ export function useLoungeLogs({ type, sort, pageSize = LOUNGE_PAGE_SIZE }: Loung
   return remote
     ? { ...pages, data: remoteData, total: remoteData.length, refresh }
     : { data, ...status, total: all.length, hasMore: all.length > count, loadMore, refresh }
+}
+
+export interface TicketHistory extends RemotePaging<RemoteTicket> {
+  /** 서버 추천을 쓰는 로그인 회원만 식권이 있다. 아니면 읽지 않고 빈 목록이다 */
+  enabled: boolean
+  /** 당겨서 새로고침. 첫 쪽부터 다시 읽고, 실패해도 보던 목록을 둔다 */
+  refresh(): Promise<void>
+}
+
+/** 지금까지 뽑은 AI 식권(오늘 포함, 최신순). 식권을 새로 뽑으면 캐시가 버려져 다음에 열 때 다시 읽는다 */
+export function useTicketHistory(): TicketHistory {
+  const { currentUser } = useRaota()
+  const enabled = isRemote("recommendations") && Boolean(currentUser?.isLoggedIn)
+  const key = enabled ? TICKET_HISTORY_KEY : null
+  const readFirst = () => remoteReads.recommendationHistory()
+  const first = useRemoteResult(key, EMPTY_PAGE as RemotePage<RemoteTicket>, readFirst)
+  const pages = useRemoteContinuation(key, first, (cursor) => remoteReads.recommendationHistory(cursor))
+  const refresh = async () => {
+    if (!key) return
+    remoteCache.invalidate(key)
+    await remoteCache.load(key, readFirst).catch(() => undefined)
+  }
+  return { ...pages, enabled, refresh }
 }
 
 export interface LoungeLogDetail {
