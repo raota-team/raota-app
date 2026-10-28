@@ -8,6 +8,10 @@ export type CacheEntry = { value: unknown } | { promise: Promise<unknown> }
 
 /** 종류별 내 기록(useMyLogsOfType) 캐시 키의 앞부분. 기록을 쓰고 고치고 지우면 이 앞부분으로 버린다 */
 export const MY_LOGS_OF_TYPE_KEY = "me:logs:type:"
+/** 지난 식권 목록(useTicketHistory) 캐시 키. 식권을 새로 뽑으면 버린다 */
+export const TICKET_HISTORY_KEY = "recommendations:history"
+/** 식권 한 장. 지난 식권에서 고른 식권을 큐레이터 결과 화면이 id로 다시 찾는다 */
+export const ticketKey = (id: string) => `recommendations:ticket:${id}`
 
 const entries = new Map<string, CacheEntry>()
 /** 키마다 몇 번 버려졌는가. 이어 읽던 커서 페이지를 버릴지 정할 때 쓴다 */
@@ -28,6 +32,11 @@ function notify() {
 export const remoteCache = {
   get(key: string): CacheEntry | undefined {
     return entries.get(key)
+  },
+
+  /** 이미 받은 값을 키에 둔다(목록에서 받은 항목을 다른 화면이 id로 찾게) */
+  put(key: string, value: unknown) {
+    entries.set(key, { value })
   },
 
   /**

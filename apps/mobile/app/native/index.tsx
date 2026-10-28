@@ -669,6 +669,10 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
       {/* 추천 단계로 넘어가지 않고 홈 위에서 고른다. 고른 식권만 그 결과 화면으로 연다 */}
       <TodayTicketsSheet
         onClose={() => setTicketsOpen(false)}
+        onHistory={() => {
+          setTicketsOpen(false)
+          router.push("/tickets")
+        }}
         onSelect={(ticket) => {
           setTicketsOpen(false)
           router.push({ pathname: "/ai-recommend", params: { ticket: ticket.id } })

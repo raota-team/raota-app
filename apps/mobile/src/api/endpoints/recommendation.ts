@@ -1,5 +1,13 @@
 import { apiClient, type ApiClient } from "../client"
-import type { RecommendationRequest, RecommendationResponse, TodayCuration, TodayRecommendations } from "../types"
+import type {
+  CursorPage,
+  CursorParams,
+  RecommendationRequest,
+  RecommendationResponse,
+  RecommendationTicket,
+  TodayCuration,
+  TodayRecommendations,
+} from "../types"
 
 /**
  * AI 추천과 오늘의 큐레이션(#46).
@@ -16,6 +24,10 @@ export function createRecommendationApi(client: ApiClient = apiClient) {
     /** 오늘 뽑은 식권(최신순)과 남은 장수. 로그인한 회원만 */
     todayTickets(): Promise<TodayRecommendations> {
       return client.get<TodayRecommendations>("/ai/recommendations/today")
+    },
+    /** 지금까지 뽑은 식권(오늘 포함, 최신순). 로그인한 회원만. 매장은 지금도 추천해도 되는 매장만 남아 비어 있을 수 있다 */
+    history(params: CursorParams = {}): Promise<CursorPage<RecommendationTicket>> {
+      return client.get<CursorPage<RecommendationTicket>>("/ai/recommendations", { query: { cursor: params.cursor, size: params.size } })
     },
 
     /** 추천 결과에서 매장을 열었다고 알린다(204). 처음 연 시각만 남고, 내 추천이 아니거나 그 추천에 없는 매장이면 404 */
