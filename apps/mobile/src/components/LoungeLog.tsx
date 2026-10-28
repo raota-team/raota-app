@@ -328,9 +328,12 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
             </AppText>
           </View>
         )}
-        <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.pinNote} variant="bodyStrong">
-          {photos.length > 0 ? log.note.trim() || log.menuName : log.menuName}
-        </AppText>
+        {/* 사진 없는 카드는 메모가 없으면 글 칸에 메뉴 이름을 이미 썼다. 아래 줄에 같은 이름을 다시 쓰지 않는다 */}
+        {photos.length > 0 || log.note.trim() ? (
+          <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.pinNote} variant="bodyStrong">
+            {photos.length > 0 ? log.note.trim() || log.menuName : log.menuName}
+          </AppText>
+        ) : null}
         <View style={styles.pinAuthor}>
           <Avatar name={log.author.name} size={22} tone="soft" uri={log.author.avatar} />
           <AppText numberOfLines={1} style={styles.shrink} tone="muted" variant="meta">

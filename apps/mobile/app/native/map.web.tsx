@@ -1,7 +1,7 @@
 import { getLocale } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { t } from "@raota/shared"
-import { router, useLocalSearchParams } from "expo-router"
+import { router, useIsFocused, useLocalSearchParams } from "expo-router"
 import { Check, ChevronDown, List, Map as MapIcon, MapPin, Search, X } from "lucide-react-native"
 import { useEffect, useMemo, useState, type ReactElement } from "react"
 import { FlatList, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from "react-native"
@@ -216,6 +216,11 @@ export function MapHeader({
   /** 좁은 화면과 초기화 키가 생긴 상태는 세 필터를 가로 스크롤한다. */
   const scrollFilters = width < 390 || filters.hasActiveFilter || getLocale() !== "ko"
   const [picker, setPicker] = useState<"region" | "menu" | null>(null)
+  // 알림·링크로 다른 화면이 열리면 지역·메뉴 선택 창을 닫는다. 열어 두면 창(Modal)이 새 화면 위에 남는다(2026.10.28 QA)
+  const focused = useIsFocused()
+  useEffect(() => {
+    if (!focused) setPicker(null)
+  }, [focused])
   const regionOption = REGION_OPTIONS.find((option) => option.value === filters.region) ?? REGION_OPTIONS[0]
   const menuOption = MENU_OPTIONS.find((option) => option.value === filters.menu) ?? MENU_OPTIONS[0]
   const regionLabel = t(regionOption.label)

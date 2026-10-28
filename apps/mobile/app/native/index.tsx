@@ -1,10 +1,9 @@
 import { useLocale } from "@/src/i18n"
 import { formatDate, formatNumber, getLocale, t } from "@raota/shared"
-import * as Location from "expo-location"
 import { router, useFocusEffect } from "expo-router"
 import { ChevronRight, Sparkles, Ticket } from "lucide-react-native"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Image, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
+import { Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { monthKeyOfDate, seoulMonthKey, seoulToday, type RamenLog, type Shop, type ShopCatalogItem, type TasteIdentity, type TasteProfile } from "@raota/shared"
@@ -12,11 +11,12 @@ import { isRemote } from "@/src/api/config"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
 import { AppText, EmptyState, LoadingState } from "@/src/components/ui"
 import { TodayTicketsSheet } from "@/src/components/TodayTicketsSheet"
-import { useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile, useTodayCuration } from "@/src/data/hooks"
+import { useAllShops, useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile, useTodayCuration } from "@/src/data/hooks"
 import { remoteReads, type RemoteTodayTickets } from "@/src/data/remote"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
-import { distanceBetweenCoordinates, matchesShopRamenType } from "@/src/domain/shops"
+import { matchesShopRamenType, nearestShops } from "@/src/domain/shops"
 import { markLaunchReady } from "@/src/launch"
+import { useKnownLocation } from "@/src/location"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, maxFontScale, pressFade, radii, spacing, touchTarget } from "@/src/theme"
 
@@ -147,34 +147,6 @@ function personalRecommendations(shops: Shop[], identity: TasteIdentity, profile
   }
 }
 
-/**
- * 위치 권한이 이미 허용돼 있을 때만 현재 위치를 읽는다. 홈에서는 권한을 새로 묻지 않는다
- * (권한 요청은 지도 탭에서 맥락과 함께 한다). 없으면 원장 거리를 그대로 쓴다.
- */
-function useKnownLocation() {
-  const [origin, setOrigin] = useState<{ latitude: number; longitude: number } | null>(null)
-  useEffect(() => {
-    if (Platform.OS === "web") return
-    let mounted = true
-    ;(async () => {
-      try {
-        const permission = await Location.getForegroundPermissionsAsync()
-        if (permission.status !== "granted") return
-        const position =
-          (await Location.getLastKnownPositionAsync()) ??
-          (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
-        if (mounted && position) setOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude })
-      } catch {
-        // 위치를 못 읽으면 원장 거리로 보여준다
-      }
-    })()
-    return () => {
-      mounted = false
-    }
-  }, [])
-  return origin
-}
-
 function SectionHead({ title, right }: { title: string; right?: React.ReactNode }) {
   useLocale()
   return (
@@ -220,6 +192,8 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   const { width } = useWindowDimensions()
   const { currentUser } = useRaota()
   const shopsQuery = useShops()
+  // 가까운 라멘집은 전체 매장(지도와 같은 목록, 앱이 뜰 때 미리 받아 둔다)에서 잰다
+  const allShops = useAllShops().data
   const curation = useTodayCuration()
   const bowls = useMyBowls()
   const tasteProfile = useTasteProfile()
@@ -249,14 +223,15 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   )
   const ticketsUsedUp = todayTickets?.remaining === 0
 
-  /** 위치가 있으면 실제 거리로 다시 계산한다 */
+  /** 위치가 있으면 실제 거리로 다시 잰다. 가까운 순은 전체 매장에서 재고, 전체 매장을 아직 못 받았으면 받아 둔 매장으로 잰다 */
+  const nearbyPool = useMemo(
+    () => (origin ? nearestShops(allShops.length ? allShops : shopsQuery.data, origin) : null),
+    [allShops, origin, shopsQuery.data],
+  )
   const shops = useMemo(() => {
     if (!origin) return shopsQuery.data
-    return shopsQuery.data.map((shop) =>
-      shop.lat && shop.lng
-        ? { ...shop, distanceM: Math.round(distanceBetweenCoordinates(origin, { latitude: shop.lat, longitude: shop.lng })) }
-        : shop,
-    )
+    const distanceOf = new Map(nearestShops(shopsQuery.data, origin).map((shop) => [shop.id, shop.distanceM]))
+    return shopsQuery.data.map((shop) => (distanceOf.has(shop.id) ? { ...shop, distanceM: distanceOf.get(shop.id)! } : shop))
   }, [origin, shopsQuery.data, getLocale()])
 
   /** mock에서는 원장 에디터 픽, remote에서는 발행된 오늘의 큐레이션만 보여준다. */
@@ -280,11 +255,10 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
    */
   const nearby = useMemo(() => {
     const shown = new Set(recommendations.map((item) => item.shop.id))
-    return shops
+    return (nearbyPool ?? shops)
       .filter((shop) => shop.id !== todayPick?.id && !shown.has(shop.id))
-      .sort((a, b) => a.distanceM - b.distanceM)
       .slice(0, 5)
-  }, [recommendations, shops, todayPick?.id, getLocale()])
+  }, [nearbyPool, recommendations, shops, todayPick?.id, getLocale()])
   const [topRecommendation, ...otherRecommendations] = recommendations
   const recommendTitle = personal && currentUser ? t("{name}님이 좋아할 라멘집", { name: currentUser.nickname }) : t("처음이라면 여기부터")
   const recommendMeta = personal ? t("{count}그릇 취향 기준", { count: tasteIdentity.data.total }) : null

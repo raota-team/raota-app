@@ -10,7 +10,9 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { type Shop, type ShopCatalogItem } from "@raota/shared"
 import { track } from "@/src/analytics"
-import { useBookmarkedShops, useShops } from "@/src/data"
+import { useAllShops, useBookmarkedShops, useShops } from "@/src/data"
+import { nearestShops } from "@/src/domain/shops"
+import { useKnownLocationState } from "@/src/location"
 import { useRaota } from "@/src/state/RaotaStore"
 import { AppText, Chip, EmptyState, IconButton, LoadingState } from "@/src/components/ui"
 import { sizedImageUri } from "@/src/api/imageSize"
@@ -86,6 +88,8 @@ const toShopItem = (shop: Shop): ShopItem => {
 }
 
 const byDistance = (a: ShopItem, b: ShopItem) => a.distanceM - b.distanceM
+
+const NEARBY_FILTER_LABEL: Record<NearbyFilter, string> = { all: "전체", "500m": "500m 이내", open: "영업 중만" }
 
 const initialModeOf = (mode: string | undefined): Mode =>
   mode === "saved" || mode === "bookmarked" ? "saved" : mode === "search" ? "search" : "nearby"
@@ -174,6 +178,13 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
   const searchRef = useRef<TextInput>(null)
 
   const allShops = useMemo(() => shopsQuery.data.map(toShopItem).sort(byDistance), [shopsQuery.data, locale])
+  // 주변은 위치가 있으면 전체 매장(지도와 같은 목록)을 실제 거리순으로 보여 준다. 위치가 없으면 받아 둔 매장을 그대로 보여 주고 거리순이라고 하지 않는다
+  const { origin, pending: locating } = useKnownLocationState()
+  const everyShop = useAllShops().data
+  const nearbyByDistance = useMemo(
+    () => (origin && everyShop.length ? nearestShops(everyShop, origin).map(toShopItem) : null),
+    [everyShop, origin, locale],
+  )
   const savedShops = useMemo(() => bookmarked.data.map(toShopItem).sort(byDistance), [bookmarked.data, locale])
 
   // 빠른 검색어는 원장의 스타일과 동네에서만 만든다. 인기 검색어처럼 꾸미지 않는다.
@@ -190,12 +201,12 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
 
   const nearbyList = useMemo(
     () =>
-      allShops.filter((shop) => {
+      (nearbyByDistance ?? allShops).filter((shop) => {
         if (nearbyFilter === "open" && !shop.isOpen) return false
         if (nearbyFilter === "500m" && shop.distanceM > 500) return false
         return true
       }),
-    [allShops, nearbyFilter],
+    [allShops, nearbyByDistance, nearbyFilter],
   )
 
   const trimmedQuery = query.trim()
@@ -211,17 +222,19 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
   }, [allShops, remoteSearch.data, searchQuery, shopsQuery.remote, trimmedQuery])
 
   const chooseNearbyFilter = () => {
-    const options = ["전체", "500m 이내", "영업 중만", "취소"].map((option) => t(option))
+    // 위치가 없으면 거리를 몰라 "500m 이내"를 고를 수 없다
+    const choices = (["all", "500m", "open"] as const).filter((choice) => choice !== "500m" || nearbyByDistance)
+    const options = [...choices.map((choice) => t(NEARBY_FILTER_LABEL[choice])), t("취소")]
     const select = (index: number) => {
-      if (index < 3) setNearbyFilter((["all", "500m", "open"] as const)[index])
+      if (index < choices.length) setNearbyFilter(choices[index])
     }
     if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions({ title: t("주변 가게"), options, cancelButtonIndex: 3 }, select)
+      ActionSheetIOS.showActionSheetWithOptions({ title: t("주변 가게"), options, cancelButtonIndex: choices.length }, select)
     } else {
       Alert.alert(t("주변 가게"), undefined, options.map((text, index) => ({
         text,
         onPress: () => select(index),
-        style: index === 3 ? "cancel" as const : "default" as const,
+        style: index === choices.length ? "cancel" as const : "default" as const,
       })))
     }
   }
@@ -249,19 +262,21 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
   const isLoading = mode === "search" && trimmedQuery && shopsQuery.remote
     ? searchQuery !== trimmedQuery || (remoteSearch.isLoading && searchResults.length === 0)
     : shopsQuery.isLoading && allShops.length === 0
+  // 거리를 잴 수 있을 때만 "가까운 순"이라고 한다
+  const nearbyCaption = nearbyByDistance ? "가까운 순" : locating ? "위치를 확인하는 중…" : "위치를 켜면 가까운 순으로 보여요"
 
   const listHeader = (
     <View style={styles.listHeader}>
       {mode === "nearby" ? (
         <Pressable
           accessibilityHint={t("주변 가게의 거리와 영업 상태 조건을 고를 수 있어요")}
-          accessibilityLabel={t("가까운 순{v1}, {v2}", { v1: allShops[0]?.region ? ` · ${allShops[0].region} 주변` : "", v2: nearbyFilter === "all" ? "전체" : nearbyFilter === "500m" ? "500m 이내" : "영업 중만" })}
+          accessibilityLabel={`${t(nearbyCaption)}, ${t(NEARBY_FILTER_LABEL[nearbyFilter])}`}
           accessibilityRole="button"
           onPress={chooseNearbyFilter}
           style={styles.listCaptionButton}
         >
           <AppText capScale numberOfLines={1} style={styles.listCaption} tone="muted" variant="meta">
-            {t("{v1}{v2}", { v1: nearbyFilter === "all" ? t("가까운 순") : nearbyFilter === "500m" ? t("500m 이내") : t("영업 중만"), v2: allShops[0]?.region ? ` · ${allShops[0].region} 주변` : "" })}
+            {nearbyFilter === "all" ? t(nearbyCaption) : t(NEARBY_FILTER_LABEL[nearbyFilter])}
           </AppText>
           <ChevronDown color={colors.textMuted} size={14} />
         </Pressable>
@@ -407,7 +422,9 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           onEndReached={() => {
-            if (mode !== "saved" && activeQuery.hasMore && !activeQuery.isLoading && !activeQuery.error) activeQuery.loadMore()
+            // 거리순 주변은 전체 매장이라 이어 읽을 쪽이 없다
+            const paged = mode === "search" || (mode === "nearby" && !nearbyByDistance)
+            if (paged && activeQuery.hasMore && !activeQuery.isLoading && !activeQuery.error) activeQuery.loadMore()
           }}
           onEndReachedThreshold={0.6}
           renderItem={({ item }) => <ShopRow onSelect={() => choose(item)} shop={item} />}
