@@ -1,6 +1,7 @@
-import { t, ph } from "@lingui/core/macro";
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
+import { translate } from "@raota/shared"
 import { router } from "expo-router"
 import { Bookmark, Crosshair, Plus, Search, X, type LucideIcon } from "lucide-react-native"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -15,10 +16,10 @@ import { AppText, IconButton } from "./ui"
 
 type RecordMode = "nearby" | "saved" | "search"
 
-const MENU_ITEMS: Array<{ mode: RecordMode; label: string; Icon: LucideIcon }> = [
-  { mode: "nearby", label: "주변 라멘집 기록하기", Icon: Crosshair },
-  { mode: "saved", label: "찜한 가게에서 기록하기", Icon: Bookmark },
-  { mode: "search", label: "직접 검색해서 기록하기", Icon: Search },
+const MENU_ITEMS: Array<{ mode: RecordMode; label: MessageDescriptor; Icon: LucideIcon }> = [
+  { mode: "nearby", label: msg`주변 라멘집 기록하기`, Icon: Crosshair },
+  { mode: "saved", label: msg`찜한 가게에서 기록하기`, Icon: Bookmark },
+  { mode: "search", label: msg`직접 검색해서 기록하기`, Icon: Search },
 ]
 
 const TEST_SECONDS = 5
@@ -234,7 +235,7 @@ function RecordChoice({
   return (
     <Animated.View style={rowStyle}>
       <Pressable
-        accessibilityLabel={legacyT(label)}
+        accessibilityLabel={translate(label)}
         accessibilityRole="button"
         onPress={() => onChoose(mode)}
         style={({ pressed }) => [styles.choice, pressed && styles.choicePressed]}
@@ -242,7 +243,7 @@ function RecordChoice({
         <View style={styles.choiceIcon}>
           <Icon color={colors.ink} size={20} strokeWidth={2.1} />
         </View>
-        <AppText style={styles.choiceLabel} variant="bodyStrong">{legacyT(label)}</AppText>
+        <AppText style={styles.choiceLabel} variant="bodyStrong">{translate(label)}</AppText>
       </Pressable>
     </Animated.View>
   )

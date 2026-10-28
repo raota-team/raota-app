@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { labelOf } from "@raota/shared"
 import { MENU_CATEGORIES, menuDistribution, type DistributionSource } from '../utils/menuDistribution'
 import { CURRENT_MONTH_ID, reportMonthIndex, shortReportMonth } from '../utils/tasteHistory'
 
@@ -26,7 +26,7 @@ export default function MenuDistributionChart({ reports, selectedId, compact = f
                 </span>
                 <span className="font-medium text-ink-sub">{total}{t`그릇`}</span>
               </div>
-              <div role="img" aria-label={t`${ph({ v0: report.period })} 메뉴 분포. ${ph({ v1: total ? items.filter(item => item.count > 0).map(item => t`${ph({ style: legacyT(item.name) })} ${ph({ count: item.count })}그릇, ${ph({ pct: item.pct })}%`).join(', ') : t`기록 없음` })}`} className={compact ? 'flex h-3 overflow-hidden rounded-xs bg-canvas-soft' : 'flex h-9 overflow-hidden rounded-sm bg-canvas-soft'}>
+              <div role="img" aria-label={t`${ph({ v0: report.period })} 메뉴 분포. ${ph({ v1: total ? items.filter(item => item.count > 0).map(item => t`${ph({ style: labelOf(item.name) })} ${ph({ count: item.count })}그릇, ${ph({ pct: item.pct })}%`).join(', ') : t`기록 없음` })}`} className={compact ? 'flex h-3 overflow-hidden rounded-xs bg-canvas-soft' : 'flex h-9 overflow-hidden rounded-sm bg-canvas-soft'}>
                 {total ? items.filter(item => item.count > 0).map(item => <div key={item.name} className={`flex items-center justify-center overflow-hidden ${item.color} ${item.textColor}`} style={{ width: `${item.share}%` }} aria-hidden="true">
                   {!compact && item.pct >= 14 && <span className="text-[12px] font-bold">{item.pct}%</span>}
                 </div>) : <span className="m-auto text-[12px] text-ink-sub">{t`기록 없음`}</span>}
@@ -36,7 +36,7 @@ export default function MenuDistributionChart({ reports, selectedId, compact = f
         })}
       </div>
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-[12px] font-medium text-ink-sub" aria-label={t`메뉴 분포 범례`}>
-        {MENU_CATEGORIES.map(category => <span key={category.name} className="flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-xs ${category.color}`} aria-hidden="true" />{legacyT(category.name)}</span>)}
+        {MENU_CATEGORIES.map(category => <span key={category.name} className="flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-xs ${category.color}`} aria-hidden="true" />{labelOf(category.name)}</span>)}
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { getLocale, t as legacyT } from "@raota/shared"
+import { getLocale } from "@raota/shared"
 import { useRef, type ReactNode } from "react"
 import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 
@@ -34,7 +34,8 @@ export default function PolicySheet({ type, onClose, title, footer }: PolicyShee
   if (type) lastType.current = type
   const shownType = type ?? lastType.current
   const policy = shownType ? POLICIES[shownType] : null
-  const sheetTitle = title ?? (policy?.title ? legacyT(policy.title) : "")
+  // 문서 원문은 한국어로만 두고, 제목만 문서 종류에 맞춰 번역한다
+  const sheetTitle = title ?? (shownType === "terms" ? t`이용약관` : shownType === "privacy" ? t`개인정보처리방침` : "")
 
   return (
     <BottomSheet

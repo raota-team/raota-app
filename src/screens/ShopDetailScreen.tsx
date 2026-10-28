@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { formatNumber, t as legacyT } from "@raota/shared"
+import { formatDate, formatNumber } from "@raota/shared"
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronDown, Bookmark, Store, ImageOff, PenLine, Phone, Check, CalendarCheck } from 'lucide-react'
 import type { ShopCatalogItem } from '../data/shops'
@@ -15,8 +15,10 @@ interface Props {
   onRecord: () => void
 }
 
+/** 원장 영업시간 문자열("월요일: 11:00–21:00")의 요일 접두어. 표시할 때는 weekdayName으로 바꾼다 */
 const DAY_NAMES = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일']
-const DAY_SHORT = ['일', '월', '화', '수', '목', '금', '토']
+/** 2024-01-07은 일요일이라 index(0=일요일)를 더하면 그 요일 날짜가 된다 */
+const weekdayName = (index: number, weekday: 'long' | 'short') => formatDate(new Date(2024, 0, 7 + index), { weekday })
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -32,13 +34,13 @@ const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)}km` 
 function businessLabel(shop: ShopCatalogItem): { label: string; open: boolean } {
   switch (shop.businessStatus) {
     case 'OPERATIONAL':
-      return shop.isOpen ? { label: '영업 중', open: true } : { label: '준비 중', open: false }
+      return shop.isOpen ? { label: t`영업 중`, open: true } : { label: t`준비 중`, open: false }
     case 'CLOSED_TEMPORARILY':
-      return { label: '임시 휴업', open: false }
+      return { label: t`임시 휴업`, open: false }
     case 'CLOSED_PERMANENTLY':
-      return { label: '폐업', open: false }
+      return { label: t`폐업`, open: false }
     default:
-      return { label: '영업 정보 확인 필요', open: false }
+      return { label: t`영업 정보 확인 필요`, open: false }
   }
 }
 
@@ -63,7 +65,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
 
   const dayIndex = new Date().getDay()
   const todayName = DAY_NAMES[dayIndex]
-  const todayShort = DAY_SHORT[dayIndex]
+  const todayShort = weekdayName(dayIndex, 'short')
 
   const hasHours = shop.openingHours.length > 0
   const todayHourEntry = shop.openingHours.find(h => h.startsWith(todayName))
@@ -72,14 +74,14 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
   const status = businessLabel(shop)
   const photo = shop.photos[photoIdx]
   const perks = [
-    { label: '면 리필', value: shop.servicePerks?.noodleRefill },
-    { label: '공깃밥 리필', value: shop.servicePerks?.riceRefill },
-    { label: '육수 추가', value: shop.servicePerks?.soupRefill },
-    { label: '양념', value: shop.servicePerks?.condiments },
+    { label: t`면 리필`, value: shop.servicePerks?.noodleRefill },
+    { label: t`공깃밥 리필`, value: shop.servicePerks?.riceRefill },
+    { label: t`육수 추가`, value: shop.servicePerks?.soupRefill },
+    { label: t`양념`, value: shop.servicePerks?.condiments },
   ].filter((perk): perk is { label: string; value: string } => Boolean(perk.value))
   const links = [
-    shop.instagramUrl ? { key: 'instagram', label: '인스타그램', href: shop.instagramUrl, Icon: InstagramIcon } : null,
-    shop.catchTableUrl ? { key: 'catchtable', label: '캐치테이블', href: shop.catchTableUrl, Icon: CalendarCheck } : null,
+    shop.instagramUrl ? { key: 'instagram', label: t`인스타그램`, href: shop.instagramUrl, Icon: InstagramIcon } : null,
+    shop.catchTableUrl ? { key: 'catchtable', label: t`캐치테이블`, href: shop.catchTableUrl, Icon: CalendarCheck } : null,
   ].filter((link): link is NonNullable<typeof link> => link !== null)
 
   const handleSave = () => {
@@ -153,7 +155,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
         {/* 2. 매장 헤드라인 */}
         <section className="px-5 pt-5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold">
-            <span className={status.open ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {legacyT(status.label)}</span>
+            <span className={status.open ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {status.label}</span>
             {shop.distanceM > 0 && (
               <>
                 <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
@@ -186,7 +188,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
             <ul className="flex flex-wrap gap-1.5 mt-3" aria-label={t`특징`}>
               {shop.tags.map(tag => (
                 <li key={tag} className="bg-[#F2F2F2] px-2.5 py-1 rounded-[4px] text-[12px] font-bold text-[#25282B]">
-                  {legacyT(tag)}
+                  {tag}
                 </li>
               ))}
             </ul>
@@ -223,7 +225,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
             <dl className="grid grid-cols-2 gap-2">
               {perks.map(perk => (
                 <div key={perk.label} className="bg-[#F2F2F2] py-2.5 px-3 rounded-[6px]">
-                  <dt className="text-[12px] text-[#6B6E73] font-bold">{legacyT(perk.label)}</dt>
+                  <dt className="text-[12px] text-[#6B6E73] font-bold">{perk.label}</dt>
                   <dd className="text-[13px] font-bold mt-0.5 break-keep">{perk.value}</dd>
                 </div>
               ))}
@@ -253,7 +255,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                   >
                     <span className="text-white/70 flex-shrink-0">{t`영업시간`}</span>
                     <span className="flex items-center gap-2 font-medium">
-                      <span className="text-[12px] font-bold text-white/70">{t`오늘(`}{legacyT(todayShort)})</span>
+                      <span className="text-[12px] font-bold text-white/70">{t`오늘(${ph({ day: todayShort })})`}</span>
                       <span>{todayTimeText}</span>
                       <ChevronDown className={`w-4 h-4 text-white/70 transition-transform duration-200 ${showHoursDetail ? 'rotate-180' : ''}`} aria-hidden="true" />
                     </span>
@@ -264,10 +266,11 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                       {shop.openingHours.map(h => {
                         const isToday = h.startsWith(todayName)
                         const [day, ...rest] = h.split(':')
+                        const dayIndexOfEntry = DAY_NAMES.indexOf(day)
                         return (
                           <li key={h} className={`flex justify-between px-2 py-1.5 rounded-[4px] ${isToday ? 'bg-white/10 font-bold' : 'text-white/80'}`}>
                             <span className="flex items-center gap-2">
-                              {legacyT(day)}
+                              {dayIndexOfEntry >= 0 ? weekdayName(dayIndexOfEntry, 'long') : day}
                               {isToday && <span className="text-[12px] font-bold text-[#FF6B6B]">{t`오늘`}</span>}
                             </span>
                             <span>{rest.join(':').trim()}</span>
@@ -321,7 +324,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                   className="flex-1 h-11 rounded-[6px] bg-white/10 border border-white/15 text-white text-[13px] font-bold flex items-center justify-center gap-2 active:bg-white/20 transition-colors"
                 >
                   <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>{legacyT(label)}</span>
+                  <span>{label}</span>
                 </a>
               ))}
             </div>

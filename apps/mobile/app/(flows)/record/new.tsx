@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT, getLocale, getIntlLocale, formatDate as formatLocaleDate } from "@raota/shared"
+import { t, ph, msg, select } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { getLocale, getIntlLocale, formatDate as formatLocaleDate, formatList, labelOf, translate } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
 import { useEffect, useRef, useState, type ReactNode } from "react"
@@ -100,14 +101,14 @@ const FLOW_HEADER_HEIGHT = 52
 
 const STEPS: readonly StepKey[] = ["meal", "satisfaction", "brothDensity", "noodleFirmness", "topping", "revisit", "extra"]
 const LAST_STEP = STEPS.length - 1
-const QUESTIONS: Record<StepKey, string> = {
-  meal: "무엇을 먹었나요?",
-  satisfaction: "전체 만족도는 어땠나요?",
-  brothDensity: "육수 농도는 어땠나요?",
-  noodleFirmness: "면 삶기는 어땠나요?",
-  topping: "토핑은 어땠나요?",
-  revisit: "다시 가고 싶나요?",
-  extra: "더 남길 감정이 있나요?",
+const QUESTIONS: Record<StepKey, MessageDescriptor> = {
+  meal: msg`무엇을 먹었나요?`,
+  satisfaction: msg`전체 만족도는 어땠나요?`,
+  brothDensity: msg`육수 농도는 어땠나요?`,
+  noodleFirmness: msg`면 삶기는 어땠나요?`,
+  topping: msg`토핑은 어땠나요?`,
+  revisit: msg`다시 가고 싶나요?`,
+  extra: msg`더 남길 감정이 있나요?`,
 }
 /** 빠진 항목이 어느 질문에서 채워지는지. 방문일은 감정서 머리의 날짜로 고친다 */
 const FIELD_STEP: Record<FieldKey, StepKey | null> = {
@@ -129,32 +130,32 @@ const EASE_OUT = Easing.bezier(0.22, 1, 0.36, 1)
 const SCORE_AXES = TASTE_AXES.filter((axis): axis is (typeof TASTE_AXES)[number] & { key: ScoreAxisKey } => axis.key !== "revisit")
 const REVISIT_LABEL = TASTE_AXES.find((axis) => axis.key === "revisit")?.label ?? "재방문 의사"
 /** 점수마다 보기 문구. 축의 의미는 그대로 두고 말로 고른다 */
-const AXIS_WORDS: Record<ScoreAxisKey, readonly string[]> = {
-  satisfaction: ["아쉬웠어요", "그저 그랬어요", "괜찮았어요", "맛있었어요", "인생 라멘이에요"],
-  brothDensity: ["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"],
-  noodleFirmness: ["아주 부드럽게", "부드러운 편", "중간", "단단한 편", "아주 단단하게"],
-  topping: ["아쉬움", "조금 아쉬움", "보통", "좋음", "훌륭함"],
+const AXIS_WORDS: Record<ScoreAxisKey, readonly MessageDescriptor[]> = {
+  satisfaction: [msg`아쉬웠어요`, msg`그저 그랬어요`, msg`괜찮았어요`, msg`맛있었어요`, msg`인생 라멘이에요`],
+  brothDensity: [msg`아주 맑음`, msg`맑은 편`, msg`중간`, msg`진한 편`, msg`아주 진함`],
+  noodleFirmness: [msg`아주 부드럽게`, msg`부드러운 편`, msg`중간`, msg`단단한 편`, msg`아주 단단하게`],
+  topping: [msg`아쉬움`, msg`조금 아쉬움`, msg`보통`, msg`좋음`, msg`훌륭함`],
 }
-const CELL_LABELS: Record<Exclude<StepKey, "meal">, string> = {
-  satisfaction: "만족",
-  brothDensity: "육수",
-  noodleFirmness: "면",
-  topping: "토핑",
-  revisit: "재방문",
-  extra: "감정",
+const CELL_LABELS: Record<Exclude<StepKey, "meal">, MessageDescriptor> = {
+  satisfaction: msg`만족`,
+  brothDensity: msg`육수`,
+  noodleFirmness: msg`면`,
+  topping: msg`토핑`,
+  revisit: msg`재방문`,
+  extra: msg`감정`,
 }
 
-/** 낮은 점수부터 높은 점수 순 */
+/** 낮은 점수부터 높은 점수 순. label은 저장 값, display는 보기 문구 */
 const REVISIT_CHOICES = [...REVISIT_OPTIONS].reverse().map((label) => ({
   label,
   value: REVISIT_SCORE[label],
-  display: label === "자주 감" ? "자주 갈래요" : label === "가끔 생각남" ? "가끔" : "한 번이면 충분",
+  display: label === "자주 감" ? msg`자주 갈래요` : label === "가끔 생각남" ? msg`가끔` : msg`한 번이면 충분`,
 }))
 /** 감정서 칸의 짧은 재방문 말. 완료 화면 식권과 같다 */
-const revisitShort = (option: RevisitOption) => (REVISIT_SCORE[option] === 5 ? "자주" : REVISIT_SCORE[option] === 3 ? "가끔" : "한 번")
+const revisitShort = (option: RevisitOption) => (REVISIT_SCORE[option] === 5 ? t`자주` : REVISIT_SCORE[option] === 3 ? t`가끔` : t`한 번`)
 const VISIBILITY_CHOICES = [
-  { label: "나만 보기", value: false },
-  { label: "공개", value: true },
+  { label: msg`나만 보기`, value: false },
+  { label: msg`공개`, value: true },
 ] as const
 /** 기록 하나에 붙일 수 있는 사진 수. 서버 sort_order 0~2와 맞춘다 */
 const RECORD_PHOTO_MAX = 3
@@ -249,14 +250,14 @@ function RecordChoice({
 }) {
   return (
     <Pressable
-      accessibilityLabel={legacyT(accessibilityLabel)}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole={role}
       accessibilityState={role === "radio" ? { checked: selected } : { selected }}
       onPress={onPress}
       style={({ pressed }) => [styles.choice, selected && styles.choiceSelected, pressed && !selected && styles.pressed, pressed && styles.pressScale]}
     >
       <AppText capScale style={[styles.choiceText, selected && styles.onSelectedText]} variant="button">
-        {legacyT(label)}
+        {label}
       </AppText>
     </Pressable>
   )
@@ -288,7 +289,7 @@ function AnswerOption({
   return (
     <Animated.View entering={FadeInUp.delay(index * 30).duration(320).easing(EASE_OUT)}>
       <Pressable
-        accessibilityLabel={legacyT(accessibilityLabel)}
+        accessibilityLabel={accessibilityLabel}
         accessibilityRole="radio"
         accessibilityState={{ checked: selected }}
         onPress={onPress}
@@ -296,7 +297,7 @@ function AnswerOption({
       >
         <Animated.View pointerEvents="none" style={[styles.optionFill, fillStyle]} />
         <AppText capScale lineBreakStrategyIOS="hangul-word" style={[styles.optionText, selected && styles.onSelectedText]} variant="bodyStrong">
-          {legacyT(label)}
+          {label}
         </AppText>
         <Animated.View style={[styles.optionNumber, numberStyle]}>
           <AppText capScale style={styles.optionNumberText} variant="button">{number}</AppText>
@@ -341,7 +342,7 @@ function TicketCell({
   }))
   return (
     <Pressable
-      accessibilityLabel={legacyT(accessibilityLabel)}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ disabled: !enabled, selected: current }}
       disabled={!enabled}
@@ -357,7 +358,7 @@ function TicketCell({
         ) : null}
       </Animated.View>
       <AppText capScale maxFontSizeMultiplier={1.15} numberOfLines={1} tone="muted" variant="meta">
-        {legacyT(label)}
+        {label}
       </AppText>
     </Pressable>
   )
@@ -400,14 +401,14 @@ function SlidingSegments<T extends string | boolean>({
   }, [index, measured, reduceMotion, widths])
   const thumbStyle = useAnimatedStyle(() => ({ width: width.value, transform: [{ translateX: x.value }] }))
   return (
-    <View accessibilityLabel={legacyT(accessibilityLabel)} style={[styles.segments, stretch && styles.segmentsStretch]}>
+    <View accessibilityLabel={accessibilityLabel} style={[styles.segments, stretch && styles.segmentsStretch]}>
       {measured ? <Animated.View pointerEvents="none" style={[styles.segmentThumb, thumbStyle]} /> : null}
       {items.map((item, i) => {
         const selected = item.key === value
         return (
           <Pressable
             accessibilityHint={item.hint}
-            accessibilityLabel={item.badge ? t`${ph({ v1: legacyT(item.label) })}, ${ph({ v2: item.badge })}개 고름` : legacyT(item.label)}
+            accessibilityLabel={item.badge ? t`${ph({ v1: item.label })}, ${ph({ v2: item.badge })}개 고름` : item.label}
             accessibilityRole="button"
             accessibilityState={{ selected }}
             key={String(item.key)}
@@ -427,7 +428,7 @@ function SlidingSegments<T extends string | boolean>({
             style={[styles.segment, stretch && styles.segmentStretch, !measured && selected && styles.choiceSelected]}
           >
             <AppText capScale numberOfLines={1} style={[styles.segmentText, selected && styles.onSelectedText]} variant="button">
-              {legacyT(item.label)}
+              {item.label}
             </AppText>
             {item.badge ? (
               <AppText capScale style={[styles.segmentBadge, selected && styles.onSelectedText]} tone="muted" variant="meta">
@@ -621,7 +622,7 @@ export default function NewRecordScreen() {
           return [{ key: "visitedAt", label: t`방문일`, kind: "choice" }]
         case "scores": {
           const axis = TASTE_AXES.find(({ key }) => key === error.axis)
-          return axis ? [{ key: axis.key, label: axis.label, kind: "choice" }] : []
+          return axis ? [{ key: axis.key, label: labelOf(axis.label), kind: "choice" }] : []
         }
         case "note":
           return [{ key: "note", label: t`메모`, kind: "text" }]
@@ -641,12 +642,19 @@ export default function NewRecordScreen() {
   const isComplete = missing.length === 0
   const mealMissing = missing.filter((item) => FIELD_STEP[item.key] === "meal")
 
+  /**
+   * 빠진 항목 안내. 언어마다 문장 전체를 옮기도록 경우마다 한 문장으로 쓴다(조각을 이어 붙이지 않는다).
+   * 을/를은 한국어 문장에만 있는 조사라 select로 고르고, 다른 언어는 두 갈래를 같게 옮긴다.
+   * "외 N개"는 늘 "개"로 끝나 "를"이다
+   */
   const missingHint = (items: MissingField[]) => {
-    const shown = items.slice(0, 3).map((item) => item.label)
-    const rest = items.length - shown.length
-    const subject = rest > 0 ? t`${ph({ fields: shown.join(", ") })} 외 ${ph({ count: rest })}개` : shown.join(", ")
-    const verb = items.some((item) => item.kind === "text") ? t`채워주세요` : t`골라주세요`
-    return `${withObjectParticle(subject)} ${verb}`
+    const fields = formatList(items.slice(0, 3).map((item) => item.label))
+    const count = items.length - 3
+    const particle = withObjectParticle(fields).endsWith("을") ? "eul" : "reul"
+    if (items.some((item) => item.kind === "text")) {
+      return count > 0 ? t`${fields} 외 ${count}개를 채워주세요` : select(particle, { eul: `${fields}을 채워주세요`, other: `${fields}를 채워주세요` })
+    }
+    return count > 0 ? t`${fields} 외 ${count}개를 골라주세요` : select(particle, { eul: `${fields}을 골라주세요`, other: `${fields}를 골라주세요` })
   }
 
   const isAnswered = (key: StepKey) =>
@@ -772,7 +780,7 @@ export default function NewRecordScreen() {
     const key = STEPS[step]
     if (!isAnswered(key)) {
       setNudgedStep(step)
-      const message = key === "meal" ? missingHint(mealMissing) : legacyT(t`답을 골라주세요`)
+      const message = key === "meal" ? missingHint(mealMissing) : t`답을 골라주세요`
       AccessibilityInfo.announceForAccessibility?.(message)
       if (key === "meal") showFirstMissing(mealMissing)
       return
@@ -838,10 +846,12 @@ export default function NewRecordScreen() {
     }
   }
 
-  const showPermissionAlert = (kind: "사진" | "카메라") => {
+  const showPermissionAlert = (kind: "library" | "camera") => {
     Alert.alert(
-      t`${ph({ v1: kind })} 접근 권한이 필요해요`,
-      t`설정에서 ${ph({ v1: kind })} 접근을 허용하거나, 사진 없이도 계속 기록할 수 있어요.`,
+      kind === "library" ? t`사진 접근 권한이 필요해요` : t`카메라 접근 권한이 필요해요`,
+      kind === "library"
+        ? t`설정에서 사진 접근을 허용하거나, 사진 없이도 계속 기록할 수 있어요.`
+        : t`설정에서 카메라 접근을 허용하거나, 사진 없이도 계속 기록할 수 있어요.`,
       [
         { text: t`사진 없이 계속`, style: "cancel" },
         { text: t`설정 열기`, onPress: () => void Linking.openSettings() },
@@ -852,7 +862,7 @@ export default function NewRecordScreen() {
   const addFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      showPermissionAlert("사진")
+      showPermissionAlert("library")
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -870,7 +880,7 @@ export default function NewRecordScreen() {
   const addFromCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync()
     if (!permission.granted) {
-      showPermissionAlert("카메라")
+      showPermissionAlert("camera")
       return
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.84 })
@@ -975,7 +985,7 @@ export default function NewRecordScreen() {
 
   const stepKey = STEPS[step]
   const shopLabel = shop ? `${shop.name}${shop.branch ? ` · ${shop.branch}` : ""}` : null
-  const mealLine = [ramenType, trimmedMenu].filter(Boolean).join(" · ")
+  const mealLine = [ramenType ? labelOf(ramenType) : "", trimmedMenu].filter(Boolean).join(" · ")
   const thumbnail = photos[0] ?? catalogShop?.photos?.[0] ?? null
   const isToday = visitedAt === formatDate(today)
   const dateShort = getLocale() !== "ko" ? `${formatLocaleDate(visitDate, { month: "short", day: "numeric", weekday: "short" })}${isToday ? ` · ${t`오늘`}` : ""}` : t`${ph({ v1: visitDate.getMonth() + 1 })}월 ${ph({ v2: visitDate.getDate() })}일 (${ph({ v3: WEEKDAYS[visitDate.getDay()] })})${ph({ v4: isToday ? t` · 오늘` : "" })}`
@@ -987,13 +997,16 @@ export default function NewRecordScreen() {
     return value == null ? null : String(value)
   }
   const cellSpoken = (key: Exclude<StepKey, "meal">, value: string | null) => {
-    const name = key === "extra" ? t`추가 감정` : key === "revisit" ? REVISIT_LABEL : (SCORE_AXES.find((axis) => axis.key === key)?.label ?? CELL_LABELS[key])
-    const said = value === null ? t`아직 비어 있음` : key === "extra" ? t`${ph({ count: extraCount })}개` : key === "revisit" ? (revisit ?? value) : t`${ph({ score: value ?? "" })}점`
-    return `${name} ${said}`
+    const axis = SCORE_AXES.find((item) => item.key === key)
+    const name = key === "extra" ? t`추가 감정` : key === "revisit" ? labelOf(REVISIT_LABEL) : axis ? labelOf(axis.label) : translate(CELL_LABELS[key])
+    if (value === null) return t`${ph({ name })} 아직 비어 있음`
+    if (key === "extra") return t`${ph({ name })} ${ph({ count: extraCount })}개`
+    if (key === "revisit") return t`${ph({ name })} ${ph({ choice: revisit ? labelOf(revisit) : value })}`
+    return t`${ph({ name })} ${ph({ score: value })}점`
   }
 
   const footerHint = (() => {
-    if (saveError) return `저장하지 못했어요. ${saveError}`
+    if (saveError) return t`저장하지 못했어요. ${ph({ v1: saveError })}`
     if (stepKey === "meal") return mealMissing.length ? missingHint(mealMissing) : undefined
     if (stepKey === "extra") {
       if (!isComplete) return missingHint(missing)
@@ -1027,7 +1040,7 @@ export default function NewRecordScreen() {
           {RAMEN_TYPES.map((type) => (
             <RecordChoice
               key={type}
-              label={type}
+              label={labelOf(type)}
               onPress={() => {
                 if (ramenType !== type) selectionHaptic()
                 setRamenType(type)
@@ -1041,13 +1054,13 @@ export default function NewRecordScreen() {
     )
   } else if (stepKey === "revisit") {
     question = (
-      <View accessibilityLabel={REVISIT_LABEL} accessibilityRole="radiogroup" style={styles.options}>
+      <View accessibilityLabel={labelOf(REVISIT_LABEL)} accessibilityRole="radiogroup" style={styles.options}>
         {REVISIT_CHOICES.map((choice, index) => (
           <AnswerOption
-            accessibilityLabel={`${REVISIT_LABEL} ${choice.label}`}
+            accessibilityLabel={t`${ph({ axis: labelOf(REVISIT_LABEL) })} ${ph({ choice: labelOf(choice.label) })}`}
             index={index}
             key={choice.label}
-            label={legacyT(choice.display)}
+            label={translate(choice.display)}
             number={index + 1}
             onPress={() => {
               if (revisit !== choice.label) selectionHaptic()
@@ -1066,7 +1079,7 @@ export default function NewRecordScreen() {
           accessibilityLabel={t`맛 태그 분류`}
           items={tasteFields.map((item) => ({
             key: item.key,
-            label: item.label,
+            label: labelOf(item.label),
             badge: tasteNotes[item.key].length ? String(tasteNotes[item.key].length) : undefined,
           }))}
           onChange={setTagTab}
@@ -1074,12 +1087,12 @@ export default function NewRecordScreen() {
           value={tagTab}
         />
         {field ? (
-          <Animated.View accessibilityLabel={legacyT(field.label)} entering={FadeIn.duration(220)} key={field.key} style={styles.tags}>
+          <Animated.View accessibilityLabel={labelOf(field.label)} entering={FadeIn.duration(220)} key={field.key} style={styles.tags}>
             {field.options.map((option) => (
               <RecordChoice
-                accessibilityLabel={`${field.label} ${option}`}
+                accessibilityLabel={t`${ph({ field: labelOf(field.label) })} ${ph({ option: labelOf(option) })}`}
                 key={option}
-                label={option}
+                label={labelOf(option)}
                 onPress={() => {
                   selectionHaptic()
                   toggleTasteNote(field.key, option)
@@ -1137,7 +1150,7 @@ export default function NewRecordScreen() {
             accessibilityLabel={t`공개 범위`}
             items={VISIBILITY_CHOICES.map((choice) => ({
               key: choice.value,
-              label: choice.label,
+              label: translate(choice.label),
               hint: choice.value ? t`기록을 공개해 피드에 올려요` : t`피드에 올리지 않고 나만 볼 수 있어요`,
             }))}
             onChange={setIsPublic}
@@ -1150,13 +1163,13 @@ export default function NewRecordScreen() {
     const axisKey = stepKey
     const axisLabel = SCORE_AXES.find((axis) => axis.key === axisKey)?.label ?? axisKey
     question = (
-      <View accessibilityLabel={legacyT(axisLabel)} accessibilityRole="radiogroup" style={styles.options}>
+      <View accessibilityLabel={labelOf(axisLabel)} accessibilityRole="radiogroup" style={styles.options}>
         {AXIS_WORDS[axisKey].map((word, index) => (
           <AnswerOption
-            accessibilityLabel={t`${ph({ v1: legacyT(axisLabel) })} ${ph({ v2: index + 1 })}점, ${ph({ v3: legacyT(word) })}`}
+            accessibilityLabel={t`${ph({ v1: labelOf(axisLabel) })} ${ph({ v2: index + 1 })}점, ${ph({ v3: translate(word) })}`}
             index={index}
-            key={word}
-            label={legacyT(word)}
+            key={index}
+            label={translate(word)}
             number={index + 1}
             onPress={() => {
               if (scores[axisKey] !== index + 1) selectionHaptic()
@@ -1254,7 +1267,7 @@ export default function NewRecordScreen() {
                     current={index === step}
                     enabled={index <= reached && index !== step}
                     key={key}
-                    label={legacyT(CELL_LABELS[cellKey])}
+                    label={translate(CELL_LABELS[cellKey])}
                     onPress={() => goToStep(index)}
                     value={value}
                   />
@@ -1264,7 +1277,7 @@ export default function NewRecordScreen() {
           </View>
 
           <Animated.View entering={entering} key={stepKey} style={styles.question}>
-            <View accessibilityLabel={t`${ph({ v1: step + 1 })} / ${ph({ v2: STEPS.length })}단계${ph({ v3: stepKey === "extra" ? t`, 선택` : "" })}. ${ph({ v4: legacyT(QUESTIONS[stepKey]) })}`} accessibilityRole="header" accessible ref={questionRef}>
+            <View accessibilityLabel={t`${ph({ v1: step + 1 })} / ${ph({ v2: STEPS.length })}단계${ph({ v3: stepKey === "extra" ? t`, 선택` : "" })}. ${ph({ v4: translate(QUESTIONS[stepKey]) })}`} accessibilityRole="header" accessible ref={questionRef}>
               <View style={styles.stepRow}>
                 <AppText capScale style={styles.tabular} tone="muted" variant="meta">{step + 1} / {STEPS.length}</AppText>
                 {stepKey === "extra" ? (
@@ -1274,7 +1287,7 @@ export default function NewRecordScreen() {
                 ) : null}
               </View>
               <AppText lineBreakStrategyIOS="hangul-word" style={styles.questionTitle} variant="screenTitle">
-                {legacyT(QUESTIONS[stepKey])}
+                {translate(QUESTIONS[stepKey])}
               </AppText>
             </View>
             {question}
@@ -1282,7 +1295,7 @@ export default function NewRecordScreen() {
         </ScrollView>
 
         <StickyActionBar
-          hint={footerHint ? legacyT(footerHint) : undefined}
+          hint={footerHint}
           hintIsError={Boolean(saveError)}
           hintTone={footerHintTone}
           reserveHintLines={1}
@@ -1303,7 +1316,7 @@ export default function NewRecordScreen() {
               accessibilityHint={isComplete ? undefined : t`누르면 빠진 첫 질문으로 이동해요`}
               accessibilityLabel={(() => {
                 const label = isEdit ? t`고친 기록 저장하기` : t`기록 저장하기`
-                if (saveError) return "다시 시도"
+                if (saveError) return t`다시 시도`
                 return isComplete ? label : t`${label}, 남은 필수 ${ph({ count: missing.length })}개`
               })()}
               accessibilityRole="button"

@@ -1,5 +1,4 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { router, useLocalSearchParams } from "expo-router"
 import { LogIn, MoreHorizontal, Soup } from "lucide-react-native"
@@ -145,11 +144,11 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
   const nearLimit = text.length >= COMMENT_COUNTER_FROM
   const atLimit = text.length >= COMMENT_MAX_LENGTH
   const hint = failed
-    ? "댓글을 등록하지 못했어요. 다시 시도해 주세요."
+    ? t`댓글을 등록하지 못했어요. 다시 시도해 주세요.`
     : atLimit
-      ? `댓글은 ${COMMENT_MAX_LENGTH}자까지 쓸 수 있어요`
+      ? t`댓글은 ${ph({ max: COMMENT_MAX_LENGTH })}자까지 쓸 수 있어요`
       : focused && trimmed.length < 2
-        ? trimmed ? "댓글을 2자 이상 입력해 주세요" : "내용을 입력하면 등록할 수 있어요"
+        ? trimmed ? t`댓글을 2자 이상 입력해 주세요` : t`내용을 입력하면 등록할 수 있어요`
         : null
 
   return (
@@ -175,7 +174,7 @@ function CommentComposer({ logId, onPosted, onError }: { logId: string; onPosted
               tone={failed || atLimit ? "critical" : "muted"}
               variant="meta"
             >
-              {legacyT(hint)}
+              {hint}
             </AppText>
           ) : null}
         </View>

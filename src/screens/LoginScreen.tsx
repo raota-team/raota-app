@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { translate } from "@raota/shared"
 import { useEffect, useState } from 'react'
 import { ChevronLeft, Eye, EyeOff, KeyRound, Mail, Compass } from 'lucide-react'
 import RamenIcon from '../components/icons/RamenIcon'
@@ -48,8 +49,8 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null)
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [errors, setErrors] = useState<{ email?: MessageDescriptor; password?: MessageDescriptor }>({})
+  const [toastMessage, setToastMessage] = useState<MessageDescriptor | null>(null)
   const isLoading = loadingProvider !== null
 
   useEffect(() => {
@@ -72,12 +73,12 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
     finish(provider, buildPrototypeUser(provider, `${PROVIDER_LABEL[provider]} 라멘러`, `${provider}_user@raota.net`), 800)
 
   const validate = () => {
-    const next: { email?: string; password?: string } = {}
+    const next: { email?: MessageDescriptor; password?: MessageDescriptor } = {}
     const trimmed = email.trim()
-    if (!trimmed) next.email = '이메일 주소를 입력해 주세요. 예: ramen@example.com'
-    else if (!EMAIL_PATTERN.test(trimmed)) next.email = '이메일 형식이 아닙니다. @와 도메인을 포함해 다시 입력해 주세요.'
-    if (!password) next.password = '비밀번호를 입력해 주세요.'
-    else if (password.length < 8) next.password = t`비밀번호는 8자 이상입니다. 지금 ${ph({ count: password.length })}자예요.`
+    if (!trimmed) next.email = msg`이메일 주소를 입력해 주세요. 예: ramen@example.com`
+    else if (!EMAIL_PATTERN.test(trimmed)) next.email = msg`이메일 형식이 아닙니다. @와 도메인을 포함해 다시 입력해 주세요.`
+    if (!password) next.password = msg`비밀번호를 입력해 주세요.`
+    else if (password.length < 8) next.password = msg`비밀번호는 8자 이상입니다. 지금 ${ph({ count: password.length })}자예요.`
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -248,7 +249,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                   />
                   {errors.email && (
                     <p id="login-email-error" role="alert" className="mt-1 text-[13px] font-medium text-[#E60000]">
-                      {errors.email && legacyT(errors.email)}
+                      {errors.email && translate(errors.email)}
                     </p>
                   )}
                 </div>
@@ -258,7 +259,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                       {t`비밀번호`}</label>
                     <button
                       type="button"
-                      onClick={() => setToastMessage('가입한 이메일로 재설정 링크를 보내드립니다.')}
+                      onClick={() => setToastMessage(msg`가입한 이메일로 재설정 링크를 보내드립니다.`)}
                       className="-my-2 min-h-11 px-1 text-[13px] font-bold text-[#6B6E73] transition-colors hover:text-[#E60000]"
                     >
                       {t`비밀번호 찾기`}</button>
@@ -292,7 +293,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
                   </div>
                   {errors.password && (
                     <p id="login-password-error" role="alert" className="mt-1 text-[13px] font-medium text-[#E60000]">
-                      {errors.password && legacyT(errors.password)}
+                      {errors.password && translate(errors.password)}
                     </p>
                   )}
                 </div>
@@ -344,7 +345,7 @@ export default function LoginScreen({ onBack, onGuestBrowse, onRegisterClick, on
           className="anim-fade-in-up pointer-events-none absolute bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[32px] bg-[#25282B] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <RamenIcon className="h-4 w-4 shrink-0 text-[#E60000]" aria-hidden="true" />
-          <span>{legacyT(toastMessage)}</span>
+          <span>{translate(toastMessage)}</span>
         </div>
       )}
     </div>

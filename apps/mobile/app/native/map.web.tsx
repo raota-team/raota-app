@@ -1,7 +1,7 @@
-import { t, ph } from "@lingui/core/macro";
-import { getLocale } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { getLocale, translate } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
 import { router, useIsFocused, useLocalSearchParams } from "expo-router"
 import { Check, ChevronDown, List, Map as MapIcon, MapPin, Search, X } from "lucide-react-native"
 import { useEffect, useMemo, useState, type ReactElement } from "react"
@@ -27,27 +27,27 @@ export interface Coordinate {
 
 /** 좁은 필터 키에서도 읽히는 짧은 이름. 시트와 접근성에는 전체 이름을 쓴다 */
 export const REGION_OPTIONS = [
-  { value: "ALL", label: "전체 지역", short: "전체 지역", keys: [] as string[] },
-  { value: "망원", label: "마포 · 망원동", short: "망원동", keys: ["망원"] },
-  { value: "합정", label: "마포 · 합정/상수", short: "합정/상수", keys: ["합정", "상수"] },
-  { value: "연남", label: "마포 · 연남/홍대", short: "연남/홍대", keys: ["연남", "홍대", "서교"] },
+  { value: "ALL", label: msg`전체 지역`, short: msg`전체 지역`, keys: [] as string[] },
+  { value: "망원", label: msg`마포 · 망원동`, short: msg`망원동`, keys: ["망원"] },
+  { value: "합정", label: msg`마포 · 합정/상수`, short: msg`합정/상수`, keys: ["합정", "상수"] },
+  { value: "연남", label: msg`마포 · 연남/홍대`, short: msg`연남/홍대`, keys: ["연남", "홍대", "서교"] },
 ]
 
 export const MENU_OPTIONS = [
-  { value: "ALL", label: "모든 메뉴", short: "모든 메뉴", keys: [] as string[] },
-  { value: "쇼유", label: "쇼유 라멘 (간장)", short: "쇼유", keys: ["쇼유"] },
-  { value: "돈코츠", label: "돈코츠 라멘 (돼지뼈)", short: "돈코츠", keys: ["돈코츠"] },
-  { value: "이에케", label: "이에케 (돈코츠쇼유)", short: "이에케", keys: ["이에케"] },
-  { value: "시오", label: "시오 라멘 (소금)", short: "시오", keys: ["시오"] },
-  { value: "미소", label: "미소 라멘 (된장)", short: "미소", keys: ["미소"] },
-  { value: "토리파이탄", label: "토리파이탄 (닭백탕)", short: "토리파이탄", keys: ["토리파이탄", "토리빠이탄", "닭백탕"] },
-  { value: "니보시", label: "니보시 (멸치 육수)", short: "니보시", keys: ["니보시", "멸치"] },
-  { value: "지로", label: "지로 (지로계)", short: "지로", keys: ["지로"] },
+  { value: "ALL", label: msg`모든 메뉴`, short: msg`모든 메뉴`, keys: [] as string[] },
+  { value: "쇼유", label: msg`쇼유 라멘 (간장)`, short: msg`쇼유`, keys: ["쇼유"] },
+  { value: "돈코츠", label: msg`돈코츠 라멘 (돼지뼈)`, short: msg`돈코츠`, keys: ["돈코츠"] },
+  { value: "이에케", label: msg`이에케 (돈코츠쇼유)`, short: msg`이에케`, keys: ["이에케"] },
+  { value: "시오", label: msg`시오 라멘 (소금)`, short: msg`시오`, keys: ["시오"] },
+  { value: "미소", label: msg`미소 라멘 (된장)`, short: msg`미소`, keys: ["미소"] },
+  { value: "토리파이탄", label: msg`토리파이탄 (닭백탕)`, short: msg`토리파이탄`, keys: ["토리파이탄", "토리빠이탄", "닭백탕"] },
+  { value: "니보시", label: msg`니보시 (멸치 육수)`, short: msg`니보시`, keys: ["니보시", "멸치"] },
+  { value: "지로", label: msg`지로 (지로계)`, short: msg`지로`, keys: ["지로"] },
 ]
 
-const SORT_OPTIONS: Array<{ value: MapSort; label: string }> = [
-  { value: "distance", label: "거리순" },
-  { value: "popular", label: "인기순" },
+const SORT_OPTIONS: Array<{ value: MapSort; label: MessageDescriptor }> = [
+  { value: "distance", label: msg`거리순` },
+  { value: "popular", label: msg`인기순` },
 ]
 
 export function formatDistance(meters: number) {
@@ -63,9 +63,9 @@ function distanceLabel(shop: MapShop) {
 }
 
 /** 영업 상태는 원장의 businessStatus와 isOpen에서만 계산한다 */
-export function statusOf(shop: Shop): { label: string; open: boolean } {
-  if (shop.businessStatus !== "OPERATIONAL") return { label: "영업 정보 확인 필요", open: false }
-  return shop.isOpen ? { label: "영업 중", open: true } : { label: "준비 중", open: false }
+export function statusOf(shop: Shop): { label: MessageDescriptor; open: boolean } {
+  if (shop.businessStatus !== "OPERATIONAL") return { label: msg`영업 정보 확인 필요`, open: false }
+  return shop.isOpen ? { label: msg`영업 중`, open: true } : { label: msg`준비 중`, open: false }
 }
 
 export function openShop(shopId: string) {
@@ -74,7 +74,7 @@ export function openShop(shopId: string) {
 
 function shopLabel(shop: MapShop) {
   const status = statusOf(shop)
-  return `${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${distanceLabel(shop)}, ${status.label}`
+  return `${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${distanceLabel(shop)}, ${translate(status.label)}`
 }
 
 /** 서버 모드에서는 전체 지도 매장을 같은 요청으로 받아 핀과 목록을 만든다. mock은 기존 필터·정렬을 유지한다. */
@@ -224,8 +224,8 @@ export function MapHeader({
   }, [focused])
   const regionOption = REGION_OPTIONS.find((option) => option.value === filters.region) ?? REGION_OPTIONS[0]
   const menuOption = MENU_OPTIONS.find((option) => option.value === filters.menu) ?? MENU_OPTIONS[0]
-  const regionLabel = legacyT(regionOption.label)
-  const menuLabel = legacyT(menuOption.label)
+  const regionLabel = translate(regionOption.label)
+  const menuLabel = translate(menuOption.label)
   const regionActive = filters.region !== "ALL"
   const menuActive = filters.menu !== "ALL"
   const options = picker === "region" ? REGION_OPTIONS : MENU_OPTIONS
@@ -290,7 +290,7 @@ export function MapHeader({
             style={[styles.filterText, regionActive && styles.filterTextActive]}
             variant="button"
           >
-            {legacyT(regionOption.short)}
+            {translate(regionOption.short)}
           </AppText>
           <ChevronDown color={regionActive ? colors.onSelected : colors.ink} size={16} />
         </Pressable>
@@ -309,7 +309,7 @@ export function MapHeader({
             style={[styles.filterText, menuActive && styles.filterTextActive]}
             variant="button"
           >
-            {legacyT(menuOption.short)}
+            {translate(menuOption.short)}
           </AppText>
           <ChevronDown color={menuActive ? colors.onSelected : colors.ink} size={16} />
         </Pressable>
@@ -348,7 +348,7 @@ export function MapHeader({
             const selected = option.value === current
             return (
               <Pressable
-                accessibilityLabel={legacyT(option.label)}
+                accessibilityLabel={translate(option.label)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
                 key={option.value}
@@ -360,7 +360,7 @@ export function MapHeader({
                 style={({ pressed }) => [styles.option, selected && styles.optionSelected, pressed && !selected && styles.pressedWash]}
               >
                 <AppText style={selected && styles.onSelectedText} variant="secondary">
-                  {legacyT(option.label)}
+                  {translate(option.label)}
                 </AppText>
                 <View style={styles.optionCheck}>
                   {selected ? <Check color={colors.onSelected} size={16} /> : null}
@@ -419,7 +419,7 @@ export function QuickView({ shop, onClose }: { shop: MapShop | null; onClose?: (
           <View style={styles.statusRow}>
             <View style={[styles.openDot, !status.open && styles.hiddenDot]} testID={status.open ? "map-open-status-lamp" : undefined} />
             <AppText capScale numberOfLines={1} style={[status.open && styles.bold, status.open && styles.openText]} tone={status.open ? "ink" : "muted"} variant="meta">
-              {legacyT(status.label)}
+              {translate(status.label)}
             </AppText>
           </View>
           <AppText capScale numberOfLines={1} style={styles.flexShrinkGrow} tone="muted" variant="meta">
@@ -477,7 +477,7 @@ function ListRow({ shop }: { shop: MapShop }) {
           <View style={styles.statusRow}>
             <View style={[styles.openDot, !status.open && styles.hiddenDot]} testID={status.open ? "map-open-status-lamp" : undefined} />
             <AppText capScale numberOfLines={1} style={[status.open && styles.bold, status.open && styles.openText]} tone={status.open ? "ink" : "muted"} variant="meta">
-              {legacyT(status.label)}
+              {translate(status.label)}
             </AppText>
           </View>
           <AppText capScale tone="muted" variant="meta">
@@ -520,7 +520,7 @@ export function ShopListView({ filters, notice, onRetry }: { filters: MapFilters
                   const selected = filters.sort === option.value
                   return (
                     <Pressable
-                      accessibilityLabel={legacyT(option.label)}
+                      accessibilityLabel={translate(option.label)}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: selected }}
                       key={option.value}
@@ -529,7 +529,7 @@ export function ShopListView({ filters, notice, onRetry }: { filters: MapFilters
                       style={({ pressed }) => [styles.sortButton, selected && styles.sortButtonActive, pressed && !selected && styles.sortButtonPressed]}
                     >
                       <AppText capScale style={[styles.bold, selected && styles.onSelectedText]} variant="button">
-                        {legacyT(option.label)}
+                        {translate(option.label)}
                       </AppText>
                     </Pressable>
                   )

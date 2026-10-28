@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { translate } from "@raota/shared"
 import { useEffect, useRef, useState } from 'react'
 import { Bell, Heart, MessageSquare, Megaphone, Trophy, Settings, ChevronLeft, Check, CheckCheck, X } from 'lucide-react'
 import RamenIcon from '../components/icons/RamenIcon'
@@ -54,12 +55,12 @@ function ToggleSwitch({
   )
 }
 
-const TYPE_LABEL: Record<AppNotification['type'], string> = {
-  like: '공감',
-  comment: '댓글',
-  shop: '라멘집',
-  level: '승급',
-  notice: '공지',
+const TYPE_LABEL: Record<AppNotification['type'], MessageDescriptor> = {
+  like: msg`공감`,
+  comment: msg`댓글`,
+  shop: msg`라멘집`,
+  level: msg`승급`,
+  notice: msg`공지`,
 }
 
 function TypeIcon({ type }: { type: AppNotification['type'] }) {
@@ -89,13 +90,13 @@ function NotificationItem({ item, onClick }: { item: AppNotification; onClick: (
       <button
         type="button"
         onClick={onClick}
-        aria-label={t`${ph({ v0: item.isRead ? '' : t`읽지 않음, ` })}${ph({ v1: legacyT(TYPE_LABEL[item.type]) })}: ${ph({ v2: item.title })}`}
+        aria-label={item.isRead ? t`${ph({ type: translate(TYPE_LABEL[item.type]) })}: ${ph({ title: item.title })}` : t`읽지 않음, ${ph({ type: translate(TYPE_LABEL[item.type]) })}: ${ph({ title: item.title })}`}
         className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors ${item.isRead ? 'bg-white' : 'bg-[#FFF7F7]'}`}
       >
         <TypeIcon type={item.type} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="shrink-0 rounded-[4px] bg-[#F2F2F2] px-1.5 py-0.5 text-[12px] font-bold text-[#4A4D52]">{legacyT(TYPE_LABEL[item.type])}</span>
+            <span className="shrink-0 rounded-[4px] bg-[#F2F2F2] px-1.5 py-0.5 text-[12px] font-bold text-[#4A4D52]">{translate(TYPE_LABEL[item.type])}</span>
             <p className={`truncate text-[14px] ${item.isRead ? 'font-semibold text-[#4A4D52]' : 'font-black text-[#25282B]'}`}>{item.title}</p>
           </div>
           <p className={`mt-0.5 line-clamp-2 break-keep text-[13px] leading-snug ${item.isRead ? 'text-[#6B6E73]' : 'text-[#25282B]'}`}>{item.content}</p>
@@ -109,11 +110,11 @@ function NotificationItem({ item, onClick }: { item: AppNotification; onClick: (
   )
 }
 
-const SETTING_ROWS: { key: Exclude<keyof NotificationSettings, 'pushEnabled'>; title: string; desc: string }[] = [
-  { key: 'likesEnabled', title: '라멘로그 공감', desc: '내 라멘로그에 다른 라멘러가 공감했을 때' },
-  { key: 'commentsEnabled', title: '게시글 및 라멘로그 댓글', desc: '내 글이나 기록에 새 댓글이 달렸을 때' },
-  { key: 'levelUpEnabled', title: '등급 승급과 기록 리마인더', desc: '활동 등급 승급, 라멘로그 캘린더 리마인드' },
-  { key: 'shopNewsEnabled', title: '관심 라멘집 소식', desc: '찜한 라멘집의 한정 메뉴, 휴무 소식' },
+const SETTING_ROWS: { key: Exclude<keyof NotificationSettings, 'pushEnabled'>; title: MessageDescriptor; desc: MessageDescriptor }[] = [
+  { key: 'likesEnabled', title: msg`라멘로그 공감`, desc: msg`내 라멘로그에 다른 라멘러가 공감했을 때` },
+  { key: 'commentsEnabled', title: msg`게시글 및 라멘로그 댓글`, desc: msg`내 글이나 기록에 새 댓글이 달렸을 때` },
+  { key: 'levelUpEnabled', title: msg`등급 승급과 기록 리마인더`, desc: msg`활동 등급 승급, 라멘로그 캘린더 리마인드` },
+  { key: 'shopNewsEnabled', title: msg`관심 라멘집 소식`, desc: msg`찜한 라멘집의 한정 메뉴, 휴무 소식` },
 ]
 
 export default function NotificationScreen({
@@ -129,7 +130,7 @@ export default function NotificationScreen({
 }: Props) {
   const [tab, setTab] = useState<TabFilter>('all')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [toastMsg, setToastMsg] = useState<MessageDescriptor | null>(null)
   const settingsCloseRef = useRef<HTMLButtonElement>(null)
   const settingsTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -165,10 +166,10 @@ export default function NotificationScreen({
   const filteredNotifications = notifications.filter(item => matchesTab(item, tab))
 
   const TABS: { key: TabFilter; label: string }[] = [
-    { key: 'all', label: '전체' },
-    { key: 'activity', label: '활동' },
-    { key: 'shop', label: '관심 라멘집' },
-    { key: 'system', label: '승급·공지' },
+    { key: 'all', label: t`전체` },
+    { key: 'activity', label: t`활동` },
+    { key: 'shop', label: t`관심 라멘집` },
+    { key: 'system', label: t`승급·공지` },
   ]
 
   const handleNotificationClick = (item: AppNotification) => {
@@ -180,17 +181,17 @@ export default function NotificationScreen({
 
   const handleToggleSetting = (key: keyof NotificationSettings) => {
     onUpdateSettings({ ...settings, [key]: !settings[key] })
-    setToastMsg('알림 설정을 저장했습니다.')
+    setToastMsg(msg`알림 설정을 저장했습니다.`)
   }
 
   const emptyMessage =
     tab === 'activity'
-      ? { title: '활동 알림이 없습니다', desc: '라멘로그를 남기고 라멘러들과 소통하면 알림이 도착합니다.' }
+      ? { title: t`활동 알림이 없습니다`, desc: t`라멘로그를 남기고 라멘러들과 소통하면 알림이 도착합니다.` }
       : tab === 'shop'
-        ? { title: '관심 라멘집 소식이 없습니다', desc: '자주 가는 라멘집을 찜하면 한정 메뉴와 휴무 소식을 받아볼 수 있습니다.' }
+        ? { title: t`관심 라멘집 소식이 없습니다`, desc: t`자주 가는 라멘집을 찜하면 한정 메뉴와 휴무 소식을 받아볼 수 있습니다.` }
         : tab === 'system'
-          ? { title: '승급·공지 알림이 없습니다', desc: '활동 등급 승급과 서비스 업데이트 소식이 여기에 표시됩니다.' }
-          : { title: '도착한 알림이 없습니다', desc: '라멘로그에 반응이 오거나 관심 라멘집에 소식이 생기면 알려드릴게요.' }
+          ? { title: t`승급·공지 알림이 없습니다`, desc: t`활동 등급 승급과 서비스 업데이트 소식이 여기에 표시됩니다.` }
+          : { title: t`도착한 알림이 없습니다`, desc: t`라멘로그에 반응이 오거나 관심 라멘집에 소식이 생기면 알려드릴게요.` }
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-white text-[#25282B]">
@@ -250,7 +251,7 @@ export default function NotificationScreen({
                   isActive ? 'bg-[#25282B] text-white' : 'bg-[#F2F2F2] text-[#4A4D52]'
                 }`}
               >
-                {legacyT(tabItem.label)}
+                {tabItem.label}
                 {unreadInTab > 0 && (
                   <span className={`text-[12px] ${isActive ? 'text-white/80' : 'text-[#E60000]'}`}>
                     {unreadInTab}
@@ -269,8 +270,8 @@ export default function NotificationScreen({
             <span aria-hidden="true" className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#F2F2F2] text-[#6B6E73]">
               <Bell className="h-6 w-6 stroke-[1.5]" />
             </span>
-            <p className="text-[15px] font-black text-[#25282B]">{legacyT(emptyMessage.title)}</p>
-            <p className="mx-auto mt-1 max-w-xs text-[13px] leading-snug text-[#6B6E73]">{legacyT(emptyMessage.desc)}</p>
+            <p className="text-[15px] font-black text-[#25282B]">{emptyMessage.title}</p>
+            <p className="mx-auto mt-1 max-w-xs text-[13px] leading-snug text-[#6B6E73]">{emptyMessage.desc}</p>
           </div>
         ) : (
           <ul aria-label={t`알림 목록`}>
@@ -333,9 +334,9 @@ export default function NotificationScreen({
                   <li key={row.key} className="flex items-center justify-between gap-3 py-2">
                     <div className="min-w-0">
                       <p id={`setting-${row.key}-title`} className={`text-[14px] font-bold ${settings.pushEnabled ? 'text-[#25282B]' : 'text-[#6B6E73]'}`}>
-                        {legacyT(row.title)}
+                        {translate(row.title)}
                       </p>
-                      <p className="mt-0.5 text-[13px] text-[#6B6E73]">{legacyT(row.desc)}</p>
+                      <p className="mt-0.5 text-[13px] text-[#6B6E73]">{translate(row.desc)}</p>
                     </div>
                     <ToggleSwitch
                       disabled={!settings.pushEnabled}
@@ -366,7 +367,7 @@ export default function NotificationScreen({
           className="anim-fade-in-up pointer-events-none absolute bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-[32px] bg-[#25282B] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <Check className="h-4 w-4 text-[#E60000]" aria-hidden="true" />
-          <span>{legacyT(toastMsg)}</span>
+          <span>{translate(toastMsg)}</span>
         </div>
       )}
     </div>

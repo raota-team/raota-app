@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT, getLocale, formatDate as formatLocaleDate } from "@raota/shared"
+import { getLocale, formatDate as formatLocaleDate, labelOf } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
 import { useEffect, useMemo } from "react"
@@ -126,7 +126,7 @@ function PenCircle({ order, reduceMotion }: { order: number; reduceMotion: boole
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
-      <AppText capScale style={styles.infoLabel} tone="muted" variant="meta">{legacyT(label)}</AppText>
+      <AppText capScale style={styles.infoLabel} tone="muted" variant="meta">{label}</AppText>
       <AppText lineBreakStrategyIOS="hangul-word" style={styles.infoValue} variant="secondary">{value}</AppText>
     </View>
   )
@@ -211,7 +211,7 @@ export default function RecordCompleteScreen() {
             <View style={[styles.info, styles.rule]}>
               <View style={styles.infoRows}>
                 <InfoRow label={t`가게`} value={[log.shop.name, log.shop.branch].filter(Boolean).join(" ")} />
-                <InfoRow label={t`메뉴`} value={`${log.menuName} (${log.ramenType})`} />
+                <InfoRow label={t`메뉴`} value={`${log.menuName} (${labelOf(log.ramenType)})`} />
                 <InfoRow label={t`날짜`} value={formatVisitDate(log.visitedAt)} />
               </View>
               {photo ? (
@@ -221,28 +221,28 @@ export default function RecordCompleteScreen() {
 
             {scores
               ? SCALE_AXES.map((axis, index) => (
-                  <View accessibilityLabel={t`${ph({ v1: axis.label })} ${ph({ v2: scores[axis.key] })}점`} accessible key={axis.key} style={[styles.axisRow, styles.rule]}>
-                    <AppText variant="button">{legacyT(axis.label)}</AppText>
+                  <View accessibilityLabel={t`${ph({ v1: labelOf(axis.label) })} ${ph({ v2: scores[axis.key] })}점`} accessible key={axis.key} style={[styles.axisRow, styles.rule]}>
+                    <AppText variant="button">{labelOf(axis.label)}</AppText>
                     <View style={styles.scale}>
-                      <AppText capScale style={styles.scaleEnd} tone="muted" variant="meta">{axis.low}</AppText>
+                      <AppText capScale style={styles.scaleEnd} tone="muted" variant="meta">{labelOf(axis.low)}</AppText>
                       {SCALE.map((value) => (
                         <View key={value} style={styles.scaleCell}>
                           <AppText style={styles.scaleNumber} variant="bodyStrong">{value}</AppText>
                           {scores[axis.key] === value ? <PenCircle order={index} reduceMotion={reduceMotion} /> : null}
                         </View>
                       ))}
-                      <AppText capScale style={[styles.scaleEnd, styles.scaleEndHigh]} tone="muted" variant="meta">{axis.high}</AppText>
+                      <AppText capScale style={[styles.scaleEnd, styles.scaleEndHigh]} tone="muted" variant="meta">{labelOf(axis.high)}</AppText>
                     </View>
                   </View>
                 ))
               : null}
 
-            <View accessibilityLabel={t`재방문 ${ph({ v1: log.revisit })}`} accessible style={styles.axisRow}>
+            <View accessibilityLabel={t`재방문 ${ph({ v1: labelOf(log.revisit) })}`} accessible style={styles.axisRow}>
               <AppText variant="button">{t`재방문 의사`}</AppText>
               <View style={styles.revisit}>
                 {REVISIT_ROW.map((option) => (
                   <View key={option} style={styles.revisitCell}>
-                    <AppText capScale style={styles.center} variant="button">{legacyT(option)}</AppText>
+                    <AppText capScale style={styles.center} variant="button">{labelOf(option)}</AppText>
                     {log.revisit === option ? <PenCircle order={revisitOrder} reduceMotion={reduceMotion} /> : null}
                   </View>
                 ))}

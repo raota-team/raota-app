@@ -1,5 +1,5 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import { translate } from "@raota/shared"
 import { useEffect, useRef } from 'react'
 import useLoadingSequence from '../hooks/useLoadingSequence'
 import { ArrowRight, Check, ChevronLeft } from 'lucide-react'
@@ -25,10 +25,10 @@ const REVEAL_FRAMES = [
 ]
 
 const STATUS_MESSAGES = [
-  '라멘 기록을 모으고 있어요',
-  '국물과 면 취향을 살펴보고 있어요',
-  '나의 누적 취향을 정리하고 있어요',
-  '나의 라멘 취향이 정리됐어요',
+  msg`라멘 기록을 모으고 있어요`,
+  msg`국물과 면 취향을 살펴보고 있어요`,
+  msg`나의 누적 취향을 정리하고 있어요`,
+  msg`나의 라멘 취향이 정리됐어요`,
 ]
 
 export default function TasteReportLoading({ recordCount, metrics, duration, onBack, onComplete }: Props) {
@@ -98,14 +98,14 @@ export default function TasteReportLoading({ recordCount, metrics, duration, onB
           </g>
           {metrics.map((metric, index) => {
             const active = !complete && index === [0, 1, 3][stage]
-            return <text key={metric.label} x={labels[index].x} y={labels[index].y} textAnchor={labels[index].anchor} className="taste-loading-axis" fill={active ? 'var(--color-brand)' : 'var(--color-ink-sub)'} fontSize="12" fontWeight={active ? '600' : '500'}>{legacyT(metric.label)}</text>
+            return <text key={metric.label} x={labels[index].x} y={labels[index].y} textAnchor={labels[index].anchor} className="taste-loading-axis" fill={active ? 'var(--color-brand)' : 'var(--color-ink-sub)'} fontSize="12" fontWeight={active ? '600' : '500'}>{metric.label}</text>
           })}
         </svg>
 
         <p role="status" aria-live="polite" aria-atomic="true" className="min-h-6 text-sm leading-6 font-medium text-ink-sub">
           <span key={stage} className="taste-loading-status flex items-center justify-center gap-2">
             {complete ? <Check size={16} className="text-brand shrink-0" aria-hidden="true" /> : <span className="h-1 w-1 shrink-0 rounded-full bg-brand" aria-hidden="true" />}
-            {legacyT(STATUS_MESSAGES[stage])}
+            {translate(STATUS_MESSAGES[stage])}
           </span>
         </p>
       </div>

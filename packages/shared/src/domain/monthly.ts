@@ -13,7 +13,7 @@ import {
   type PastReportItem,
 } from "./ledger"
 import { TASTE_AXES } from "./taste"
-import { formatDate, getLocale, t as legacyT } from "../i18n"
+import { formatDate, getLocale, labelOf } from "../i18n"
 
 export const MONTHLY_REPORT_TARGET = 3
 
@@ -155,7 +155,7 @@ export function pastReportsFromBowls(bowls: DemoBowl[], now = new Date()): PastR
       scores,
       styleRows,
       topShops: shopVisitsOf(monthBowls).slice(0, 3),
-      note: top ? t`${ph({ type: legacyT(top.name) })}를 ${ph({ count: top.count })}그릇으로 가장 많이 먹은 달이에요.` : '',
+      note: top ? t`${ph({ type: labelOf(top.name) })}를 ${ph({ count: top.count })}그릇으로 가장 많이 먹은 달이에요.` : '',
     }]
   })
 }

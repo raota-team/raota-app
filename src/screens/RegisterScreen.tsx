@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { labelOf, translate } from "@raota/shared"
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, X, Camera, MapPin, Sparkles } from 'lucide-react'
 import RamenIcon from '../components/icons/RamenIcon'
@@ -14,30 +15,36 @@ interface Props {
 
 /** 프로필 캐릭터. 이모지는 사용자가 고르는 아바타 콘텐츠다. */
 const AVATAR_PRESETS = [
-  { id: 'shoyu', emoji: '🍜', label: '쇼유파' },
-  { id: 'chashu', emoji: '🥩', label: '차슈러버' },
-  { id: 'tamago', emoji: '🥚', label: '아지타마' },
-  { id: 'spicy', emoji: '🌶️', label: '매운맛파' },
-  { id: 'menma', emoji: '🎋', label: '멘마수집' },
+  { id: 'shoyu', emoji: '🍜', label: msg`쇼유파` },
+  { id: 'chashu', emoji: '🥩', label: msg`차슈러버` },
+  { id: 'tamago', emoji: '🥚', label: msg`아지타마` },
+  { id: 'spicy', emoji: '🌶️', label: msg`매운맛파` },
+  { id: 'menma', emoji: '🎋', label: msg`멘마수집` },
 ]
 
 const RAMEN_STYLE_OPTIONS = [
-  { name: '쇼유 (간장)', key: '쇼유' },
-  { name: '돈코츠 (돼지뼈)', key: '돈코츠' },
-  { name: '이에케 (돈코츠쇼유)', key: '이에케' },
-  { name: '토리파이탄 (닭백탕)', key: '토리파이탄' },
-  { name: '시오 (소금)', key: '시오' },
-  { name: '미소 (된장)', key: '미소' },
-  { name: '츠케멘', key: '츠케멘' },
-  { name: '마제소바', key: '마제소바' },
+  { name: msg`쇼유 (간장)`, key: '쇼유' },
+  { name: msg`돈코츠 (돼지뼈)`, key: '돈코츠' },
+  { name: msg`이에케 (돈코츠쇼유)`, key: '이에케' },
+  { name: msg`토리파이탄 (닭백탕)`, key: '토리파이탄' },
+  { name: msg`시오 (소금)`, key: '시오' },
+  { name: msg`미소 (된장)`, key: '미소' },
+  { name: msg`츠케멘`, key: '츠케멘' },
+  { name: msg`마제소바`, key: '마제소바' },
 ]
 
-const QUICK_BIO_TAGS = ['진한 국물파', '자가제면 탐험가', '라멘 성지순례 중', '꼬들면 애호가']
+/** value는 소개란에 그대로 넣는 문구, label은 버튼에 보이는 이름이다 */
+const QUICK_BIO_TAGS = [
+  { value: '진한 국물파', label: msg`진한 국물파` },
+  { value: '자가제면 탐험가', label: msg`자가제면 탐험가` },
+  { value: '라멘 성지순례 중', label: msg`라멘 성지순례 중` },
+  { value: '꼬들면 애호가', label: msg`꼬들면 애호가` },
+]
 
 const ONBOARDING_FEATURES = [
-  { icon: MapPin, title: '내 주변 라멘집 찾기', desc: '지도에서 영업 여부와 라스트오더를 확인하고 바로 찾아가요.' },
-  { icon: RamenIcon, title: '한 그릇 라멘로그', desc: '먹은 라멘을 5가지 축으로 기록하면 취향 리포트가 쌓여요.' },
-  { icon: Sparkles, title: 'AI 큐레이터', desc: '원하는 국물과 분위기를 고르면 오늘의 한 곳을 골라 드려요.' },
+  { icon: MapPin, title: msg`내 주변 라멘집 찾기`, desc: msg`지도에서 영업 여부와 라스트오더를 확인하고 바로 찾아가요.` },
+  { icon: RamenIcon, title: msg`한 그릇 라멘로그`, desc: msg`먹은 라멘을 5가지 축으로 기록하면 취향 리포트가 쌓여요.` },
+  { icon: Sparkles, title: msg`AI 큐레이터`, desc: msg`원하는 국물과 분위기를 고르면 오늘의 한 곳을 골라 드려요.` },
 ]
 
 const NICKNAME_MIN = 2
@@ -85,7 +92,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
 
   const [isLoading, setIsLoading] = useState(false)
   const [registeredUser, setRegisteredUser] = useState<UserProfile | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toastMessage, setToastMessage] = useState<MessageDescriptor | null>(null)
   const [submitAttempted, setSubmitAttempted] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -111,7 +118,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
-      setToastMessage('이미지는 5MB 이하만 올릴 수 있어요.')
+      setToastMessage(msg`이미지는 5MB 이하만 올릴 수 있어요.`)
       return
     }
     const reader = new FileReader()
@@ -123,13 +130,13 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
   const isNicknameValid = trimmedNickname.length >= NICKNAME_MIN && trimmedNickname.length <= NICKNAME_MAX
   const nicknameError =
     trimmedNickname.length === 0
-      ? '닉네임을 입력해 주세요. 2~12자로 쓸 수 있어요.'
+      ? t`닉네임을 입력해 주세요. 2~12자로 쓸 수 있어요.`
       : trimmedNickname.length < NICKNAME_MIN
         ? t`닉네임이 너무 짧아요. ${ph({ count: NICKNAME_MIN - trimmedNickname.length })}자만 더 적어 주세요.`
         : null
   const showNicknameError = (submitAttempted || nickname.length > 0) && nicknameError
   const isFormValid = isNicknameValid && agreeTerms && agreePrivacy
-  const agreementError = submitAttempted && (!agreeTerms || !agreePrivacy) ? '필수 약관 두 가지에 동의해야 가입할 수 있어요.' : null
+  const agreementError = submitAttempted && (!agreeTerms || !agreePrivacy) ? t`필수 약관 두 가지에 동의해야 가입할 수 있어요.` : null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -177,18 +184,18 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
             </span>
             <h2 className="text-[24px] font-black leading-snug tracking-tight text-[#25282B]">{registeredUser.nickname}{t`님, 반가워요`}</h2>
             <p className="mt-1 text-[14px] text-[#6B6E73]">
-              {legacyT(registeredUser.level)} Lv.{registeredUser.levelNumber}  {t`· 첫 그릇을 기록하면 취향 분석이 시작돼요`}</p>
+              {labelOf(registeredUser.level)} Lv.{registeredUser.levelNumber}  {t`· 첫 그릇을 기록하면 취향 분석이 시작돼요`}</p>
           </div>
 
           <ul className="mt-8 divide-y divide-[#F2F2F2] border-y border-[#E2E2E2]">
             {ONBOARDING_FEATURES.map(({ icon: Icon, title, desc }) => (
-              <li key={title} className="flex items-start gap-3 py-4">
+              <li key={title.id} className="flex items-start gap-3 py-4">
                 <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFF0F0] text-[#E60000]">
                   <Icon className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[15px] font-black text-[#25282B]">{legacyT(title)}</p>
-                  <p className="mt-0.5 text-[13px] leading-relaxed text-[#6B6E73]">{legacyT(desc)}</p>
+                  <p className="text-[15px] font-black text-[#25282B]">{translate(title)}</p>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-[#6B6E73]">{translate(desc)}</p>
                 </div>
               </li>
             ))}
@@ -285,7 +292,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                         setUploadedAvatarUrl(null)
                         setSelectedAvatarPreset(preset.id)
                       }}
-                      aria-label={legacyT(preset.label)}
+                      aria-label={translate(preset.label)}
                       aria-pressed={isSelected}
                       className="flex h-11 w-11 items-center justify-center"
                     >
@@ -336,7 +343,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
               </div>
               {showNicknameError ? (
                 <p id="register-nickname-error" role="alert" className="mt-1.5 text-[13px] font-medium text-[#E60000]">
-                  {nicknameError && legacyT(nicknameError)}
+                  {nicknameError}
                 </p>
               ) : (
                 <p id="register-nickname-hint" className="mt-1.5 text-[13px] text-[#6B6E73]">
@@ -357,7 +364,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                           isSelected ? 'bg-[#E60000] text-white' : 'bg-[#F2F2F2] text-[#4A4D52]'
                         }`}
                       >
-                        {legacyT(style.name)}
+                        {translate(style.name)}
                       </span>
                     </button>
                   )
@@ -382,8 +389,8 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
               />
               <div role="group" aria-label={t`소개 추천 문구`} className="no-scrollbar flex items-center gap-1 overflow-x-auto">
                 {QUICK_BIO_TAGS.map(tag => (
-                  <button key={tag} type="button" onClick={() => setBio(tag)} className="flex min-h-11 shrink-0 items-center">
-                    <span className="rounded-[32px] bg-[#F2F2F2] px-3 py-1 text-[13px] font-medium text-[#4A4D52]">+ {legacyT(tag)}</span>
+                  <button key={tag.value} type="button" onClick={() => setBio(tag.value)} className="flex min-h-11 shrink-0 items-center">
+                    <span className="rounded-[32px] bg-[#F2F2F2] px-3 py-1 text-[13px] font-medium text-[#4A4D52]">+ {translate(tag.label)}</span>
                   </button>
                 ))}
               </div>
@@ -434,7 +441,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
               </div>
               {agreementError && (
                 <p role="alert" className="mt-1 text-[13px] font-medium text-[#E60000]">
-                  {agreementError && legacyT(agreementError)}
+                  {agreementError}
                 </p>
               )}
             </div>
@@ -494,7 +501,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
           className="anim-fade-in-up pointer-events-none absolute bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[32px] bg-[#25282B] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <RamenIcon className="h-4 w-4 shrink-0 text-[#E60000]" aria-hidden="true" />
-          <span>{legacyT(toastMessage)}</span>
+          <span>{translate(toastMessage)}</span>
         </div>
       )}
     </div>

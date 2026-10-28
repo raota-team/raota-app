@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { getLocale, t as legacyT } from "@raota/shared"
+import { formatList, labelOf, translate } from "@raota/shared"
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
 import { ChevronLeft, ChevronDown, Check, ImagePlus, X, AlertCircle } from 'lucide-react'
 import {
@@ -43,13 +43,6 @@ const todayInSeoul = () => new Intl.DateTimeFormat('en-CA', {
 
 /** 원장의 대표 스타일이 라멘 종류 목록과 정확히 맞을 때만 미리 고른다. 아니면 직접 고르게 둔다. */
 const inferRamenType = (style: string) => RAMEN_TYPES.find(type => style.startsWith(type)) ?? ''
-
-/** 받침 유무에 따라 을/를을 고른다. */
-const objectParticle = (word: string) => {
-  const code = word.charCodeAt(word.length - 1)
-  if (code < 0xac00 || code > 0xd7a3) return '를'
-  return (code - 0xac00) % 28 === 0 ? '를' : '을'
-}
 
 /** 열려 있는 동안 Escape로 닫고, 첫 포커스를 옮기고, 닫히면 원래 자리로 돌려놓는다. */
 function useDialog(open: boolean, onClose: () => void, initialFocus: RefObject<HTMLElement | null>) {
@@ -153,13 +146,13 @@ export default function RecordScreen({
 
   const trimmedMenu = menuName.trim()
   const missing: MissingField[] = []
-  if (!trimmedMenu) missing.push({ key: 'menu', label: '먹은 메뉴', kind: 'text' })
-  if (!ramenType) missing.push({ key: 'ramenType', label: '라멘 종류', kind: 'choice' })
-  if (!visitedAt) missing.push({ key: 'visitedAt', label: '방문일', kind: 'text' })
+  if (!trimmedMenu) missing.push({ key: 'menu', label: t`먹은 메뉴`, kind: 'text' })
+  if (!ramenType) missing.push({ key: 'ramenType', label: t`라멘 종류`, kind: 'choice' })
+  if (!visitedAt) missing.push({ key: 'visitedAt', label: t`방문일`, kind: 'text' })
   for (const axis of SCORE_AXES) {
-    if (scores[axis.key] == null) missing.push({ key: axis.key, label: axis.label, kind: 'choice' })
+    if (scores[axis.key] == null) missing.push({ key: axis.key, label: labelOf(axis.label), kind: 'choice' })
   }
-  if (!revisit) missing.push({ key: 'revisit', label: REVISIT_AXIS.label, kind: 'choice' })
+  if (!revisit) missing.push({ key: 'revisit', label: labelOf(REVISIT_AXIS.label), kind: 'choice' })
 
   const isComplete = missing.length === 0
   const isSaving = recordStatus === 'saving'
@@ -167,12 +160,13 @@ export default function RecordScreen({
 
   const missingMessage = (() => {
     if (isComplete) return null
-    const shown = missing.slice(0, 3).map(item => legacyT(item.label))
-    const rest = missing.length - shown.length
-    if (getLocale() !== 'ko') return t`필수 항목을 확인해 주세요: ${ph({ fields: shown.join(', ') + (rest ? t` 외 ${ph({ count: rest })}개` : '') })}`
-    const subject = rest > 0 ? `${shown.join(', ')} 외 ${rest}개` : shown.join(', ')
-    const verb = missing.some(item => item.kind === 'text') ? '채워주세요' : '골라주세요'
-    return `${subject}${objectParticle(subject)} ${verb}`
+    const fields = formatList(missing.slice(0, 3).map(item => item.label))
+    const count = missing.length - 3
+    // 글로 적는 항목이 하나라도 빠졌으면 "채워주세요", 모두 고르는 항목이면 "골라주세요"
+    if (missing.some(item => item.kind === 'text')) {
+      return count > 0 ? t`${ph({ fields })} 외 ${ph({ count })}개 항목을 채워주세요` : t`${ph({ fields })} 항목을 채워주세요`
+    }
+    return count > 0 ? t`${ph({ fields })} 외 ${ph({ count })}개 항목을 골라주세요` : t`${ph({ fields })} 항목을 골라주세요`
   })()
 
   const focusFirstMissing = () => {
@@ -358,7 +352,7 @@ export default function RecordScreen({
                       onClick={() => setRamenType(type)}
                       className={chipClass(selected)}
                     >
-                      {legacyT(type)}
+                      {labelOf(type)}
                     </button>
                   )
                 })}
@@ -401,7 +395,7 @@ export default function RecordScreen({
                   <div className="flex items-baseline justify-between mb-2">
                     <span id={`axis-${axis.key}`} className="text-[14px] font-bold">
                       <span className="text-[#6B6E73] mr-1.5">{index + 1}</span>
-                      {legacyT(axis.label)}
+                      {labelOf(axis.label)}
                     </span>
                     <span className={`text-[12px] font-bold ${value ? 'text-[#E60000]' : invalid ? 'text-[#E60000]' : 'text-[#6B6E73]'}`}>
                       {value ? t`${ph({ v0: value })}점` : invalid ? t`골라주세요` : t`미선택`}
@@ -424,7 +418,7 @@ export default function RecordScreen({
                           type="button"
                           role="radio"
                           aria-checked={selected}
-                          aria-label={t`${ph({ v0: axis.label })} ${ph({ v1: n })}점`}
+                          aria-label={t`${ph({ v0: labelOf(axis.label) })} ${ph({ v1: n })}점`}
                           tabIndex={focusable ? 0 : -1}
                           onClick={() => setScores(prev => ({ ...prev, [axis.key]: n }))}
                           className={segmentClass(selected)}
@@ -435,8 +429,8 @@ export default function RecordScreen({
                     })}
                   </div>
                   <div className="flex justify-between mt-1.5 text-[12px] font-medium text-[#6B6E73]">
-                    <span>{legacyT(axis.low)}</span>
-                    <span>{legacyT(axis.high)}</span>
+                    <span>{labelOf(axis.low)}</span>
+                    <span>{labelOf(axis.high)}</span>
                   </div>
                 </div>
               )
@@ -446,7 +440,7 @@ export default function RecordScreen({
               <div className="flex items-baseline justify-between mb-2">
                 <span id="axis-revisit" className="text-[14px] font-bold">
                   <span className="text-[#6B6E73] mr-1.5">5</span>
-                  {legacyT(REVISIT_AXIS.label)}
+                  {labelOf(REVISIT_AXIS.label)}
                 </span>
                 <span className={`text-[12px] font-bold ${revisit ? 'text-[#E60000]' : isMissing('revisit') ? 'text-[#E60000]' : 'text-[#6B6E73]'}`}>
                   {revisit ? t`${ph({ v0: REVISIT_SCORE[revisit] })}점` : isMissing('revisit') ? t`골라주세요` : t`미선택`}
@@ -473,14 +467,14 @@ export default function RecordScreen({
                       onClick={() => setRevisit(option)}
                       className={`${segmentClass(selected)} text-[13px] px-1`}
                     >
-                      {legacyT(option)}
+                      {labelOf(option)}
                     </button>
                   )
                 })}
               </div>
               <div className="flex justify-between mt-1.5 text-[12px] font-medium text-[#6B6E73]">
-                <span>{legacyT(REVISIT_AXIS.low)}</span>
-                <span>{legacyT(REVISIT_AXIS.high)}</span>
+                <span>{labelOf(REVISIT_AXIS.low)}</span>
+                <span>{labelOf(REVISIT_AXIS.high)}</span>
               </div>
             </div>
           </div>
@@ -579,7 +573,7 @@ export default function RecordScreen({
               {TASTE_FIELDS.map(field => (
                 <div key={field.key}>
                   <div className="flex items-baseline justify-between mb-2">
-                    <span id={`tag-${field.key}`} className="text-[14px] font-bold">{legacyT(field.label)}</span>
+                    <span id={`tag-${field.key}`} className="text-[14px] font-bold">{translate(field.label)}</span>
                     <span className="text-[12px] font-bold text-[#6B6E73]">{tasteNotes[field.key].length}{t`개 선택`}</span>
                   </div>
                   <div role="group" aria-labelledby={`tag-${field.key}`} className="flex flex-wrap gap-2">
@@ -593,7 +587,7 @@ export default function RecordScreen({
                           onClick={() => toggleTasteNote(field.key, option)}
                           className={chipClass(selected)}
                         >
-                          {legacyT(option)}
+                          {labelOf(option)}
                         </button>
                       )
                     })}

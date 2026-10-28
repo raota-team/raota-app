@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT, scoresFromLog, type RamenLog } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { scoresFromLog, translate, type RamenLog } from "@raota/shared"
 
 /**
  * 가게 상세의 "이 가게의 맛". 여러 사람의 공개 라멘로그를 모아
@@ -32,9 +33,9 @@ function leanOf(values: number[]): Lean {
   return (["mid", "high", "low"] as const).reduce((best, next) => (counts[next] > counts[best] ? next : best), "mid" as Lean)
 }
 
-const BROTH: Record<Lean, string> = { high: "진한 편", mid: "중간", low: "맑은 편" }
-const NOODLE: Record<Lean, string> = { high: "단단한 편", mid: "중간", low: "부드러운 편" }
-const TOPPING: Record<Lean, string> = { high: "훌륭한 편", mid: "보통", low: "아쉬운 편" }
+const BROTH: Record<Lean, MessageDescriptor> = { high: msg`진한 편`, mid: msg`중간`, low: msg`맑은 편` }
+const NOODLE: Record<Lean, MessageDescriptor> = { high: msg`단단한 편`, mid: msg`중간`, low: msg`부드러운 편` }
+const TOPPING: Record<Lean, MessageDescriptor> = { high: msg`훌륭한 편`, mid: msg`보통`, low: msg`아쉬운 편` }
 
 /**
  * 재방문 비율 원을 그리는 최소 기록 수. 2명 중 2명을 "100% 또 갈래요"로 크게 쓰면
@@ -73,8 +74,8 @@ export function shopTasteSummaryOf(logs: readonly RamenLog[]): ShopTasteSummary 
     revisit,
     topMenu,
     topMenuCount,
-    broth: legacyT(BROTH[leanOf(rated.map(({ scores }) => scores.brothDensity))]),
-    noodle: legacyT(NOODLE[leanOf(rated.map(({ scores }) => scores.noodleFirmness))]),
-    topping: legacyT(TOPPING[leanOf(rated.map(({ scores }) => scores.topping))]),
+    broth: translate(BROTH[leanOf(rated.map(({ scores }) => scores.brothDensity))]),
+    noodle: translate(NOODLE[leanOf(rated.map(({ scores }) => scores.noodleFirmness))]),
+    topping: translate(TOPPING[leanOf(rated.map(({ scores }) => scores.topping))]),
   }
 }

@@ -2,7 +2,7 @@ import { t } from "@lingui/core/macro";
 import { API_BASE_URL, API_TIMEOUT_MS } from "./config"
 import { tokenStore as defaultTokenStore, type TokenPair, type TokenStore } from "./tokens"
 import type { ApiFailureEnvelope, ApiSuccessEnvelope, ReissueResponse } from "./types"
-import { getIntlLocale, t as legacyT } from "@raota/shared"
+import { getIntlLocale } from "@raota/shared"
 
 /**
  * 서버 v2와 이야기하는 유일한 통로. 화면과 데이터 계층은 이 클라이언트만 쓰고 fetch를 직접 부르지 않는다.
@@ -235,8 +235,6 @@ export interface ApiClientOptions {
 /** 토큰 재발급 경로. 이 요청만은 재시도하지 않는다 */
 export const TOKEN_REISSUE_PATH = "/auth/token/reissue"
 
-const OFFLINE_MESSAGE = "네트워크 연결을 확인해 주세요."
-
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -330,7 +328,7 @@ function toOfflineError(error: unknown, timedOut: boolean, aborted: boolean): Ap
   if (aborted) {
     return new ApiError({ status: 0, code: "ABORTED", message: t`요청을 취소했어요.`, cause: error })
   }
-  return new ApiError({ status: 0, code: "NETWORK_ERROR", message: legacyT(OFFLINE_MESSAGE), cause: error })
+  return new ApiError({ status: 0, code: "NETWORK_ERROR", message: t`네트워크 연결을 확인해 주세요.`, cause: error })
 }
 
 /**

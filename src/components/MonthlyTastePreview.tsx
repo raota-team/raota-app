@@ -1,5 +1,5 @@
-import { t } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { labelOf } from "@raota/shared"
 import { useId } from 'react'
 import { ArrowRight } from 'lucide-react'
 import type { PastReportItem } from '../data/tasteReports'
@@ -32,7 +32,9 @@ export default function MonthlyTastePreview({ reports, current, onOpen }: Props)
       {latest ? <>
         <p className="mt-2 text-[14px] leading-6 text-ink-sub">
           {distribution.total
-            ? legacyT(latestIsCurrent ? "{period}은 지금까지 {styles}를 가장 많이 먹었어요." : "{period}에 {styles}를 가장 많이 먹었어요.", {period: shortReportMonth(latest), styles: leaders.map(item => legacyT(item.name)).join(' · ')})
+            ? latestIsCurrent
+              ? t`${ph({ period: shortReportMonth(latest) })}은 지금까지 ${ph({ styles: leaders.map(item => labelOf(item.name)).join(' · ') })}를 가장 많이 먹었어요.`
+              : t`${ph({ period: shortReportMonth(latest) })}에 ${ph({ styles: leaders.map(item => labelOf(item.name)).join(' · ') })}를 가장 많이 먹었어요.`
             : t`아직 이 달의 메뉴 기록이 없어요.`}
         </p>
         <div className="mt-4"><MenuDistributionChart reports={months} selectedId={latest.id} compact /></div>

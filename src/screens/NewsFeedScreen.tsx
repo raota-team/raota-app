@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { translate } from "@raota/shared"
 import { useMemo, useState } from 'react'
 import { Camera, Zap, ChevronRight, ExternalLink, Bell, BellRing, CalendarX } from 'lucide-react'
 import { findShopByName } from '../data/shops'
@@ -12,7 +13,14 @@ interface Props {
   onLoginRequest?: () => void
 }
 
-const FILTERS = ['전체', '한정 메뉴', '영업 공지', '이벤트']
+const FILTERS = ['전체', '한정 메뉴', '영업 공지', '이벤트'] as const
+
+const FILTER_LABELS: Record<(typeof FILTERS)[number], MessageDescriptor> = {
+  '전체': msg`전체`,
+  '한정 메뉴': msg`한정 메뉴`,
+  '영업 공지': msg`영업 공지`,
+  '이벤트': msg`이벤트`,
+}
 
 interface NewsPost {
   id: string
@@ -171,7 +179,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
                     active ? 'bg-[#25282B] text-white' : 'bg-[#F2F2F2] text-[#25282B]'
                   }`}
                 >
-                  {legacyT(f)}
+                  {translate(FILTER_LABELS[f])}
                 </span>
               </button>
             )
@@ -197,7 +205,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
           return (
             <article
               key={post.id}
-              aria-label={t`${ph({ v0: post.shop })} ${ph({ v1: post.type })}${ph({ v2: ended ? ', 종료' : '' })}`}
+              aria-label={t`${ph({ v0: post.shop })} ${ph({ v1: translate(FILTER_LABELS[post.type]) })}${ph({ v2: ended ? t`, 종료` : '' })}`}
               className={`overflow-hidden rounded-[6px] border border-[#E2E2E2] bg-white ${ended ? 'opacity-70' : ''}`}
             >
               <div className="flex items-center justify-between gap-2 border-b border-[#E2E2E2] py-2 pl-3.5 pr-1.5">
@@ -250,7 +258,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
               <div className="p-4">
                 <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                   <span className={`rounded-[4px] px-1.5 py-0.5 text-[12px] font-bold ${ended ? 'bg-[#F2F2F2] text-[#6B6E73]' : 'bg-[#FFF0F0] text-[#E60000]'}`}>
-                    {legacyT(post.type)}
+                    {translate(FILTER_LABELS[post.type])}
                   </span>
                   {period && (
                     <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#6B6E73]">

@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { labelOf, translate } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { Redirect, router } from "expo-router"
 import appConfig from "../../app.json"
@@ -24,10 +25,11 @@ import { colors, line, radii, spacing, typography } from "@/src/theme"
  */
 // 취향 리포트를 숨긴 빌드는 월간 리포트 알림을 예약하지 않는다(src/notifications/reminders.ts)
 const REMINDER_DESCRIPTION = TASTE_REPORT_ENABLED
-  ? "월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요."
-  : "기록이 일주일 뜸할 때만 알려드려요."
-const BLOCKED_REMINDER_DESCRIPTION = "iOS 설정에서 알림이 꺼져 있어요. 눌러서 설정을 열 수 있어요."
-const EMAIL_FORMAT_ERROR = "이메일 형식이 아니에요. 예: ramen@example.com"
+  ? msg`월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요.`
+  : msg`기록이 일주일 뜸할 때만 알려드려요.`
+const BLOCKED_REMINDER_DESCRIPTION = msg`iOS 설정에서 알림이 꺼져 있어요. 눌러서 설정을 열 수 있어요.`
+const EMAIL_FORMAT_ERROR = msg`이메일 형식이 아니에요. 예: ramen@example.com`
+const EMAIL_SAVE_ERROR = msg`저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.`
 
 function haptic() {
   if (Platform.OS === "web") return
@@ -45,7 +47,8 @@ export default function SettingsScreen() {
   const [sheet, setSheet] = useState<"style" | "email" | null>(null)
   const [dialog, setDialog] = useState<"logout" | "withdraw" | null>(null)
   const [newEmail, setNewEmail] = useState("")
-  const [emailError, setEmailError] = useState<string | null>(null)
+  // 오류 문구는 설명자로 두고 그릴 때 번역한다(언어를 바꿔도 따라 바뀐다)
+  const [emailError, setEmailError] = useState<MessageDescriptor | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const monthly = useMonthlyReports()
@@ -73,7 +76,8 @@ export default function SettingsScreen() {
     haptic()
     try {
       await actions.updateProfile({ favoriteRamenType: style })
-      setToast(t`선호 스타일을 '${ph({ v1: legacyT(style) })}'로 바꿨어요`)
+      // ICU에서 ' 바로 뒤의 {는 글자로 읽힌다. 따옴표를 보이려면 ''로 쓴다
+      setToast(t`선호 스타일을 ''${ph({ v1: labelOf(style) })}''로 바꿨어요`)
     } catch {
       setToast(t`선호 스타일을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.`)
     } finally {
@@ -84,7 +88,7 @@ export default function SettingsScreen() {
   const saveEmail = async () => {
     const trimmed = newEmail.trim()
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setEmailError(legacyT(EMAIL_FORMAT_ERROR))
+      setEmailError(EMAIL_FORMAT_ERROR)
       return
     }
     setBusy(true)
@@ -93,7 +97,7 @@ export default function SettingsScreen() {
       setSheet(null)
       setToast(t`이메일 주소를 바꿨어요`)
     } catch {
-      setEmailError(t`저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.`)
+      setEmailError(EMAIL_SAVE_ERROR)
     } finally {
       setBusy(false)
     }
@@ -127,7 +131,7 @@ export default function SettingsScreen() {
             }}
             value={user.email || t`등록된 이메일 없음`}
           />
-          <AccountRow label={t`선호 스타일`} onChange={() => setSheet("style")} value={user.favoriteRamenType ? legacyT(user.favoriteRamenType) : t`아직 안 정했어요`} />
+          <AccountRow label={t`선호 스타일`} onChange={() => setSheet("style")} value={user.favoriteRamenType ? labelOf(user.favoriteRamenType) : t`아직 안 정했어요`} />
           <LinkRow label={t`숨긴 사용자`} onPress={() => router.push("/hidden-authors")} />
         </Group>
         {reminders.supported ? (
@@ -144,10 +148,10 @@ export default function SettingsScreen() {
                     tone="muted"
                     variant="secondary"
                   >
-                    {legacyT(BLOCKED_REMINDER_DESCRIPTION)}
+                    {translate(BLOCKED_REMINDER_DESCRIPTION)}
                   </AppText>
                   <AppText lineBreakStrategyIOS="hangul-word" style={styles.overlaidText} tone="muted" variant="secondary">
-                    {legacyT(reminders.blocked ? BLOCKED_REMINDER_DESCRIPTION : REMINDER_DESCRIPTION)}
+                    {translate(reminders.blocked ? BLOCKED_REMINDER_DESCRIPTION : REMINDER_DESCRIPTION)}
                   </AppText>
                 </View>
               </View>
@@ -205,15 +209,15 @@ export default function SettingsScreen() {
             const selected = user.favoriteRamenType === style
             return (
               <Pressable
-                accessibilityLabel={legacyT(style)}
+                accessibilityLabel={labelOf(style)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
-                key={legacyT(style)}
+                key={style}
                 onPress={() => void saveStyle(style)}
                 style={({ pressed }) => [styles.styleOption, selected && styles.styleSelected, pressed && !selected && styles.pressedWash]}
               >
                 <AppText style={selected && styles.styleSelectedText} variant="bodyStrong">
-                  {legacyT(style)}
+                  {labelOf(style)}
                 </AppText>
                 <AppText
                   accessibilityElementsHidden={!selected}
@@ -273,11 +277,11 @@ export default function SettingsScreen() {
             tone="sub"
             variant="secondary"
           >
-            {legacyT(EMAIL_FORMAT_ERROR)}
+            {translate(EMAIL_FORMAT_ERROR)}
           </AppText>
           {emailError ? (
             <AppText accessibilityLiveRegion="polite" capScale lineBreakStrategyIOS="hangul-word" style={styles.overlaidText} tone="sub" variant="secondary">
-              {emailError}
+              {translate(emailError)}
             </AppText>
           ) : null}
         </View>
@@ -319,7 +323,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   return (
     <View>
       <AppText accessibilityRole="header" style={styles.groupTitle} tone="sub" variant="secondary">
-        {legacyT(title)}
+        {title}
       </AppText>
       <View>{children}</View>
     </View>
@@ -333,7 +337,7 @@ function AccountRow({ label, value, onChange, first = false }: { label: string; 
   return (
     <View style={[styles.row, stacked && styles.rowStacked, !first && styles.rowDivider]}>
       <AppText variant="bodyStrong">
-        {legacyT(label)}
+        {label}
       </AppText>
       <View style={[styles.rowTrail, stacked && styles.rowTrailStacked]}>
         <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} tone="muted" variant="secondary">
@@ -354,7 +358,7 @@ function LinkRow({ label, onPress, value, first }: { label: string; onPress: () 
       style={({ pressed }) => [styles.row, !first && styles.rowDivider, pressed && styles.pressedWash]}
     >
       <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} variant="bodyStrong">
-        {legacyT(label)}
+        {label}
       </AppText>
       <View style={styles.rowTrail}>
         {value ? (

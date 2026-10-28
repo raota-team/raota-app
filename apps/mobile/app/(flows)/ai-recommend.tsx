@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { formatDate, getLocale, t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { formatDate, formatList, getLocale, labelOf, translate } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
 import { router, useLocalSearchParams } from "expo-router"
@@ -46,47 +47,54 @@ type Step = 1 | 2 | 3 | 4 | "loading" | "result"
 
 const ALL_EDGES: Edge[] = ["top", "left", "right", "bottom"]
 
+// value는 서버·랭킹·매장 종류 대조에 쓰는 저장 값이라 번역하지 않는다. 화면에는 label·sub만 번역해 보여 준다
 const SOUP_OPTIONS = [
-  { id: "shoyu", label: "쇼유", sub: "간장 타레", keys: ["쇼유"] },
-  { id: "tonkotsu", label: "돈코츠", sub: "돼지뼈 육수", keys: ["돈코츠"] },
-  { id: "ieke", label: "이에케", sub: "돈코츠쇼유", keys: ["이에케"] },
-  { id: "shio", label: "시오", sub: "소금 타레", keys: ["시오"] },
-  { id: "miso", label: "미소", sub: "된장 타레", keys: ["미소"] },
-  { id: "tori", label: "토리파이탄", sub: "닭백탕", keys: ["토리파이탄", "토리빠이탄", "닭백탕", "파이탄"] },
-  { id: "niboshi", label: "니보시", sub: "멸치 육수", keys: ["니보시", "멸치"] },
-  { id: "jiro", label: "지로", sub: "숙주·마늘 산더미", keys: ["지로", "지로계", "지로케"] },
-  { id: "tsukemen", label: "츠케멘", sub: "찍어 먹는 면", keys: ["츠케멘"] },
+  { id: "shoyu", value: "쇼유", label: msg`쇼유`, sub: msg`간장 타레`, keys: ["쇼유"] },
+  { id: "tonkotsu", value: "돈코츠", label: msg`돈코츠`, sub: msg`돼지뼈 육수`, keys: ["돈코츠"] },
+  { id: "ieke", value: "이에케", label: msg`이에케`, sub: msg`돈코츠쇼유`, keys: ["이에케"] },
+  { id: "shio", value: "시오", label: msg`시오`, sub: msg`소금 타레`, keys: ["시오"] },
+  { id: "miso", value: "미소", label: msg`미소`, sub: msg`된장 타레`, keys: ["미소"] },
+  { id: "tori", value: "토리파이탄", label: msg`토리파이탄`, sub: msg`닭백탕`, keys: ["토리파이탄", "토리빠이탄", "닭백탕", "파이탄"] },
+  { id: "niboshi", value: "니보시", label: msg`니보시`, sub: msg`멸치 육수`, keys: ["니보시", "멸치"] },
+  { id: "jiro", value: "지로", label: msg`지로`, sub: msg`숙주·마늘 산더미`, keys: ["지로", "지로계", "지로케"] },
+  { id: "tsukemen", value: "츠케멘", label: msg`츠케멘`, sub: msg`찍어 먹는 면`, keys: ["츠케멘"] },
 ]
 
 // sub은 고르는 뜻을 풀어 쓴 말이다. 매장 정보로 거르는 조건처럼 들리게 쓰지 않는다(상황은 대조할 정보가 없어 "참고"로만 쓴다)
 const MOOD_OPTIONS = [
-  { id: "solo", label: "혼밥하기 좋은 곳", sub: "혼자 편하게" },
-  { id: "date", label: "데이트/아늑한 분위기", sub: "둘이 오래 머물기" },
-  { id: "waiting", label: "웨이팅 감수 맛집", sub: "줄 서도 가는 곳" },
-  { id: "quick", label: "빠르고 든든한 한 끼", sub: "빨리 먹고 나가기" },
+  { id: "solo", value: "혼밥하기 좋은 곳", label: msg`혼밥하기 좋은 곳`, sub: msg`혼자 편하게` },
+  { id: "date", value: "데이트/아늑한 분위기", label: msg`데이트/아늑한 분위기`, sub: msg`둘이 오래 머물기` },
+  { id: "waiting", value: "웨이팅 감수 맛집", label: msg`웨이팅 감수 맛집`, sub: msg`줄 서도 가는 곳` },
+  { id: "quick", value: "빠르고 든든한 한 끼", label: msg`빠르고 든든한 한 끼`, sub: msg`빨리 먹고 나가기` },
 ]
 
 const PRIORITY_OPTIONS = [
-  { id: "rich", label: "진하고 묵직한 국물", sub: "백탕 · 농후", keys: ["진한", "농후", "백탕", "이에케", "돈코츠", "적된장"] },
-  { id: "noodle", label: "탱글탱글 자가제면", sub: "직접 뽑은 면", keys: ["자가제면", "치지레멘"] },
-  { id: "chashu", label: "두툼하고 부드러운 차슈", sub: "토핑이 주인공", keys: ["차슈"] },
-  { id: "clean", label: "깔끔하고 깊은 감칠맛", sub: "청탕 · 맑은 국물", keys: ["깔끔", "맑은", "청탕", "감칠맛", "시오"] },
+  { id: "rich", value: "진하고 묵직한 국물", label: msg`진하고 묵직한 국물`, sub: msg`백탕 · 농후`, keys: ["진한", "농후", "백탕", "이에케", "돈코츠", "적된장"] },
+  { id: "noodle", value: "탱글탱글 자가제면", label: msg`탱글탱글 자가제면`, sub: msg`직접 뽑은 면`, keys: ["자가제면", "치지레멘"] },
+  { id: "chashu", value: "두툼하고 부드러운 차슈", label: msg`두툼하고 부드러운 차슈`, sub: msg`토핑이 주인공`, keys: ["차슈"] },
+  { id: "clean", value: "깔끔하고 깊은 감칠맛", label: msg`깔끔하고 깊은 감칠맛`, sub: msg`청탕 · 맑은 국물`, keys: ["깔끔", "맑은", "청탕", "감칠맛", "시오"] },
 ]
 
-// 큐레이터가 매장 정보와 실제로 대조할 수 있는 조건만 내놓는다(curate의 직접 입력 대조와 짝이 맞아야 한다)
-const QUICK_PROMPTS = ["차슈가 푸짐한 곳", "지금 영업 중인 곳", "밥 무료 제공", "면 리필 가능한 곳"]
+// 큐레이터가 매장 정보와 실제로 대조할 수 있는 조건만 내놓는다(curate의 직접 입력 대조와 짝이 맞아야 한다).
+// 입력칸에는 대조 규칙과 맞도록 value(한국어)를 넣고, 버튼에는 label을 번역해 보여 준다
+const QUICK_PROMPTS = [
+  { value: "차슈가 푸짐한 곳", label: msg`차슈가 푸짐한 곳` },
+  { value: "지금 영업 중인 곳", label: msg`지금 영업 중인 곳` },
+  { value: "밥 무료 제공", label: msg`밥 무료 제공` },
+  { value: "면 리필 가능한 곳", label: msg`면 리필 가능한 곳` },
+]
 
-const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
-  1: { title: "오늘 어떤 국물이 당기나요?", help: "맑은 청탕부터 묵직한 백탕까지 골라보세요." },
-  2: { title: "어떤 상황에서 드시나요?", help: "지금 갈 수 있는 곳과 여유 있는 방문을 구분해 추천해요." },
-  3: { title: "한 그릇에서 가장 포기할 수 없는 것은?", help: "가게 특징과 태그에 이 요소가 있는 곳을 먼저 찾아요." },
+const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: MessageDescriptor; help: MessageDescriptor }> = {
+  1: { title: msg`오늘 어떤 국물이 당기나요?`, help: msg`맑은 청탕부터 묵직한 백탕까지 골라보세요.` },
+  2: { title: msg`어떤 상황에서 드시나요?`, help: msg`지금 갈 수 있는 곳과 여유 있는 방문을 구분해 추천해요.` },
+  3: { title: msg`한 그릇에서 가장 포기할 수 없는 것은?`, help: msg`가게 특징과 태그에 이 요소가 있는 곳을 먼저 찾아요.` },
   4: {
-    title: "더 바라는 점이 있나요?",
-    help: "선택 사항이에요. 영업 중, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요.",
+    title: msg`더 바라는 점이 있나요?`,
+    help: msg`선택 사항이에요. 영업 중, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요.`,
   },
 }
 
-const LOADING_MESSAGES = ["선택한 조건을 확인하고 있어요", "어울리는 라멘집을 찾고 있어요", "식권을 뽑고 있어요", "오늘의 추천이 준비됐어요"]
+const LOADING_MESSAGES = [msg`선택한 조건을 확인하고 있어요`, msg`어울리는 라멘집을 찾고 있어요`, msg`식권을 뽑고 있어요`, msg`오늘의 추천이 준비됐어요`]
 /**
  * 조건 칩을 하나씩 밝히면 식권기 투입구에서 색종이 식권이 아랫단(날짜·매수)부터 내려온다(사용자 결정 2026.10.26, 식권 B안).
  * 결과가 준비되면 가게 이름까지 다 내려오고, 결과 화면으로는 완성된 식권을 RESULT_HOLD만큼 보여 준 뒤 넘어간다.
@@ -101,9 +109,9 @@ const TICKET_SETTLE = 900
 const RESULT_HOLD = 2000
 const PROMPT_MAX_LENGTH = 200
 /** 서버 추천을 만들지 못해 인기순으로 대신 보여 줄 때 */
-const POPULAR_FALLBACK_NOTE = "지금은 AI 추천을 만들 수 없어 인기 라멘집을 보여드려요"
-const RATE_LIMITED_MESSAGE = "잠시 후 다시 시도해 주세요"
-const DAILY_LIMIT_MESSAGE = "오늘 식권을 다 뽑았어요. 내일 다시 뽑을 수 있어요"
+const POPULAR_FALLBACK_NOTE = msg`지금은 AI 추천을 만들 수 없어 인기 라멘집을 보여드려요`
+const RATE_LIMITED_MESSAGE = msg`잠시 후 다시 시도해 주세요`
+const DAILY_LIMIT_MESSAGE = msg`오늘 식권을 다 뽑았어요. 내일 다시 뽑을 수 있어요`
 
 interface Inputs {
   soupId: string
@@ -113,31 +121,17 @@ interface Inputs {
 }
 
 interface Condition {
-  label: string
+  /** 목록 key. 서버 조건은 받은 이름, 로컬 조건은 고정 id */
+  key: string
   applied: boolean
-  note: string
-  /** App-authored annotations retain source keys so a locale change never resets the result. */
-  local?: true
-  labelParams?: Record<string, string | number>
-  noteParams?: Record<string, string | number>
-  soupLabel?: string
-  matchedLabels?: string[]
+  /** 화면에 보이는 이름. 로컬 조건은 언어를 바꿔도 결과가 그대로 남도록 그릴 때 번역한다 */
+  label: () => string
+  /** 덧붙이는 설명. 서버가 준 조건은 이름만 있어 null */
+  note: (() => string) | null
 }
 
-function conditionLabel(condition: Condition): string {
-  if (!condition.local) return condition.label
-  const params = { ...condition.labelParams }
-  if (condition.soupLabel) params.v1 = legacyT(condition.soupLabel)
-  return legacyT(condition.label, params)
-}
-
-function conditionNote(condition: Condition): string {
-  if (!condition.local) return condition.note
-  const params = { ...condition.noteParams }
-  if (condition.soupLabel) params.v1 = legacyT(condition.soupLabel)
-  if (condition.matchedLabels) params.v1 = condition.matchedLabels.map((label) => legacyT(label)).join(", ")
-  return legacyT(condition.note, params)
-}
+/** 서버가 준 조건은 화면에 그대로 보여주는 말이라 덧붙이는 설명 없이 이름만 쓴다 */
+const serverCondition = (label: string): Condition => ({ key: label, applied: true, label: () => label, note: null })
 
 interface Candidate {
   shop: CuratorShop
@@ -155,7 +149,7 @@ interface Curation extends Candidate {
   /** 조건으로 고르지 못해 인기·거리순으로 대신 골랐는지 */
   fallback: boolean
   /** 대신 고른 이유. 없으면 로컬 인기·거리순 안내를 쓴다 */
-  fallbackNote?: string
+  fallbackNote?: MessageDescriptor
   /** "다시 추천받기"가 차례로 보여 줄 후보(순위순). 지금 보이는 것은 candidates[index] */
   candidates: Candidate[]
   index: number
@@ -173,10 +167,13 @@ const DEFAULT_INPUTS: Inputs = { soupId: "", moodId: "", priorityId: "", prompt:
 
 /** 고른 조건은 실제 네 단계와 같은 이름으로 표시한다. 아직 고르지 않은 값은 빈 문자열(칸에는 이름만 남는다) */
 function chosenConditions(inputs: Inputs) {
+  const soup = SOUP_OPTIONS.find((option) => option.id === inputs.soupId)
+  const mood = MOOD_OPTIONS.find((option) => option.id === inputs.moodId)
+  const priority = PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)
   return [
-    { label: t`국물`, value: legacyT(SOUP_OPTIONS.find((option) => option.id === inputs.soupId)?.label ?? "") },
-    { label: t`상황`, value: legacyT(MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label ?? "") },
-    { label: t`중요`, value: legacyT(PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label ?? "") },
+    { label: t`국물`, value: soup ? translate(soup.label) : "" },
+    { label: t`상황`, value: mood ? translate(mood.label) : "" },
+    { label: t`중요`, value: priority ? translate(priority.label) : "" },
     { label: t`추가`, value: inputs.prompt.trim() },
   ]
 }
@@ -272,7 +269,7 @@ function ChosenConditionCell({ label, value }: { label: string; value: string })
   return (
     <Animated.View style={[styles.chosenChip, cellStyle]} testID={`ai-condition-${label}`}>
       <Animated.Text maxFontSizeMultiplier={maxFontScale} style={[typography.meta, styles.chosenLabel, labelStyle]}>
-        {legacyT(label)}
+        {label}
       </Animated.Text>
       {/* 아직 고르지 않은 칸은 이름만 둔다("—" 같은 빈 값 표시는 쓰지 않는다). 칸 높이는 고정이라 채워져도 밀리지 않는다 */}
       {filled ? (
@@ -293,7 +290,7 @@ function QuickPromptTile({ text, added, onPress }: { text: string; added: boolea
   const motion = useChoiceMotion(added)
   return (
     <AnimatedPressable
-      accessibilityLabel={added ? t`${ph({ v1: legacyT(text) })}, 추가됨` : t`${ph({ v1: legacyT(text) })} 추가`}
+      accessibilityLabel={added ? t`${ph({ v1: text })}, 추가됨` : t`${ph({ v1: text })} 추가`}
       accessibilityRole="button"
       accessibilityState={{ selected: added, disabled: added }}
       disabled={added}
@@ -306,7 +303,7 @@ function QuickPromptTile({ text, added, onPress }: { text: string; added: boolea
       style={[styles.quickChip, motion.containerStyle]}
     >
       <Animated.Text maxFontSizeMultiplier={maxFontScale} style={[typography.secondary, styles.quickText, motion.textStyle]}>
-        {legacyT(text)}
+        {text}
       </Animated.Text>
     </AnimatedPressable>
   )
@@ -348,14 +345,14 @@ function TicketButton({
           </View>
         ) : null}
         <Animated.Text lineBreakStrategyIOS="hangul-word" style={[typography.cardTitle, motion.textStyle]}>
-          {legacyT(label)}
+          {label}
         </Animated.Text>
         <Animated.Text
           lineBreakStrategyIOS="hangul-word"
           maxFontSizeMultiplier={maxFontScale}
           style={[typography.meta, styles.optionSub, motion.subStyle]}
         >
-          {legacyT(sub)}
+          {sub}
         </Animated.Text>
         {soupType ? <View style={[styles.soupSwatch, { backgroundColor: soupColorOf(soupType) }]} /> : null}
       </AnimatedPressable>
@@ -369,12 +366,12 @@ function TicketMachine({ step, picked, hint, children }: { step: 1 | 2 | 3; pick
     <View style={styles.machine}>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.machineHead}>
         <AppText capScale style={styles.machineBrand} variant="meta">{t`RAOTA 식권`}</AppText>
-        <AppText capScale tone="muted" variant="meta">{step}{t`단계`}</AppText>
+        <AppText capScale tone="muted" variant="meta">{t`${ph({ step })}단계`}</AppText>
       </View>
       {children}
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.machineSlot}>
         <View style={styles.machineSlotBar} />
-        <AppText capScale numberOfLines={1} tone="muted" variant="meta">{picked ? t`${ph({ v1: legacyT(picked) })} 골랐어요` : hint}</AppText>
+        <AppText capScale numberOfLines={1} tone="muted" variant="meta">{picked ? t`${ph({ v1: picked })} 골랐어요` : hint}</AppText>
       </View>
     </View>
   )
@@ -390,7 +387,7 @@ const byPopularity = (a: CuratorShop, b: CuratorShop) =>
  * 다시 보는 식권처럼 고른 국물을 모르면 매장 자신의 종류를 쓴다
  */
 function candidateFor(shop: CuratorShop, soup: (typeof SOUP_OPTIONS)[number] | undefined, reason: string | null = null): Candidate {
-  return { shop, typeLabel: soup && matchesSoupChoice(shop, soup.label, soup.keys) ? soup.label : shopSoupLabel(shop), reason }
+  return { shop, typeLabel: soup && matchesSoupChoice(shop, soup.value, soup.keys) ? soup.value : shopSoupLabel(shop), reason }
 }
 
 /**
@@ -415,57 +412,63 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
 
   // 국물은 지도 필터와 같은 종류 판정으로만 맞춘다. 소개글 낱말로 맞추면 쇼유를 골라도 이에케가 나온다
   const soup = SOUP_OPTIONS.find((option) => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
-  const soupMatches = (shop: CuratorShop) => matchesSoupChoice(shop, soup.label, soup.keys)
+  const soupMatches = (shop: CuratorShop) => matchesSoupChoice(shop, soup.value, soup.keys)
+  const soupLine = () => t`${ph({ soup: translate(soup.label) })} 계보`
   if (narrow(soupMatches)) {
-    conditions.push({ label: "{v1} 계보", labelParams: { v1: soup.label }, soupLabel: soup.label, applied: true, note: "{v1} 계보 {v2}곳 중에서 골랐어요", noteParams: { v1: soup.label, v2: pool.length } })
+    const count = pool.length
+    conditions.push({ key: "soup", label: soupLine, applied: true, note: () => t`${ph({ soup: translate(soup.label) })} 계보 ${ph({ count })}곳 중에서 골랐어요` })
   } else {
-    conditions.push({ label: "{v1} 계보", labelParams: { v1: soup.label }, soupLabel: soup.label, applied: false, note: "전체 라멘집으로 넓혀서 골라 봤어요" })
+    conditions.push({ key: "soup", label: soupLine, applied: false, note: () => t`전체 라멘집으로 넓혀서 골라 봤어요` })
   }
 
   const mood = MOOD_OPTIONS.find((option) => option.id === inputs.moodId) ?? MOOD_OPTIONS[0]
+  const moodLine = () => translate(mood.label)
   if (mood.id === "quick") {
     const opened = narrow((shop) => shop.businessStatus === "OPERATIONAL" && shop.isOpen)
     byDistance = true
     conditions.push({
-      label: mood.label,
+      key: "mood",
+      label: moodLine,
       applied: true,
-      note: opened ? "지금 영업 중이고 가까운 곳을 우선했어요" : "가까운 곳부터 우선했어요",
+      note: opened ? () => t`지금 영업 중이고 가까운 곳을 우선했어요` : () => t`가까운 곳부터 우선했어요`,
     })
   } else if (mood.id === "waiting") {
     if (narrow((shop) => shop.reviewCount > 0 || shop.rating > 0)) {
-      conditions.push({ label: mood.label, applied: true, note: "라멘로그와 평점이 쌓인 곳을 우선했어요" })
+      conditions.push({ key: "mood", label: moodLine, applied: true, note: () => t`라멘로그와 평점이 쌓인 곳을 우선했어요` })
     } else {
-      conditions.push({ label: mood.label, applied: false, note: "라멘로그가 더 쌓이면 이 조건도 꼼꼼히 맞춰 드릴게요" })
+      conditions.push({ key: "mood", label: moodLine, applied: false, note: () => t`라멘로그가 더 쌓이면 이 조건도 꼼꼼히 맞춰 드릴게요` })
     }
   } else {
-    conditions.push({ label: mood.label, applied: false, note: "매장 분위기 정보가 채워지면 더 꼭 맞게 골라 드릴게요" })
+    conditions.push({ key: "mood", label: moodLine, applied: false, note: () => t`매장 분위기 정보가 채워지면 더 꼭 맞게 골라 드릴게요` })
   }
 
   const priority = PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)
   if (priority) {
+    const priorityLine = () => translate(priority.label)
     if (narrow((shop) => hasAnyKey(shop, priority.keys))) {
-      conditions.push({ label: priority.label, applied: true, note: "가게 특징과 태그에 이 요소가 있는 곳을 우선했어요" })
+      conditions.push({ key: "priority", label: priorityLine, applied: true, note: () => t`가게 특징과 태그에 이 요소가 있는 곳을 우선했어요` })
     } else {
-      conditions.push({ label: priority.label, applied: false, note: "이 특징이 적힌 가게가 늘면 더 정확히 골라 드릴게요" })
+      conditions.push({ key: "priority", label: priorityLine, applied: false, note: () => t`이 특징이 적힌 가게가 늘면 더 정확히 골라 드릴게요` })
     }
   }
 
   // QUICK_PROMPTS는 여기서 대조하는 조건만 내놓는다. 대조하지 못한 말은 "참고"로 남긴다
   const prompt = inputs.prompt.trim()
   if (prompt) {
-    const applied: string[] = []
-    if (/영업 ?중|지금 ?여/.test(prompt) && narrow((shop) => shop.isOpen)) applied.push("지금 영업 중")
-    if (prompt.includes("밥") && narrow((shop) => Boolean(shop.servicePerks?.riceRefill?.includes("무료")))) applied.push("공깃밥 무료")
-    if (prompt.includes("차슈") && narrow((shop) => hasAnyKey(shop, ["차슈"]))) applied.push("차슈")
+    const applied: MessageDescriptor[] = []
+    if (/영업 ?중|지금 ?여/.test(prompt) && narrow((shop) => shop.isOpen)) applied.push(msg`지금 영업 중`)
+    if (prompt.includes("밥") && narrow((shop) => Boolean(shop.servicePerks?.riceRefill?.includes("무료")))) applied.push(msg`공깃밥 무료`)
+    if (prompt.includes("차슈") && narrow((shop) => hasAnyKey(shop, ["차슈"]))) applied.push(msg`차슈`)
     if (/면.*(리필|무료)|(리필|무료).*면/.test(prompt)) {
-      if (narrow((shop) => Boolean(shop.servicePerks?.noodleRefill?.includes("무료")))) applied.push("면 무료 리필")
+      if (narrow((shop) => Boolean(shop.servicePerks?.noodleRefill?.includes("무료")))) applied.push(msg`면 무료 리필`)
     } else if (prompt.includes("면") && narrow((shop) => hasAnyKey(shop, ["자가제면", "치지레멘", "면"]))) {
-      applied.push("면")
+      applied.push(msg`면`)
     }
+    const promptLine = () => t`직접 입력: ${ph({ prompt })}`
     conditions.push(
       applied.length
-        ? { label: "직접 입력: {v1}", labelParams: { v1: prompt }, applied: true, note: "{v1} 조건을 매장 정보와 대조했어요", matchedLabels: applied }
-        : { label: "직접 입력: {v1}", labelParams: { v1: prompt }, applied: false, note: "적어 주신 조건은 매장 정보가 채워지는 대로 맞춰 드릴게요" },
+        ? { key: "prompt", label: promptLine, applied: true, note: () => t`${ph({ matched: formatList(applied.map(translate)) })} 조건을 매장 정보와 대조했어요` }
+        : { key: "prompt", label: promptLine, applied: false, note: () => t`적어 주신 조건은 매장 정보가 채워지는 대로 맞춰 드릴게요` },
     )
   }
 
@@ -475,9 +478,9 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
   } else {
     try {
       ranked = rankShopsForAIRecommendation(pool, {
-        soup: soup.label,
-        mood: mood.label,
-        priority: priority?.label ?? "",
+        soup: soup.value,
+        mood: mood.value,
+        priority: priority?.value ?? "",
         prompt,
         currentTasteReport: taste,
       }).map(({ shop }) => shop as CuratorShop)
@@ -486,17 +489,18 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
     }
     // 랭킹이 실제로 내 취향 리포트를 받아 순서를 매긴 경우에만 알린다(빠른 한 끼는 거리순이라 쓰지 않는다)
     if (taste && ranked.length) {
-      conditions.push({ label: "내 취향", applied: true, note: "내 기록 {v1}그릇의 취향을 반영했어요", noteParams: { v1: taste.recordCount } })
+      const count = taste.recordCount
+      conditions.push({ key: "taste", label: () => t`내 취향`, applied: true, note: () => t`내 기록 ${ph({ count })}그릇의 취향을 반영했어요` })
     }
   }
   if (ranked.length) {
     const candidates = ranked.map((shop) => candidateFor(shop, soup))
-    return { ...candidates[0], conditions: conditions.map((condition) => ({ ...condition, local: true })), fallback: false, candidates, index: 0, recommendationId: null }
+    return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId: null }
   }
 
   const fallbackCandidates = [...all].sort(byPopularity).map((shop) => candidateFor(shop, soup))
   return fallbackCandidates.length
-    ? { ...fallbackCandidates[0], conditions: conditions.map((condition) => ({ ...condition, local: true })), fallback: true, candidates: fallbackCandidates, index: 0, recommendationId: null }
+    ? { ...fallbackCandidates[0], conditions, fallback: true, candidates: fallbackCandidates, index: 0, recommendationId: null }
     : null
 }
 
@@ -508,9 +512,9 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
 async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise<Curation | null> {
   const soup = SOUP_OPTIONS.find((option) => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
   const request: RecommendationRequest = {
-    soup: soup.label,
-    mood: MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label,
-    priority: PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label,
+    soup: soup.value,
+    mood: MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.value,
+    priority: PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.value,
     text: inputs.prompt.trim() || undefined,
     ...(origin ?? {}),
   }
@@ -518,8 +522,7 @@ async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise
     const { recommendationId, shops, appliedConditions, reasons } = await remoteReads.recommendations(request)
     if (shops.length) {
       const candidates = shops.map((shop) => candidateFor(shop, soup, reasons[shop.id]?.trim() || null))
-      // 서버가 준 조건은 화면에 그대로 보여주는 말이라 덧붙이는 설명 없이 이름만 쓴다
-      const conditions = appliedConditions.map((label) => ({ label, applied: true, note: "" }))
+      const conditions = appliedConditions.map(serverCondition)
       return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId }
     }
   } catch (error) {
@@ -539,10 +542,10 @@ async function curateRemote(inputs: Inputs, origin: Coordinates | null): Promise
 
 /** 오늘 뽑은 식권을 다시 볼 때. 그때 보여준 매장 순서와 조건, 추천 이유를 그대로 쓴다 */
 function curationFromTicket(ticket: RemoteTicket): Curation | null {
-  const soup = SOUP_OPTIONS.find((option) => ticket.appliedConditions.includes(option.label))
+  const soup = SOUP_OPTIONS.find((option) => ticket.appliedConditions.includes(option.value))
   const candidates = ticket.shops.map((shop) => candidateFor(shop, soup, ticket.reasons[shop.id]?.trim() || null))
   if (!candidates.length) return null
-  const conditions = ticket.appliedConditions.map((label) => ({ label, applied: true, note: "" }))
+  const conditions = ticket.appliedConditions.map(serverCondition)
   return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId: ticket.id, issuedAt: ticket.createdAt }
 }
 
@@ -605,7 +608,7 @@ export default function AIRecommendScreen() {
   // 추천 요청은 비용이 들어 한 번 누를 때 한 번만 보낸다. 상태 갱신 전에 다시 눌러도 막도록 ref로 잠근다
   const requestingRef = useRef(false)
   const [requesting, setRequesting] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<MessageDescriptor | null>(null)
   // 서버 추천은 하루에 뽑을 수 있는 식권 수가 있다. 옛 서버(식권 없음)이거나 읽지 못하면 null이라 아무것도 막지 않고, 막는 일은 서버가 한다
   const ticketsEnabled = remoteCurator && loggedIn
   const [todayTickets, setTodayTickets] = useState<RemoteTodayTickets | null>(null)
@@ -634,7 +637,7 @@ export default function AIRecommendScreen() {
     const picked = todayTickets?.tickets.find((ticket) => ticket.id === ticketParam) ?? (ticketParam ? knownTicket(ticketParam) : null)
     const next = picked ? curationFromTicket(picked) : null
     if (!next) {
-      setToast(t`이 식권을 지금은 보여드릴 수 없어요`)
+      setToast(msg`이 식권을 지금은 보여드릴 수 없어요`)
       return
     }
     setCuration(next)
@@ -733,7 +736,7 @@ export default function AIRecommendScreen() {
     const next = curationFromTicket(ticket)
     setTicketsOpen(false)
     if (!next) {
-      setToast(t`이 식권의 가게를 지금은 보여드릴 수 없어요`)
+      setToast(msg`이 식권의 가게를 지금은 보여드릴 수 없어요`)
       return
     }
     setCuration(next)
@@ -902,31 +905,31 @@ export default function AIRecommendScreen() {
               style={styles.chosenRow}
             >
               {selectedConditions.map(({ label, value }) => (
-                <ChosenConditionCell key={label} label={legacyT(label)} value={value} />
+                <ChosenConditionCell key={label} label={label} value={value} />
               ))}
             </View>
             <View accessible accessibilityRole="header" ref={headingRef}>
-              <AppText lineBreakStrategyIOS="hangul-word" variant="headline">{legacyT(STEP_TITLES[numericStep].title)}</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" variant="headline">{translate(STEP_TITLES[numericStep].title)}</AppText>
             </View>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.help} tone="sub" variant="secondary">
-              {legacyT(STEP_TITLES[numericStep].help)}
+              {translate(STEP_TITLES[numericStep].help)}
             </AppText>
 
             {numericStep === 1 ? (
               <TicketMachine
                 hint={t`국물 버튼을 눌러 주세요`}
-                picked={SOUP_OPTIONS.find((soup) => soup.id === inputs.soupId)?.label ?? ""}
+                picked={selectedConditions[0].value}
                 step={1}
               >
                 <View accessibilityLabel={t`국물 베이스`} accessibilityRole="radiogroup" style={styles.optionGrid}>
                   {SOUP_OPTIONS.map((soup) => (
                     <TicketButton
                       key={soup.id}
-                      label={legacyT(soup.label)}
-                      soupType={soup.label}
+                      label={translate(soup.label)}
+                      soupType={soup.value}
                       onPress={() => setInput("soupId", soup.id)}
                       selected={inputs.soupId === soup.id}
-                      sub={legacyT(soup.sub)}
+                      sub={translate(soup.sub)}
                     />
                   ))}
                 </View>
@@ -936,21 +939,17 @@ export default function AIRecommendScreen() {
             {numericStep === 2 || numericStep === 3 ? (
               <TicketMachine
                 hint={numericStep === 2 ? t`상황 버튼을 눌러 주세요` : t`가장 중요한 것을 눌러 주세요`}
-                picked={
-                  (numericStep === 2
-                    ? MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label
-                    : PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label) ?? ""
-                }
+                picked={selectedConditions[numericStep - 1].value}
                 step={numericStep}
               >
                 <View accessibilityLabel={numericStep === 2 ? t`식사 상황` : t`가장 중요한 요소`} accessibilityRole="radiogroup" style={styles.optionGrid}>
                   {(numericStep === 2 ? MOOD_OPTIONS : PRIORITY_OPTIONS).map((option) => (
                     <TicketButton
                       key={option.id}
-                      label={legacyT(option.label)}
+                      label={translate(option.label)}
                       onPress={() => setInput(numericStep === 2 ? "moodId" : "priorityId", option.id)}
                       selected={numericStep === 2 ? inputs.moodId === option.id : inputs.priorityId === option.id}
-                      sub={legacyT(option.sub)}
+                      sub={translate(option.sub)}
                     />
                   ))}
                 </View>
@@ -977,12 +976,12 @@ export default function AIRecommendScreen() {
                 <AppText style={styles.quickTitle} tone="sub" variant="sectionTitle">
                   {t`자주 찾는 조건 `}</AppText>
                 <View style={styles.quickRow}>
-                  {QUICK_PROMPTS.map((text) => (
+                  {QUICK_PROMPTS.map(({ value, label }) => (
                     <QuickPromptTile
-                      added={inputs.prompt.includes(text)}
-                      key={text}
-                      onPress={() => setInput("prompt", inputs.prompt ? `${inputs.prompt}, ${text}` : text)}
-                      text={text}
+                      added={inputs.prompt.includes(value)}
+                      key={value}
+                      onPress={() => setInput("prompt", inputs.prompt ? `${inputs.prompt}, ${value}` : value)}
+                      text={translate(label)}
                     />
                   ))}
                 </View>
@@ -1017,8 +1016,8 @@ export default function AIRecommendScreen() {
               <View style={styles.resultPhotoWrap}>
                 <ResilientUriImage accessibilityLabel={t`${ph({ v1: result.shop.name })} 대표 사진`} style={styles.resultPhoto} transition={0} uri={result.shop.photos[0]} />
                 {resultType ? (
-                  <View accessible accessibilityLabel={t`라멘 종류 ${ph({ v1: resultType.replace(/\s*라멘$/, "") })}`} accessibilityRole="text" style={styles.resultPhotoTag}>
-                    <AppText capScale style={styles.resultPhotoTagText} variant="meta">{resultType.replace(/\s*라멘$/, "")}</AppText>
+                  <View accessible accessibilityLabel={t`라멘 종류 ${ph({ v1: labelOf(resultType.replace(/\s*라멘$/, "")) })}`} accessibilityRole="text" style={styles.resultPhotoTag}>
+                    <AppText capScale style={styles.resultPhotoTagText} variant="meta">{labelOf(resultType.replace(/\s*라멘$/, ""))}</AppText>
                   </View>
                 ) : null}
               </View>
@@ -1063,29 +1062,37 @@ export default function AIRecommendScreen() {
                   {t`추천에 쓴 조건 `}</AppText>
                 {result.fallback ? (
                   <AppText lineBreakStrategyIOS="hangul-word" style={styles.fallbackNote} tone="sub" variant="secondary">
-                    {result.fallbackNote === POPULAR_FALLBACK_NOTE ? legacyT(POPULAR_FALLBACK_NOTE) : result.fallbackNote ?? t`라멘로그가 많이 쌓인 가까운 곳 중에서 골라 봤어요.`}
+                    {result.fallbackNote ? translate(result.fallbackNote) : t`라멘로그가 많이 쌓인 가까운 곳 중에서 골라 봤어요.`}
                   </AppText>
                 ) : null}
-                {result.conditions.map((condition) => (
-                  <View
-                    accessible
-                    accessibilityLabel={t`${ph({ v1: conditionLabel(condition) })}, ${ph({ v2: condition.applied ? t`반영했어요` : t`참고했어요` })}${ph({ v3: condition.note ? `. ${conditionNote(condition)}` : "" })}`}
-                    key={condition.label}
-                    style={styles.condition}
-                  >
-                    <View style={styles.flexShrink}>
-                      <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionLabel} variant="bodyStrong">
-                        {conditionLabel(condition)}
-                      </AppText>
-                      {/* 서버가 준 조건은 이름만 있다 */}
-                      {condition.note ? (
-                        <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionNote} tone="sub" variant="secondary">
-                          {conditionNote(condition)}
+                {result.conditions.map((condition) => {
+                  const label = condition.label()
+                  const note = condition.note?.() ?? ""
+                  return (
+                    <View
+                      accessible
+                      accessibilityLabel={
+                        condition.applied
+                          ? note ? t`${ph({ label })}, 반영했어요. ${ph({ note })}` : t`${ph({ label })}, 반영했어요`
+                          : note ? t`${ph({ label })}, 참고했어요. ${ph({ note })}` : t`${ph({ label })}, 참고했어요`
+                      }
+                      key={condition.key}
+                      style={styles.condition}
+                    >
+                      <View style={styles.flexShrink}>
+                        <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionLabel} variant="bodyStrong">
+                          {label}
                         </AppText>
-                      ) : null}
+                        {/* 서버가 준 조건은 이름만 있다 */}
+                        {note ? (
+                          <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionNote} tone="sub" variant="secondary">
+                            {note}
+                          </AppText>
+                        ) : null}
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  )
+                })}
               </View>
             ) : null}
 
@@ -1155,7 +1162,7 @@ export default function AIRecommendScreen() {
         title={t`식권 1장을 쓸까요?`}
         visible={confirmingTicket}
       />
-      <Toast message={toast ?? ""} onDismiss={() => setToast(null)} style={{ bottom: ctaSize.minHeight + spacing.x6 }} visible={Boolean(toast)} />
+      <Toast message={toast ? translate(toast) : ""} onDismiss={() => setToast(null)} style={{ bottom: ctaSize.minHeight + spacing.x6 }} visible={Boolean(toast)} />
     </Screen>
   )
 }
@@ -1188,15 +1195,16 @@ function LoadingDot({ index, progress, still }: { index: number; progress: Share
   return <Animated.View style={[styles.dot, style]} />
 }
 
-function RestartButton({ label = "다시 추천받기", onPress }: { label?: string; onPress: () => void }) {
+function RestartButton({ label, onPress }: { label?: string; onPress: () => void }) {
+  const text = label ?? t`다시 추천받기`
   return (
     <Pressable
-      accessibilityLabel={legacyT(label)}
+      accessibilityLabel={text}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.restart, pressed && styles.pressedWash]}
     >
-      <AppText style={styles.restartText} variant="bodyStrong">{legacyT(label)}</AppText>
+      <AppText style={styles.restartText} variant="bodyStrong">{text}</AppText>
     </Pressable>
   )
 }
@@ -1296,12 +1304,13 @@ function CurationLoading({
     transform: [{ translateY: ticketShift.value }],
   }))
 
-  const message = phase === "error" ? t`추천을 가져오지 못했어요. 고른 조건은 그대로예요` : phase === "out" ? legacyT(LOADING_MESSAGES[3]) : phase === "stub" ? legacyT(LOADING_MESSAGES[2]) : pressed >= 2 ? legacyT(LOADING_MESSAGES[1]) : legacyT(LOADING_MESSAGES[0])
+  const loadingMessage = phase === "error" ? null : phase === "out" ? LOADING_MESSAGES[3] : phase === "stub" ? LOADING_MESSAGES[2] : pressed >= 2 ? LOADING_MESSAGES[1] : LOADING_MESSAGES[0]
+  const message = loadingMessage ? translate(loadingMessage) : t`추천을 가져오지 못했어요. 고른 조건은 그대로예요`
 
   /** iOS에서는 제목 포커스와 겹치지 않도록 첫 문구를 빼고 직접 읽어 준다. */
   useEffect(() => {
-    if (message !== LOADING_MESSAGES[0]) AccessibilityInfo.announceForAccessibility(message)
-  }, [message])
+    if (loadingMessage !== LOADING_MESSAGES[0]) AccessibilityInfo.announceForAccessibility(message)
+  }, [loadingMessage, message])
 
   useEffect(() => {
     if (phase !== "out" || !ready) return
@@ -1370,7 +1379,7 @@ function CurationLoading({
               <AppText style={styles.ticketMuted} variant="meta">{t`오늘의 한 그릇`}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" style={[styles.ticketName, styles.ticketText]} variant="headline">{shop?.name ?? ""}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" style={[styles.ticketPlace, styles.ticketText]} variant="secondary">
-                {[typeLabel, place].filter(Boolean).join(" · ")}
+                {[typeLabel ? labelOf(typeLabel) : "", place].filter(Boolean).join(" · ")}
               </AppText>
             </View>
             <MealTicketFoot issueDate={issueDate} onLayout={({ nativeEvent }) => setStubHeight(Math.ceil(nativeEvent.layout.height))} />
@@ -1381,7 +1390,7 @@ function CurationLoading({
         <View style={styles.loadingActions}>
           <View accessibilityLiveRegion="polite" style={styles.statusLine}>
             <AppText accessibilityRole="text" lineBreakStrategyIOS="hangul-word" style={styles.statusText} tone="sub" variant="secondary">
-              {legacyT(message)}
+              {message}
             </AppText>
             {/* 서버 추천은 몇 초에서 25초까지 걸려, 기다리는 동안 멈춘 화면처럼 보이지 않게 점을 움직인다 */}
             {!ready && !failed ? <LoadingDots /> : null}

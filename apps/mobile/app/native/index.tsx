@@ -1,6 +1,7 @@
-import { t, ph } from "@lingui/core/macro";
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
 import { useLocale } from "@/src/i18n"
-import { formatDate, formatNumber, getLocale, t as legacyT } from "@raota/shared"
+import { formatDate, formatNumber, getLocale, labelOf, translate } from "@raota/shared"
 import { router, useFocusEffect } from "expo-router"
 import { ChevronRight, Sparkles, Ticket } from "lucide-react-native"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -31,9 +32,9 @@ function formatDistance(meters: number) {
 }
 
 /** 영업 상태는 원장의 businessStatus와 isOpen에서만 계산한다 */
-function statusOf(shop: Shop): { label: string; open: boolean } {
-  if (shop.businessStatus !== "OPERATIONAL") return { label: "영업 정보 확인 필요", open: false }
-  return shop.isOpen ? { label: "영업 중", open: true } : { label: "준비 중", open: false }
+function statusOf(shop: Shop): { label: MessageDescriptor; open: boolean } {
+  if (shop.businessStatus !== "OPERATIONAL") return { label: msg`영업 정보 확인 필요`, open: false }
+  return shop.isOpen ? { label: msg`영업 중`, open: true } : { label: msg`준비 중`, open: false }
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
@@ -137,7 +138,7 @@ function personalRecommendations(shops: Shop[], identity: TasteIdentity, profile
         const matchesLeader = leader === "돈코츠" || leader === "이에케"
           ? matchesShopRamenType(shop, leader)
           : hasAny(text, SOUP_KEYS[leader] ?? [leader])
-        if (matchesLeader) reasons.push(t`${ph({ type: legacyT(leader) })}를 가장 자주 드셔서`)
+        if (matchesLeader) reasons.push(t`${ph({ type: labelOf(leader) })}를 가장 자주 드셔서`)
       }
       if (dense && hasAny(text, DENSE_KEYS)) reasons.push(t`진한 육수 취향`)
       if (!dense && hasAny(text, CLEAN_KEYS)) reasons.push(t`맑은 육수 취향`)
@@ -171,7 +172,7 @@ function PhotoTypePill({ type }: { type: string }) {
   return (
     <View style={styles.photoTypePill}>
       <AppText capScale style={styles.onPhotoText} variant="meta">
-        {legacyT(type)}
+        {labelOf(type)}
       </AppText>
     </View>
   )
@@ -570,7 +571,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
               const status = statusOf(shop)
               return (
                 <Pressable
-                  accessibilityLabel={t`${ph({ p0: shop.name })}${ph({ p1: shop.branch ? ` ${shop.branch}` : "" })}, ${ph({ p2: shopsQuery.remote && shop.distanceM <= 0 ? "거리 정보 없음" : formatDistance(shop.distanceM) })}, ${ph({ p3: status.label })}, 매장 상세 보기`}
+                  accessibilityLabel={t`${ph({ p0: shop.name })}${ph({ p1: shop.branch ? ` ${shop.branch}` : "" })}, ${ph({ p2: shopsQuery.remote && shop.distanceM <= 0 ? t`거리 정보 없음` : formatDistance(shop.distanceM) })}, ${ph({ p3: translate(status.label) })}, 매장 상세 보기`}
                   accessibilityRole="button"
                   key={shop.id}
                   onPress={() => openShop(shop.id)}
@@ -587,8 +588,8 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
                       </AppText>
                     ) : null}
                     <AppText capScale numberOfLines={1} tone="muted" variant="meta">
-                      {`${shopsQuery.remote && shop.distanceM <= 0 ? "거리 정보 없음" : formatDistance(shop.distanceM)} · `}
-                      <AppText style={status.open && styles.openStatus} tone="muted" variant="meta">{legacyT(status.label)}</AppText>
+                      {`${shopsQuery.remote && shop.distanceM <= 0 ? t`거리 정보 없음` : formatDistance(shop.distanceM)} · `}
+                      <AppText style={status.open && styles.openStatus} tone="muted" variant="meta">{translate(status.label)}</AppText>
                     </AppText>
                   </View>
                 </Pressable>

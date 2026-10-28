@@ -1,6 +1,6 @@
-import { t } from "@lingui/core/macro";
+import { t, msg } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
+import { translate } from "@raota/shared"
 import { useState, type ReactNode } from "react"
 import { Check } from "lucide-react-native"
 import { Pressable, StyleSheet, View } from "react-native"
@@ -22,7 +22,7 @@ export interface ConsentValues {
 
 export const NO_CONSENTS: ConsentValues = { terms: false, privacy: false, marketing: false }
 
-export const CONSENT_REQUIRED_ERROR = "필수 약관 두 가지에 동의해야 가입할 수 있어요."
+export const CONSENT_REQUIRED_ERROR = msg`필수 약관 두 가지에 동의해야 가입할 수 있어요.`
 
 /** 동의 행 전체를 44pt 터치 영역으로 만들고 상태를 원형 체크에 표시한다 */
 function CheckRow({
@@ -81,7 +81,7 @@ export interface ConsentChecklistProps {
   errorMessage?: string
 }
 
-export function ConsentChecklist({ value, onChange, showError, errorMessage = legacyT(CONSENT_REQUIRED_ERROR) }: ConsentChecklistProps) {
+export function ConsentChecklist({ value, onChange, showError, errorMessage = translate(CONSENT_REQUIRED_ERROR) }: ConsentChecklistProps) {
   useLocale()
   const [policy, setPolicy] = useState<PolicyType | null>(null)
   const error = showError && (!value.terms || !value.privacy)

@@ -1,25 +1,15 @@
 import { i18n, type MessageDescriptor } from "@lingui/core"
-import { coreMessages } from "./core"
 import { messages as enMessages } from "./locales/en/messages"
 import { messages as esMessages } from "./locales/es/messages"
 import { messages as jaMessages } from "./locales/ja/messages"
 import { messages as koMessages } from "./locales/ko/messages"
 import { messages as zhMessages } from "./locales/zh/messages"
-import { mobileFlowMessages } from "./mobile-flows"
-import { mobileSurfaceMessages } from "./mobile-surfaces"
-import { webMessages } from "./web"
 
 export const SUPPORTED_LOCALES = ["ko", "en", "zh", "ja", "es"] as const
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number]
 export const DEFAULT_LOCALE: AppLocale = "ko"
 
 const intlLocales: Record<AppLocale, string> = { ko: "ko-KR", en: "en-US", zh: "zh-CN", ja: "ja-JP", es: "es-ES" }
-export const translationCatalog: Record<string, readonly [string, string, string, string]> = {
-  ...webMessages,
-  ...mobileFlowMessages,
-  ...mobileSurfaceMessages,
-  ...coreMessages,
-}
 
 /** Match BCP-47 language tags in preference order. Chinese uses Simplified Chinese copy. */
 export function resolveLocale(preferences: readonly (string | null | undefined)[]): AppLocale {
@@ -59,17 +49,6 @@ export function subscribeLocale(listener: () => void): () => void {
   return () => { listeners.delete(listener) }
 }
 
-export type TranslationParams = Readonly<Record<string, string | number>>
-
-/** Only app-authored copy is passed here. Persisted enums and user content stay unchanged. */
-export function t(source: string, params: TranslationParams = {}, locale: AppLocale = currentLocale): string {
-  const index = { en: 0, zh: 1, ja: 2, es: 3 }[locale as "en" | "zh" | "ja" | "es"]
-  const message = locale === "ko" ? source : (translationCatalog[source]?.[index] ?? source)
-  return message.replace(/\{(\w+)\}/g, (placeholder, key: string) =>
-    Object.prototype.hasOwnProperty.call(params, key) ? String(params[key]) : placeholder,
-  )
-}
-
 function dateValue(value: Date | string | number): Date {
   if (value instanceof Date) return value
   if (typeof value === "string") {
@@ -88,6 +67,18 @@ export function formatDate(value: Date | string | number, options?: Intl.DateTim
 
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(getIntlLocale(), options).format(value)
+}
+
+const LIST_SEPARATORS: Record<AppLocale, string> = { ko: ", ", en: ", ", zh: "、", ja: "、", es: ", " }
+
+/**
+ * 여러 항목을 그 언어의 목록으로 잇는다. 한국어는 앱이 원래 쓰던 대로 쉼표로만 잇는다("A, B 및 C"로 바꾸지 않는다).
+ * 다른 언어는 Intl.ListFormat(없는 엔진이면 언어별 구분자)으로 잇는다
+ */
+export function formatList(items: readonly string[]): string {
+  const ListFormat = (Intl as { ListFormat?: new (locale: string, options: { type: string }) => { format(list: readonly string[]): string } }).ListFormat
+  if (currentLocale !== "ko" && ListFormat) return new ListFormat(getIntlLocale(), { type: "conjunction" }).format(items)
+  return items.join(LIST_SEPARATORS[currentLocale])
 }
 
 export { labelOf } from "./labels"

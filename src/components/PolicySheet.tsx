@@ -1,14 +1,15 @@
-import { t, ph } from "@lingui/core/macro";
-import { getLocale, t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { getLocale, translate } from "@raota/shared"
 import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 export type PolicyType = 'terms' | 'privacy'
 
 /** 홈 푸터와 회원가입이 함께 쓰는 약관 본문. 출시 전 법무 검토를 거친 전문으로 교체한다. */
-export const POLICIES: Record<PolicyType, { title: string; sections: Array<{ heading: string; body: string }> }> = {
+export const POLICIES: Record<PolicyType, { title: MessageDescriptor; sections: Array<{ heading: string; body: string }> }> = {
   terms: {
-    title: '서비스 이용약관',
+    title: msg`서비스 이용약관`,
     sections: [
       { heading: '제1조 (목적)', body: '본 약관은 RAOTA(라오타) 서비스의 이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.' },
       { heading: '제2조 (회원의 의무)', body: '회원은 라멘 방문 기록 및 리뷰 작성 시 타인의 권리를 침해하거나 허위 사실을 유포하지 않아야 합니다.' },
@@ -16,7 +17,7 @@ export const POLICIES: Record<PolicyType, { title: string; sections: Array<{ hea
     ],
   },
   privacy: {
-    title: '개인정보처리방침',
+    title: msg`개인정보처리방침`,
     sections: [
       { heading: '1. 수집하는 개인정보 항목', body: '닉네임, 프로필 이미지, 선호 라멘 스타일, 라멘로그 데이터' },
       { heading: '2. 수집 및 이용 목적', body: '회원 식별, 라멘로그 캘린더 동기화, 맞춤형 라멘 큐레이션 및 등급 산정' },
@@ -56,7 +57,7 @@ export default function PolicySheet({ type, title, onClose, footer }: Props) {
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col justify-end">
-      <button type="button" className="anim-fade-in absolute inset-0 bg-black/50" onClick={onClose} aria-label={t`${ph({ v0: legacyT(policy.title) })} 닫기`} tabIndex={-1} />
+      <button type="button" className="anim-fade-in absolute inset-0 bg-black/50" onClick={onClose} aria-label={t`${ph({ v0: translate(policy.title) })} 닫기`} tabIndex={-1} />
       <section
         role="dialog"
         aria-modal="true"
@@ -68,7 +69,7 @@ export default function PolicySheet({ type, title, onClose, footer }: Props) {
         </div>
         <div className="flex items-center justify-between border-b border-[#F2F2F2] py-1 pl-5 pr-2">
           <h2 id={titleId} className="text-[17px] font-black text-[#25282B]">
-            {legacyT(title ?? policy.title)}
+            {title ?? translate(policy.title)}
           </h2>
           <button
             ref={closeRef}

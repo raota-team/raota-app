@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { formatDate, getIntlLocale, t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { formatDate, getIntlLocale, labelOf, translate } from "@raota/shared"
 import { useState, useRef, useEffect, useMemo, useId, type ReactNode } from 'react'
 import { ActivityCalendar, type Activity } from 'react-activity-calendar'
 import 'react-activity-calendar/tooltips.css'
@@ -55,7 +56,7 @@ type ActivityTab = 'logs' | 'visits' | 'saved' | 'posts' | 'comments'
 
 interface MyPostItem {
   id: string
-  category: string
+  category: MessageDescriptor
   title: string
   content: string
   createdAt: string
@@ -67,7 +68,7 @@ interface MyPostItem {
 const DEMO_POSTS: MyPostItem[] = [
   {
     id: '1',
-    category: '맛집후기',
+    category: msg`맛집후기`,
     title: '망원·합정 일대 쇼유 라멘 3곳 비교해봤어요',
     content: '멘야준, 세상끝의라멘, 라멘베라보를 두 달 동안 번갈아 다녀왔습니다. 자가제면과 간장 타레 밸런스 기준으로 정리했어요.',
     createdAt: '2026. 08. 23',
@@ -76,7 +77,7 @@ const DEMO_POSTS: MyPostItem[] = [
   },
   {
     id: '2',
-    category: '라멘꿀팁',
+    category: msg`라멘꿀팁`,
     title: '오레노라멘 토리파이탄 카에다마 200% 즐기는 법',
     content: '국물이 1/3 남았을 때 카에다마를 요청하고 후추와 다시마 식초를 두 방울 떨어뜨리면 새로운 감칠맛이 열립니다.',
     createdAt: '2026. 05. 03',
@@ -85,7 +86,7 @@ const DEMO_POSTS: MyPostItem[] = [
   },
   {
     id: '3',
-    category: '자유게시판',
+    category: msg`자유게시판`,
     title: '하쿠텐 평일 점심 웨이팅 현황 공유',
     content: '11시 20분 도착 기준 대기 4팀 있었습니다. 회전율 빨라서 15분 만에 착석했네요. 이에케 기름 보통 추천!',
     createdAt: '2026. 08. 10',
@@ -184,12 +185,12 @@ function BottomSheet({ open, onClose, title, titleId, busy = false, children, fo
   if (!open) return null
   return (
     <div className="absolute inset-0 z-50 flex flex-col justify-end overflow-hidden anim-fade-in">
-      <button type="button" className="absolute inset-0 bg-black/50" onClick={() => !busy && onClose()} aria-label={t`${ph({ v0: legacyT(title) })} 닫기`} />
+      <button type="button" className="absolute inset-0 bg-black/50" onClick={() => !busy && onClose()} aria-label={t`${ph({ v0: title })} 닫기`} />
       <section role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative z-10 flex max-h-[85%] flex-col rounded-t-xl bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.12)] anim-slide-up">
         <div className="flex items-center justify-between border-b border-line py-2 pl-5 pr-2">
           <div className="flex items-center gap-2">
             {icon}
-            <h2 id={titleId} className="text-[17px] font-extrabold">{legacyT(title)}</h2>
+            <h2 id={titleId} className="text-[17px] font-extrabold">{title}</h2>
           </div>
           <button ref={closeRef} type="button" disabled={busy} onClick={onClose} className="report-control flex h-11 w-11 items-center justify-center rounded-full hover:bg-canvas-soft disabled:opacity-50" aria-label={t`닫기`}>
             <X size={20} aria-hidden="true" />
@@ -233,13 +234,13 @@ function ConfirmDialog({ open, title, titleId, confirmLabel, busy = false, destr
   if (!open) return null
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center px-8 anim-fade-in">
-      <button type="button" tabIndex={-1} className="absolute inset-0 bg-black/50" onClick={() => !busy && onCancel()} aria-label={t`${ph({ v0: legacyT(title) })} 닫기`} />
+      <button type="button" tabIndex={-1} className="absolute inset-0 bg-black/50" onClick={() => !busy && onCancel()} aria-label={t`${ph({ v0: title })} 닫기`} />
       <section role="alertdialog" aria-modal="true" aria-labelledby={titleId} className="anim-scale-up relative z-10 w-full max-w-[320px] rounded-[12px] bg-white px-5 pb-5 pt-6 text-center text-ink shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
-        <h2 id={titleId} className="text-[17px] font-extrabold">{legacyT(title)}</h2>
+        <h2 id={titleId} className="text-[17px] font-extrabold">{title}</h2>
         {children && <div className="mt-2 text-[14px] leading-6 text-ink-sub">{children}</div>}
         <div className="mt-5 flex gap-2">
           <button ref={cancelRef} type="button" disabled={busy} onClick={onCancel} className="report-control min-h-12 flex-1 rounded-[60px] border border-line bg-white text-[14px] font-bold text-ink hover:bg-canvas-soft disabled:opacity-60">{t`취소`}</button>
-          <button type="button" disabled={busy} onClick={onConfirm} className={`report-control min-h-12 flex-1 rounded-[60px] text-[14px] font-bold text-white disabled:opacity-60 ${destructive ? 'bg-brand' : 'bg-ink'}`}>{legacyT(confirmLabel)}</button>
+          <button type="button" disabled={busy} onClick={onConfirm} className={`report-control min-h-12 flex-1 rounded-[60px] text-[14px] font-bold text-white disabled:opacity-60 ${destructive ? 'bg-brand' : 'bg-ink'}`}>{confirmLabel}</button>
         </div>
       </section>
     </div>
@@ -340,14 +341,14 @@ export default function MyScreen({
   const handleSaveStyle = (style: string) => {
     onUpdateUser?.({ favoriteRamenType: style })
     setIsStyleModalOpen(false)
-    showToast(t`선호 스타일을 ${ph({ style: legacyT(style) })}로 바꿨어요`)
+    showToast(t`선호 스타일을 ${ph({ style: labelOf(style) })}로 바꿨어요`)
   }
 
   const handleSaveEmail = (event: React.FormEvent) => {
     event.preventDefault()
     const trimmed = newEmail.trim()
     if (!trimmed || !trimmed.includes('@') || !trimmed.includes('.')) {
-      showToast('올바른 이메일 주소를 입력해 주세요')
+      showToast(t`올바른 이메일 주소를 입력해 주세요`)
       return
     }
     setIsEmailUpdating(true)
@@ -355,7 +356,7 @@ export default function MyScreen({
       setIsEmailUpdating(false)
       onUpdateUser?.({ email: trimmed })
       setIsEmailModalOpen(false)
-      showToast('이메일 주소를 바꿨어요')
+      showToast(t`이메일 주소를 바꿨어요`)
     }, 600)
   }
 
@@ -382,13 +383,13 @@ export default function MyScreen({
   const streak = useMemo(() => longestStreak(bowls), [bowls])
   const today = seoulToday()
   const years = useMemo(() => [...new Set(bowls.map(item => item.date.slice(0, 4)))].sort().reverse(), [bowls])
-  const periodOptions = [{ value: '1y', label: '최근 1년' }, ...years.map(year => ({ value: year, label: t`${year}년` }))]
+  const periodOptions = [{ value: '1y', label: t`최근 1년` }, ...years.map(year => ({ value: year, label: t`${year}년` }))]
   const calendar = useMemo(() => {
     if (period === '1y') return calendarActivities(bowls, addDays(today, -364), today)
     const end = `${period}-12-31` < today ? `${period}-12-31` : today
     return calendarActivities(bowls, `${period}-01-01`, end)
   }, [bowls, period, today])
-  const periodLabel = periodOptions.find(option => option.value === period)?.label ?? '최근 1년'
+  const periodLabel = periodOptions.find(option => option.value === period)?.label ?? periodOptions[0].label
 
   // 캘린더는 항상 최근 날짜(오른쪽 끝)부터 보여준다.
   useEffect(() => {
@@ -446,11 +447,11 @@ export default function MyScreen({
   }
 
   const tabs: { id: ActivityTab; label: string; count: number; Icon: typeof MapPin }[] = [
-    { id: 'logs', label: '라멘로그', count: recordCount, Icon: RamenIcon as unknown as typeof MapPin },
-    { id: 'visits', label: '방문매장', count: visits.length, Icon: MapPin },
-    { id: 'saved', label: '가고싶어요', count: savedShops.length, Icon: Bookmark },
-    { id: 'posts', label: '작성글', count: posts.length, Icon: FileText },
-    { id: 'comments', label: '댓글', count: comments.length, Icon: MessageSquare },
+    { id: 'logs', label: t`라멘로그`, count: recordCount, Icon: RamenIcon as unknown as typeof MapPin },
+    { id: 'visits', label: t`방문매장`, count: visits.length, Icon: MapPin },
+    { id: 'saved', label: t`가고싶어요`, count: savedShops.length, Icon: Bookmark },
+    { id: 'posts', label: t`작성글`, count: posts.length, Icon: FileText },
+    { id: 'comments', label: t`댓글`, count: comments.length, Icon: MessageSquare },
   ]
 
   const panelId = (tab: ActivityTab) => `my-panel-${tab}`
@@ -458,8 +459,8 @@ export default function MyScreen({
 
   const emptyState = (title: string, description: string) => (
     <div className="py-10 text-center">
-      <p className="text-[15px] font-bold text-ink">{legacyT(title)}</p>
-      <p className="mt-1 text-[13px] leading-5 text-ink-sub">{legacyT(description)}</p>
+      <p className="text-[15px] font-bold text-ink">{title}</p>
+      <p className="mt-1 text-[13px] leading-5 text-ink-sub">{description}</p>
     </div>
   )
 
@@ -493,7 +494,7 @@ export default function MyScreen({
           </dl>
 
           <button type="button" onClick={() => setIsGradeGuideOpen(true)} className="report-control mt-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-md text-[13px] font-medium text-white/85 hover:text-white">
-            <span className="flex items-center gap-1.5 font-bold text-white"><Award size={16} aria-hidden="true" />Lv.{level.number} {legacyT(level.title)}</span>
+            <span className="flex items-center gap-1.5 font-bold text-white"><Award size={16} aria-hidden="true" />Lv.{level.number} {labelOf(level.title)}</span>
             <span className="flex items-center gap-1">{level.nextLevel ? t`다음 등급까지 ${ph({ v0: level.nextLevel.min - recordCount })}그릇` : t`최고 등급`}<ChevronRight size={16} aria-hidden="true" /></span>
           </button>
           <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/15" aria-hidden="true"><div className="h-full rounded-full bg-brand" style={{ width: `${level.progress}%` }} /></div>
@@ -509,7 +510,7 @@ export default function MyScreen({
               return (
                 <button key={id} id={tabId(id)} type="button" role="tab" aria-selected={active} aria-controls={panelId(id)} onClick={event => handleTabClick(id, event)} className={`flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[60px] px-3.5 text-[13px] font-bold transition-colors ${active ? 'bg-ink text-white' : 'border border-line bg-white text-ink hover:bg-canvas-soft'}`}>
                   <Icon size={15} aria-hidden="true" />
-                  <span>{legacyT(label)}</span>
+                  <span>{label}</span>
                   <span className={`rounded-full px-1.5 py-0.5 text-[12px] font-bold ${active ? 'bg-white/20 text-white' : 'bg-canvas-soft text-ink-sub'}`}>{count}</span>
                 </button>
               )
@@ -524,7 +525,7 @@ export default function MyScreen({
                   <div>
                     <label htmlFor={ids.period} className="sr-only">{t`캘린더 기간`}</label>
                     <select id={ids.period} value={period} onChange={event => setPeriod(event.target.value)} className="report-control min-h-11 rounded-md border border-line bg-white px-3 text-[13px] font-bold text-ink">
-                      {periodOptions.map(option => <option key={option.value} value={option.value}>{legacyT(option.label)}</option>)}
+                      {periodOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                   </div>
                 </div>
@@ -543,13 +544,13 @@ export default function MyScreen({
                       tooltips={{ activity: { text: activity => activity.count > 0 ? t`${ph({ date: formatDate(activity.date) })}: ${ph({ count: activity.count })}그릇` : t`${ph({ date: formatDate(activity.date) })}: 기록 없음` } }}
                       labels={{
                         months: Array.from({length: 12}, (_, month) => formatDate(new Date(2026, month, 1), {month: 'short'})),
-                        weekdays: ['일', '월', '화', '수', '목', '금', '토'].map(day => legacyT(day)),
+                        weekdays: Array.from({length: 7}, (_, day) => formatDate(new Date(2026, 0, 4 + day), {weekday: 'short'})),
                       }}
                     />
                   </div>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3 border-t border-line pt-3 text-[13px]">
-                  <p className="font-medium text-ink-sub"><strong className="font-extrabold text-ink">{legacyT(periodLabel)} {calendar.total}{t`그릇`}</strong>{streak > 1 ? t` · 최장 ${ph({ v0: streak })}일 연속` : ''}</p>
+                  <p className="font-medium text-ink-sub"><strong className="font-extrabold text-ink">{periodLabel} {calendar.total}{t`그릇`}</strong>{streak > 1 ? t` · 최장 ${ph({ v0: streak })}일 연속` : ''}</p>
                   <div className="flex shrink-0 items-center gap-1 text-[12px] text-ink-sub" aria-label={t`색이 진할수록 그날 기록이 많아요`}>
                     <span>{t`적음`}</span>
                     <div className="flex gap-0.5" aria-hidden="true">{CALENDAR_THEME.light.map(color => <span key={color} className="h-2.5 w-2.5 rounded-xs" style={{ backgroundColor: color }} />)}</div>
@@ -576,7 +577,7 @@ export default function MyScreen({
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="flex items-center gap-1.5 text-[15px] font-bold text-ink"><span className="truncate">{log.shop}{detail.branch ? <span className="ml-1 text-[13px] font-medium text-ink-sub">{detail.branch}</span> : null}</span>{log.isNew && <span className="shrink-0 rounded-xs bg-brand px-1.5 py-0.5 text-[12px] font-bold text-white">{t`신규`}</span>}</p>
-                              <p className="mt-0.5 truncate text-[13px] text-ink-sub">{log.menu} · {legacyT(log.type)}</p>
+                              <p className="mt-0.5 truncate text-[13px] text-ink-sub">{log.menu} · {labelOf(log.type)}</p>
                             </div>
                             <span className="shrink-0 text-[12px] font-bold text-ink-sub">{shortDate(log.date)}</span>
                           </button>
@@ -604,7 +605,7 @@ export default function MyScreen({
                       { key: 'recent', label: t`최신순` },
                       { key: 'name', label: t`이름순` },
                     ].map(option => (
-                      <button key={option.key} type="button" aria-pressed={visitedShopSort === option.key} onClick={() => setVisitedShopSort(option.key as typeof visitedShopSort)} className={`report-control min-h-11 flex-1 rounded-sm text-[13px] font-bold transition-colors ${visitedShopSort === option.key ? 'bg-white text-ink' : 'text-ink-sub hover:text-ink'}`}>{legacyT(option.label)}</button>
+                      <button key={option.key} type="button" aria-pressed={visitedShopSort === option.key} onClick={() => setVisitedShopSort(option.key as typeof visitedShopSort)} className={`report-control min-h-11 flex-1 rounded-sm text-[13px] font-bold transition-colors ${visitedShopSort === option.key ? 'bg-white text-ink' : 'text-ink-sub hover:text-ink'}`}>{option.label}</button>
                     ))}
                   </div>
                   <div className="relative">
@@ -688,7 +689,7 @@ export default function MyScreen({
                   {posts.map(post => (
                     <li key={post.id}>
                       <button type="button" onClick={onLoungeClick} className="report-control -mx-2 w-[calc(100%+16px)] rounded-md px-2 py-3 text-left hover:bg-canvas-soft">
-                        <p className="flex items-center gap-2 text-[12px] font-medium text-ink-sub"><span className="rounded-xs bg-canvas-soft px-1.5 py-0.5 font-bold text-ink">{legacyT(post.category)}</span>{post.createdAt}</p>
+                        <p className="flex items-center gap-2 text-[12px] font-medium text-ink-sub"><span className="rounded-xs bg-canvas-soft px-1.5 py-0.5 font-bold text-ink">{translate(post.category)}</span>{post.createdAt}</p>
                         <p className="mt-1.5 text-[15px] font-bold leading-snug text-ink">{post.title}</p>
                         <p className="mt-1 line-clamp-2 text-[13px] leading-5 text-ink-sub">{post.content}</p>
                         <p className="mt-2 flex items-center gap-3 text-[12px] font-bold text-ink-sub">
@@ -735,7 +736,7 @@ export default function MyScreen({
               <div className="flex min-h-12 items-center justify-between gap-3 py-1">
                 <dt className="shrink-0 text-[14px] font-medium text-ink-sub">{t`선호 스타일`}</dt>
                 <dd className="flex min-w-0 items-center gap-1">
-                  <span className="truncate text-[14px] font-bold text-ink">{user?.favoriteRamenType ? legacyT(user.favoriteRamenType) : t`아직 안 정했어요`}</span>
+                  <span className="truncate text-[14px] font-bold text-ink">{user?.favoriteRamenType ? labelOf(user.favoriteRamenType) : t`아직 안 정했어요`}</span>
                   <button type="button" onClick={() => setIsStyleModalOpen(true)} className="report-control min-h-11 min-w-11 shrink-0 rounded-md px-2 text-[13px] font-bold text-ink hover:bg-canvas-soft">{t`변경`}</button>
                 </dd>
               </div>
@@ -753,15 +754,15 @@ export default function MyScreen({
 
       <BottomSheet open={isGradeGuideOpen} onClose={() => setIsGradeGuideOpen(false)} title={t`라멘 활동 등급`} titleId={ids.grade}
         footer={<button type="button" onClick={() => setIsGradeGuideOpen(false)} className="report-control min-h-12 w-full rounded-[60px] bg-ink text-[14px] font-bold text-white">{t`확인`}</button>}>
-        <p className="text-[14px] leading-6 text-ink-sub">{t`공개 라멘로그 수를 기준으로 등급이 올라가요. 지금은 ${ph({ count: recordCount })}그릇, Lv.${ph({ level: level.number })} ${ph({ title: legacyT(level.title) })}예요.`}</p>
+        <p className="text-[14px] leading-6 text-ink-sub">{t`공개 라멘로그 수를 기준으로 등급이 올라가요. 지금은 ${ph({ count: recordCount })}그릇, Lv.${ph({ level: level.number })} ${ph({ title: labelOf(level.title) })}예요.`}</p>
         <ol className="mt-4 divide-y divide-line border-y border-line">
           {RAMEN_ACTIVITY_LEVELS.map((item, index) => {
             const isCurrent = index + 1 === level.number
             return (
               <li key={item.title} className={`flex items-center justify-between gap-3 px-1 py-3 ${isCurrent ? 'bg-brand-light' : ''}`} aria-current={isCurrent ? 'true' : undefined}>
                 <div className="min-w-0">
-                  <p className={`text-[15px] font-bold ${isCurrent ? 'text-brand' : 'text-ink'}`}>Lv.{index + 1} {legacyT(item.title)}</p>
-                  <p className="mt-0.5 text-[13px] text-ink-sub">{item.min === 0 ? legacyT(item.desc) : t`라멘로그 ${ph({ count: item.min })}그릇 이상`}</p>
+                  <p className={`text-[15px] font-bold ${isCurrent ? 'text-brand' : 'text-ink'}`}>Lv.{index + 1} {labelOf(item.title)}</p>
+                  <p className="mt-0.5 text-[13px] text-ink-sub">{item.min === 0 ? labelOf(item.desc) : t`라멘로그 ${ph({ count: item.min })}그릇 이상`}</p>
                 </div>
                 {isCurrent && <span className="shrink-0 text-[12px] font-bold text-brand">{t`내 등급`}</span>}
               </li>
@@ -777,7 +778,7 @@ export default function MyScreen({
             const selected = user?.favoriteRamenType === style
             return (
               <button key={style} type="button" aria-pressed={selected} onClick={() => handleSaveStyle(style)} className={`report-control flex min-h-12 items-center justify-between rounded-md border px-3 text-left text-[14px] font-bold transition-colors ${selected ? 'border-brand bg-brand-light text-brand' : 'border-line bg-white text-ink hover:bg-canvas-soft'}`}>
-                {style}
+                {labelOf(style)}
                 {selected && <span className="text-[12px]">{t`선택됨`}</span>}
               </button>
             )
@@ -803,7 +804,7 @@ export default function MyScreen({
         open={isLogoutConfirmOpen}
         title={t`로그아웃할까요?`}
         titleId={ids.logout}
-        confirmLabel="로그아웃"
+        confirmLabel={t`로그아웃`}
         onCancel={() => setIsLogoutConfirmOpen(false)}
         onConfirm={() => { setIsLogoutConfirmOpen(false); onLogout?.() }}
       >
@@ -813,7 +814,7 @@ export default function MyScreen({
         open={isWithdrawModalOpen}
         title={t`회원 탈퇴`}
         titleId={ids.withdraw}
-        confirmLabel={isWithdrawing ? '처리 중…' : '탈퇴하기'}
+        confirmLabel={isWithdrawing ? t`처리 중…` : t`탈퇴하기`}
         busy={isWithdrawing}
         destructive
         onCancel={() => setIsWithdrawModalOpen(false)}
@@ -831,7 +832,7 @@ export default function MyScreen({
         <div role="status" className="pointer-events-none absolute bottom-4 left-1/2 z-50 -translate-x-1/2 anim-fade-in-up">
           <div className="flex items-center gap-2 whitespace-nowrap rounded-[60px] bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
             <RamenIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span>{legacyT(toastMsg)}</span>
+            <span>{toastMsg}</span>
           </div>
         </div>
       )}

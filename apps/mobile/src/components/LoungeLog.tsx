@@ -1,6 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { router } from "expo-router"
@@ -29,7 +28,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated"
 
-import { TASTE_AXES, scoresFromLog, type ContentReportReason, type RamenLog } from "@raota/shared"
+import { TASTE_AXES, labelOf, scoresFromLog, translate, type ContentReportReason, type RamenLog } from "@raota/shared"
 import { track } from "../analytics"
 import {
   REPORT_REASONS,
@@ -96,7 +95,7 @@ export function LogAuthorRow({ log }: { log: RamenLog }) {
       <View style={styles.authorText}>
         <AppText lineBreakStrategyIOS="hangul-word" variant="bodyStrong">{log.author.name}</AppText>
         <AppText capScale numberOfLines={1} tone="muted" variant="meta">
-          {[legacyT(grade), formatVisitDate(log.visitedAt)].filter(Boolean).join(" · ")}
+          {[labelOf(grade), formatVisitDate(log.visitedAt)].filter(Boolean).join(" · ")}
         </AppText>
       </View>
     </View>
@@ -214,8 +213,8 @@ export function TasteTags({ tags, style }: { tags: string[]; style?: StyleProp<V
   useLocale()
   if (tags.length === 0) return null
   return (
-    <ScrollView accessibilityLabel={t`맛 태그: ${ph({ p0: tags.map((tag) => legacyT(tag)).join(", ") })}`} accessible contentContainerStyle={styles.tags} horizontal showsHorizontalScrollIndicator={false} style={style}>
-      {tags.map((tag) => <Tag key={tag} label={`#${legacyT(tag)}`} />)}
+    <ScrollView accessibilityLabel={t`맛 태그: ${ph({ p0: tags.map((tag) => labelOf(tag)).join(", ") })}`} accessible contentContainerStyle={styles.tags} horizontal showsHorizontalScrollIndicator={false} style={style}>
+      {tags.map((tag) => <Tag key={tag} label={`#${labelOf(tag)}`} />)}
     </ScrollView>
   )
 }
@@ -228,7 +227,7 @@ export function LogTasteFingerprint({ log }: { log: RamenLog }) {
   const words = tasteSummaryOf(log)
   const rows = TASTE_AXES.map(({ key, label }, index) => ({
     key,
-    label: key === "satisfaction" ? "만족도" : key === "revisit" ? "재방문" : label,
+    label: key === "satisfaction" ? t`만족도` : key === "revisit" ? t`재방문` : labelOf(label),
     value: scores[key],
     text: words[index].word,
   }))
@@ -295,7 +294,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
   const summary = compactTasteSummary(log)
   const bodyLabel = [
     t`${ph({ name: log.author.name })}님의 ${ph({ menu: log.menuName })}`,
-    t`${ph({ type: legacyT(log.ramenType) })}, ${ph({ date: formatVisitDate(log.visitedAt) })} 방문`,
+    t`${ph({ type: labelOf(log.ramenType) })}, ${ph({ date: formatVisitDate(log.visitedAt) })} 방문`,
     summary?.label,
     log.note,
   ].filter(Boolean).join(". ")
@@ -314,7 +313,7 @@ export const LoungeLogCard = memo(function LoungeLogCard({ log, tall, feedKey, b
           <View style={[styles.feedPhoto, { height: tall ? 250 : 180 }]}>
             <ResilientUriImage accessibilityLabel="" style={StyleSheet.absoluteFill} uri={photos[0]} />
             <View style={styles.typePill}>
-              <AppText capScale style={styles.onPhotoText} variant="meta">{legacyT(log.ramenType)}</AppText>
+              <AppText capScale style={styles.onPhotoText} variant="meta">{labelOf(log.ramenType)}</AppText>
             </View>
             {photos.length > 1 ? (
               <View style={styles.photoCount}>
@@ -608,7 +607,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
             const checked = reason === item.value
             return (
               <Pressable
-                accessibilityLabel={legacyT(item.label)}
+                accessibilityLabel={translate(item.label)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked }}
                 key={item.value}
@@ -617,7 +616,7 @@ export function useLoungeModeration({ onHidden, onReported, toastStyle }: Lounge
               >
                 <View style={[styles.radio, checked && styles.radioChecked]}>{checked ? <View style={styles.radioDot} /> : null}</View>
                 <AppText style={styles.bold} variant="body">
-                  {legacyT(item.label)}
+                  {translate(item.label)}
                 </AppText>
               </Pressable>
             )

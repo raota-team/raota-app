@@ -1,5 +1,4 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
 import { useCallback, useEffect, useState } from 'react'
 import { Bell, PenLine, X, Crosshair, Bookmark, Search, ChevronRight, Sparkles, Check } from 'lucide-react'
 import type { UserProfile } from '../types'
@@ -24,7 +23,7 @@ interface Props {
 
 const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${m}m`)
 const statusOf = (shop: ShopCatalogItem) =>
-  shop.businessStatus === 'OPERATIONAL' ? (shop.isOpen ? '영업 중' : '준비 중') : '영업 정보 확인 필요'
+  shop.businessStatus === 'OPERATIONAL' ? (shop.isOpen ? t`영업 중` : t`준비 중`) : t`영업 정보 확인 필요`
 
 /** 에디터 픽. 원장에서 리뷰 요약이 있는 매장을 오늘의 큐레이션으로 쓴다. */
 const TODAY_PICK = findShopByName('멘야준') ?? SHOP_CATALOG[0]
@@ -62,9 +61,9 @@ export default function HomeScreen({
   }, [fabOpen])
 
   const fabItems: Array<{ mode: 'nearby' | 'saved' | 'search'; label: string; Icon: typeof Crosshair; delay: string }> = [
-    { mode: 'nearby', label: '주변 라멘집 기록하기', Icon: Crosshair, delay: '0s' },
-    { mode: 'saved', label: '저장 목록에서 기록하기', Icon: Bookmark, delay: '0.05s' },
-    { mode: 'search', label: '직접 검색해서 기록하기', Icon: Search, delay: '0.1s' },
+    { mode: 'nearby', label: t`주변 라멘집 기록하기`, Icon: Crosshair, delay: '0s' },
+    { mode: 'saved', label: t`저장 목록에서 기록하기`, Icon: Bookmark, delay: '0.05s' },
+    { mode: 'search', label: t`직접 검색해서 기록하기`, Icon: Search, delay: '0.1s' },
   ]
 
   return (
@@ -194,7 +193,7 @@ export default function HomeScreen({
                 <div className="flex gap-1.5 min-w-0 overflow-hidden">
                   {TODAY_PICK.tags.slice(0, 2).map(tag => (
                     <span key={tag} className="bg-[#F2F2F2] px-2.5 py-1 rounded-[4px] font-bold text-[12px] whitespace-nowrap">
-                      {legacyT(tag)}
+                      {tag}
                     </span>
                   ))}
                 </div>
@@ -293,7 +292,7 @@ export default function HomeScreen({
                       <div className="flex items-center gap-1.5 mt-1 text-[12px] font-bold whitespace-nowrap">
                         <span className="text-[#25282B]">{formatDistance(shop.distanceM)}</span>
                         <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
-                        <span className={open ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {legacyT(statusOf(shop))}</span>
+                        <span className={open ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {statusOf(shop)}</span>
                       </div>
                     </div>
                   </button>
@@ -336,7 +335,7 @@ export default function HomeScreen({
                 style={{ animationDelay: delay }}
                 className="flex items-center gap-2 animate-[fadeSlideUp_0.15s_ease-out_both] active:scale-95 transition-transform"
               >
-                <span className="text-[13px] font-bold text-[#25282B] bg-white px-3.5 py-2.5 rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">{legacyT(label)}</span>
+                <span className="text-[13px] font-bold text-[#25282B] bg-white px-3.5 py-2.5 rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">{label}</span>
                 <span className="w-11 h-11 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] flex items-center justify-center shrink-0">
                   <Icon className="w-4.5 h-4.5 text-[#E60000]" aria-hidden="true" />
                 </span>

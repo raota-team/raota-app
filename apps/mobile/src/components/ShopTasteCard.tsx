@@ -1,6 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
 import { useEffect, useRef, type ReactNode } from "react"
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native"
 import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated"
@@ -57,12 +56,12 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
   const headline = revisitHeadlineOf(summary)
   const sampleNote = showRatio ? null : t`기록이 ${ph({ count: SHOP_TASTE_RATIO_MIN_LOGS })}개 이상 쌓이면 비율로 보여드려요`
   const cells = [
-    { label: "많이 먹은 메뉴", value: summary.topMenuCount > 1 ? t`${ph({ menu: summary.topMenu })} · ${ph({ count: summary.topMenuCount })}명` : summary.topMenu },
-    { label: "육수", value: summary.broth },
-    { label: "면", value: summary.noodle },
-    { label: "토핑", value: summary.topping },
+    { key: "menu", label: t`많이 먹은 메뉴`, value: summary.topMenuCount > 1 ? t`${ph({ menu: summary.topMenu })} · ${ph({ count: summary.topMenuCount })}명` : summary.topMenu },
+    { key: "broth", label: t`육수`, value: summary.broth },
+    { key: "noodle", label: t`면`, value: summary.noodle },
+    { key: "topping", label: t`토핑`, value: summary.topping },
   ]
-  const label = `${t`이 가게의 맛`}. ${t`공개 라멘로그 ${ph({ p0: count })}개`}. ${showRatio ? `${t`또 갈래요`} ${percent}%, ` : ""}${headline}${rest ? `, ${rest}` : ""}${sampleNote ? `. ${sampleNote}` : ""}. ${cells.map((cell) => `${legacyT(cell.label)} ${cell.value}`).join(", ")}`
+  const label = `${t`이 가게의 맛`}. ${t`공개 라멘로그 ${ph({ p0: count })}개`}. ${showRatio ? `${t`또 갈래요`} ${percent}%, ` : ""}${headline}${rest ? `, ${rest}` : ""}${sampleNote ? `. ${sampleNote}` : ""}. ${cells.map((cell) => `${cell.label} ${cell.value}`).join(", ")}`
 
   return (
     <View accessibilityLabel={label} accessibilityRole="text" accessible style={[styles.card, style]}>
@@ -104,8 +103,8 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
         </View>
         <View style={styles.grid}>
           {cells.map((cell, index) => (
-            <Reveal from={0.35 + index * 0.08} key={cell.label} progress={progress} style={[styles.cell, index % 2 === 1 && styles.cellRight, index >= 2 && styles.cellBottom]} to={0.75 + index * 0.06}>
-              <AppText capScale tone="muted" variant="meta">{legacyT(cell.label)}</AppText>
+            <Reveal from={0.35 + index * 0.08} key={cell.key} progress={progress} style={[styles.cell, index % 2 === 1 && styles.cellRight, index >= 2 && styles.cellBottom]} to={0.75 + index * 0.06}>
+              <AppText capScale tone="muted" variant="meta">{cell.label}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.cellValue} variant="bodyStrong">{cell.value}</AppText>
             </Reveal>
           ))}

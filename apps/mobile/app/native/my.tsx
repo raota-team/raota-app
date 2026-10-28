@@ -1,6 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
+import { t, ph, msg } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { formatDate, getIntlLocale, getLocale, t as legacyT } from "@raota/shared"
+import { formatDate, formatList, getIntlLocale, getLocale, labelOf, translate } from "@raota/shared"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Redirect, router, useIsFocused } from "expo-router"
 import { StatusBar } from "expo-status-bar"
@@ -67,7 +67,7 @@ const RECENT_VISIBLE_ROWS = 5
 /** 썸네일 48pt + 위아래 12pt. */
 const ACTIVITY_ROW_HEIGHT = 72
 const BIO_MAX = 60
-const LEVEL_LABELS = ["1그릇", "2그릇", "3그릇", "4그릇 이상"]
+const LEVEL_LABELS = [msg`1그릇`, msg`2그릇`, msg`3그릇`, msg`4그릇 이상`]
 const CELL = 11
 const CELL_GAP = 3
 
@@ -182,10 +182,9 @@ function MemberView() {
   // 월 라벨은 그 달이 시작하는 주에 붙박아 둔다. 스크롤에 따라 라벨을 옮기면 왔다 갔다 할 때 달이 밀려 보인다
   const monthLabels = calendar.monthLabels
   // 기록이 있는 단계만 읽어 준다("1그릇 8일, 2그릇 3일")
-  const levelSummary = calendar.levelDays
-    .map((days, index) => (days > 0 ? t`${ph({ label: legacyT(LEVEL_LABELS[index]) })} ${days}일` : null))
-    .filter(Boolean)
-    .join(", ")
+  const levelSummary = formatList(
+    calendar.levelDays.flatMap((days, index) => (days > 0 ? [t`${ph({ label: translate(LEVEL_LABELS[index]) })} ${days}일`] : [])),
+  )
 
   const loadMoreRecent = () => {
     if (recentLimit < bowls.length) setRecentLimit((limit) => Math.min(limit + ACTIVITY_PAGE_SIZE, bowls.length))
@@ -246,7 +245,8 @@ function MemberView() {
     haptic()
     try {
       await actions.toggleBookmark(shop)
-      setToast(t`'${ph({ p0: shop.name })}' 저장을 해제했어요`)
+      // ICU에서 ' 바로 뒤의 {는 글자로 읽힌다. 따옴표를 보이려면 ''로 쓴다
+      setToast(t`''${ph({ p0: shop.name })}'' 저장을 해제했어요`)
     } catch (error) {
       setToast(error instanceof Error ? error.message : t`찜을 해제하지 못했어요. 다시 시도해 주세요.`)
     }
@@ -300,13 +300,13 @@ function MemberView() {
 
 
   const stats = [
-    { label: "총 라멘로그", value: recordCount, unit: "그릇" },
-    { label: "방문 매장", value: visits.length, unit: "곳" },
+    { key: "logs", value: recordCount, unit: t`그릇`, label: t`총 라멘로그 ${ph({ count: recordCount })}그릇` },
+    { key: "visits", value: visits.length, unit: t`곳`, label: t`방문 매장 ${ph({ count: visits.length })}곳` },
   ]
   const tabs: { id: ActivityTab; label: string; count: number }[] = [
-    { id: "logs", label: "라멘로그", count: recordCount },
-    { id: "visits", label: "방문매장", count: visits.length },
-    { id: "saved", label: "가고싶어요", count: saved.length },
+    { id: "logs", label: t`라멘로그`, count: recordCount },
+    { id: "visits", label: t`방문매장`, count: visits.length },
+    { id: "saved", label: t`가고싶어요`, count: saved.length },
   ]
 
   const tabBar = (
@@ -323,7 +323,7 @@ function MemberView() {
             style={[styles.segmentItem, active && styles.segmentActive]}
           >
             <AppText capScale numberOfLines={1} style={styles.segmentLabel} tone={active ? "ink" : "muted"} variant="bodyStrong">
-              {legacyT(item.label)}
+              {item.label}
             </AppText>
           </Pressable>
         )
@@ -413,21 +413,21 @@ function MemberView() {
           <>
           <View style={styles.stats}>
             {stats.map((stat, index) => (
-              <View accessibilityLabel={`${legacyT(stat.label)} ${stat.value}${legacyT(stat.unit)}`} accessible key={stat.label} style={styles.stat}>
+              <View accessibilityLabel={stat.label} accessible key={stat.key} style={styles.stat}>
                 <AppText style={[styles.statValue, index === 0 && styles.tabular]} variant="secondary">{stat.value}</AppText>
-                <AppText variant="secondary">{legacyT(stat.unit)}</AppText>
+                <AppText variant="secondary">{stat.unit}</AppText>
                 {index === 0 ? <AppText tone="muted" variant="secondary"> · </AppText> : null}
               </View>
             ))}
             <AppText tone="muted" variant="secondary"> · </AppText>
             <Pressable
               accessibilityHint={t`라멘로그 수에 따른 활동 등급을 설명해요`}
-              accessibilityLabel={t`등급 안내, Lv.${ph({ p0: level.number })} ${ph({ p1: legacyT(level.title) })}`}
+              accessibilityLabel={t`등급 안내, Lv.${ph({ p0: level.number })} ${ph({ p1: labelOf(level.title) })}`}
               accessibilityRole="button"
               onPress={() => setSheet("grade")}
               style={({ pressed }) => [styles.gradeLevel, pressed && styles.gradePressed]}
             >
-              <AppText style={styles.statValue} variant="secondary">Lv.{level.number} {legacyT(level.title)}</AppText>
+              <AppText style={styles.statValue} variant="secondary">Lv.{level.number} {labelOf(level.title)}</AppText>
             </Pressable>
           </View>
           <Pressable
@@ -487,7 +487,7 @@ function MemberView() {
                       <Chip
                         accessibilityLabel={t`캘린더 기간 ${ph({ p0: option.label })}`}
                         key={option.value}
-                        label={legacyT(option.label)}
+                        label={option.label}
                         onPress={() => setPeriod(option.value)}
                         selected={option.value === period}
                       />
@@ -532,7 +532,7 @@ function MemberView() {
                               tone="muted"
                               variant="meta"
                             >
-                              {legacyT(item.label)}
+                              {item.label}
                             </AppText>
                           ))}
                         </View>
@@ -559,11 +559,11 @@ function MemberView() {
                     </ScrollView>
                   </View>
                   {/* 잔디처럼 하루에 먹은 그릇 수만큼 진해진다. 범례는 적음 → 많음 한 줄 */}
-                  <View accessibilityLabel={t`범례. 하루 ${ph({ p0: LEVEL_LABELS.map((label) => legacyT(label)).join(", ") })} 순으로 빨강이 진해져요`} accessible style={styles.legend}>
+                  <View accessibilityLabel={t`범례. 하루 ${ph({ p0: formatList(LEVEL_LABELS.map(translate)) })} 순으로 빨강이 진해져요`} accessible style={styles.legend}>
                     <AppText capScale tone="sub" variant="meta">{t`적음`}</AppText>
                     <View style={[styles.legendDot, styles.legendEmpty]} />
                     {ramenHeat.map((color, index) => (
-                      <View key={LEVEL_LABELS[index]} style={[styles.legendDot, { backgroundColor: color }]} />
+                      <View key={index} style={[styles.legendDot, { backgroundColor: color }]} />
                     ))}
                     <AppText capScale tone="sub" variant="meta">{t`많음`}</AppText>
                   </View>
@@ -663,15 +663,15 @@ function MemberView() {
                   <View accessibilityLabel={t`정렬`} accessibilityRole="radiogroup" style={styles.segment}>
                     {(
                       [
-                        { key: "count", label: "방문순" },
-                        { key: "recent", label: "최신순" },
-                        { key: "name", label: "이름순" },
+                        { key: "count", label: t`방문순` },
+                        { key: "recent", label: t`최신순` },
+                        { key: "name", label: t`이름순` },
                       ] as const
                     ).map((option) => {
                       const active = visitSort === option.key
                       return (
                         <Pressable
-                          accessibilityLabel={legacyT(option.label)}
+                          accessibilityLabel={option.label}
                           accessibilityRole="radio"
                           accessibilityState={{ checked: active }}
                           key={option.key}
@@ -679,7 +679,7 @@ function MemberView() {
                           style={[styles.segmentItem, active && styles.segmentActive]}
                         >
                           <AppText capScale style={styles.bold} tone={active ? "ink" : "muted"} variant="secondary">
-                            {legacyT(option.label)}
+                            {option.label}
                           </AppText>
                         </Pressable>
                       )
@@ -913,22 +913,24 @@ function MemberView() {
         visible={sheet === "grade"}
       >
         <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="body">
-          {t`라멘로그 수를 기준으로 등급이 올라가요. 지금은 ${ph({ count: recordCount })}그릇, Lv.${ph({ level: level.number })} ${ph({ title: legacyT(level.title) })}예요.`}</AppText>
+          {t`라멘로그 수를 기준으로 등급이 올라가요. 지금은 ${ph({ count: recordCount })}그릇, Lv.${ph({ level: level.number })} ${ph({ title: labelOf(level.title) })}예요.`}</AppText>
         {/* 시트는 스크롤하지 않으므로 작은 화면(568pt)에서도 확인 버튼이 보이게 목록만 스크롤한다 */}
         <ScrollView style={[styles.levelList, { maxHeight: windowHeight * 0.42 }]}>
           {RAMEN_ACTIVITY_LEVELS.map((item, index) => {
             const current = index + 1 === level.number
-            const description = item.min === 0 ? legacyT(item.desc) : t`라멘로그 ${ph({ count: item.min })}그릇 이상`
+            const description = item.min === 0 ? labelOf(item.desc) : t`라멘로그 ${ph({ count: item.min })}그릇 이상`
+            const title = labelOf(item.title)
+            const number = index + 1
             return (
               <View
-                accessibilityLabel={`Lv.${index + 1} ${legacyT(item.title)}, ${description}${current ? `, ${t`내 등급`}` : ""}`}
+                accessibilityLabel={current ? t`Lv.${ph({ number })} ${ph({ title })}, ${ph({ description })}, 내 등급` : t`Lv.${ph({ number })} ${ph({ title })}, ${ph({ description })}`}
                 accessible
                 key={item.title}
                 style={[styles.levelRow, index > 0 && styles.rowDivider, current && styles.levelCurrent]}
               >
                 <View style={styles.flex}>
                   <AppText variant="cardTitle">
-                    Lv.{index + 1} {legacyT(item.title)}
+                    Lv.{number} {title}
                   </AppText>
                   <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
                     {description}
@@ -985,8 +987,8 @@ function MyTasteTicket({
   if (!recordCount) {
     return (
       <View style={styles.reportTicket} testID="my-report-ticket">
-        <AppText accessibilityRole="header" style={styles.ticketTitle} variant="sectionTitle">{legacyT(identity.title)}</AppText>
-        <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">{legacyT(identity.description)}</AppText>
+        <AppText accessibilityRole="header" style={styles.ticketTitle} variant="sectionTitle">{identity.title}</AppText>
+        <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">{identity.description}</AppText>
         <Button fullWidth onPress={onStart} rightIcon={<ArrowRight color={colors.ink} size={16} />} title={t`첫 그릇 기록하기`} variant="secondary" />
       </View>
     )
@@ -996,7 +998,7 @@ function MyTasteTicket({
   const pages = 2 + (MENU_CATEGORY_NAMES.some((type) => groups[type] > 0) ? 1 : 0) + (visits.length ? 1 : 0)
   return (
     <Pressable
-      accessibilityLabel={t`종합 리포트 보기. ${ph({ p0: legacyT(identity.title) })}, ${ph({ p1: recordCount })}그릇을 기록했어요, ${ph({ p2: visits.length })}곳을 다녔어요. ${ph({ p3: pages })}장 이야기`}
+      accessibilityLabel={t`종합 리포트 보기. ${ph({ p0: identity.title })}, ${ph({ p1: recordCount })}그릇을 기록했어요, ${ph({ p2: visits.length })}곳을 다녔어요. ${ph({ p3: pages })}장 이야기`}
       accessibilityRole="button"
       onPress={onOpen}
       style={({ pressed }) => [styles.deckWrap, pressed && styles.deckPressed]}
@@ -1006,7 +1008,7 @@ function MyTasteTicket({
         <View style={[styles.deckCard, styles.deckBack2]} />
         <View style={[styles.deckCard, styles.deckBack1]} />
         <View style={[styles.deckCard, styles.deckFront]}>
-          <AppText capScale style={styles.deckDim} tone="onDark" variant="secondary">{legacyT(identity.title)} {t`· 지금까지`}</AppText>
+          <AppText capScale style={styles.deckDim} tone="onDark" variant="secondary">{t`${ph({ title: identity.title })} · 지금까지`}</AppText>
           <AppText lineBreakStrategyIOS="hangul-word" style={[styles.deckBig, styles.tabular]} tone="onDark" variant="headline">{recordCount}{t`그릇을 기록했어요`}</AppText>
           <AppText capScale style={styles.deckDim} tone="onDark" variant="secondary">{visits.length}{t`곳을 다녔어요`}</AppText>
         </View>
@@ -1102,9 +1104,9 @@ function TasteBoards({ bowls, myLogs, shops }: {
         {boards.map((board) => (
           <Pressable
             accessibilityHint={t`이 종류 기록만 모아 봐요`}
-            accessibilityLabel={t`${ph({ p0: legacyT(board.type) })} ${ph({ p1: board.count })}그릇`}
+            accessibilityLabel={t`${ph({ p0: labelOf(board.type) })} ${ph({ p1: board.count })}그릇`}
             accessibilityRole="button"
-            key={legacyT(board.type)}
+            key={board.type}
             onPress={() => router.push({ pathname: "/my-type/[type]", params: { type: board.type } })}
             style={({ pressed }) => [styles.board, pressed && styles.deckPressed]}
           >
@@ -1123,7 +1125,7 @@ function TasteBoards({ bowls, myLogs, shops }: {
               ) : null}
             </View>
             <View style={[styles.boardLabel, styles.rowGap]}>
-              <AppText numberOfLines={1} style={styles.shrink} variant="bodyStrong">{legacyT(board.type)} {board.count}</AppText>
+              <AppText numberOfLines={1} style={styles.shrink} variant="bodyStrong">{labelOf(board.type)} {board.count}</AppText>
               <ChevronRight color={colors.textMuted} size={14} />
             </View>
           </Pressable>

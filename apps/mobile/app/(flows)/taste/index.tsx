@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { formatList, labelOf } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import * as Haptics from "expo-haptics"
@@ -116,11 +116,11 @@ function TasteReportCover({ identity, updatedLabel }: {
     <View style={styles.card}>
       <View style={styles.coverHead}>
         <AppText capScale style={styles.coverBadge} variant="meta">{t`종합 리포트`}</AppText>
-        <AppText capScale numberOfLines={2} style={[styles.tabular, styles.coverDate]} tone="muted" variant="meta">{legacyT(updatedLabel)}</AppText>
+        <AppText capScale numberOfLines={2} style={[styles.tabular, styles.coverDate]} tone="muted" variant="meta">{updatedLabel}</AppText>
       </View>
-      <AppText accessibilityRole="header" style={styles.coverTitle} variant="headline">{legacyT(identity.title)}</AppText>
+      <AppText accessibilityRole="header" style={styles.coverTitle} variant="headline">{identity.title}</AppText>
       <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
-        {identity.leader ? t`누적 ${ph({ v1: identity.total })}그릇 중 ${ph({ v2: identity.leader.name })} ${ph({ v3: identity.leader.count })}그릇` : identity.description}
+        {identity.leader ? t`누적 ${ph({ v1: identity.total })}그릇 중 ${ph({ v2: labelOf(identity.leader.name) })} ${ph({ v3: identity.leader.count })}그릇` : identity.description}
       </AppText>
       {identity.tags.length > 0 ? (
         <View accessibilityLabel={t`취향 특징: ${ph({ v1: identity.tags.join(", ") })}`} accessible style={styles.tagRow}>
@@ -563,7 +563,11 @@ function TasteReportLoading({
   const winners = towers.filter((tower) => tower.count === topCount).map((tower) => tower.type)
   const tied = winners.length > 1
   const topPercent = Math.round((topCount / count) * 100)
-  const finalMessage = t`${ph({ v1: identity.title })}, ${ph({ v2: winners.join(", ") })} ${ph({ v3: tied ? t`각 ` : "" })}${ph({ v4: topCount })}그릇`
+  const finalTitle = identity.title
+  const winnerList = formatList(winners.map(labelOf))
+  const finalMessage = tied
+    ? t`${ph({ title: finalTitle })}, ${ph({ winners: winnerList })} 각 ${ph({ count: topCount })}그릇`
+    : t`${ph({ title: finalTitle })}, ${ph({ winners: winnerList })} ${ph({ count: topCount })}그릇`
   const finalMessageRef = useRef(finalMessage)
   finalMessageRef.current = finalMessage
 
@@ -716,9 +720,11 @@ function TasteReportLoading({
         <View style={styles.loadingResultSlot}>
           {complete ? (
             <Animated.View style={[styles.loadingResult, resultStyle]} testID="report-bowl-result">
-              <AppText style={styles.center} variant="headline">{legacyT(identity.title)}</AppText>
+              <AppText style={styles.center} variant="headline">{identity.title}</AppText>
               <AppText style={[styles.center, styles.tabular]} tone="muted" variant="secondary">
-                {count}{t`그릇 중 `}{winners.join("·")} {tied ? t`각 ` : ""}{topCount}{t`그릇 · `}{topPercent}%
+                {tied
+                  ? t`${ph({ count })}그릇 중 ${ph({ winners: winners.map(labelOf).join("·") })} 각 ${ph({ topCount })}그릇 · ${ph({ topPercent })}%`
+                  : t`${ph({ count })}그릇 중 ${ph({ winners: winners.map(labelOf).join("·") })} ${ph({ topCount })}그릇 · ${ph({ topPercent })}%`}
               </AppText>
             </Animated.View>
           ) : null}
@@ -884,7 +890,7 @@ export default function TasteReportScreen() {
                 typeCounts={typeCounts}
                 visits={visits}
               />
-              <AppText capScale style={[styles.center, styles.tabular, styles.gapTop2]} tone="muted" variant="meta">{legacyT(updatedLabel)}</AppText>
+              <AppText capScale style={[styles.center, styles.tabular, styles.gapTop2]} tone="muted" variant="meta">{updatedLabel}</AppText>
             </View>
           )}
 
@@ -1079,7 +1085,7 @@ export default function TasteReportScreen() {
           </AppText>
         </ScrollView>
         <AppText capScale style={styles.gapTop2} tone="muted" variant="meta">
-          {currentUser?.nickname ?? t`라오타 회원`} · Lv.{level.number} {legacyT(level.title)}
+          {currentUser?.nickname ?? t`라오타 회원`} · Lv.{level.number} {labelOf(level.title)}
         </AppText>
       </BottomSheet>
       {/* 이야기 카드가 왼쪽 끝까지 가로로 넘어가서, 헤더 아래 가장자리는 뒤로 쓸기에 양보한다 */}

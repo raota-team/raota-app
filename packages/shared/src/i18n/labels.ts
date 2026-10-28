@@ -1,6 +1,5 @@
 import { msg } from "@lingui/core/macro"
-import type { MessageDescriptor } from "@lingui/core"
-import { translate } from "./index"
+import { i18n, type MessageDescriptor } from "@lingui/core"
 
 /**
  * 저장·API에 쓰는 한국어 값(라멘 종류, 맛 축·태그, 재방문, 등급 …)의 표시 이름.
@@ -118,10 +117,43 @@ const DOMAIN_LABELS: Readonly<Record<string, MessageDescriptor>> = {
   "돈코츠 (돼지뼈)": msg`돈코츠 (돼지뼈)`,
   "시오 (소금)": msg`시오 (소금)`,
   "미소 (된장)": msg`미소 (된장)`,
+  "진해요": msg`진해요`,
+  "깔끔해요": msg`깔끔해요`,
+  "감칠맛 좋아요": msg`감칠맛 좋아요`,
+  "기름져요": msg`기름져요`,
+  "어패류 향": msg`어패류 향`,
+  "탄력 있어요": msg`탄력 있어요`,
+  "단단해요": msg`단단해요`,
+  "부드러워요": msg`부드러워요`,
+  "국물이 잘 배어요": msg`국물이 잘 배어요`,
+  "양 많아요": msg`양 많아요`,
+  "딱 좋아요": msg`딱 좋아요`,
+  "슴슴해요": msg`슴슴해요`,
+  "짭짤해요": msg`짭짤해요`,
+  "매콤해요": msg`매콤해요`,
+  "밥 생각나요": msg`밥 생각나요`,
+  "차슈 좋아요": msg`차슈 좋아요`,
+  "계란 좋아요": msg`계란 좋아요`,
+  "멘마 좋아요": msg`멘마 좋아요`,
+  "파 향 좋아요": msg`파 향 좋아요`,
+  "구성 알차요": msg`구성 알차요`,
+  "라멘로그 1그릇 이상": msg`라멘로그 1그릇 이상`,
+  "라멘로그 10그릇 이상": msg`라멘로그 10그릇 이상`,
+  "라멘로그 30그릇 이상": msg`라멘로그 30그릇 이상`,
+  "라멘로그 50그릇 이상": msg`라멘로그 50그릇 이상`,
+  "라멘로그 100그릇 이상": msg`라멘로그 100그릇 이상`,
+  "내 기록을 불러오지 못했어요.": msg`내 기록을 불러오지 못했어요.`,
+  "망원동": msg`망원동`,
+  "합정동": msg`합정동`,
+  "연남동": msg`연남동`,
+  "서교동": msg`서교동`,
+  "국물": msg`국물`,
+  "면": msg`면`,
+  "간": msg`간`,
 }
 
 /** 저장·API 값의 표시 이름. 모르는 값(사용자·서버 원문)은 그대로 돌려준다 */
 export function labelOf(value: string): string {
   const descriptor = DOMAIN_LABELS[value]
-  return descriptor ? translate(descriptor) : value
+  return descriptor ? i18n._(descriptor) : value
 }

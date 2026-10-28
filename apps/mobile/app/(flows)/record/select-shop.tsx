@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { translate } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams } from "expo-router"
@@ -44,10 +45,10 @@ interface ShopItem {
   region: string
 }
 
-const MODES: Array<{ id: Mode; label: string }> = [
-  { id: "nearby", label: "주변" },
-  { id: "saved", label: "찜한 가게" },
-  { id: "search", label: "검색" },
+const MODES: Array<{ id: Mode; label: MessageDescriptor }> = [
+  { id: "nearby", label: msg`주변` },
+  { id: "saved", label: msg`찜한 가게` },
+  { id: "search", label: msg`검색` },
 ]
 
 /** 주소의 동 또는 역 이름에서 동네를 뽑는다. 못 찾으면 비워 둔다. */
@@ -90,7 +91,7 @@ const toShopItem = (shop: Shop): ShopItem => {
 
 const byDistance = (a: ShopItem, b: ShopItem) => a.distanceM - b.distanceM
 
-const NEARBY_FILTER_LABEL: Record<NearbyFilter, string> = { all: "전체", "500m": "500m 이내", open: "영업 중만" }
+const NEARBY_FILTER_LABEL: Record<NearbyFilter, MessageDescriptor> = { all: msg`전체`, "500m": msg`500m 이내`, open: msg`영업 중만` }
 
 const initialModeOf = (mode: string | undefined): Mode =>
   mode === "saved" || mode === "bookmarked" ? "saved" : mode === "search" ? "search" : "nearby"
@@ -103,7 +104,7 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
   return (
     <Pressable
       accessibilityHint={t`이 가게로 기록을 시작해요`}
-      accessibilityLabel={legacyT(label)}
+      accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onSelect}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
@@ -225,7 +226,7 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
   const chooseNearbyFilter = () => {
     // 위치가 없으면 거리를 몰라 "500m 이내"를 고를 수 없다
     const choices = (["all", "500m", "open"] as const).filter((choice) => choice !== "500m" || nearbyByDistance)
-    const options = [...choices.map((choice) => legacyT(NEARBY_FILTER_LABEL[choice])), t`취소`]
+    const options = [...choices.map((choice) => translate(NEARBY_FILTER_LABEL[choice])), t`취소`]
     const select = (index: number) => {
       if (index < choices.length) setNearbyFilter(choices[index])
     }
@@ -264,20 +265,21 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
     ? searchQuery !== trimmedQuery || (remoteSearch.isLoading && searchResults.length === 0)
     : shopsQuery.isLoading && allShops.length === 0
   // 거리를 잴 수 있을 때만 "가까운 순"이라고 한다
-  const nearbyCaption = nearbyByDistance ? "가까운 순" : locating ? "위치를 확인하는 중…" : "위치를 켜면 가까운 순으로 보여요"
+  const nearbyCaption = nearbyByDistance ? t`가까운 순` : locating ? t`위치를 확인하는 중…` : t`위치를 켜면 가까운 순으로 보여요`
+  const nearbyFilterLabel = translate(NEARBY_FILTER_LABEL[nearbyFilter])
 
   const listHeader = (
     <View style={styles.listHeader}>
       {mode === "nearby" ? (
         <Pressable
           accessibilityHint={t`주변 가게의 거리와 영업 상태 조건을 고를 수 있어요`}
-          accessibilityLabel={`${legacyT(nearbyCaption)}, ${legacyT(NEARBY_FILTER_LABEL[nearbyFilter])}`}
+          accessibilityLabel={`${nearbyCaption}, ${nearbyFilterLabel}`}
           accessibilityRole="button"
           onPress={chooseNearbyFilter}
           style={styles.listCaptionButton}
         >
           <AppText capScale numberOfLines={1} style={styles.listCaption} tone="muted" variant="meta">
-            {nearbyFilter === "all" ? legacyT(nearbyCaption) : legacyT(NEARBY_FILTER_LABEL[nearbyFilter])}
+            {nearbyFilter === "all" ? nearbyCaption : nearbyFilterLabel}
           </AppText>
           <ChevronDown color={colors.textMuted} size={14} />
         </Pressable>
@@ -377,7 +379,8 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
       </View>
 
       <View accessibilityLabel={t`가게 찾는 방법`} accessibilityRole="tablist" style={styles.tabs}>
-        {MODES.map(({ id, label }) => {
+        {MODES.map(({ id, label: labelDescriptor }) => {
+          const label = translate(labelDescriptor)
           const active = mode === id
           // 주변은 20곳씩 이어 불러오는 목록이라 전체 수를 모른다. 불러온 수를 세면 스크롤할 때 60곳, 80곳으로 늘었다
           const count = id === "saved" ? savedShops.length : null
@@ -395,7 +398,7 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
               style={({ pressed }) => [styles.tab, id === "saved" && styles.savedTab, id === "search" && styles.searchTab, active && styles.tabActive, pressed && !active && styles.tabPressed]}
             >
               <AppText capScale numberOfLines={1} style={[typography.button, active && styles.onSelectedText]} variant="secondary">
-                {legacyT(label)}
+                {label}
                 {count !== null ? (
                   <AppText capScale style={active ? styles.selectedCount : undefined} tone={active ? "ink" : "muted"} variant="secondary">
                     {t` ${ph({ v1: count })}곳`}

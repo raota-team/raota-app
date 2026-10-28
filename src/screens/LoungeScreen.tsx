@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { labelOf, translate } from "@raota/shared"
 import { useState, useMemo, useRef, useEffect, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import {
   HelpCircle,
@@ -45,7 +46,6 @@ type PostCategory = 'REVIEW' | 'TIP' | 'QUESTION' | 'FREE' | 'POPULAR'
 export interface CommunityPost {
   postId: string
   category: PostCategory
-  categoryLabel: string
   title: string
   content: string
   detailedContent?: string[]
@@ -145,7 +145,6 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: '1',
     category: 'REVIEW',
-    categoryLabel: '맛집후기',
     title: '망원·합정 일대 인생 쇼유 라멘 3곳 추천합니다',
     content: '자가제면과 동물계 육수의 밸런스가 완벽한 곳들만 엄선했습니다. 1위는 역시 멘야준, 2위는 세상끝의라멘, 3위는 묘코입니다.',
     detailedContent: [
@@ -201,7 +200,6 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: '2',
     category: 'QUESTION',
-    categoryLabel: 'Q&A',
     title: '돈코츠 농도 높은 곳 처음 가보는데 어디가 입문용으로 좋을까요?',
     content: '하쿠텐이나 부탄츄 가보려고 하는데 극강의 꼬릿함에 적응할 수 있을지 걱정입니다. 추천 부탁드려요!',
     detailedContent: [
@@ -243,7 +241,6 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: '3',
     category: 'TIP',
-    categoryLabel: '꿀팁',
     title: '라멘 먹을 때 염도 조절 실패하지 않는 완식 주문 꿀팁',
     content: '초심자분들이 자주 실수하는 간 조절법과 무료 와리스프(육수 추가) 요청 타이밍 총정리입니다.',
     detailedContent: [
@@ -275,7 +272,6 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: '4',
     category: 'FREE',
-    categoryLabel: '자유',
     title: '올해 100그릇 달성했습니다! 취향 리포트 인증합니다',
     content: '상반기 동안 서울 시내 라멘집 60곳 돌면서 심어둔 잔디가 꽉 찼네요. 다들 이번 주도 즐거운 완식하세요.',
     detailedContent: [
@@ -305,21 +301,18 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   },
 ]
 
-const COMMUNITY_CATEGORIES = [
-  { id: 'all', label: '전체' },
-  { id: 'POPULAR', label: '인기' },
-  { id: 'REVIEW', label: '맛집후기' },
-  { id: 'TIP', label: '꿀팁' },
-  { id: 'QUESTION', label: 'Q&A' },
-  { id: 'FREE', label: '자유' },
+const COMMUNITY_CATEGORIES: { id: PostCategory | 'all'; label: MessageDescriptor }[] = [
+  { id: 'all', label: msg`전체` },
+  { id: 'POPULAR', label: msg`인기` },
+  { id: 'REVIEW', label: msg`맛집후기` },
+  { id: 'TIP', label: msg`꿀팁` },
+  { id: 'QUESTION', label: msg`Q&A` },
+  { id: 'FREE', label: msg`자유` },
 ]
 
-const WRITE_CATEGORIES: { id: Exclude<PostCategory, 'POPULAR'>; name: string }[] = [
-  { id: 'REVIEW', name: '맛집후기' },
-  { id: 'TIP', name: '꿀팁' },
-  { id: 'QUESTION', name: 'Q&A' },
-  { id: 'FREE', name: '자유' },
-]
+const WRITE_CATEGORIES = COMMUNITY_CATEGORIES.filter(
+  (category): category is { id: Exclude<PostCategory, 'POPULAR'>; label: MessageDescriptor } => category.id !== 'all' && category.id !== 'POPULAR',
+)
 
 const WRITE_SHOP_OPTIONS = [
   { name: '멘야준', location: '망원 본점' },
@@ -343,8 +336,9 @@ const SAMPLE_IMAGE_PRESETS = [
 const POPULAR_THRESHOLD = 30
 
 /** 카테고리 뱃지: 색은 하나만 쓰고 글자로 구분한다 */
-function CategoryBadge({ label }: { label: string }) {
-  return <span className="shrink-0 rounded-[4px] bg-[#F2F2F2] px-1.5 py-0.5 text-[12px] font-bold text-[#4A4D52]">{legacyT(label)}</span>
+function CategoryBadge({ category }: { category: PostCategory }) {
+  const label = COMMUNITY_CATEGORIES.find(item => item.id === category)?.label
+  return <span className="shrink-0 rounded-[4px] bg-[#F2F2F2] px-1.5 py-0.5 text-[12px] font-bold text-[#4A4D52]">{label && translate(label)}</span>
 }
 
 function PopularBadge() {
@@ -356,7 +350,7 @@ function PopularBadge() {
 }
 
 function LevelTag({ level }: { level?: string }) {
-  return <span className="shrink-0 text-[12px] font-medium text-[#6B6E73]">{legacyT(cleanGradeTitle(level))}</span>
+  return <span className="shrink-0 text-[12px] font-medium text-[#6B6E73]">{labelOf(cleanGradeTitle(level))}</span>
 }
 
 /** 이니셜 또는 사진 아바타 */
@@ -415,9 +409,9 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
   const [showAllLogCommentsId, setShowAllLogCommentsId] = useState<string | null>(null)
   const [newCommentText, setNewCommentText] = useState('')
   const [newLogCommentText, setNewLogCommentText] = useState('')
-  const [logCommentError, setLogCommentError] = useState<string | null>(null)
+  const [logCommentError, setLogCommentError] = useState<MessageDescriptor | null>(null)
   const [replyToAuthor, setReplyToAuthor] = useState<string | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toastMessage, setToastMessage] = useState<MessageDescriptor | null>(null)
   const logCommentInputRef = useRef<HTMLInputElement>(null)
 
   // 커뮤니티 새 글 작성 상태
@@ -512,7 +506,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     if (!requireUser()) return
     const content = newLogCommentText.trim()
     if (content.length < 2) {
-      setLogCommentError('댓글은 2자 이상 적어 주세요.')
+      setLogCommentError(msg`댓글은 2자 이상 적어 주세요.`)
       return
     }
     onAddComment?.(logId, content)
@@ -576,11 +570,9 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     const author = requireUser()
     if (!author) return
     if (!writeTitle.trim() || !writeContent.trim()) return
-    const categoryObj = WRITE_CATEGORIES.find(c => c.id === writeCategory)
     const newPost: CommunityPost = {
       postId: nextDemoEntityId(),
       category: writeCategory,
-      categoryLabel: categoryObj?.name ?? '자유',
       title: writeTitle.trim(),
       content: writeContent.trim(),
       detailedContent: [writeContent.trim()],
@@ -600,7 +592,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     closeWrite()
     setCommunityCategory('all')
     setLoungeTab('community')
-    setToastMessage('커뮤니티에 글을 올렸습니다.')
+    setToastMessage(msg`커뮤니티에 글을 올렸습니다.`)
   }
 
   const handleScrollPhoto = (logId: string, direction: 'prev' | 'next', total: number) => {
@@ -685,7 +677,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                   {category.id === 'TIP' && <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />}
                   {category.id === 'QUESTION' && <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />}
                   {category.id === 'FREE' && <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
-                  <span>{legacyT(category.name)}</span>
+                  <span>{translate(category.label)}</span>
                 </Chip>
               )
             })}
@@ -892,7 +884,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
           </button>
 
           <div className="flex items-center gap-1.5 pr-2">
-            <CategoryBadge label={selectedPost.categoryLabel} />
+            <CategoryBadge category={selectedPost.category} />
             {selectedPost.likeCount >= POPULAR_THRESHOLD && <PopularBadge />}
           </div>
         </header>
@@ -1256,7 +1248,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
           <div role="group" aria-label={t`게시판 분류`} className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-b border-[#E2E2E2] bg-white px-5">
             {COMMUNITY_CATEGORIES.map(cat => (
               <Chip key={cat.id} active={communityCategory === cat.id} onClick={() => setCommunityCategory(cat.id)}>
-                {legacyT(cat.label)}
+                {translate(cat.label)}
               </Chip>
             ))}
           </div>
@@ -1314,7 +1306,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                           <p className="text-[12px] text-[#6B6E73]">{log.visitedAt}  {t`방문`}</p>
                         </div>
                       </div>
-                      <span className="shrink-0 rounded-[32px] bg-[#F2F2F2] px-2.5 py-1 text-[12px] font-bold text-[#25282B]">{legacyT(log.revisit)}</span>
+                      <span className="shrink-0 rounded-[32px] bg-[#F2F2F2] px-2.5 py-1 text-[12px] font-bold text-[#25282B]">{labelOf(log.revisit)}</span>
                     </div>
 
                     {/* 사진 캐러셀 */}
@@ -1337,7 +1329,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                         </div>
 
                         <span className="pointer-events-none absolute left-2.5 top-2.5 rounded-[32px] bg-black/70 px-2.5 py-0.5 text-[12px] font-bold text-white">
-                          {legacyT(log.ramenType)}
+                          {labelOf(log.ramenType)}
                         </span>
 
                         {photos.length > 1 && (
@@ -1401,7 +1393,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                         <ul aria-label={t`맛 태그`} className="flex flex-wrap gap-1">
                           {allTags.map((tag, idx) => (
                             <li key={idx} className="rounded-[4px] bg-[#F2F2F2] px-2 py-0.5 text-[12px] font-bold text-[#4A4D52]">
-                              #{legacyT(tag)}
+                              #{labelOf(tag)}
                             </li>
                           ))}
                         </ul>
@@ -1545,7 +1537,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                           </div>
                           {logCommentError && (
                             <p id={`log-comment-error-${log.id}`} role="alert" className="mt-1.5 text-[13px] font-bold text-[#E60000]">
-                              {logCommentError && legacyT(logCommentError)}
+                              {logCommentError && translate(logCommentError)}
                             </p>
                           )}
                         </>
@@ -1579,7 +1571,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                       className="block w-full text-left"
                     >
                       <div className="mb-1.5 flex items-center gap-1.5 pt-1">
-                        <CategoryBadge label={post.categoryLabel} />
+                        <CategoryBadge category={post.category} />
                         {post.likeCount >= POPULAR_THRESHOLD && <PopularBadge />}
                       </div>
                       <div className="flex items-center justify-between gap-3">
@@ -1637,7 +1629,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
           className="anim-fade-in-up pointer-events-none absolute left-1/2 top-20 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[32px] bg-[#25282B] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <Check className="h-4 w-4 text-[#E60000]" aria-hidden="true" />
-          <span>{legacyT(toastMessage)}</span>
+          <span>{translate(toastMessage)}</span>
         </div>
       )}
 

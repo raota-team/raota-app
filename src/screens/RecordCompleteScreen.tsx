@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { labelOf } from "@raota/shared"
 import type { RamenLog, TasteProfile } from '../types'
 import { REVISIT_OPTIONS } from '../types'
 import { TASTE_AXES, profileDelta, scoresFromLog } from '../utils/taste'
@@ -70,9 +70,10 @@ export default function RecordCompleteScreen({
 
   const comment = (() => {
     if (!lastLog) return null
-    const bowl = t`${ph({ shop: lastLog.shop.name })}의 ${ph({ style: legacyT(lastLog.ramenType) })} 한 그릇`
-    if (!scores || !topAxis) return t`${bowl}이 ${ph({ count: recordCount })}번째 기록으로 남았어요.`
-    return t`${bowl}. 이번 그릇은 ${ph({ axis: legacyT(topAxis.label) })} ${ph({ score: scores[topAxis.key] })}점이 가장 높았고, 재방문 의사는 ‘${ph({ revisit: legacyT(lastLog.revisit) })}’으로 남겼어요.`
+    const shop = lastLog.shop.name
+    const style = labelOf(lastLog.ramenType)
+    if (!scores || !topAxis) return t`${ph({ shop })}의 ${ph({ style })} 한 그릇이 ${ph({ count: recordCount })}번째 기록으로 남았어요.`
+    return t`${ph({ shop })}의 ${ph({ style })} 한 그릇. 이번 그릇은 ${ph({ axis: labelOf(topAxis.label) })} ${ph({ score: scores[topAxis.key] })}점이 가장 높았고, 재방문 의사는 ‘${ph({ revisit: labelOf(lastLog.revisit) })}’으로 남겼어요.`
   })()
 
   return (
@@ -98,7 +99,7 @@ export default function RecordCompleteScreen({
                   <dt className="text-[#6B6E73] font-bold">{t`가게`}</dt>
                   <dd className="font-bold truncate">{[lastLog.shop.name, lastLog.shop.branch].filter(Boolean).join(' ')}</dd>
                   <dt className="text-[#6B6E73] font-bold">{t`메뉴`}</dt>
-                  <dd className="font-bold truncate">{`${lastLog.menuName} (${legacyT(lastLog.ramenType)})`}</dd>
+                  <dd className="font-bold truncate">{`${lastLog.menuName} (${labelOf(lastLog.ramenType)})`}</dd>
                   <dt className="text-[#6B6E73] font-bold">{t`날짜`}</dt>
                   <dd className="font-bold tabular-nums">{lastLog.visitedAt.replace(/^(\d{4})\D+(\d{2})\D+(\d{2}).*$/, '$1.$2.$3')}</dd>
                 </dl>
@@ -110,10 +111,10 @@ export default function RecordCompleteScreen({
               <ul>
                 {scores &&
                   SCALE_AXES.map((axis, index) => (
-                    <li key={axis.key} aria-label={t`${ph({ v0: legacyT(axis.label) })} ${ph({ v1: scores[axis.key] })}점`} className="px-3.5 pt-3 pb-2.5 border-b border-[#25282B]/10">
-                      <span className="text-[14px] font-bold" aria-hidden="true">{legacyT(axis.label)}</span>
+                    <li key={axis.key} aria-label={t`${ph({ v0: labelOf(axis.label) })} ${ph({ v1: scores[axis.key] })}점`} className="px-3.5 pt-3 pb-2.5 border-b border-[#25282B]/10">
+                      <span className="text-[14px] font-bold" aria-hidden="true">{labelOf(axis.label)}</span>
                       <div className="mt-1.5 flex items-center gap-2 text-[11px] text-[#6B6E73]" aria-hidden="true">
-                        <span className="w-14 shrink-0">{legacyT(axis.low)}</span>
+                        <span className="w-14 shrink-0">{labelOf(axis.low)}</span>
                         <div className="flex-1 grid grid-cols-5">
                           {[1, 2, 3, 4, 5].map(value => (
                             <span key={value} className="relative h-7 flex items-center justify-center text-[15px] font-bold text-[#25282B] tabular-nums">
@@ -122,16 +123,16 @@ export default function RecordCompleteScreen({
                             </span>
                           ))}
                         </div>
-                        <span className="w-14 shrink-0 text-right">{legacyT(axis.high)}</span>
+                        <span className="w-14 shrink-0 text-right">{labelOf(axis.high)}</span>
                       </div>
                     </li>
                   ))}
-                <li aria-label={t`재방문 의사 ${ph({ v0: legacyT(lastLog.revisit) })}`} className="px-3.5 pt-3 pb-3">
+                <li aria-label={t`재방문 의사 ${ph({ v0: labelOf(lastLog.revisit) })}`} className="px-3.5 pt-3 pb-3">
                   <span className="text-[14px] font-bold" aria-hidden="true">{t`재방문 의사`}</span>
                   <div className="mt-2 grid grid-cols-3 gap-2" aria-hidden="true">
                     {REVISIT_ROW.map(option => (
                       <span key={option} className="relative h-8 flex items-center justify-center text-[13px] font-bold">
-                        {legacyT(option)}
+                        {labelOf(option)}
                         {lastLog.revisit === option && <PenCircle order={scores ? SCALE_AXES.length : 0} />}
                       </span>
                     ))}
@@ -159,7 +160,7 @@ export default function RecordCompleteScreen({
                   const after = (profileAfter.exact ?? profileAfter.scores)[axis.key]
                   return (
                     <li key={axis.key} className="flex items-center justify-between gap-3 py-2.5">
-                      <span className="text-[14px] font-bold">{legacyT(axis.label)}</span>
+                      <span className="text-[14px] font-bold">{labelOf(axis.label)}</span>
                       <div className="text-right shrink-0 tabular-nums">
                         {isFirstBowl ? (
                           <span className="text-[14px] font-bold">{after.toFixed(1)}</span>

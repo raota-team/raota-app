@@ -1,5 +1,6 @@
-import { t } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { translate } from "@raota/shared"
 import { useEffect, useState, type ReactNode } from 'react'
 import { recordMonthKey } from './utils/monthlyReport'
 import { Home, MapPin, MessageSquare, Flame, User } from 'lucide-react'
@@ -291,12 +292,12 @@ function IconMy({ active }: { active: boolean }) {
 }
 
 
-const TAB_DEFS: { id: Tab; label: string; Icon: React.FC<{ active: boolean }> }[] = [
-  { id: 'home', label: '홈', Icon: IconHome },
-  { id: 'map', label: '지도', Icon: IconMap },
-  { id: 'lounge', label: '라운지', Icon: IconLounge },
-  { id: 'newsFeed', label: '라멘속보', Icon: IconNewsFeed },
-  { id: 'my', label: '마이', Icon: IconMy },
+const TAB_DEFS: { id: Tab; label: MessageDescriptor; Icon: React.FC<{ active: boolean }> }[] = [
+  { id: 'home', label: msg`홈`, Icon: IconHome },
+  { id: 'map', label: msg`지도`, Icon: IconMap },
+  { id: 'lounge', label: msg`라운지`, Icon: IconLounge },
+  { id: 'newsFeed', label: msg`라멘속보`, Icon: IconNewsFeed },
+  { id: 'my', label: msg`마이`, Icon: IconMy },
 ]
 
 const TAB_SCREENS: Record<Tab, Screen> = {
@@ -753,7 +754,7 @@ export default function App() {
                     )}
                     <Icon active={active} />
                     <span className={`text-[12px] leading-none font-bold tracking-tight ${active ? 'text-[#E60000]' : 'text-[#6B6E73]'}`}>
-                      {legacyT(label)}
+                      {translate(label)}
                     </span>
                   </button>
                 )

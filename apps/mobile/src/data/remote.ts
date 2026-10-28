@@ -10,7 +10,7 @@ import type {
   RamenLogComment,
   Shop,
 } from "@raota/shared"
-import { legalDocumentVersion, t as legacyT } from "@raota/shared"
+import { labelOf, legalDocumentVersion } from "@raota/shared"
 
 import {
   applyTasteNoteDefinitions,
@@ -424,15 +424,18 @@ export class AlreadyHandledError extends Error {
   }
 }
 
-/** 화면에 보여줄 쓰기 실패 문구. 서버 문구가 있으면 쓰고, 연결 문제는 앱 문구로 바꾼다 */
+/**
+ * 화면에 보여줄 쓰기 실패 문구. 서버 문구가 있으면 쓰고, 연결 문제는 앱 문구로 바꾼다.
+ * fallback과 앱이 던진 Error 문구는 한국어 원문이라 labelOf로 표시 이름을 고른다(표에 없으면 원문 그대로)
+ */
 export function writeErrorMessage(error: unknown, fallback: string): string {
-  if (!isApiError(error)) return legacyT(error instanceof Error && error.message ? error.message : fallback)
+  if (!isApiError(error)) return labelOf(error instanceof Error && error.message ? error.message : fallback)
   if (error.isOffline) return t`연결을 확인한 뒤 다시 시도해 주세요.`
   if (error.status === 401) return t`로그인이 끝났어요. 다시 로그인해 주세요.`
-  if (error.code === "RATE_LIMITED" || error.code === "VALIDATION_ERROR") return error.message || legacyT(fallback)
+  if (error.code === "RATE_LIMITED" || error.code === "VALIDATION_ERROR") return error.message || labelOf(fallback)
   if (error.code === "RESOURCE_NOT_FOUND") return t`이미 삭제됐거나 볼 수 없는 글이에요.`
   if (error.code === "FORBIDDEN") return t`내가 쓴 글만 고치거나 지울 수 있어요.`
-  return legacyT(fallback)
+  return labelOf(fallback)
 }
 
 export interface CompleteOnboardingInput extends OnboardingRequest {

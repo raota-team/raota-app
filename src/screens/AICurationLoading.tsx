@@ -1,13 +1,13 @@
-import { t } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, msg } from "@lingui/core/macro";
+import { translate } from "@raota/shared"
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { ArrowRight, Check, ChevronLeft } from 'lucide-react'
 import useLoadingSequence from '../hooks/useLoadingSequence'
 
-const MESSAGES = ['선택한 취향을 확인하고 있어요', '어울리는 라멘집을 찾고 있어요', '오늘의 추천을 정리하고 있어요', '오늘의 한 그릇을 골랐어요']
+const MESSAGES = [msg`선택한 취향을 확인하고 있어요`, msg`어울리는 라멘집을 찾고 있어요`, msg`오늘의 추천을 정리하고 있어요`, msg`오늘의 한 그릇을 골랐어요`]
 
 interface Props {
-  /** 실제로 결과에 반영된 조건 라벨. 참고만 한 조건은 넣지 않는다. */
+  /** 실제로 결과에 반영된 조건 라벨(번역된 표시 문구). 참고만 한 조건은 넣지 않는다. */
   conditions: string[]
   onBack: () => void
   onComplete: () => void
@@ -30,7 +30,7 @@ export default function AICurationLoading({ conditions, onBack, onComplete }: Pr
       <div className="flex flex-1 flex-col justify-center px-6 py-4 text-center">
         <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-bold leading-[1.4] tracking-tight outline-none">{t`오늘의 한 그릇을`}<br />{t`찾고 있어요`}</h1>
         <p className="mx-auto mt-3 max-w-[280px] text-sm leading-6 text-ink-sub break-keep">
-          {conditions.length > 0 ? conditions.map(condition => legacyT(condition)).join(' · ') : t`전체 라멘집에서 골라요`}
+          {conditions.length > 0 ? conditions.join(' · ') : t`전체 라멘집에서 골라요`}
         </p>
 
         <div className="ai-curation-visual relative mx-auto my-6 flex aspect-square w-full max-w-[280px] items-center justify-center" aria-hidden="true" data-complete={complete} data-reduced-motion={reducedMotion} style={{ '--curation-duration': `${duration}ms` } as CSSProperties}>
@@ -50,7 +50,7 @@ export default function AICurationLoading({ conditions, onBack, onComplete }: Pr
         <p role="status" aria-live="polite" aria-atomic="true" className="min-h-6 text-sm font-medium leading-6 text-ink-sub">
           <span key={stage} className="taste-loading-status flex items-center justify-center gap-2">
             <span className="h-1 w-1 shrink-0 rounded-full bg-brand" aria-hidden="true" />
-            {legacyT(MESSAGES[stage])}
+            {translate(MESSAGES[stage])}
           </span>
         </p>
       </div>

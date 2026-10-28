@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { labelOf } from "@raota/shared"
 import { useState, useRef, useEffect, useId, useMemo } from 'react'
 import type { RamenLog, TasteProfile, UserProfile } from '../types'
 import TasteReportLoading from './TasteReportLoading'
@@ -43,7 +43,7 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
   }
   const ring = (level: number) => [0, 1, 2, 3, 4].map(index => { const p = coord(index, level); return `${p.x},${p.y}` }).join(' ')
   const polygon = metrics.map((metric, index) => { const p = coord(index, metric.myVal); return `${p.x},${p.y}` }).join(' ')
-  const summary = metrics.map(metric => t`${ph({ v0: legacyT(metric.label) })} ${ph({ v1: metric.score.toFixed(1) })}점`).join(', ')
+  const summary = metrics.map(metric => t`${ph({ v0: metric.label })} ${ph({ v1: metric.score.toFixed(1) })}점`).join(', ')
 
   return (
     <div className="flex justify-center py-2">
@@ -62,7 +62,7 @@ function RadarChart({ metrics }: { metrics: MetricItem[] }) {
         })}
         {metrics.map((metric, index) => (
           <g key={metric.key} aria-hidden="true">
-            <text x={RADAR_LABELS[index].x} y={RADAR_LABELS[index].y - 7} textAnchor="middle" dominantBaseline="middle" fontSize="12" fontWeight="600" fill="#4A4D52">{legacyT(metric.label)}</text>
+            <text x={RADAR_LABELS[index].x} y={RADAR_LABELS[index].y - 7} textAnchor="middle" dominantBaseline="middle" fontSize="12" fontWeight="600" fill="#4A4D52">{metric.label}</text>
             <text x={RADAR_LABELS[index].x} y={RADAR_LABELS[index].y + 8} textAnchor="middle" dominantBaseline="middle" fontSize="13" fontWeight="800" fill="#25282B">{metric.score.toFixed(1)}</text>
           </g>
         ))}
@@ -165,7 +165,7 @@ export default function TasteDetailScreen({ onBack, recordCount, user, profile =
     `${t`라오타 취향 리포트`}${user?.nickname ? ` · ${user.nickname}` : ''}`,
     identity.title,
     identity.evidence,
-    metrics.map(metric => `${legacyT(metric.label)} ${metric.score.toFixed(1)}`).join(' · '),
+    metrics.map(metric => `${metric.label} ${metric.score.toFixed(1)}`).join(' · '),
     topShops.length ? `${t`자주 간 라멘집`}: ${topShops.map(shop => `${shop.name} ${t`${ph({ count: shop.visitCount })}그릇`}`).join(', ')}` : '',
   ].filter(Boolean).join('\n')
 
@@ -183,10 +183,10 @@ export default function TasteDetailScreen({ onBack, recordCount, user, profile =
       if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable')
       await navigator.clipboard.writeText(shareText)
       closeShare()
-      showToast('취향 카드 내용을 복사했어요')
+      showToast(t`취향 카드 내용을 복사했어요`)
     } catch {
       setShareFallback(true)
-      showToast('복사하지 못했어요. 아래 내용을 직접 복사해 주세요')
+      showToast(t`복사하지 못했어요. 아래 내용을 직접 복사해 주세요`)
     }
   }
 
@@ -233,7 +233,7 @@ export default function TasteDetailScreen({ onBack, recordCount, user, profile =
             <dl className="divide-y divide-line border-t border-line">
               {metrics.map((metric, index) => (
                 <div key={metric.key} className="flex items-center gap-3 py-2.5">
-                  <dt className="w-24 shrink-0 text-[14px] font-bold text-ink">{legacyT(metric.label)}</dt>
+                  <dt className="w-24 shrink-0 text-[14px] font-bold text-ink">{metric.label}</dt>
                   <dd className="flex min-w-0 flex-1 items-center gap-3">
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-canvas-soft" aria-hidden="true">
                       <div className="h-full rounded-full bg-brand" style={{ width: `${metric.myVal * 100}%` }} />
@@ -257,7 +257,7 @@ export default function TasteDetailScreen({ onBack, recordCount, user, profile =
                 const pct = typeTotal ? Math.round((count / typeTotal) * 100) : 0
                 return (
                   <li key={category.name} className="flex items-center gap-3 text-[14px]">
-                    <span className="w-14 shrink-0 font-bold text-ink">{legacyT(category.name)}</span>
+                    <span className="w-14 shrink-0 font-bold text-ink">{labelOf(category.name)}</span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-canvas-soft" aria-hidden="true">
                       <div className={`h-full rounded-full ${category.color}`} style={{ width: `${pct}%` }} />
                     </div>
@@ -294,7 +294,7 @@ export default function TasteDetailScreen({ onBack, recordCount, user, profile =
             <section className="border-t border-line px-4 py-5" aria-labelledby="taste-next-title">
               <h2 id="taste-next-title" className="text-[17px] font-extrabold">{t`다음에 맛볼 한 그릇`}</h2>
               <p className="mt-1 text-[13px] leading-5 text-ink-sub">
-                {suggestion.count === 0 ? t`${ph({ v0: legacyT(suggestion.category) })}는 아직 기록이 없어요.` : t`${ph({ v0: legacyT(suggestion.category) })}는 ${ph({ v1: suggestion.count })}그릇으로 가장 적었어요.`}  {t`이 종류로 폭을 넓혀보세요.`}</p>
+                {suggestion.count === 0 ? t`${ph({ v0: labelOf(suggestion.category) })}는 아직 기록이 없어요.` : t`${ph({ v0: labelOf(suggestion.category) })}는 ${ph({ v1: suggestion.count })}그릇으로 가장 적었어요.`}  {t`이 종류로 폭을 넓혀보세요.`}</p>
               <div className="mt-3 flex items-center gap-3">
                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-canvas-soft">
                   {suggestion.shop.photos[0] ? <img src={suggestion.shop.photos[0]} alt="" className="h-full w-full object-cover" /> : null}
@@ -317,7 +317,7 @@ export default function TasteDetailScreen({ onBack, recordCount, user, profile =
 
       {toastMessage && (
         <div role="status" className="pointer-events-none absolute left-1/2 top-16 z-40 -translate-x-1/2 whitespace-nowrap rounded-[60px] bg-ink px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] anim-fade-in-up">
-          {legacyT(toastMessage)}
+          {toastMessage}
         </div>
       )}
 
@@ -330,13 +330,13 @@ export default function TasteDetailScreen({ onBack, recordCount, user, profile =
               <button ref={shareCloseRef} type="button" onClick={closeShare} aria-label={t`닫기`} className="report-control flex h-11 w-11 items-center justify-center rounded-full hover:bg-canvas-soft"><X size={20} aria-hidden="true" /></button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <p id={shareDescriptionId} className="text-[13px] font-medium text-ink-sub">{user?.nickname ?? t`라오타 회원`} · {user?.membershipNo ?? ''} · Lv.{level.number} {legacyT(level.title)}</p>
-              <p className="mt-2 text-[24px] font-extrabold leading-tight tracking-tight">{legacyT(identity.title)}</p>
+              <p id={shareDescriptionId} className="text-[13px] font-medium text-ink-sub">{user?.nickname ?? t`라오타 회원`} · {user?.membershipNo ?? ''} · Lv.{level.number} {labelOf(level.title)}</p>
+              <p className="mt-2 text-[24px] font-extrabold leading-tight tracking-tight">{identity.title}</p>
               <p className="mt-1 text-[13px] font-medium leading-5 text-ink-sub">{identity.evidence}</p>
               <dl className="mt-4 space-y-2 border-t border-line pt-3">
                 {metrics.map(metric => (
                   <div key={metric.key} className="flex items-center gap-3 text-[13px]">
-                    <dt className="w-20 shrink-0 font-bold text-ink">{legacyT(metric.label)}</dt>
+                    <dt className="w-20 shrink-0 font-bold text-ink">{metric.label}</dt>
                     <dd className="flex min-w-0 flex-1 items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-canvas-soft" aria-hidden="true"><div className="h-full bg-brand" style={{ width: `${metric.myVal * 100}%` }} /></div>
                       <span className="w-7 shrink-0 text-right font-extrabold text-ink">{metric.score.toFixed(1)}</span>

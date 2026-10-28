@@ -1,6 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
 import { useEffect, useRef, useState } from "react"
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native"
 import Animated, {
@@ -23,6 +22,7 @@ import { AppText } from "./ui"
 export interface TasteFingerprintProps {
   title?: string
   meta?: string
+  /** label·text는 화면에 그대로 쓰는 번역된 문구다 */
   rows: Array<{ key: TasteAxisKey; label: string; value: number; text: string }>
   style?: StyleProp<ViewStyle>
   /** false인 동안은 판만 보이고 기다린다. true가 되는 순간 한 번 펼쳐진다(스크롤해서 화면에 들어왔을 때 등). 기본 true */
@@ -126,16 +126,16 @@ function AxisLabel({
       {strong ? (
         <>
           <Animated.Text maxFontSizeMultiplier={maxFontScale} numberOfLines={1} style={[typography.secondary, styles.axisName, { textAlign: align }, styles.strong, strongColor]}>
-            {legacyT(row.label)}
+            {row.label}
           </Animated.Text>
           <Animated.Text lineBreakStrategyIOS="hangul-word" maxFontSizeMultiplier={maxFontScale} numberOfLines={2} style={[typography.meta, styles.axisValue, { textAlign: align }, styles.strong, strongColor]}>
-            {legacyT(row.text)}
+            {row.text}
           </Animated.Text>
         </>
       ) : (
         <>
-          <AppText capScale numberOfLines={1} style={[styles.axisName, { textAlign: align }]} tone="muted" variant="secondary">{legacyT(row.label)}</AppText>
-          <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={[styles.axisValue, { textAlign: align }]} tone="muted" variant="meta">{legacyT(row.text)}</AppText>
+          <AppText capScale numberOfLines={1} style={[styles.axisName, { textAlign: align }]} tone="muted" variant="secondary">{row.label}</AppText>
+          <AppText capScale lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={[styles.axisValue, { textAlign: align }]} tone="muted" variant="meta">{row.text}</AppText>
         </>
       )}
     </Animated.View>
@@ -188,7 +188,7 @@ export function TasteFingerprint({ title = t`맛 지문`, meta, rows, style, pla
   return (
     <View
       // 화면에서 파랗게 올린 축을 읽기 화면에서도 같은 무게로 알린다
-      accessibilityLabel={`${title}. ${meta ? `${meta}. ` : ""}${rows.map((row) => `${row.label} ${legacyT(row.text)}`).join(", ")}${strongLabels.length > 0 ? `. ${t`가장 높은 평가 ${ph({ labels: strongLabels.map((label) => legacyT(label)).join(", ") })}`}` : ""}`}
+      accessibilityLabel={`${title}. ${meta ? `${meta}. ` : ""}${rows.map((row) => `${row.label} ${row.text}`).join(", ")}${strongLabels.length > 0 ? `. ${t`가장 높은 평가 ${ph({ labels: strongLabels.join(", ") })}`}` : ""}`}
       accessibilityRole="text"
       accessible
       style={[styles.card, style]}

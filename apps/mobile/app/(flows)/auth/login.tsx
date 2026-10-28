@@ -1,5 +1,6 @@
-import { t } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { translate } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { useEffect, useState, type ReactElement } from "react"
 import { router, useLocalSearchParams } from "expo-router"
@@ -39,14 +40,14 @@ import { colors, line, pressFade, radii, spacing, touchTarget, typography, usePa
  * - mock(기본): actions.login({ provider })로 기기 안에서만 로그인한다.
  */
 
-const LOGIN_FAILED = "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
-const LOGIN_OFFLINE = "인터넷 연결을 확인하고 다시 시도해 주세요."
-const LOGIN_UNAVAILABLE_ACCOUNT = "이 계정으로는 로그인할 수 없어요. 탈퇴한 계정은 30일이 지나야 다시 가입할 수 있어요."
+const LOGIN_FAILED = msg`로그인하지 못했어요. 잠시 후 다시 시도해 주세요.`
+const LOGIN_OFFLINE = msg`인터넷 연결을 확인하고 다시 시도해 주세요.`
+const LOGIN_UNAVAILABLE_ACCOUNT = msg`이 계정으로는 로그인할 수 없어요. 탈퇴한 계정은 30일이 지나야 다시 가입할 수 있어요.`
 
 function loginErrorMessage(error: unknown): string {
-  if (!isApiError(error)) return legacyT(LOGIN_FAILED)
-  if (error.isOffline) return legacyT(LOGIN_OFFLINE)
-  return legacyT(error.code === "UNAUTHORIZED" ? LOGIN_UNAVAILABLE_ACCOUNT : LOGIN_FAILED)
+  if (!isApiError(error)) return translate(LOGIN_FAILED)
+  if (error.isOffline) return translate(LOGIN_OFFLINE)
+  return translate(error.code === "UNAUTHORIZED" ? LOGIN_UNAVAILABLE_ACCOUNT : LOGIN_FAILED)
 }
 
 /** 제공자 브랜드 가이드가 정한 색. RAOTA 토큰 밖의 예외라 이 화면에만 둔다 */
@@ -185,11 +186,11 @@ function GoogleMark() {
   )
 }
 
-const PROVIDERS: Array<{ id: SocialProvider; label: string; Mark: (props: { color: ColorValue }) => ReactElement }> = [
+const PROVIDERS: Array<{ id: SocialProvider; label: MessageDescriptor; Mark: (props: { color: ColorValue }) => ReactElement }> = [
   // Apple은 iOS 밝은 화면에서 검정, 어두운 화면에서 흰 버튼으로 제공한다.
-  { id: "apple", label: "Apple로 계속하기", Mark: AppleMark },
-  { id: "kakao", label: "카카오로 계속하기", Mark: KakaoMark },
-  { id: "google", label: "Google로 계속하기", Mark: GoogleMark },
+  { id: "apple", label: msg`Apple로 계속하기`, Mark: AppleMark },
+  { id: "kakao", label: msg`카카오로 계속하기`, Mark: KakaoMark },
+  { id: "google", label: msg`Google로 계속하기`, Mark: GoogleMark },
 ]
 
 function ProviderButton({ id, label, Mark, onPress, disabled }: (typeof PROVIDERS)[number] & { onPress: () => void; disabled: boolean }) {
@@ -198,7 +199,7 @@ function ProviderButton({ id, label, Mark, onPress, disabled }: (typeof PROVIDER
   const textColor = id === "apple" ? (darkApple ? colors.black : colors.white) : id === "kakao" ? PROVIDER_BRAND.kakaoLabel : colors.black
   return (
     <Pressable
-      accessibilityLabel={legacyT(label)}
+      accessibilityLabel={translate(label)}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
@@ -217,7 +218,7 @@ function ProviderButton({ id, label, Mark, onPress, disabled }: (typeof PROVIDER
         <Mark color={textColor} />
       </View>
       <AppText maxFontSizeMultiplier={1.3} numberOfLines={1} style={{ color: textColor }} variant="button">
-        {legacyT(label)}
+        {translate(label)}
       </AppText>
     </Pressable>
   )
@@ -232,7 +233,7 @@ function LegalLink({ doc, label }: { doc: "terms" | "privacy"; label: string }) 
       style={({ pressed }) => pressed && styles.pressedWash}
     >
       <AppText style={styles.legalLinkText} tone="sub" variant="meta">
-        {legacyT(label)}
+        {label}
       </AppText>
     </Pressable>
   )

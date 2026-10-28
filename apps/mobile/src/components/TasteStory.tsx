@@ -1,6 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
+import { t, ph, msg } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
+import { formatNumber, labelOf, translate } from "@raota/shared"
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   Pressable,
@@ -46,15 +46,35 @@ const PIP = 8
  * 평균 점수를 육수·면 한 마디로 읽는다. 가게 상세 "이 가게의 맛"(src/domain/shopTaste.ts)과 같은 기준:
  * 3.5 이상은 높은 쪽, 2.5 이하는 낮은 쪽, 그 사이는 가운데.
  */
+const BROTH_WORDS = { high: msg`진한 육수`, mid: msg`적당한 농도의 육수`, low: msg`맑은 육수` }
+const NOODLE_WORDS = { high: msg`단단한 면`, mid: msg`알맞게 삶은 면`, low: msg`부드러운 면` }
+
 export function tasteLeanWords(scores: Pick<TasteScores, "brothDensity" | "noodleFirmness">) {
   const lean = (score: number) => (score >= 3.5 ? "high" : score <= 2.5 ? "low" : "mid")
-  const broth = { high: "진한 육수", mid: "적당한 농도의 육수", low: "맑은 육수" }[lean(scores.brothDensity)]
-  const noodle = { high: "단단한 면", mid: "알맞게 삶은 면", low: "부드러운 면" }[lean(scores.noodleFirmness)]
-  return { broth: legacyT(broth), noodle: legacyT(noodle) }
+  return { broth: translate(BROTH_WORDS[lean(scores.brothDensity)]), noodle: translate(NOODLE_WORDS[lean(scores.noodleFirmness)]) }
 }
 
 /** 큰 글씨 조각. accent는 맛 지문 파랑으로 칠한다 */
 type BigPart = string | { accent: string }
+
+/**
+ * 한 문장으로 번역한 뒤 강조할 값(자리표시자에 넣은 말)만 accent 조각으로 나눈다.
+ * 언어마다 어순이 달라도 문장을 조각내 번역하지 않고 강조만 따라가게 한다.
+ */
+function accentParts(sentence: string, accents: readonly string[]): BigPart[] {
+  const parts: BigPart[] = []
+  let rest = sentence
+  for (;;) {
+    const hits = accents.filter(Boolean).map((accent) => ({ accent, at: rest.indexOf(accent) })).filter(({ at }) => at >= 0)
+    if (hits.length === 0) break
+    const { accent, at } = hits.reduce((first, hit) => (hit.at < first.at ? hit : first))
+    if (at > 0) parts.push(rest.slice(0, at))
+    parts.push({ accent })
+    rest = rest.slice(at + accent.length)
+  }
+  if (rest) parts.push(rest)
+  return parts
+}
 
 interface Slide {
   key: string
@@ -67,7 +87,7 @@ interface Slide {
   /** 국물 종류별 몫(한 줄 막대) */
   shares?: Array<{ name: string; count: number }>
   /** 맛 평균 점수를 5칸 점으로. 큰 문장이 어디서 나왔는지 숫자로 받쳐 준다 */
-  pips?: Array<{ label: string; value: number }>
+  pips?: Array<{ key: string; label: string; value: number }>
   /** 오른쪽 면을 채우는 단골집 사진 */
   photo?: string
   onPress?: () => void
@@ -122,20 +142,20 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
     slides.push({
       key: "soup",
       kicker: t`가장 많이 먹은 국물`,
-      big: [`${legacyT(top)} `, { accent: t`${ph({ count: typeCounts[top] })}그릇` }],
-      sub: rest.length ? [rest.map((name) => `${legacyT(name)} ${typeCounts[name]}`).join(" · ")] : [],
+      big: [`${labelOf(top)} `, { accent: t`${ph({ count: typeCounts[top] })}그릇` }],
+      sub: rest.length ? [rest.map((name) => `${labelOf(name)} ${typeCounts[name]}`).join(" · ")] : [],
       shares: ranked.map((name) => ({ name, count: typeCounts[name] })),
     })
   }
   slides.push({
     key: "taste",
     kicker: t`나의 취향`,
-    big: [{ accent: broth }, t`에
-`, { accent: noodle }],
-    sub: [legacyT(identity.title), ...(identity.tags.length ? [identity.tags.map((tag) => `#${legacyT(tag)}`).join(" ")] : [])],
+    big: accentParts(t`${ph({ broth })}에
+${ph({ noodle })}`, [broth, noodle]),
+    sub: [identity.title, ...(identity.tags.length ? [identity.tags.map((tag) => `#${tag}`).join(" ")] : [])],
     pips: [
-      { label: "육수", value: scores.brothDensity },
-      { label: "면", value: scores.noodleFirmness },
+      { key: "broth", label: t`육수`, value: scores.brothDensity },
+      { key: "noodle", label: t`면`, value: scores.noodleFirmness },
     ],
   })
   if (favorite) {
@@ -241,7 +261,7 @@ function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: nu
   const tone = slide.dark ? "onDark" : "ink"
   const subTone = slide.dark ? "onDark" : "sub"
   const bigText = slide.big.map((part) => (typeof part === "string" ? part : part.accent)).join("")
-  const pipsText = slide.pips?.map((pip) => t`${ph({ label: legacyT(pip.label) })} ${ph({ value: pip.value.toFixed(1) })}점`).join(", ")
+  const pipsText = slide.pips?.map((pip) => t`${ph({ label: pip.label })} ${ph({ value: formatNumber(pip.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })}점`).join(", ")
   const label = [slide.kicker, bigText.replace(/\n/g, " "), slide.sub.join(" · "), pipsText].filter(Boolean).join(". ")
   const total = slide.shares?.reduce((sum, share) => sum + share.count, 0) ?? 0
   // 사진은 카드 오른쪽 면을 위아래 끝까지 채운다. 글은 그 폭만큼 비켜 선다
@@ -276,14 +296,14 @@ function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: nu
       {slide.pips?.length ? (
         <View style={[styles.footer, styles.pipRows]}>
           {slide.pips.map((pip) => (
-            <View key={legacyT(pip.label)} style={styles.pipRow}>
-              <AppText capScale style={styles.pipLabel} tone="muted" variant="meta">{legacyT(pip.label)}</AppText>
+            <View key={pip.key} style={styles.pipRow}>
+              <AppText capScale style={styles.pipLabel} tone="muted" variant="meta">{pip.label}</AppText>
               <View style={styles.pips}>
                 {[1, 2, 3, 4, 5].map((step) => (
                   <View key={step} style={[styles.pip, step <= Math.round(pip.value) && styles.pipOn]} />
                 ))}
               </View>
-              <AppText capScale tone="sub" variant="meta">{pip.value.toFixed(1)}</AppText>
+              <AppText capScale tone="sub" variant="meta">{formatNumber(pip.value, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</AppText>
             </View>
           ))}
         </View>

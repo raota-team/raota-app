@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { labelOf, translate } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { useRef, useState } from "react"
 import { router } from "expo-router"
@@ -45,21 +46,21 @@ import { colors, line, pressFade, radii, spacing, touchTarget, typography } from
  */
 
 const BIO_MAX = 60
-const SIGNUP_SAVE_ERROR = "가입하지 못했어요. 잠시 후 다시 시도해 주세요."
-const PROFILE_SAVE_ERROR = "가입은 됐지만 소개·사진을 저장하지 못했어요. 다시 누르면 그것만 저장해요."
-const NICKNAME_TAKEN_ERROR = "이미 사용 중인 닉네임이에요. 다른 닉네임을 적어 주세요."
+const SIGNUP_SAVE_ERROR = msg`가입하지 못했어요. 잠시 후 다시 시도해 주세요.`
+const PROFILE_SAVE_ERROR = msg`가입은 됐지만 소개·사진을 저장하지 못했어요. 다시 누르면 그것만 저장해요.`
+const NICKNAME_TAKEN_ERROR = msg`이미 사용 중인 닉네임이에요. 다른 닉네임을 적어 주세요.`
 
 /** 설정 화면과 같은 종류를 저장한다. 칩에는 짧은 이름만 쓴다. */
 const RAMEN_STYLE_OPTIONS = RAMEN_TYPES
 
-const ONBOARDING_FEATURES: Array<{ Icon: LucideIcon; title: string; desc: string }> = [
-  { Icon: MapPin, title: "내 주변 라멘집 찾기", desc: "지도에서 영업 여부와 라스트오더를 확인하고 바로 찾아가요." },
+const ONBOARDING_FEATURES: Array<{ Icon: LucideIcon; title: MessageDescriptor; desc: MessageDescriptor }> = [
+  { Icon: MapPin, title: msg`내 주변 라멘집 찾기`, desc: msg`지도에서 영업 여부와 라스트오더를 확인하고 바로 찾아가요.` },
   {
     Icon: Soup,
-    title: "한 그릇 라멘로그",
-    desc: TASTE_REPORT_ENABLED ? "먹은 라멘을 5가지 축으로 기록하면 취향 리포트가 쌓여요." : "먹은 라멘을 5가지 축으로 기록하고 다시 꺼내 봐요.",
+    title: msg`한 그릇 라멘로그`,
+    desc: TASTE_REPORT_ENABLED ? msg`먹은 라멘을 5가지 축으로 기록하면 취향 리포트가 쌓여요.` : msg`먹은 라멘을 5가지 축으로 기록하고 다시 꺼내 봐요.`,
   },
-  { Icon: Sparkles, title: "AI 큐레이터", desc: "원하는 국물과 분위기를 고르면 오늘의 한 곳을 골라 드려요." },
+  { Icon: Sparkles, title: msg`AI 큐레이터`, desc: msg`원하는 국물과 분위기를 고르면 오늘의 한 곳을 골라 드려요.` },
 ]
 
 
@@ -94,7 +95,7 @@ export default function OnboardingScreen() {
   /** 서버가 409로 거절한 닉네임(대소문자 무시 값) */
   const [rejectedNickname, setRejectedNickname] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<MessageDescriptor | null>(null)
   const [registered, setRegistered] = useState<UserProfile | null>(null)
   /** 가입은 끝났고 선택 프로필 저장만 다시 하면 된다 */
   const [profileRetry, setProfileRetry] = useState(false)
@@ -112,7 +113,7 @@ export default function OnboardingScreen() {
   const nicknameValidation = validateNickname(nickname)
   const availability = useNicknameAvailability(nicknameValidation.normalized, !nicknameValidation.error)
   const nicknameTaken = availability === "taken" || rejectedNickname === nicknameValidation.normalized
-  const nicknameError = nicknameValidation.error ?? (nicknameTaken ? NICKNAME_TAKEN_ERROR : null)
+  const nicknameError = nicknameValidation.error ?? (nicknameTaken ? translate(NICKNAME_TAKEN_ERROR) : null)
   const showNicknameError = Boolean(nicknameError) && (attempted || nickname.length > 0)
   const nicknameNote = availability === "available" ? t`사용할 수 있는 닉네임이에요.` : t`한글, 영문, 숫자, 밑줄 ${ph({ v1: NICKNAME_MIN })}~${ph({ v2: NICKNAME_MAX })}자`
 
@@ -154,7 +155,7 @@ export default function OnboardingScreen() {
       return
     }
     if (!consents.terms || !consents.privacy) {
-      AccessibilityInfo.announceForAccessibility?.(CONSENT_REQUIRED_ERROR)
+      AccessibilityInfo.announceForAccessibility?.(translate(CONSENT_REQUIRED_ERROR))
       return
     }
     const displayNickname = nicknameValidation.display
@@ -225,18 +226,18 @@ export default function OnboardingScreen() {
             <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.center} variant="headline">
               {registered.nickname}{t`님, 반가워요 `}</AppText>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="body">
-              {legacyT(registered.level)} Lv.{registered.levelNumber} {t` · 첫 그릇을 기록하면 취향 분석이 시작돼요 `}</AppText>
+              {t`${ph({ level: labelOf(registered.level) })} Lv.${ph({ levelNumber: registered.levelNumber })} · 첫 그릇을 기록하면 취향 분석이 시작돼요`}</AppText>
           </View>
           <View style={styles.features}>
             {ONBOARDING_FEATURES.map(({ Icon, title, desc }, index) => (
-              <View accessible key={title} style={[styles.feature, index > 0 && styles.featureDivider]}>
+              <View accessible key={index} style={[styles.feature, index > 0 && styles.featureDivider]}>
                 <View style={styles.featureIcon}>
                   <Icon color={colors.ink} size={20} />
                 </View>
                 <View style={styles.flexShrink}>
-                  <AppText variant="cardTitle">{legacyT(title)}</AppText>
+                  <AppText variant="cardTitle">{translate(title)}</AppText>
                   <AppText lineBreakStrategyIOS="hangul-word" style={styles.featureDescription} tone="sub" variant="secondary">
-                    {desc}
+                    {translate(desc)}
                   </AppText>
                 </View>
               </View>
@@ -324,7 +325,7 @@ export default function OnboardingScreen() {
                 tone="sub"
                 variant="secondary"
               >
-                {legacyT(NICKNAME_REQUIRED_ERROR)}
+                {translate(NICKNAME_REQUIRED_ERROR)}
               </AppText>
               <AppText
                 accessibilityLiveRegion={showNicknameError ? "polite" : undefined}
@@ -346,7 +347,7 @@ export default function OnboardingScreen() {
               {RAMEN_STYLE_OPTIONS.slice(0, showMoreStyles ? undefined : 6).map((style) => (
                 <Chip
                   key={style}
-                  label={style}
+                  label={labelOf(style)}
                   onPress={() => setFavorite((previous) => (previous === style ? null : style))}
                   selected={favorite === style}
                   style={styles.styleChip}
@@ -421,7 +422,7 @@ export default function OnboardingScreen() {
             tone="critical"
             variant="secondary"
           >
-            {saveError ?? PROFILE_SAVE_ERROR}
+            {translate(saveError ?? PROFILE_SAVE_ERROR)}
           </AppText>
 
         </ScrollView>

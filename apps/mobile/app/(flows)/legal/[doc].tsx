@@ -1,5 +1,5 @@
 import { t } from "@lingui/core/macro";
-import { t as legacyT, getLocale } from "@raota/shared"
+import { getLocale } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { router, useLocalSearchParams } from "expo-router"
 import { Linking, ScrollView, StyleSheet, View } from "react-native"
@@ -41,7 +41,7 @@ export default function LegalDocumentScreen() {
   )
   return (
     <Screen style={styles.screen}>
-      <Header onBack={goBack} title={legacyT(document.title)} />
+      <Header onBack={goBack} title={doc === "terms" ? t`이용약관` : t`개인정보처리방침`} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.x8 }]}>
         <AppText tone="muted" variant="meta">
           {t`시행일 `}{document.effectiveDate}

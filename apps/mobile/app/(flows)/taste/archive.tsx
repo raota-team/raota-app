@@ -1,5 +1,4 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { useEffect, useMemo, useState } from "react"
 import { router } from "expo-router"
@@ -188,7 +187,7 @@ function lightSoup(name: string) {
 function MonthlyReportCard({ counts, hasPrevious }: { counts: Record<string, number>; hasPrevious: boolean }) {
   const report = monthlyReportStatus(counts)
   const ready = report.remaining === 0
-  const message = !hasPrevious ? t`이번 달 ${ph({ v1: MONTHLY_REPORT_TARGET })}그릇 이상 모이면 다음 달부터 달라진 비율을 비교할 수 있어요.` : ready ? t`${ph({ v1: MONTHLY_REPORT_TARGET })}그릇이 모여서 지난달과 비율을 비교할 수 있어요.` : t`${ph({ v1: report.remaining === 1 ? t`한 그릇` : t`${ph({ v1: report.remaining })}그릇` })} 더 기록하면 지난달과 비율을 비교할 수 있어요.`
+  const message = !hasPrevious ? t`이번 달 ${ph({ v1: MONTHLY_REPORT_TARGET })}그릇 이상 모이면 다음 달부터 달라진 비율을 비교할 수 있어요.` : ready ? t`${ph({ v1: MONTHLY_REPORT_TARGET })}그릇이 모여서 지난달과 비율을 비교할 수 있어요.` : t`${ph({ v1: report.remaining === 1 ? t`한 그릇` : t`${ph({ v1: report.remaining })}그릇` })} 더 기록하면 지난달과 비율을 비교할 수 있어요. (한 달 ${ph({ v2: MONTHLY_REPORT_TARGET })}그릇부터)`
   return (
     <View style={styles.nowCard}>
       <View style={styles.rowBetween}>
@@ -213,7 +212,7 @@ function MonthlyReportCard({ counts, hasPrevious }: { counts: Record<string, num
         <View style={[styles.progressFill, { width: `${report.progress * 100}%` }]} />
       </View>
       <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.progressHint} tone="muted" variant="meta">
-        {legacyT(message)}{hasPrevious && !ready ? t` (한 달 ${ph({ v1: MONTHLY_REPORT_TARGET })}그릇부터)` : ""}
+        {message}
       </AppText>
     </View>
   )
@@ -352,13 +351,13 @@ function MonthDetail({
       >
         {months.map((report) => {
           const active = report.id === selected.id
-          const label = `${shortReportMonth(report)}${isPastReport(report) ? "" : " · 집계 중"}`
+          const label = isPastReport(report) ? shortReportMonth(report) : t`${ph({ month: shortReportMonth(report) })} · 집계 중`
           return (
             <Chip
               accessibilityLabel={t`${ph({ v1: report.period })}${ph({ v2: isPastReport(report) ? "" : " 집계 중" })}`}
               accessibilityRole="tab"
               key={report.id}
-              label={legacyT(label)}
+              label={label}
               onPress={() => onSelect(report.id)}
               selected={active}
             />
@@ -372,7 +371,7 @@ function MonthDetail({
             {shortMonth(selected)}{t`의 취향 `}</AppText>
           {monthIdentity ? (
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} variant="headline">
-              {legacyT(monthIdentity.title)}
+              {monthIdentity.title}
             </AppText>
           ) : inProgressMonth ? (
             <AppText style={styles.gapTop1} tone="sub" variant="cardTitle">

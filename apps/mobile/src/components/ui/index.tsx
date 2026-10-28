@@ -1,6 +1,6 @@
 import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
+import { labelOf } from "@raota/shared"
 import Svg, { Line, Path } from "react-native-svg"
 import { ChevronLeft, X } from "lucide-react-native"
 import {
@@ -587,7 +587,7 @@ export function TicketCut({ orientation = "horizontal", startFill = colors.paper
 /** 원장 스타일과 기록 종류를 모두 종류 이름으로 보여 준다. */
 export function RamenTypeTag({ type, inList = false, onImage = false, style }: RamenTypeTagProps) {
   useLocale()
-  const label = legacyT(type.replace(/\s*라멘$/, "").trim())
+  const label = labelOf(type.replace(/\s*라멘$/, "").trim())
   // 이름이 "라멘"뿐이면 종류 정보가 없어 표시하지 않는다.
   if (!label) return null
   return (
@@ -699,9 +699,9 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
   ref,
 ) {
   useLocale()
-  const lean = (score: number) => (score <= 2 ? t`${ph({ side: legacyT(low) })} 쪽` : score >= 4 ? t`${ph({ side: legacyT(high) })} 쪽` : t`보통`)
-  const word = value !== null ? (options?.find((option) => option.value === value)?.label ?? words?.[value - 1] ?? t`${value}점`) : null
-  const status = invalid && value === null ? t`골라주세요` : word ? legacyT(word) : t`미선택`
+  const lean = (score: number) => (score <= 2 ? t`${ph({ side: labelOf(low) })} 쪽` : score >= 4 ? t`${ph({ side: labelOf(high) })} 쪽` : t`보통`)
+  const word = value !== null ? (options?.find((option) => option.value === value)?.label ?? words?.[value - 1] ?? null) : null
+  const status = invalid && value === null ? t`골라주세요` : word ? labelOf(word) : value !== null ? t`${value}점` : t`미선택`
   const choose = (score: number) => {
     if (Platform.OS !== "web" && score !== value) void Haptics.selectionAsync().catch(() => undefined)
     onChange(score)
@@ -712,7 +712,7 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
       <View style={styles.scoreHead}>
         <AppText variant={hero ? "cardTitle" : "bodyStrong"}>
           {index ? <AppText tone="sub" variant="bodyStrong">{`${index}  `}</AppText> : null}
-          {label}
+          {labelOf(label)}
         </AppText>
         <AppText
           capScale
@@ -725,7 +725,7 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
         </AppText>
       </View>
       <View
-        accessibilityLabel={label}
+        accessibilityLabel={labelOf(label)}
         accessibilityRole="radiogroup"
         ref={ref}
         style={styles.scoreCells}
@@ -735,10 +735,10 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
           return (
             <ScorePill
               accessibilityLabel={options
-                ? t`${ph({ p0: legacyT(label) })} ${ph({ p1: legacyT(option.label) })}, ${ph({ p2: option.value })}점`
-                : t`${ph({ p0: legacyT(label) })} ${ph({ p1: option.value })}점, ${ph({ p2: lean(option.value) })}`}
+                ? t`${ph({ p0: labelOf(label) })} ${ph({ p1: labelOf(option.label) })}, ${ph({ p2: option.value })}점`
+                : t`${ph({ p0: labelOf(label) })} ${ph({ p1: option.value })}점, ${ph({ p2: lean(option.value) })}`}
               key={option.value}
-              label={legacyT(option.label)}
+              label={labelOf(option.label)}
               onPress={() => choose(option.value)}
               selected={selected}
               variant={options ? "button" : "cardTitle"}
@@ -748,8 +748,8 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
       </View>
       {!options ? (
         <View style={styles.scoreEnds}>
-          <AppText capScale tone="sub" variant="meta">{legacyT(low)}</AppText>
-          <AppText capScale tone="sub" variant="meta">{legacyT(high)}</AppText>
+          <AppText capScale tone="sub" variant="meta">{labelOf(low)}</AppText>
+          <AppText capScale tone="sub" variant="meta">{labelOf(high)}</AppText>
         </View>
       ) : null}
     </View>

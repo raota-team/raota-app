@@ -1,6 +1,7 @@
-import { t, ph } from "@lingui/core/macro";
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
 import {
-  t as legacyT, getLocale,
+  translate,
   RAMEN_TYPES,
   TASTE_AXES,
   TASTE_FIELDS,
@@ -25,6 +26,15 @@ export interface RecordValidationError {
   /** field가 scores일 때 비어 있는 축 */
   axis?: TasteAxisKey
   message: string
+}
+
+/** 비어 있는 축마다 문장 하나. 조사("을/를")는 언어마다 문장 안에서 정한다 */
+const MISSING_AXIS_MESSAGES: Record<TasteAxisKey, MessageDescriptor> = {
+  satisfaction: msg`전체 만족도를 골라주세요.`,
+  brothDensity: msg`육수 농도를 골라주세요.`,
+  noodleFirmness: msg`면 삶기를 골라주세요.`,
+  topping: msg`토핑을 골라주세요.`,
+  revisit: msg`재방문 의사를 골라주세요.`,
 }
 
 export interface RecordDraft
@@ -160,8 +170,7 @@ export function validateRecordDraft(
     })
   }
   for (const axis of missingScoreAxes(draft)) {
-    const label = TASTE_AXES.find(({ key }) => key === axis)?.label ?? axis
-    errors.push({ field: "scores", axis, message: t`${ph({ label: getLocale() === "ko" ? withObjectParticle(label) : legacyT(label) })} 골라주세요.` })
+    errors.push({ field: "scores", axis, message: translate(MISSING_AXIS_MESSAGES[axis]) })
   }
   if (!hasValidTasteNotes(draft.tasteNotes)) {
     errors.push({ field: "tasteNotes", message: t`맛 태그는 보기에서만 고를 수 있어요.` })

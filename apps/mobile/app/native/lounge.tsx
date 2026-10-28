@@ -1,6 +1,7 @@
-import { t, ph } from "@lingui/core/macro";
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
 import { useLocale } from "@/src/i18n"
-import { t as legacyT } from "@raota/shared"
+import { labelOf, translate } from "@raota/shared"
 import { FlashList, type FlashListRef, type ListRenderItem } from "@shopify/flash-list"
 import { useFocusEffect } from "expo-router"
 import { Check, Soup } from "lucide-react-native"
@@ -24,6 +25,11 @@ import { colors, radii, shadows, spacing, touchTarget } from "@/src/theme"
  */
 const SORT_MENU_WIDTH = 180
 const DEFAULT_SORT: LoungeSort = "latest"
+/** 정렬 이름. 순서는 LOUNGE_SORTS를 따르고 화면 문구만 여기서 번역한다 */
+const SORT_LABELS: Record<LoungeSort, MessageDescriptor> = {
+  latest: msg`최신순`,
+  likes: msg`인기순`,
+}
 
 const keyOfLog = (log: RamenLog) => log.id
 
@@ -135,7 +141,7 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
       description={t`다른 종류를 고르거나 전체 라멘로그를 둘러보세요.`}
       icon={<Soup color={colors.textMuted} size={32} />}
       onAction={() => changeType(LOUNGE_ALL_TYPES)}
-      title={t`${ph({ p0: legacyT(type) })} 라멘로그가 아직 없어요`}
+      title={t`${ph({ p0: labelOf(type) })} 라멘로그가 아직 없어요`}
     />
   ) : (
     <EmptyState
@@ -145,7 +151,7 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
     />
   )
 
-  const sortLabel = legacyT(LOUNGE_SORTS.find((option) => option.value === sort)?.label ?? LOUNGE_SORTS[0].label)
+  const sortLabel = translate(SORT_LABELS[sort])
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -170,9 +176,9 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
         </View>
         {LOUNGE_TYPE_FILTERS.map((option) => (
           <Chip
-            accessibilityLabel={option === LOUNGE_ALL_TYPES ? t`전체 라멘 종류` : t`${ph({ p0: legacyT(option) })} 라멘만 보기`}
+            accessibilityLabel={option === LOUNGE_ALL_TYPES ? t`전체 라멘 종류` : t`${ph({ p0: labelOf(option) })} 라멘만 보기`}
             key={option}
-            label={legacyT(option)}
+            label={option === LOUNGE_ALL_TYPES ? t`전체` : labelOf(option)}
             onPress={() => changeType(option)}
             selected={type === option}
           />
@@ -206,14 +212,14 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
             <View accessibilityViewIsModal onAccessibilityEscape={() => setMenuPosition(null)} style={[styles.sortMenu, { left: menuPosition.left, top: menuPosition.top, maxHeight: windowHeight - menuPosition.top - spacing.gutter }]} testID="lounge-sort-menu">
               {LOUNGE_SORTS.map((option) => (
                 <Pressable
-                  accessibilityLabel={legacyT(option.label)}
+                  accessibilityLabel={translate(SORT_LABELS[option.value])}
                   accessibilityRole="button"
                   accessibilityState={{ selected: sort === option.value }}
                   key={option.value}
                   onPress={() => changeSort(option.value)}
                   style={({ pressed }) => [styles.sortOption, pressed && styles.sortOptionPressed]}
                 >
-                  <AppText variant="button">{legacyT(option.label)}</AppText>
+                  <AppText variant="button">{translate(SORT_LABELS[option.value])}</AppText>
                   <View style={styles.sortCheck}>
                     {sort === option.value ? <Check color={colors.ink} size={18} strokeWidth={2.5} /> : null}
                   </View>

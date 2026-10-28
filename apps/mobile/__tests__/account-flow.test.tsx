@@ -2,7 +2,8 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native"
 import type { ReactElement } from "react"
 import { Pressable, Text } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
-import { setLocale, t, type AppLocale } from "@raota/shared"
+import { t } from "@lingui/core/macro"
+import { setLocale, type AppLocale } from "@raota/shared"
 
 import type { MemberMe } from "@/src/api/types"
 import { idempotencyOutbox } from "@/src/api/outbox"
@@ -289,7 +290,7 @@ describe("서버 로그인 화면", () => {
     }
     const view = await renderWithStore(<LoginScreen />)
 
-    await fireEvent.press(await view.findByRole("button", { name: t("카카오로 계속하기") }))
+    await fireEvent.press(await view.findByRole("button", { name: t`카카오로 계속하기` }))
 
     expect(await view.findByText(expected)).toBeTruthy()
     expect(tokenStore.peek()).toBeNull()

@@ -1,5 +1,6 @@
-import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { translate } from "@raota/shared"
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import L from 'leaflet'
 import { ChevronDown, ChevronRight, Check, Search, X, MapPin, List, Navigation, Map, Plus, Minus } from 'lucide-react'
@@ -27,7 +28,7 @@ interface Shop {
   dist: string
   distanceM: number
   isOpen: boolean
-  status: string
+  status: MessageDescriptor
   lastOrder?: string
   match: number
   lat: number
@@ -51,7 +52,7 @@ function toMapShop(shop: ShopCatalogItem): Shop {
     dist: formatDistance(shop.distanceM),
     distanceM: shop.distanceM,
     isOpen,
-    status: operational ? (isOpen ? '영업 중' : '준비 중') : '영업 정보 확인 필요',
+    status: operational ? (isOpen ? msg`영업 중` : msg`준비 중`) : msg`영업 정보 확인 필요`,
     lastOrder: shop.lastOrder,
     match: shop.matchScore,
     lat: shop.lat,
@@ -64,20 +65,20 @@ function toMapShop(shop: ShopCatalogItem): Shop {
 const SHOPS: Shop[] = SHOP_CATALOG.filter(shop => shop.lat && shop.lng).map(toMapShop)
 
 const REGION_OPTIONS = [
-  { value: 'ALL', label: '전체 지역', keys: [] as string[] },
-  { value: '망원', label: '마포 · 망원동', keys: ['망원'] },
-  { value: '합정', label: '마포 · 합정/상수', keys: ['합정', '상수'] },
-  { value: '연남', label: '마포 · 연남/홍대', keys: ['연남', '홍대', '서교'] },
+  { value: 'ALL', label: msg`전체 지역`, keys: [] as string[] },
+  { value: '망원', label: msg`마포 · 망원동`, keys: ['망원'] },
+  { value: '합정', label: msg`마포 · 합정/상수`, keys: ['합정', '상수'] },
+  { value: '연남', label: msg`마포 · 연남/홍대`, keys: ['연남', '홍대', '서교'] },
 ]
 
 const MENU_OPTIONS = [
-  { value: 'ALL', label: '모든 메뉴', keys: [] as string[] },
-  { value: '쇼유', label: '쇼유 라멘 (간장)', keys: ['쇼유'] },
-  { value: '돈코츠', label: '돈코츠 라멘 (돼지뼈)', keys: ['돈코츠'] },
-  { value: '이에케', label: '이에케 (돈코츠쇼유)', keys: ['이에케'] },
-  { value: '시오', label: '시오 라멘 (소금)', keys: ['시오'] },
-  { value: '미소', label: '미소 라멘 (된장)', keys: ['미소'] },
-  { value: '토리파이탄', label: '토리파이탄 (닭백탕)', keys: ['토리파이탄', '닭백탕'] },
+  { value: 'ALL', label: msg`모든 메뉴`, keys: [] as string[] },
+  { value: '쇼유', label: msg`쇼유 라멘 (간장)`, keys: ['쇼유'] },
+  { value: '돈코츠', label: msg`돈코츠 라멘 (돼지뼈)`, keys: ['돈코츠'] },
+  { value: '이에케', label: msg`이에케 (돈코츠쇼유)`, keys: ['이에케'] },
+  { value: '시오', label: msg`시오 라멘 (소금)`, keys: ['시오'] },
+  { value: '미소', label: msg`미소 라멘 (된장)`, keys: ['미소'] },
+  { value: '토리파이탄', label: msg`토리파이탄 (닭백탕)`, keys: ['토리파이탄', '닭백탕'] },
 ]
 
 const USER_LOC = { lat: 37.5525, lng: 126.9165 } // 합정/서교 인근
@@ -476,8 +477,8 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
   const handleZoomOut = () => mapInstanceRef.current?.zoomOut()
 
   const hasActiveFilter = regionFilter !== 'ALL' || menuFilter !== 'ALL' || onlyOpen
-  const regionLabel = REGION_OPTIONS.find(r => r.value === regionFilter)?.label ?? '전체 지역'
-  const menuLabel = MENU_OPTIONS.find(m => m.value === menuFilter)?.label ?? '모든 메뉴'
+  const regionLabel = translate(REGION_OPTIONS.find(r => r.value === regionFilter)?.label ?? REGION_OPTIONS[0].label)
+  const menuLabel = translate(MENU_OPTIONS.find(m => m.value === menuFilter)?.label ?? MENU_OPTIONS[0].label)
 
   const filterButtonClass = (active: boolean) =>
     `w-full flex h-11 items-center justify-between gap-1.5 rounded-[6px] border px-3 text-[13px] font-bold transition-colors ${
@@ -529,12 +530,12 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
               aria-expanded={isRegionDropdownOpen}
               aria-haspopup="listbox"
               aria-controls="map-region-options"
-              aria-label={t`지역 필터: ${ph({ v0: legacyT(regionLabel) })}`}
+              aria-label={t`지역 필터: ${ph({ v0: regionLabel })}`}
               className={filterButtonClass(regionFilter !== 'ALL')}
             >
               <span className="flex items-center gap-1.5 min-w-0">
                 <MapPin className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">{legacyT(regionLabel)}</span>
+                <span className="truncate">{regionLabel}</span>
               </span>
               <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isRegionDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
@@ -544,7 +545,7 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                 {REGION_OPTIONS.map(reg => (
                   <li key={reg.value} role="option" aria-selected={regionFilter === reg.value}>
                     <button type="button" onClick={() => { setRegionFilter(reg.value); setIsRegionDropdownOpen(false) }} className={optionClass(regionFilter === reg.value)}>
-                      <span>{legacyT(reg.label)}</span>
+                      <span>{translate(reg.label)}</span>
                       {regionFilter === reg.value && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
                     </button>
                   </li>
@@ -561,12 +562,12 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
               aria-expanded={isMenuDropdownOpen}
               aria-haspopup="listbox"
               aria-controls="map-menu-options"
-              aria-label={t`메뉴 필터: ${ph({ v0: legacyT(menuLabel) })}`}
+              aria-label={t`메뉴 필터: ${ph({ v0: menuLabel })}`}
               className={filterButtonClass(menuFilter !== 'ALL')}
             >
               <span className="flex items-center gap-1.5 min-w-0">
                 <RamenIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                <span className="truncate">{legacyT(menuLabel)}</span>
+                <span className="truncate">{menuLabel}</span>
               </span>
               <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isMenuDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
@@ -576,7 +577,7 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                 {MENU_OPTIONS.map(menu => (
                   <li key={menu.value} role="option" aria-selected={menuFilter === menu.value}>
                     <button type="button" onClick={() => { setMenuFilter(menu.value); setIsMenuDropdownOpen(false) }} className={optionClass(menuFilter === menu.value)}>
-                      <span>{legacyT(menu.label)}</span>
+                      <span>{translate(menu.label)}</span>
                       {menuFilter === menu.value && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
                     </button>
                   </li>
@@ -669,7 +670,7 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                   </div>
                   <p className="text-[13px] text-[#6B6E73] mt-0.5 truncate">{selected.spec}</p>
                   <div className="flex items-center gap-1.5 mt-1 text-[12px] font-bold">
-                    <span className={selected.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {legacyT(selected.status)}</span>
+                    <span className={selected.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {translate(selected.status)}</span>
                     <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
                     <span className="text-[#6B6E73]">{selected.dist}</span>
                     {selected.match > 0 && (
@@ -705,7 +706,7 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                   aria-pressed={sortBy === key}
                   className={`min-h-11 px-2.5 rounded-[4px] transition-colors ${sortBy === key ? 'bg-[#25282B] text-white' : 'text-[#6B6E73]'}`}
                 >
-                  {legacyT(label)}
+                  {label}
                 </button>
               ))}
             </div>
@@ -732,7 +733,7 @@ export default function MapScreen({ isActive = true, selectedPin, onPinSelect, o
                     </div>
                     <p className="text-[13px] text-[#6B6E73] mt-0.5 truncate">{shop.style} · {shop.spec}</p>
                     <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#F2F2F2] text-[12px] font-bold text-[#6B6E73] whitespace-nowrap overflow-hidden">
-                      <span className={shop.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {legacyT(shop.status)}</span>
+                      <span className={shop.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {translate(shop.status)}</span>
                       <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
                       <span>{shop.dist}</span>
                       {shop.lastOrder && (

@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { formatDate, getLocale, labelOf } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { Image } from "expo-image"
 import { router, useLocalSearchParams } from "expo-router"
@@ -52,7 +52,7 @@ export default function MyTypeScreen() {
         <EmptyState
           description={t`이 종류로 남긴 기록이 생기면 여기에 모여요.`}
           style={styles.state}
-          title={t`${ph({ v1: legacyT(type) })} 기록이 없어요`}
+          title={t`${ph({ v1: labelOf(type) })} 기록이 없어요`}
         />
       )
     }
@@ -83,7 +83,7 @@ export default function MyTypeScreen() {
         align="center"
         backLabel={t`뒤로가기`}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/native/my"))}
-        title={t`${ph({ v1: legacyT(type) })} 모아 보기`}
+        title={t`${ph({ v1: labelOf(type) })} 모아 보기`}
         titleStyle={typography.sectionTitle}
       />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.section }]} style={styles.scroll}>
@@ -123,8 +123,8 @@ function BowlCard({ row, width }: { row: BowlRow; width: number }) {
   )
 }
 
-/** 2026-07-16 → 2026.07.16 */
-const dotted = (date: string) => date.replaceAll("-", ".")
+/** 2026-07-16 → 한국어는 2026.07.16, 다른 언어는 그 언어의 날짜 표기 */
+const dotted = (date: string) => getLocale() === "ko" ? date.replaceAll("-", ".") : formatDate(date, { year: "numeric", month: "short", day: "numeric" })
 
 /**
  * "가게 4곳 · 처음 2026.05.06 · 최근 2026.07.16"과, 두 번 넘게 간 곳이 있으면 가장 많이 간 곳.

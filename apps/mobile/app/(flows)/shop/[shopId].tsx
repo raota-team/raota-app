@@ -1,5 +1,4 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
 import { router, useLocalSearchParams } from "expo-router"
@@ -28,7 +27,7 @@ import { EdgeBackZone } from "@/src/components/EdgeBackZone"
 import { AppText, BottomSheet, Button, EmptyState, Header, IconButton, LoadingState, Screen, StickyActionBar, Toast } from "@/src/components/ui"
 import { isRemote } from "@/src/api/config"
 import { useShop, useShops } from "@/src/data/hooks"
-import { breaksOf, DAY_SHORT, formatTime, groupWeek, hoursStatusAt, parseOpeningHours, seoulTime, spanText, statusText, type DayHours } from "@/src/domain/hours"
+import { breaksOf, formatTime, groupWeek, hoursStatusAt, parseOpeningHours, seoulTime, spanText, statusText, weekdayName, type DayHours } from "@/src/domain/hours"
 import { naverMapLinks } from "@/src/domain/naverMap"
 import { isLogVisibleTo } from "@/src/domain/lounge"
 import { shopTasteSummaryOf } from "@/src/domain/shopTaste"
@@ -73,7 +72,7 @@ function HoursStatusLine({ status, large = false }: { status: LiveStatus; large?
     <View style={styles.statusLine}>
       <View style={[styles.statusDot, { backgroundColor: status.open ? colors.open : colors.textMuted }]} testID="shop-hours-status-dot" />
       <AppText style={[styles.flexShrink, styles.tabular]} variant={large ? "body" : "secondary"}>
-        <AppText style={styles.bold} variant={large ? "body" : "secondary"}>{legacyT(status.label)}</AppText>
+        <AppText style={styles.bold} variant={large ? "body" : "secondary"}>{status.label}</AppText>
         {status.detail ? <AppText tone="sub" variant={large ? "body" : "secondary"}>{` · ${status.detail}`}</AppText> : null}
       </AppText>
     </View>
@@ -222,7 +221,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   // 영업시간은 서버·데모 모두 "요일: 시간" 문자열이라 한 곳(domain/hours)에서 읽고, 상태는 서울 시각으로 정한다
   const week = useMemo(() => parseOpeningHours(shop.openingHours), [shop.openingHours])
   const now = seoulTime()
-  const todayShort = DAY_SHORT[now.day]
+  const todayShort = weekdayName(now.day, "short")
   const todayHours = week.find((entry) => entry.day === now.day)
   const todayBreaks = todayHours ? breaksOf(todayHours.ranges) : []
   const hasHours = week.length > 0
@@ -232,7 +231,8 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
   const liveStatus: LiveStatus = hoursStatus
     ? { ...statusText(hoursStatus), open: hoursStatus.kind === "open" }
     : { label: status.label, detail: null, open: status.open }
-  const todayLine = !todayHours ? t`오늘(${ph({ v1: todayShort })}) 영업시간 정보 없음` : todayHours.closed ? t`오늘(${ph({ v1: todayShort })}) 휴무` : t`오늘(${ph({ v1: todayShort })}) ${ph({ v2: spanText(todayHours.ranges) })}${ph({ v3: todayBreaks.map((pause) => ` · 쉬는 시간 ${formatTime(pause.start)} – ${formatTime(pause.end)}`).join("") })}`
+  const todayBreakText = todayBreaks.map((pause) => t` · 쉬는 시간 ${ph({ start: formatTime(pause.start) })} – ${ph({ end: formatTime(pause.end) })}`).join("")
+  const todayLine = !todayHours ? t`오늘(${ph({ v1: todayShort })}) 영업시간 정보 없음` : todayHours.closed ? t`오늘(${ph({ v1: todayShort })}) 휴무` : t`오늘(${ph({ v1: todayShort })}) ${ph({ v2: spanText(todayHours.ranges) })}${ph({ v3: todayBreakText })}`
   const photos = shop.photos.filter(Boolean)
   const perks = [
     { label: t`면 리필`, value: shop.servicePerks?.noodleRefill },
@@ -585,7 +585,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
           {shortcuts.map((shortcut) => (
             <Pressable
               accessibilityHint={shortcut.hint}
-              accessibilityLabel={legacyT(shortcut.label)}
+              accessibilityLabel={shortcut.label}
               accessibilityRole="link"
               key={shortcut.key}
               onPress={shortcut.onPress}
@@ -593,7 +593,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             >
               <View style={styles.shortcutIcon}>{shortcut.icon}</View>
               <AppText capScale numberOfLines={1} style={styles.bold} variant="meta">
-                {legacyT(shortcut.label)}
+                {shortcut.label}
               </AppText>
             </Pressable>
           ))}
@@ -612,7 +612,7 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
                 style={styles.perkRow}
               >
                 <AppText capScale style={styles.perkLabel} tone="sub" variant="secondary">
-                  {legacyT(perk.label)}
+                  {perk.label}
                 </AppText>
                 <AppText lineBreakStrategyIOS="hangul-word" style={styles.perkValue} tone="sub" variant="secondary">
                   {perk.value}
@@ -788,17 +788,18 @@ function ShopDetail({ shop }: { shop: DetailShop }) {
             {groupWeek(week).map((group, index) => {
               const isToday = group.days.includes(now.day)
               const pauses = breaksOf(group.ranges)
-              const timeText = group.closed ? "휴무" : spanText(group.ranges)
+              const timeText = group.closed ? t`휴무` : spanText(group.ranges)
+              const pauseText = pauses.map((pause) => t`, 쉬는 시간 ${ph({ start: formatTime(pause.start) })}부터 ${ph({ end: formatTime(pause.end) })}까지`).join("")
               return (
                 <View
-                  accessibilityLabel={t`${ph({ v1: group.label })}${ph({ v2: isToday ? ", 오늘" : "" })}, ${ph({ v3: timeText })}${ph({ v4: pauses.map((pause) => `, 쉬는 시간 ${formatTime(pause.start)}부터 ${formatTime(pause.end)}까지`).join("") })}`}
+                  accessibilityLabel={isToday ? t`${ph({ day: group.label })}, 오늘, ${ph({ time: timeText })}${ph({ breaks: pauseText })}` : t`${ph({ day: group.label })}, ${ph({ time: timeText })}${ph({ breaks: pauseText })}`}
                   accessible
                   key={group.label}
                   style={[styles.hourRow, index > 0 && styles.hourDivider]}
                   testID="shop-hours-row"
                 >
                   <View style={styles.hourDay}>
-                    <AppText style={[styles.hourText, isToday && styles.bold]} tone={isToday ? "ink" : "sub"} variant="secondary">{legacyT(group.label)}</AppText>
+                    <AppText style={[styles.hourText, isToday && styles.bold]} tone={isToday ? "ink" : "sub"} variant="secondary">{group.label}</AppText>
                     {isToday ? <AppText capScale style={styles.todayChip} variant="meta">{t`오늘`}</AppText> : null}
                   </View>
                   <View style={styles.hourTimes}>

@@ -1,340 +1,7396 @@
+#
 msgid ""
 msgstr ""
 "POT-Creation-Date: 2026-10-28 19:16+0900\n"
+"Language: zh\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: @lingui/cli\n"
-"Language: zh\n"
 
+#: src/screens/RecordScreen.tsx:562
+msgid " · {v0}개 선택"
+msgstr " · 已选{v0}项"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1426
+msgid " · 1매"
+msgstr " · 1张"
+
+#: apps/mobile/app/native/index.tsx:431
+msgid " · 남은 식권 {p0}장"
+msgstr " · 剩余{p0}张餐券"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:979
+msgid " · 마지막 "
+msgstr " · 最近"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:134
+#: src/components/MenuDistributionChart.tsx:25
+msgid " · 선택한 달"
+msgstr " · 已选月份"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:234
+msgid " · 쉬는 시간 {start} – {end}"
+msgstr " · 休息时间 {start} – {end}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:991
+msgid " · 오늘"
+msgstr " · 今天"
+
+#: src/screens/NewsFeedScreen.tsx:267
+msgid " · 종료"
+msgstr " · 已结束"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:134
+msgid " · 지난달"
+msgstr " · 上个月"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:134
+#: src/components/MenuDistributionChart.tsx:25
+#: src/screens/MonthlyTasteScreen.tsx:73
+msgid " · 집계 중"
+msgstr " · 统计中"
+
+#: apps/mobile/app/native/my.tsx:574
+msgid " · 최장 {p0}일 연속"
+msgstr " · 最长连续{p0}天"
+
+#: src/screens/MyScreen.tsx:553
+msgid " · 최장 {v0}일 연속"
+msgstr " · 最长连续{v0}天"
+
+#: src/screens/MonthlyTasteScreen.tsx:66
+msgid " (집계 중)"
+msgstr "（统计中）"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:404
+msgid " {v1}곳"
+msgstr " {v1}家"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:479
+msgid " 비율이 "
+msgstr "占比"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1266
+msgid ", 눌러서 이 질문으로 가요"
+msgstr "，点击前往此问题"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1280
+msgid ", 선택"
+msgstr "，选填"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:792
+msgid ", 쉬는 시간 {start}부터 {end}까지"
+msgstr ", 休息时间 {start}至{end}"
+
+#: src/screens/MonthlyTasteScreen.tsx:102
+msgid ", 이전 기록 대비 비율 변화"
+msgstr "，与上次记录相比的比例变化"
+
+#: src/screens/HomeScreen.tsx:110
+msgid ", 읽지 않은 알림 {count}개"
+msgstr "，{count}条未读通知"
+
+#: src/screens/NewsFeedScreen.tsx:208
+msgid ", 종료"
+msgstr ", 已结束"
+
+#: apps/mobile/app/native/my.tsx:506
+msgid ", 최장 {days}일 연속"
+msgstr "，最长连续{days}天"
+
+#: src/screens/TasteDetailScreen.tsx:284
+msgid "· 마지막"
+msgstr "· 最近到访"
+
+#: src/screens/RegisterScreen.tsx:187
+msgid "· 첫 그릇을 기록하면 취향 분석이 시작돼요"
+msgstr "· 记录第一碗即可开始口味分析"
+
+#: src/screens/RecordSheet.tsx:330
+msgid "’ 가게가 아직 목록에 없어요."
+msgstr "”尚未列入列表。"
+
+#: apps/mobile/app/native/my.tsx:249
+msgid "''{p0}'' 저장을 해제했어요"
+msgstr "已取消收藏“{p0}”"
+
+#: src/screens/RecordSheet.tsx:336
+msgid "’(으)로 바로 기록하기"
+msgstr "”：直接记录"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:326
+msgid "‘{v1}’ 가게가 아직 목록에 없어요. 이름이나 동네를 다르게 입력해보세요."
+msgstr "未找到“{v1}”相关店铺，请尝试其他店名或地区。"
+
+#: src/screens/NewsFeedScreen.tsx:306
+msgid "(새 창)"
+msgstr "（新窗口）"
+
+#: src/screens/RecordScreen.tsx:325
+msgid "(으)로 채우기"
+msgstr "：使用此风格"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:117
+#: src/screens/RegisterScreen.tsx:440
+msgid "[선택]"
+msgstr "[选填]"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:104
+#: apps/mobile/src/components/ConsentChecklist.tsx:111
+#: src/screens/RegisterScreen.tsx:409
+#: src/screens/RegisterScreen.tsx:425
+msgid "[필수]"
+msgstr "[必填]"
+
+#: apps/mobile/src/components/ui/index.tsx:840
+msgid "{action} 버튼이 있어요"
+msgstr "可使用{action}按钮"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1060
+msgid "{axis} {choice}"
+msgstr "{axis} {choice}"
+
+#: apps/mobile/src/components/TasteStory.tsx:153
+msgid "{broth}에\n"
+"{noodle}"
+msgstr "{broth}\n"
+"配{noodle}"
+
+#: apps/mobile/src/components/TasteStory.tsx:136
+msgid "{count}곳을 다녔어요"
+msgstr "去过{count}家店"
+
+#: apps/mobile/src/components/TasteStory.tsx:145
 #: apps/mobile/src/notifications/reminders.ts:62
 #: src/components/MonthlyReportCard.tsx:37
+#: src/screens/MonthlyTasteScreen.tsx:98
+#: src/screens/TasteDetailScreen.tsx:169
 msgid "{count}그릇"
-msgstr ""
+msgstr "{count}碗"
 
 #: src/components/MonthlyReportCard.tsx:28
 msgid "{count}그릇 기록, {status}"
-msgstr ""
+msgstr "已记录{count}碗，{status}"
 
 #: src/components/MonthlyReportCard.tsx:28
 msgid "{count}그릇 더 필요"
-msgstr ""
+msgstr "还需要{count}碗"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:727
+msgid "{count}그릇 중 {winners} {topCount}그릇 · {topPercent}%"
+msgstr "{count}碗中{winners}占{topCount}碗 · {topPercent}%"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:726
+msgid "{count}그릇 중 {winners} 각 {topCount}그릇 · {topPercent}%"
+msgstr "{count}碗中{winners}各{topCount}碗 · {topPercent}%"
+
+#: apps/mobile/app/native/index.tsx:266
+msgid "{count}그릇 취향 기준"
+msgstr "基于{count}碗的口味"
+
+#: apps/mobile/src/components/TasteStory.tsx:134
+msgid "{count}그릇을\n"
+"기록했어요"
+msgstr "记录了\n"
+"{count}碗"
+
+#: apps/mobile/src/domain/shopTaste.ts:48
+msgid "{count}명 모두"
+msgstr "全部{count}人"
+
+#: apps/mobile/src/domain/shopTaste.ts:51
+msgid "{count}명 중 {often}명이 또 가고 싶대요"
+msgstr "{count}人中{often}人还想再去"
+
+#: apps/mobile/src/components/TasteStory.tsx:166
+msgid "{count}번 갔어요"
+msgstr "去过{count}次"
+
+#: apps/mobile/src/domain/lounge.ts:210
+msgid "{count}분 전"
+msgstr "{count}分钟前"
+
+#: apps/mobile/src/domain/lounge.ts:212
+msgid "{count}시간 전"
+msgstr "{count}小时前"
+
+#: src/screens/MyScreen.tsx:544
+msgid "{date}: {count}그릇"
+msgstr "{date}：{count}碗"
+
+#: src/screens/MyScreen.tsx:544
+msgid "{date}: 기록 없음"
+msgstr "{date}：无记录"
 
 #: apps/mobile/app/(flows)/tickets.tsx:84
 msgid "{day} · {count}장"
-msgstr ""
+msgstr "{day} · {count}张"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1009
+msgid "{day} {nickname}님을 위한 라멘집"
+msgstr "{day}为{nickname}推荐的拉面店"
+
+#: apps/mobile/src/domain/hours.ts:185
+msgid "{day} {time}에 열어요"
+msgstr "{day} {time}开门"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:795
+msgid "{day}, {time}{breaks}"
+msgstr "{day}, {time}{breaks}"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:795
+msgid "{day}, 오늘, {time}{breaks}"
+msgstr "{day}, 今天, {time}{breaks}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1009
+msgid "{day}의 추천"
+msgstr "{day}的推荐"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1025
+msgid "{day}의 한 그릇"
+msgstr "{day}的一碗"
+
+#: apps/mobile/app/native/index.tsx:273
+#: apps/mobile/src/domain/lounge.ts:215
+msgid "{days}일 전"
+msgstr "{days}天前"
+
+#: apps/mobile/app/native/index.tsx:117
+msgid "{distance} 거리"
+msgstr "距离{distance}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1093
+msgid "{field} {option}"
+msgstr "{field} {option}"
+
+#: src/screens/RecordScreen.tsx:169
+msgid "{fields} 외 {count}개 항목을 골라주세요"
+msgstr "请选择{fields}及其他{count}项"
+
+#: src/screens/RecordScreen.tsx:167
+msgid "{fields} 외 {count}개 항목을 채워주세요"
+msgstr "请填写{fields}及其他{count}项"
+
+#: apps/mobile/app/(flows)/record/new.tsx:657
+msgid "{fields} 외 {count}개를 골라주세요"
+msgstr "请选择{fields}及其他{count}项"
+
+#: apps/mobile/app/(flows)/record/new.tsx:655
+msgid "{fields} 외 {count}개를 채워주세요"
+msgstr "请填写{fields}及其他{count}项"
+
+#: src/screens/RecordScreen.tsx:169
+msgid "{fields} 항목을 골라주세요"
+msgstr "请选择{fields}"
+
+#: src/screens/RecordScreen.tsx:167
+msgid "{fields} 항목을 채워주세요"
+msgstr "请填写{fields}"
+
+#: apps/mobile/app/native/my.tsx:186
+msgid "{label} {days}일"
+msgstr "{label}，{days}天"
+
+#: apps/mobile/src/components/TasteStory.tsx:264
+msgid "{label} {value}점"
+msgstr "{label} {value}分"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1320
+msgid "{label}, 남은 필수 {count}개"
+msgstr "{label}，还剩{count}项必填"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1076
+msgid "{label}, 반영했어요"
+msgstr "{label}, 已采用"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1076
+msgid "{label}, 반영했어요. {note}"
+msgstr "{label}, 已采用。{note}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1077
+msgid "{label}, 참고했어요"
+msgstr "{label}, 仅作参考"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1077
+msgid "{label}, 참고했어요. {note}"
+msgstr "{label}, 仅作参考。{note}"
 
 #: apps/mobile/src/components/ResilientUriImage.tsx:89
 msgid "{label}. 이미지를 불러올 수 없습니다."
-msgstr ""
+msgstr "{label}。无法加载图片。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:229
+msgid "{level} Lv.{levelNumber} · 첫 그릇을 기록하면 취향 분석이 시작돼요"
+msgstr "{level} Lv.{levelNumber} · 记录第一碗即可开始口味分析"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:470
+msgid "{matched} 조건을 매장 정보와 대조했어요"
+msgstr "已将{matched}条件与店铺资料核对"
+
+#: src/screens/AIRecommendScreen.tsx:160
+msgid "{matches} 조건을 매장 정보와 대조했어요"
+msgstr "已将{matches}条件与店铺资料核对"
+
+#: apps/mobile/src/components/ShopTasteCard.tsx:59
+msgid "{menu} · {count}명"
+msgstr "{menu} · {count}人"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:354
+msgid "{month} · 집계 중"
+msgstr "{month} · 统计中"
 
 #: src/components/MonthlyReportCard.tsx:22
 msgid "{month} 집계 중"
-msgstr ""
+msgstr "{month}统计中"
 
 #: apps/mobile/src/notifications/reminders.ts:80
 msgid "{month}월 기록이 {target}그릇이 되면 {publishMonth}월 1일에 리포트가 나와요."
-msgstr ""
+msgstr "{month}月记录满{target}碗，将于{publishMonth}月1日生成报告。"
+
+#: apps/mobile/app/native/my.tsx:1033
+msgid "{months}개월 비교"
+msgstr "比较{months}个月"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1004
+msgid "{name} {choice}"
+msgstr "{name} {choice}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1003
+msgid "{name} {count}개"
+msgstr "{name} {count}个"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1005
+msgid "{name} {score}점"
+msgstr "{name} {score}分"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1002
+msgid "{name} 아직 비어 있음"
+msgstr "{name} 尚未填写"
+
+#: apps/mobile/app/native/index.tsx:339
+msgid "{name}님"
+msgstr "{name}"
+
+#: apps/mobile/src/components/LoungeLog.tsx:296
+msgid "{name}님의 {menu}"
+msgstr "{name}的{menu}"
+
+#: apps/mobile/src/components/LoungeLog.tsx:500
+msgid "{name}님의 글을 더 이상 보여주지 않아요."
+msgstr "已隐藏{name}的内容。"
+
+#: apps/mobile/app/native/index.tsx:265
+msgid "{name}님이 좋아할 라멘집"
+msgstr "{name}可能喜欢的拉面店"
+
+#: apps/mobile/src/components/TasteStory.tsx:165
+msgid "{name}에\n"
+""
+msgstr "{name}\n"
+""
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:112
 msgid "{p0} ({p1}) · 하루 {p2}장, 자정에 다시 채워져요"
-msgstr ""
+msgstr "{p0}（{p1}）· 每日{p2}张，午夜补充"
+
+#: apps/mobile/src/components/ui/index.tsx:738
+msgid "{p0} {p1}, {p2}점"
+msgstr "{p0}，{p1}，{p2}分"
+
+#: apps/mobile/app/native/my.tsx:1107
+msgid "{p0} {p1}그릇"
+msgstr "{p0}，{p1}碗"
+
+#: apps/mobile/app/native/my.tsx:506
+msgid "{p0} {p1}그릇 기록{p2}{p3}"
+msgstr "{p0}，记录{p1}碗{p2}{p3}"
+
+#: apps/mobile/src/components/ui/index.tsx:739
+msgid "{p0} {p1}점, {p2}"
+msgstr "{p0} {p1}分，{p2}"
+
+#: apps/mobile/src/components/PolicySheet.tsx:42
+#: apps/mobile/src/components/ui/index.tsx:1051
+#: apps/mobile/src/components/ui/index.tsx:1234
+msgid "{p0} 닫기"
+msgstr "关闭{p0}"
+
+#: apps/mobile/app/native/index.tsx:471
+msgid "{p0} 대표 사진"
+msgstr "{p0}封面照片"
+
+#: apps/mobile/app/native/lounge.tsx:144
+msgid "{p0} 라멘로그가 아직 없어요"
+msgstr "还没有{p0}拉面记录"
+
+#: apps/mobile/app/native/lounge.tsx:179
+msgid "{p0} 라멘만 보기"
+msgstr "仅显示{p0}拉面"
+
+#: apps/mobile/src/components/LoungeLog.tsx:423
+msgid "{p0} 사진"
+msgstr "{p0}照片"
+
+#: apps/mobile/src/components/LoungeLog.tsx:405
+msgid "{p0} 사진 {p1}"
+msgstr "{p0}照片{p1}"
+
+#: apps/mobile/src/components/LoungeLog.tsx:376
+msgid "{p0} 사진 {p1}장"
+msgstr "{p0}，{p1}张照片"
+
+#: apps/mobile/app/native/my.tsx:820
+msgid "{p0} 저장 해제"
+msgstr "取消收藏{p0}"
 
 #: apps/mobile/src/components/PhotoViewer.tsx:198
 msgid "{p0} 크게 보기"
-msgstr ""
+msgstr "查看{p0}大图"
 
 #: apps/mobile/app/native/_layout.tsx:90
 msgid "{p0} 탭"
-msgstr ""
+msgstr "{p0}标签页"
+
+#: apps/mobile/app/native/my.tsx:1238
+msgid "{p0}, {p1}{p2} 남음"
+msgstr "{p0}，剩余{p1}{p2}"
+
+#: apps/mobile/app/native/index.tsx:574
+msgid "{p0}{p1}, {p2}, {p3}, 매장 상세 보기"
+msgstr "{p0}{p1}，{p2}，{p3}，查看店铺"
+
+#: apps/mobile/app/native/my.tsx:713
+msgid "{p0}{p1}, {p2}그릇, 마지막 방문 {p3}{p4}"
+msgstr "{p0}{p1}，{p2}碗，上次访问{p3}{p4}"
+
+#: apps/mobile/app/native/map.web.tsx:457
+msgid "{p0}{p1}, 매장 상세 보기"
+msgstr "{p0}{p1}，查看店铺"
+
+#: apps/mobile/app/native/map.web.tsx:399
+msgid "{p0}{p1}{p2}{p3}, 매장 상세 보기"
+msgstr "{p0}{p1}{p2}{p3}，查看店铺"
+
+#: apps/mobile/app/native/map.web.tsx:515
+msgid "{p0}곳"
+msgstr "{p0}家"
+
+#: apps/mobile/app/native/index.tsx:333
+msgid "{p0}님, 내 정보"
+msgstr "{p0}，个人资料"
+
+#: apps/mobile/src/components/LoungeLog.tsx:512
+#: apps/mobile/src/components/LoungeLog.tsx:560
+msgid "{p0}님의 {p1}"
+msgstr "{p0}的{p1}"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:51
 msgid "{p0}에 뽑은 식권, {p1}, {p2}"
-msgstr ""
+msgstr "{p0}抽取的餐券，{p1}，{p2}"
+
+#: apps/mobile/src/components/LoungeLog.tsx:234
+msgid "{p0}의 기록"
+msgstr "{p0}的记录"
+
+#: apps/mobile/app/native/index.tsx:629
+msgid "{p0}의 라멘로그, {p1} {p2}"
+msgstr "{p0}的拉面记录，{p1} {p2}"
+
+#: apps/mobile/src/components/RecordMenu.tsx:48
+msgid "{p0}초 뒤에 와요. 알림을 누르면 기록할 가게 고르기가 열려요."
+msgstr "将在{p0}秒后送达，点击通知即可选择要记录的店铺。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:657
+msgid "{particle, select, eul {{fields}을 골라주세요} other {{fields}를 골라주세요}}"
+msgstr "请选择{fields}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:655
+msgid "{particle, select, eul {{fields}을 채워주세요} other {{fields}를 채워주세요}}"
+msgstr "请填写{fields}"
+
+#: apps/mobile/src/domain/shopTaste.ts:50
+msgid "{people} 또 가고 싶대요"
+msgstr "{people}还想再去"
+
+#: apps/mobile/src/domain/shopTaste.ts:49
+msgid "{people} 한 번쯤 가 볼 만하대요"
+msgstr "{people}觉得值得尝试一次"
+
+#: src/components/MonthlyTastePreview.tsx:37
+msgid "{period}에 {styles}를 가장 많이 먹었어요."
+msgstr "{period}吃得最多的是{styles}。"
+
+#: src/screens/MonthlyTasteScreen.tsx:127
+msgid "{period}에 자주 간 라멘집"
+msgstr "{period}常去的拉面店"
+
+#: src/components/MonthlyTastePreview.tsx:36
+msgid "{period}은 지금까지 {styles}를 가장 많이 먹었어요."
+msgstr "截至{period}目前，吃得最多的是{styles}。"
+
+#: packages/shared/src/domain/identity.ts:71
+msgid "{scope} {total}그릇 중 {type} {count}그릇 · 육수 농도 평균 {score}"
+msgstr "{scope} {total}碗中，{type} {count}碗 · 汤底浓度平均 {score}"
+
+#: packages/shared/src/domain/identity.ts:51
+msgid "{scope} 0그릇"
+msgstr "{scope} 0碗"
+
+#: apps/mobile/src/components/RecordMenu.tsx:58
+msgid "{seconds}초 뒤 테스트 알림: 7일 미기록"
+msgstr "{seconds}秒后测试：7天未记录"
+
+#: apps/mobile/src/components/RecordMenu.tsx:58
+msgid "{seconds}초 뒤 테스트 알림: 월간 리포트"
+msgstr "{seconds}秒后测试：月度报告"
+
+#: src/screens/MyScreen.tsx:674
+msgid "{shop} 저장을 해제했어요"
+msgstr "已取消收藏{shop}"
+
+#: src/screens/RecordCompleteScreen.tsx:76
+msgid "{shop}의 {style} 한 그릇. 이번 그릇은 {axis} {score}점이 가장 높았고, 재방문 의사는 ‘{revisit}’으로 남겼어요."
+msgstr "{shop}的一碗{style}。这碗{axis}得分最高，为{score}分，再访意愿为“{revisit}”。"
+
+#: src/screens/RecordCompleteScreen.tsx:75
+msgid "{shop}의 {style} 한 그릇이 {count}번째 기록으로 남았어요."
+msgstr "{shop}的一碗{style}已保存为第{count}条记录。"
+
+#: apps/mobile/src/components/ui/index.tsx:702
+#: apps/mobile/src/components/ui/index.tsx:702
+msgid "{side} 쪽"
+msgstr "偏{side}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:416
+msgid "{soup} 계보"
+msgstr "{soup}流派"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:419
+msgid "{soup} 계보 {count}곳 중에서 골랐어요"
+msgstr "从{count}家{soup}店中挑选"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:369
+msgid "{step}단계"
+msgstr "第{step}步"
+
+#: src/components/MenuDistributionChart.tsx:29
+msgid "{style} {count}그릇, {pct}%"
+msgstr "{style} {count}碗，{pct}%"
+
+#: src/screens/AIRecommendScreen.tsx:109
+msgid "{style} 계보"
+msgstr "{style}流派"
+
+#: src/screens/AIRecommendScreen.tsx:117
+msgid "{style} 계보 {count}곳 중에서 골랐어요"
+msgstr "从{count}家{style}店中挑选"
+
+#: src/screens/MonthlyTasteScreen.tsx:118
+msgid "{style} 비율이 {period}보다 {difference}%p 늘었어요."
+msgstr "{style}的比例比{period}增加了{difference}个百分点。"
+
+#: src/screens/MonthlyTasteScreen.tsx:119
+msgid "{style} 비율이 {period}보다 {difference}%p 줄었어요."
+msgstr "{style}的比例比{period}减少了{difference}个百分点。"
+
+#: src/screens/AIRecommendScreen.tsx:119
+msgid "{style} 전문점이 아직 없어 전체 라멘집에서 골랐어요"
+msgstr "暂无{style}专门店，从全部店铺中挑选"
+
+#: apps/mobile/src/domain/hours.ts:174
+msgid "{time}부터 쉬어요"
+msgstr "{time}开始休息"
+
+#: apps/mobile/src/domain/hours.ts:176
+msgid "{time}에 다시 열어요"
+msgstr "{time}恢复营业"
+
+#: apps/mobile/src/domain/hours.ts:174
+msgid "{time}에 닫아요"
+msgstr "{time}关门"
+
+#: apps/mobile/src/domain/hours.ts:178
+msgid "{time}에 열어요"
+msgstr "{time}开门"
+
+#: apps/mobile/app/native/my.tsx:1011
+msgid "{title} · 지금까지"
+msgstr "{title} · 截至目前"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:570
+msgid "{title}, {winners} {count}그릇"
+msgstr "{title}, {winners} {count}碗"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:569
+msgid "{title}, {winners} 각 {count}그릇"
+msgstr "{title}, {winners}各{count}碗"
+
+#: apps/mobile/src/components/LoungeLog.tsx:297
+msgid "{type}, {date} 방문"
+msgstr "{type}，访问于{date}"
+
+#: src/screens/NotificationScreen.tsx:93
+msgid "{type}: {title}"
+msgstr "{type}：{title}"
+
+#: packages/shared/src/domain/monthly.ts:158
+msgid "{type}를 {count}그릇으로 가장 많이 먹은 달이에요."
+msgstr "这个月吃得最多的是{type}，共{count}碗。"
+
+#: packages/shared/src/domain/identity.ts:69
+msgid "{type}를 가장 많이 먹었고, 육수는 맑은 쪽을 좋아해요."
+msgstr "吃得最多的是{type}，偏爱清爽汤底。"
+
+#: packages/shared/src/domain/identity.ts:68
+msgid "{type}를 가장 많이 먹었고, 육수는 진한 쪽을 좋아해요."
+msgstr "吃得最多的是{type}，偏爱浓郁汤底。"
+
+#: apps/mobile/app/native/index.tsx:141
+msgid "{type}를 가장 자주 드셔서"
+msgstr "你最常吃{type}"
+
+#: src/screens/NewsFeedScreen.tsx:208
+msgid "{v0} {v1}{v2}"
+msgstr "{v0} {v1}{v2}"
+
+#: src/screens/TasteDetailScreen.tsx:220
+msgid "{v0} {v1}에 다시 정리함"
+msgstr "更新于{v0} {v1}"
+
+#: src/screens/RecordCompleteScreen.tsx:114
+#: src/screens/RecordScreen.tsx:421
+#: src/screens/TasteDetailScreen.tsx:46
+msgid "{v0} {v1}점"
+msgstr "{v0}：{v1}分"
+
+#: src/screens/TasteDetailScreen.tsx:220
+msgid "{v0} 기준"
+msgstr "截至{v0}"
+
+#: src/components/PolicySheet.tsx:60
+#: src/screens/MyScreen.tsx:188
+#: src/screens/MyScreen.tsx:237
+msgid "{v0} 닫기"
+msgstr "关闭{v0}"
+
+#: src/screens/AIRecommendScreen.tsx:355
+#: src/screens/HomeScreen.tsx:176
+#: src/screens/ShopDetailScreen.tsx:109
+msgid "{v0} 대표 사진"
+msgstr "{v0}代表照片"
+
+#: src/screens/LoungeScreen.tsx:1437
+msgid "{v0} 댓글"
+msgstr "{v0}的评论"
+
+#: src/screens/LoungeScreen.tsx:1523
+msgid "{v0} 댓글 입력"
+msgstr "为{v0}输入评论"
+
+#: src/screens/MonthlyTasteScreen.tsx:98
+msgid "{v0} 더 기록하면 {v1}과 비교할 수 있어요."
+msgstr "再记录{v0}，即可与{v1}比较。"
 
 #: src/components/MonthlyReportCard.tsx:37
 msgid "{v0} 더 기록하면 지난달과 비율을 비교할 수 있어요. (한 달 {v1}그릇부터)"
-msgstr ""
+msgstr "再记录{v0}，即可与上月比较（每月至少{v1}碗）。"
+
+#: src/components/MenuDistributionChart.tsx:29
+msgid "{v0} 메뉴 분포. {v1}"
+msgstr "{v0}菜单分布。{v1}"
+
+#: src/screens/LoungeScreen.tsx:1326
+msgid "{v0} 사진 {v1}"
+msgstr "{v0}照片{v1}"
+
+#: src/screens/NewsFeedScreen.tsx:238
+msgid "{v0} 알림 끄기"
+msgstr "关闭{v0}的通知"
+
+#: src/screens/NewsFeedScreen.tsx:238
+msgid "{v0} 알림 받기"
+msgstr "接收{v0}的通知"
+
+#: src/screens/MyScreen.tsx:674
+msgid "{v0} 저장 해제"
+msgstr "取消收藏{v0}"
+
+#: src/screens/LoungeScreen.tsx:1407
+msgid "{v0}{v1}"
+msgstr "{v0}{v1}"
+
+#: src/screens/RecordCompleteScreen.tsx:153
+msgid "{v0}그릇 → {v1}그릇 평균"
+msgstr "平均值：{v0}碗 → {v1}碗"
 
 #: src/components/MonthlyReportCard.tsx:36
 msgid "{v0}그릇이 모여서 지난달과 비율을 비교할 수 있어요."
-msgstr ""
+msgstr "已记录{v0}碗，可以与上月比较比例。"
+
+#: src/screens/TasteDetailScreen.tsx:297
+msgid "{v0}는 {v1}그릇으로 가장 적었어요."
+msgstr "{v0}记录最少，共{v1}碗。"
+
+#: src/screens/TasteDetailScreen.tsx:297
+msgid "{v0}는 아직 기록이 없어요."
+msgstr "还没有{v0}的记录。"
+
+#: src/screens/RecordCompleteScreen.tsx:84
+msgid "{v0}번째 그릇"
+msgstr "第{v0}碗"
+
+#: src/screens/LoungeScreen.tsx:1296
+msgid "{v0}의 {v1} 기록"
+msgstr "{v0}在{v1}的记录"
+
+#: src/screens/MonthlyTasteScreen.tsx:75
+msgid "{v0}의 메뉴 분포"
+msgstr "{v0}菜单分布"
+
+#: src/screens/RecordScreen.tsx:401
+#: src/screens/RecordScreen.tsx:446
+msgid "{v0}점"
+msgstr "{v0}分"
+
+#: src/screens/MonthlyTasteScreen.tsx:111
+msgid "{v0}퍼센트포인트 {v1}"
+msgstr "{v1}{v0}个百分点"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:707
+msgid "{v1} · 가까운 가게"
+msgstr "{v1} · 附近店铺"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:389
+msgid "{v1} {v2}곳"
+msgstr "{v1}，{v2}家店"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:925
+msgid "{v1} {v2}그릇, {v3}%"
+msgstr "{v1}：{v2}碗，{v3}%"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:441
+msgid "{v1} {v2}그릇, {v3}%{v4}"
+msgstr "{v1}：{v2}碗，{v3}%{v4}"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:800
+msgid "{v1} {v2}에 다시 정리함"
+msgstr "更新于{v1} {v2}"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:224
+msgid "{v1} {v2}점"
+msgstr "{v1}：{v2}分"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1169
+msgid "{v1} {v2}점, {v3}"
+msgstr "{v1}：{v2}分，{v3}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1280
+msgid "{v1} / {v2}단계{v3}. {v4}"
+msgstr "第{v1}/{v2}步{v3}。{v4}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:374
+msgid "{v1} 골랐어요"
+msgstr "已选择{v1}"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:55
+msgid "{v1} 기록이 없어요"
+msgstr "还没有{v1}记录"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:800
+msgid "{v1} 기준"
+msgstr "截至{v1}"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:32
 msgid "{v1} 님의 숨김을 풀었어요."
-msgstr ""
+msgstr "已取消隐藏{v1}。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1017
+msgid "{v1} 대표 사진"
+msgstr "{v1}封面照片"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:340
+msgid "{v1} 더 기록하면 {v2}과 비교할 수 있어요. 한 달 {v3}그릇 미만이면 비교하지 않아요."
+msgstr "再记录{v1}即可与{v2}比较，每月至少需要{v3}碗。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:190
+msgid "{v1} 더 기록하면 지난달과 비율을 비교할 수 있어요. (한 달 {v2}그릇부터)"
+msgstr "再记录{v1}，即可与上月比较（每月至少{v2}碗）。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:423
+msgid "{v1} 라멘 종류별 그릇 수와 비율"
+msgstr "{v1}各类型拉面的碗数和占比"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:536
+msgid "{v1} 매장 정보"
+msgstr "{v1}店铺信息"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:140
+msgid "{v1} 메뉴 분포. {v2}"
+msgstr "{v1}菜品分布。{v2}"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:86
+msgid "{v1} 모아 보기"
+msgstr "查看所有{v1}"
+
+#: apps/mobile/app/(flows)/settings.tsx:346
+msgid "{v1} 변경"
+msgstr "更改{v1}"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:218
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:485
+msgid "{v1} 사진"
+msgstr "{v1}照片"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:441
+msgid "{v1} 사진 {v2}"
+msgstr "{v1}，照片{v2}"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:406
+msgid "{v1} 사진 {v2}장"
+msgstr "{v1}的{v2}张照片"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:67
 msgid "{v1} 숨김 해제"
-msgstr ""
+msgstr "取消隐藏{v1}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:293
+msgid "{v1} 추가"
+msgstr "添加{v1}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1355
+msgid "{v1}, {v2}, {v3}"
+msgstr "{v1}，{v2}，{v3}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:411
+msgid "{v1}, {v2}개 고름"
+msgstr "{v1}，已选{v2}项"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:293
+msgid "{v1}, 추가됨"
+msgstr "{v1}，已添加"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1266
+#: apps/mobile/app/(flows)/taste/archive.tsx:357
+msgid "{v1}{v2}"
+msgstr "{v1}{v2}"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:1002
+msgid "{v1}{v2} 매장 보기"
+msgstr "查看店铺{v1}{v2}"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:712
+msgid "{v1}{v2}, 매장 상세 보기"
+msgstr "{v1}{v2}，查看店铺详情"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:531
+msgid "{v1}{v2}{v3}{v4}"
+msgstr "{v1}{v2}{v3}{v4}"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:416
+msgid "{v1}과 달라진 종류"
+msgstr "相比{v1}变化的类型"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:190
+#: apps/mobile/app/(flows)/taste/archive.tsx:340
+msgid "{v1}그릇"
+msgstr "{v1}碗"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:208
+msgid "{v1}그릇 기록, {v2}"
+msgstr "已记录{v1}碗，{v2}"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:208
+msgid "{v1}그릇 더 필요"
+msgstr "还需{v1}碗"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:658
+msgid "{v1}그릇을 정리하고 있어요"
+msgstr "正在整理{v1}碗记录"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:679
+msgid "{v1}그릇을 종류별로 쌓았어요. {v2}"
+msgstr "已按类型叠放{v1}碗。{v2}"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:190
+msgid "{v1}그릇이 모여서 지난달과 비율을 비교할 수 있어요."
+msgstr "已积累{v1}碗记录，可以与上个月比较占比。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:174
+msgid "{v1}년 {v2}월 {v3}일 ({v4})"
+msgstr "{v1}年{v2}月{v3}日（{v4}）"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:998
+msgid "{v1}는 {v2}그릇으로 가장 적었어요."
+msgstr "{v1}仅有{v2}碗记录，是最少的类型。"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:997
+msgid "{v1}는 아직 기록이 없어요."
+msgstr "还没有{v1}的记录。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:362
+msgid "{v1}님의 글을 숨겼어요"
+msgstr "已隐藏{v1}的内容"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:85
+msgid "{v1}님의 댓글 메뉴"
+msgstr "{v1}的评论菜单"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:523
+msgid "{v1}님의 라멘로그 메뉴"
+msgstr "{v1}的拉面记录菜单"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:353
+msgid "{v1}로 전화를 걸어요"
+msgstr "拨打{v1}"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:200
+#: apps/mobile/app/(flows)/record/complete.tsx:201
+msgid "{v1}번째 그릇"
+msgstr "第{v1}碗"
+
+#: apps/mobile/app/(flows)/record/new.tsx:991
+msgid "{v1}월 {v2}일 ({v3}){v4}"
+msgstr "{v1}月{v2}日（{v3}）{v4}"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:499
+#: apps/mobile/app/(flows)/taste/index.tsx:954
+msgid "{v1}위 {v2}{v3}, {v4}, {v5}그릇"
+msgstr "第{v1}名 {v2}{v3}，{v4}，{v5}碗"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:1026
+msgid "{v1}의 {v2} 후기, 매장 보기"
+msgstr "{v1}对{v2}的评价，查看店铺"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:187
+msgid "{v1}자 중 {v2}자"
+msgstr "{v2}/{v1}个字符"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:200
+msgid "{v1}자까지 쓸 수 있어요"
+msgstr "最多{v1}个字符"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:438
+msgid "{v1}퍼센트포인트 {v2}"
+msgstr "{v2}{v1}个百分点"
+
+#: apps/mobile/src/components/ui/index.tsx:704
+msgid "{value}점"
+msgstr "{value}分"
+
+#: apps/mobile/app/native/my.tsx:175
+#: src/screens/MyScreen.tsx:386
+msgid "{year}년"
+msgstr "{year}年"
+
+#: src/screens/LoungeScreen.tsx:1052
+msgid "@{v0}님에게 답글 남기기"
+msgstr "回复@{v0}"
+
+#: src/screens/MonthlyTasteScreen.tsx:121
+msgid "%p는 두 달의 비율 차이예요. 비율은 그릇 수를 기준으로 반올림했어요."
+msgstr "百分点表示两个月的比例差。比例根据碗数四舍五入。"
+
+#: src/screens/HomeScreen.tsx:316
+msgid "© 2026 RAOTA · 라멘에 진심인 사람들"
+msgstr "© 2026 RAOTA · 热爱拉面的人们"
+
+#: apps/mobile/app/native/my.tsx:70
+msgid "1그릇"
+msgstr "1碗"
+
+#: apps/mobile/src/domain/shopTaste.ts:48
+msgid "1명이"
+msgstr "1人"
+
+#: apps/mobile/app/native/my.tsx:70
+msgid "2그릇"
+msgstr "2碗"
+
+#: apps/mobile/app/(flows)/settings.tsx:310
+#: src/screens/MyScreen.tsx:825
+msgid "30일 동안 같은 소셜 계정으로 재가입할 수 없어요."
+msgstr "30天内无法使用同一社交账号重新注册。"
+
+#: apps/mobile/app/(flows)/settings.tsx:311
+#: src/screens/MyScreen.tsx:826
+msgid "30일이 지나면 라멘로그, 취향 리포트, 저장한 매장이 모두 지워져요."
+msgstr "30天后，拉面记录、口味报告和收藏店铺将全部删除。"
+
+#: apps/mobile/app/native/my.tsx:70
+msgid "3그릇"
+msgstr "3碗"
+
+#: apps/mobile/app/native/my.tsx:70
+msgid "4그릇 이상"
+msgstr "4碗以上"
+
+#: src/screens/AIRecommendScreen.tsx:245
+msgid "4단계 중 {v0}단계"
+msgstr "第{v0}步，共4步"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:852
+msgid "4단계 중 {v1}단계"
+msgstr "第{v1}步，共4步"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:94
+#: src/screens/RecordSheet.tsx:236
+msgid "500m 이내"
+msgstr "500米内"
+
+#: src/screens/TasteDetailScreen.tsx:226
+msgid "5축 점수와 종류별 분포가 여기에 쌓여요."
+msgstr "即可在这里积累五维评分和种类分布。"
+
+#: src/screens/RecordScreen.tsx:384
+msgid "5축 평가"
+msgstr "五维评分"
+
+#: src/screens/LoginScreen.tsx:277
+msgid "8자 이상"
+msgstr "至少8个字符"
+
+#: src/screens/AICurationLoading.tsx:26
+msgid "AI 라멘 추천"
+msgstr "AI拉面推荐"
+
+#: src/screens/AICurationLoading.tsx:23
+msgid "AI 라멘 추천 준비"
+msgstr "正在准备推荐"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:778
+#: apps/mobile/app/(flows)/ai-recommend.tsx:789
+#: apps/mobile/app/(flows)/ai-recommend.tsx:858
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1329
+#: src/screens/AIRecommendScreen.tsx:242
+msgid "AI 라멘 큐레이터"
+msgstr "AI 拉面推荐"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1126
+#: src/screens/AIRecommendScreen.tsx:437
+msgid "AI 맞춤 추천받기"
+msgstr "获取AI个性推荐"
 
 #: apps/mobile/app/(flows)/tickets.tsx:52
+#: apps/mobile/app/native/index.tsx:407
 msgid "AI 추천받기"
-msgstr ""
+msgstr "获取 AI 推荐"
+
+#: src/screens/AIRecommendScreen.tsx:348
+msgid "AI 취향 매칭 결과"
+msgstr "AI口味匹配结果"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:63
+#: src/screens/RegisterScreen.tsx:47
+msgid "AI 큐레이터"
+msgstr "AI推荐"
+
+#: apps/mobile/app/native/my.tsx:1072
+#: packages/shared/src/i18n/labels.ts:109
+msgid "AI 큐레이터에서 뽑은 식권을 날짜별로 다시 봐요"
+msgstr "按日期查看AI推荐领取的餐券"
 
 #: apps/mobile/app/(flows)/tickets.tsx:38
 #: apps/mobile/app/(flows)/tickets.tsx:53
+#: packages/shared/src/i18n/labels.ts:110
 msgid "AI 큐레이터에서 식권을 뽑으면 여기에 날짜별로 쌓여요."
-msgstr ""
+msgstr "AI推荐领取的餐券会按日期显示在这里。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1051
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1053
+msgid "AI가 썼어요"
+msgstr "由AI生成"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:544
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:546
+#: apps/mobile/app/native/index.tsx:465
+#: apps/mobile/app/native/index.tsx:486
+msgid "AI가 요약했어요"
+msgstr "AI摘要"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:191
+msgid "Apple로 계속하기"
+msgstr "通过Apple继续"
 
 #: apps/mobile/src/auth/social.ts:105
+#: packages/shared/src/i18n/labels.ts:87
 msgid "Apple에서 로그인 정보를 받지 못했어요."
-msgstr ""
+msgstr "未能获取Apple登录信息。"
+
+#: src/screens/LoginScreen.tsx:167
+msgid "Google 로그인 중"
+msgstr "正在通过Google登录"
 
 #: apps/mobile/src/auth/social.ts:80
+#: packages/shared/src/i18n/labels.ts:85
 msgid "Google 로그인이 설정되지 않았어요."
-msgstr ""
+msgstr "尚未配置Google登录。"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:193
+msgid "Google로 계속하기"
+msgstr "通过Google继续"
+
+#: src/screens/LoginScreen.tsx:169
+msgid "Google로 시작하기"
+msgstr "通过Google继续"
 
 #: apps/mobile/src/auth/social.ts:85
+#: packages/shared/src/i18n/labels.ts:86
 msgid "Google에서 로그인 정보를 받지 못했어요."
-msgstr ""
+msgstr "未能获取Google登录信息。"
+
+#: apps/mobile/src/components/RecordMenu.tsx:55
+msgid "iOS 기기나 시뮬레이터의 Expo Go에서 확인해 주세요."
+msgstr "请在 iOS 设备或模拟器中的 Expo Go 查看。"
+
+#: apps/mobile/app/(flows)/settings.tsx:159
+msgid "iOS 설정 앱을 엽니다"
+msgstr "打开iOS设置"
+
+#: apps/mobile/app/(flows)/settings.tsx:30
+msgid "iOS 설정에서 알림이 꺼져 있어요. 눌러서 설정을 열 수 있어요."
+msgstr "通知已在iOS设置中关闭，点击可打开设置。"
+
+#: apps/mobile/app/native/my.tsx:926
+msgid "Lv.{number} {title}, {description}"
+msgstr "Lv.{number} {title}, {description}"
+
+#: apps/mobile/app/native/my.tsx:926
+msgid "Lv.{number} {title}, {description}, 내 등급"
+msgstr "Lv.{number} {title}, {description}, 我的等级"
+
+#: src/screens/LoungeScreen.tsx:309
+msgid "Q&A"
+msgstr "问答"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1211
+msgid "RAOTA 감정서"
+msgstr "RAOTA 口味鉴定表"
 
 #: apps/mobile/src/components/LaunchCover.tsx:87
 msgid "RAOTA 불러오는 중"
-msgstr ""
+msgstr "正在加载 RAOTA"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:368
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1425
+msgid "RAOTA 식권"
+msgstr "RAOTA 餐券"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:388
+msgid "가 공동 1위예요."
+msgstr "并列第一。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:213
+#: apps/mobile/app/(flows)/record/new.tsx:616
+#: src/screens/RecordCompleteScreen.tsx:99
+#: src/screens/RecordScreen.tsx:290
+msgid "가게"
+msgstr "店铺"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:142
+msgid "가게 {count}곳"
+msgstr "{count}家店"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:354
+#: src/screens/RecordSheet.tsx:276
+msgid "가게 검색"
+msgstr "搜索店铺"
+
+#: src/screens/RecordScreen.tsx:682
+msgid "가게 고르기"
+msgstr "选择店铺"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:414
+msgid "가게 목록을 불러오는 중…"
+msgstr "正在加载店铺列表…"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:305
+msgid "가게 목록을 불러오지 못했어요"
+msgstr "无法加载店铺列表"
+
+#: src/screens/ShopDetailScreen.tsx:238
+msgid "가게 상세 정보"
+msgstr "店铺详细信息"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:628
+msgid "가게 상세 정보 "
+msgstr "店铺详情 "
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:320
+#: src/screens/RecordSheet.tsx:258
+msgid "가게 상세에서 찜해 두면 여기서 바로 기록할 수 있어요."
+msgstr "在店铺详情中收藏，即可在此快速记录。"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:541
+#: src/screens/ShopDetailScreen.tsx:215
+msgid "가게 소개"
+msgstr "店铺介绍"
+
+#: src/screens/RecordSheet.tsx:283
+msgid "가게 이름, 지역, 스타일"
+msgstr "店名、地区或风格"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:381
+#: src/screens/RecordSheet.tsx:196
+msgid "가게 찾는 방법"
+msgstr "寻找店铺的方式"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:90
+#: src/screens/AIRecommendScreen.tsx:188
+msgid "가게 특징과 태그에 이 요소가 있는 곳을 먼저 찾아요."
+msgstr "优先寻找店铺特点和标签中符合此项的店。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:449
+#: src/screens/AIRecommendScreen.tsx:144
+msgid "가게 특징과 태그에 이 요소가 있는 곳을 우선했어요"
+msgstr "优先选择特点和标签中包含此项的店"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1233
+msgid "가게, {v1}"
+msgstr "店铺：{v1}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1239
+msgid "가게, {v1}. 변경"
+msgstr "店铺：{v1}。更改"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:362
+msgid "가게·동네·스타일 검색"
+msgstr "搜索店铺、地区或类型"
 
 #: apps/mobile/src/notifications/reminders.ts:93
 msgid "가게를 고르면 바로 맛을 기록할 수 있어요."
-msgstr ""
+msgstr "选择店铺即可记录口味。"
 
+#: apps/mobile/app/(flows)/record/new.tsx:1239
+#: apps/mobile/app/(flows)/record/new.tsx:1246
+msgid "가게를 골라주세요"
+msgstr "请选择店铺"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:684
+#: src/screens/ShopDetailScreen.tsx:300
+msgid "가격대"
+msgstr "价格区间"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:743
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:752
+#: src/screens/ShopDetailScreen.tsx:127
+#: src/screens/ShopDetailScreen.tsx:389
+msgid "가고 싶어요"
+msgstr "想去"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:503
+msgid "가고 싶어요 저장 취소"
+msgstr "取消想去收藏"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:503
+msgid "가고 싶어요에 저장"
+msgstr "收藏到想去列表"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:294
+msgid "가고 싶어요에서 뺐어요"
+msgstr "已从想去列表移除"
+
+#: src/screens/LoginScreen.tsx:127
+msgid "가고 싶은 곳, 다녀온 곳, 다시 먹고 싶은 한 그릇을 라오타에 모아두세요."
+msgstr "在RAOTA收藏想去的店、去过的店和想再吃的一碗。"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:360
+msgid "가고 싶은 곳, 다녀온 곳을 라오타에 모아두세요. "
+msgstr "用RAOTA收藏想去和去过的拉面店。 "
+
+#: apps/mobile/app/native/my.tsx:756
+#: src/screens/MyScreen.tsx:649
+msgid "가고 싶은 라멘집"
+msgstr "想去的拉面店"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:294
+#: src/screens/ShopDetailScreen.tsx:404
+msgid "가고 싶은 라멘집에 저장했어요"
+msgstr "已加入想去的拉面店"
+
+#: apps/mobile/app/native/my.tsx:309
+#: src/screens/MyScreen.tsx:452
+msgid "가고싶어요"
+msgstr "想去"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:433
+msgid "가까운 곳부터 우선했어요"
+msgstr "优先选择附近店铺"
+
+#: apps/mobile/app/native/index.tsx:567
+#: src/screens/HomeScreen.tsx:266
+msgid "가까운 라멘집"
+msgstr "附近的拉面店"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:268
+#: src/screens/RecordSheet.tsx:240
+msgid "가까운 순"
+msgstr "距离最近"
+
+#: apps/mobile/app/native/index.tsx:117
+msgid "가까운 영업 중 매장 · {distance}"
+msgstr "附近营业中 · {distance}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:152
+#: apps/mobile/app/(flows)/record/new.tsx:155
+msgid "가끔"
+msgstr "偶尔"
+
+#: packages/shared/src/i18n/labels.ts:44
+msgid "가끔 생각남"
+msgstr "偶尔会想吃"
+
+#: apps/mobile/src/components/ShopTasteCard.tsx:53
+msgid "가끔 생각남 {count}명"
+msgstr "{count}人偶尔想起"
+
+#: src/screens/RegisterScreen.tsx:459
+msgid "가입 처리 중"
+msgstr "正在注册"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:50
+msgid "가입은 됐지만 소개·사진을 저장하지 못했어요. 다시 누르면 그것만 저장해요."
+msgstr "账号已注册，但简介和照片未保存。再次点击即可重试保存这些内容。"
+
+#: packages/shared/src/i18n/labels.ts:104
+msgid "가입은 완료됐지만 추가 프로필을 저장하지 못했어요."
+msgstr "注册已完成，但未能保存补充的个人资料。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:49
+msgid "가입하지 못했어요. 잠시 후 다시 시도해 주세요."
+msgstr "注册失败，请稍后重试。"
+
+#: src/screens/LoginScreen.tsx:262
+msgid "가입한 이메일로 재설정 링크를 보내드립니다."
+msgstr "重置链接将发送至注册邮箱。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:345
+msgid "가장 끌리는 한 그릇을 골라주세요."
+msgstr "请选择最想品尝的一种。"
+
+#: apps/mobile/src/components/TasteFingerprint.tsx:191
+msgid "가장 높은 평가 {labels}"
+msgstr "最高评价：{labels}"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:947
+msgid "가장 많이 기록한 세 곳"
+msgstr "记录最多的三家店"
+
+#: apps/mobile/src/components/TasteStory.tsx:144
+msgid "가장 많이 먹은 국물"
+msgstr "最常吃的汤底"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:941
+msgid "가장 중요한 것을 눌러 주세요"
+msgstr "请选择最看重的特点"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:945
+#: src/screens/AIRecommendScreen.tsx:295
+msgid "가장 중요한 요소"
+msgstr "最看重的特点"
+
+#: apps/mobile/app/(flows)/settings.tsx:202
+#: src/screens/MyScreen.tsx:775
+msgid "가장 즐겨 먹는 종류를 골라 주세요. 프로필에 표시돼요."
+msgstr "请选择最喜欢的类型，将显示在个人资料中。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:340
+#: src/screens/MonthlyTasteScreen.tsx:96
+msgid "각 달에 먹은 라멘의 종류별 비율을 비교해요."
+msgstr "比较每月各种拉面类型的占比。"
+
+#: packages/shared/src/i18n/labels.ts:153
+#: src/types.ts:59
+msgid "간"
+msgstr "调味"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:52
+#: src/screens/AIRecommendScreen.tsx:30
+msgid "간장 타레"
+msgstr "酱油调味"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:438
+#: src/screens/MonthlyTasteScreen.tsx:111
+msgid "감소"
+msgstr "下降"
+
+#: apps/mobile/app/(flows)/record/new.tsx:145
+msgid "감정"
+msgstr "感想"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1329
+msgid "감정서 발행"
+msgstr "生成口味鉴定表"
+
+#: packages/shared/src/i18n/labels.ts:123
+msgid "감칠맛 좋아요"
+msgstr "鲜味足"
+
+#: src/screens/ShopDetailScreen.tsx:168
+msgid "개"
+msgstr "个"
+
+#: src/screens/RecordScreen.tsx:577
+msgid "개 선택"
+msgstr "项已选"
+
+#: src/screens/NotificationScreen.tsx:213
+#: src/screens/NotificationScreen.tsx:258
+msgid "개 읽지 않음"
+msgstr "条未读"
+
+#: apps/mobile/src/components/RecordMenu.tsx:64
+#: apps/mobile/src/components/RecordMenu.tsx:67
+msgid "개발용 리마인더 테스트"
+msgstr "开发者提醒测试"
+
+#: apps/mobile/src/domain/lounge.ts:48
+msgid "개인정보 노출"
+msgstr "泄露个人信息"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:112
+#: apps/mobile/src/components/ConsentChecklist.tsx:144
+#: src/screens/RegisterScreen.tsx:425
+#: src/screens/RegisterScreen.tsx:481
+msgid "개인정보 수집 및 이용 동의"
+msgstr "同意个人信息收集与使用"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:113
+#: src/screens/RegisterScreen.tsx:433
+msgid "개인정보 수집 및 이용 동의 보기"
+msgstr "查看个人信息使用同意书"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:387
+#: apps/mobile/app/(flows)/legal/[doc].tsx:44
+#: apps/mobile/app/(flows)/settings.tsx:174
+#: apps/mobile/src/components/PolicySheet.tsx:38
+#: src/components/PolicySheet.tsx:20
+#: src/screens/HomeScreen.tsx:312
+msgid "개인정보처리방침"
+msgstr "隐私政策"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:81
+#: apps/mobile/app/native/index.tsx:574
+#: apps/mobile/app/native/index.tsx:591
+#: apps/mobile/app/native/map.web.tsx:61
+msgid "거리 정보 없음"
+msgstr "暂无距离信息"
+
+#: apps/mobile/app/native/map.web.tsx:49
+#: src/screens/MapScreen.tsx:701
+msgid "거리순"
+msgstr "距离最近"
+
+#: src/screens/LoungeScreen.tsx:1174
+#: src/screens/LoungeScreen.tsx:1196
+#: src/screens/LoungeScreen.tsx:1266
+#: src/screens/RecordSheet.tsx:320
+msgid "건"
+msgstr "条"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:51
+#: src/screens/RecordSheet.tsx:70
+msgid "검색"
+msgstr "搜索"
+
+#: src/screens/RecordSheet.tsx:320
+msgid "검색 결과"
+msgstr "搜索结果"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:292
+msgid "검색 결과 {v1}건"
+msgstr "{v1}条搜索结果"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:328
+#: apps/mobile/app/native/map.web.tsx:506
+#: apps/mobile/app/native/my.tsx:695
+#: apps/mobile/app/native/my.tsx:777
+#: src/screens/MapScreen.tsx:753
+#: src/screens/MyScreen.tsx:619
+#: src/screens/MyScreen.tsx:659
+msgid "검색 결과가 없어요"
+msgstr "没有搜索结果"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:372
+#: apps/mobile/app/native/map.web.tsx:253
+#: src/screens/MapScreen.tsx:507
+#: src/screens/RecordSheet.tsx:291
+msgid "검색어 지우기"
+msgstr "清除搜索词"
+
+#: apps/mobile/app/native/map.web.tsx:389
+#: src/screens/MapScreen.tsx:689
+msgid "검색어나 필터를 바꿔 다시 찾아보세요."
+msgstr "请更改关键词或筛选条件。"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:309
+msgid "검색에서 이름이나 동네로 찾아보세요."
+msgstr "请通过店名或地区搜索。"
+
+#: apps/mobile/src/components/LoungeLog.tsx:586
+msgid "검토 후 운영 정책에 따라 조치해요. 신고한 글은 더 이상 보이지 않아요."
+msgstr "我们将按运营政策审核处理。举报后将隐藏此内容。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:367
+msgid "검토 후 조치할게요. 신고한 라멘로그는 더 이상 보이지 않아요."
+msgstr "我们将审核并处理举报。此记录已隐藏。"
+
+#: src/screens/NotificationScreen.tsx:115
+msgid "게시글 및 라멘로그 댓글"
+msgstr "帖子和拉面记录评论"
+
+#: src/screens/LoungeScreen.tsx:1248
+msgid "게시판 분류"
+msgstr "论坛分类"
+
+#: src/screens/TasteReportLoading.tsx:115
+msgid "결과 바로 보기"
+msgstr "查看结果"
+
+#: packages/shared/src/i18n/labels.ts:137
+msgid "계란 좋아요"
+msgstr "溏心蛋好吃"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1347
+msgid "계속 고치기"
+msgstr "继续编辑"
+
+#: apps/mobile/app/(flows)/auth/consent.tsx:75
+msgid "계속 이용해 주세요 "
+msgstr "继续使用RAOTA "
+
+#: apps/mobile/app/(flows)/record/new.tsx:1347
+#: src/screens/RecordScreen.tsx:738
+msgid "계속 작성"
+msgstr "继续填写"
+
+#: apps/mobile/app/(flows)/settings.tsx:123
+#: src/screens/MyScreen.tsx:727
+msgid "계정"
+msgstr "账号"
+
+#: apps/mobile/app/(flows)/settings.tsx:237
+msgid "계정 안내를 받을 이메일 주소를 입력해 주세요."
+msgstr "请输入用于接收账号通知的邮箱地址。"
+
+#: apps/mobile/app/native/my.tsx:357
+msgid "계정, 약관, 로그아웃"
+msgstr "账号、条款和退出登录"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1013
+msgid "고르지 않아도 바로 발행할 수 있어요"
+msgstr "无需再选择即可保存"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:405
+msgid "고른 사진 지우기"
+msgstr "删除已选照片"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:897
+msgid "고른 조건"
+msgstr "已选条件"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:903
+msgid "고른 조건 없음"
+msgstr "尚未选择条件"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:902
+msgid "고른 조건. {v1}"
+msgstr "已选条件：{v1}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1346
+msgid "고른 조건으로 오늘의 라멘을 찾았어요."
+msgstr "已按您的条件找到今天的拉面。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:397
+msgid "고른 프로필 사진"
+msgstr "已选头像"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1356
+msgid "고치기를 그만둘까요?"
+msgstr "放弃编辑？"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1318
+msgid "고친 기록 저장하기"
+msgstr "保存编辑后的记录"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1350
+msgid "고친 내용이 있어요. 나가면 바뀐 내용은 저장되지 않아요."
+msgstr "您有尚未保存的更改，离开后更改将丢失。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:971
+msgid "고칠 수 없는 기록이에요"
+msgstr "无法编辑此记录"
+
+#: apps/mobile/app/native/index.tsx:505
+msgid "곧 새로운 라멘집을 소개할게요."
+msgstr "很快将介绍新的拉面店。"
+
+#: apps/mobile/src/components/ui/index.tsx:704
+#: src/screens/RecordScreen.tsx:332
+#: src/screens/RecordScreen.tsx:401
+#: src/screens/RecordScreen.tsx:446
+msgid "골라주세요"
+msgstr "请选择"
+
+#: apps/mobile/app/native/my.tsx:304
+#: apps/mobile/app/native/my.tsx:657
+#: apps/mobile/app/native/my.tsx:705
+#: apps/mobile/app/native/my.tsx:756
+#: apps/mobile/app/native/my.tsx:787
+#: src/screens/MapScreen.tsx:698
+#: src/screens/MyScreen.tsx:492
+#: src/screens/MyScreen.tsx:596
+#: src/screens/MyScreen.tsx:649
+#: src/screens/RecordSheet.tsx:262
+msgid "곳"
+msgstr "家"
+
+#: apps/mobile/app/native/my.tsx:1013
+msgid "곳을 다녔어요"
+msgstr "家店已到访"
+
+#: src/screens/MyScreen.tsx:696
+#: src/screens/MyScreen.tsx:717
+#: src/screens/NotificationScreen.tsx:59
+msgid "공감"
+msgstr "赞同"
+
+#: apps/mobile/src/components/LoungeLog.tsx:155
+msgid "공감 {p0}개"
+msgstr "{p0}个赞"
+
+#: src/screens/LoungeScreen.tsx:1420
+msgid "공감 취소, 공감 {v0}개"
+msgstr "取消赞同，{v0}个赞同"
+
+#: apps/mobile/src/components/LoungeLog.tsx:199
+#: packages/shared/src/i18n/labels.ts:99
+msgid "공감을 반영하지 못했어요. 다시 시도해 주세요."
+msgstr "未能更新点赞，请重试。"
+
+#: src/screens/LoungeScreen.tsx:1420
+msgid "공감하기, 공감 {v0}개"
+msgstr "赞同，{v0}个赞同"
+
+#: apps/mobile/app/(flows)/record/new.tsx:158
+msgid "공개"
+msgstr "公开"
+
+#: src/screens/RecordScreen.tsx:277
+msgid "공개 기록"
+msgstr "公开记录"
+
+#: apps/mobile/src/components/ShopTasteCard.tsx:64
+#: apps/mobile/src/components/ShopTasteCard.tsx:71
+msgid "공개 라멘로그 {p0}개"
+msgstr "{p0}条公开拉面记录"
+
+#: src/screens/MyScreen.tsx:757
+msgid "공개 라멘로그 수를 기준으로 등급이 올라가요. 지금은 {count}그릇, Lv.{level} {title}예요."
+msgstr "等级随公开拉面记录数提升。目前为{count}碗，Lv.{level} {title}。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1150
+msgid "공개 범위"
+msgstr "公开范围"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:239
+#: src/screens/ShopDetailScreen.tsx:78
+msgid "공깃밥 리필"
+msgstr "米饭续加"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:460
+msgid "공깃밥 무료"
+msgstr "免费米饭"
+
+#: src/screens/AIRecommendScreen.tsx:155
+msgid "공깃밥 제공"
+msgstr "提供米饭"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:516
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:771
+#: src/screens/TasteDetailScreen.tsx:209
+msgid "공유"
+msgstr "分享"
+
+#: src/screens/TasteDetailScreen.tsx:326
+msgid "공유 카드 닫기"
+msgstr "关闭分享卡片"
+
+#: src/screens/TasteDetailScreen.tsx:366
+msgid "공유하기"
+msgstr "分享"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:1079
+msgid "공유하지 못했어요"
+msgstr "分享失败"
+
+#: src/screens/NotificationScreen.tsx:63
+msgid "공지"
+msgstr "公告"
+
+#: src/screens/NotificationScreen.tsx:171
+msgid "관심 라멘집"
+msgstr "关注的拉面店"
+
+#: src/screens/NotificationScreen.tsx:117
+msgid "관심 라멘집 소식"
+msgstr "关注店铺动态"
+
+#: src/screens/NotificationScreen.tsx:191
+msgid "관심 라멘집 소식이 없습니다"
+msgstr "暂无关注店铺动态"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:270
+msgid "괜찮아요"
+msgstr "不用了"
+
+#: apps/mobile/app/(flows)/record/new.tsx:134
+#: apps/mobile/src/domain/lounge.ts:116
+msgid "괜찮았어요"
+msgstr "还不错"
+
+#: src/screens/ShopDetailScreen.tsx:340
+msgid "구글 리뷰 연동"
+msgstr "Google评论"
+
+#: packages/shared/src/i18n/labels.ts:140
+msgid "구성 알차요"
+msgstr "配料丰富"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:174
+#: packages/shared/src/i18n/labels.ts:151
+#: src/types.ts:57
+msgid "국물"
+msgstr "汤底"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:920
+msgid "국물 버튼을 눌러 주세요"
+msgstr "请选择汤底"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:924
+#: src/screens/AIRecommendScreen.tsx:264
+msgid "국물 베이스"
+msgstr "汤底"
+
+#: src/screens/TasteReportLoading.tsx:29
+msgid "국물과 면 취향을 살펴보고 있어요"
+msgstr "正在查看汤底和面条偏好"
+
+#: apps/mobile/app/native/index.tsx:403
+#: src/screens/HomeScreen.tsx:134
+msgid "국물과 상황에 맞는 오늘의 한 그릇 추천"
+msgstr "根据汤底和心情推荐一碗"
+
+#: apps/mobile/app/native/index.tsx:389
+msgid "국물과 상황을 골라 오늘의 한 그릇을 추천받아요"
+msgstr "选择汤底和心情，推荐今天的一碗"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1126
+msgid "국물을 골라주세요"
+msgstr "请选择汤底"
+
+#: src/screens/AIRecommendScreen.tsx:58
+msgid "국물이 덜 짠 곳"
+msgstr "汤底不太咸"
+
+#: packages/shared/src/i18n/labels.ts:129
+msgid "국물이 잘 배어요"
+msgstr "面条挂汤"
+
+#: apps/mobile/src/components/TasteStory.tsx:167
+msgid "그다음은 {name} {count}번"
+msgstr "其次是{name}，{count}次"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:62
+#: apps/mobile/app/(flows)/taste/index.tsx:663
+#: apps/mobile/app/native/my.tsx:303
+#: apps/mobile/app/native/my.tsx:573
+#: apps/mobile/app/native/my.tsx:584
+#: apps/mobile/app/native/my.tsx:594
+#: apps/mobile/app/native/my.tsx:739
+#: src/components/MenuDistributionChart.tsx:27
 #: src/components/MonthlyReportCard.tsx:23
+#: src/screens/MonthlyTasteScreen.tsx:109
+#: src/screens/MonthlyTasteScreen.tsx:136
+#: src/screens/MyScreen.tsx:491
+#: src/screens/MyScreen.tsx:493
+#: src/screens/MyScreen.tsx:553
+#: src/screens/MyScreen.tsx:566
+#: src/screens/MyScreen.tsx:636
+#: src/screens/TasteDetailScreen.tsx:252
+#: src/screens/TasteDetailScreen.tsx:264
+#: src/screens/TasteDetailScreen.tsx:286
 msgid "그릇"
-msgstr ""
+msgstr "碗"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:137
+#: apps/mobile/app/(flows)/taste/archive.tsx:197
+#: apps/mobile/app/(flows)/taste/archive.tsx:450
+#: apps/mobile/app/(flows)/taste/archive.tsx:517
+#: apps/mobile/app/(flows)/taste/index.tsx:717
+#: apps/mobile/app/(flows)/taste/index.tsx:918
+#: apps/mobile/app/(flows)/taste/index.tsx:934
+#: apps/mobile/app/(flows)/taste/index.tsx:983
+msgid "그릇 "
+msgstr "碗 "
+
+#: apps/mobile/app/(flows)/taste/index.tsx:717
+msgid "그릇 · 전체 "
+msgstr "碗 · 共"
+
+#: src/screens/TasteDetailScreen.tsx:352
+msgid "그릇 ("
+msgstr "碗（"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:717
+msgid "그릇 1개 ≈ "
+msgstr "1个图标≈"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:401
+msgid "그릇 기준이에요. "
+msgstr "碗统计。 "
+
+#: src/screens/MonthlyTasteScreen.tsx:104
+msgid "그릇 수"
+msgstr "碗数"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:428
+msgid "그릇 수 "
+msgstr "碗数 "
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:384
+msgid "그릇 중"
+msgstr "碗中"
+
+#: src/screens/TasteDetailScreen.tsx:274
+msgid "그릇 중 가장 많이 기록한 세 곳이에요."
+msgstr "碗中记录最多的三家店。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:401
+msgid "그릇 중 종류가 확인된 "
+msgstr "碗中，基于已确认类型的"
+
+#: src/screens/RecordCompleteScreen.tsx:184
+msgid "그릇 평균이 그대로예요."
+msgstr "碗的平均值保持不变。"
+
+#: apps/mobile/app/native/my.tsx:1012
+msgid "그릇을 기록했어요"
+msgstr "碗已记录"
+
+#: src/screens/TasteDetailScreen.tsx:217
+msgid "그릇이 아래 수치에 더해졌어요."
+msgstr "碗已计入下方数据。"
+
+#: apps/mobile/app/native/my.tsx:660
+msgid "그릇이에요."
+msgstr "碗。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:134
+#: apps/mobile/src/domain/lounge.ts:116
+msgid "그저 그랬어요"
+msgstr "一般般"
+
+#: src/screens/LoungeScreen.tsx:859
+msgid "글 올리기"
+msgstr "发布帖子"
+
+#: src/screens/LoungeScreen.tsx:671
+msgid "글 종류"
+msgstr "帖子分类"
+
+#: src/screens/LoungeScreen.tsx:1650
+msgid "글쓰기"
+msgstr "发帖"
+
+#: apps/mobile/app/native/my.tsx:512
+msgid "금"
+msgstr "五"
+
+#: src/screens/LoungeScreen.tsx:822
+msgid "기기에서 사진 선택"
+msgstr "从设备选择照片"
+
+#: apps/mobile/app/(flows)/record/new.tsx:934
+#: apps/mobile/app/(flows)/record/new.tsx:958
+#: apps/mobile/app/(flows)/record/new.tsx:1195
+msgid "기록 고치기"
+msgstr "编辑记录"
+
+#: apps/mobile/app/native/my.tsx:591
+msgid "기록 더 보기"
+msgstr "更多记录"
+
+#: apps/mobile/app/(flows)/settings.tsx:141
+#: apps/mobile/app/(flows)/settings.tsx:160
+msgid "기록 리마인더"
+msgstr "记录提醒"
+
+#: apps/mobile/src/components/RecordMenu.tsx:196
+#: src/screens/HomeScreen.tsx:323
+#: src/screens/HomeScreen.tsx:351
+msgid "기록 메뉴 닫기"
+msgstr "关闭记录菜单"
+
+#: apps/mobile/src/components/RecordMenu.tsx:183
+#: src/screens/HomeScreen.tsx:326
+msgid "기록 방법 선택"
+msgstr "选择记录方式"
+
+#: apps/mobile/src/components/RecordMenu.tsx:168
+msgid "기록 방법 선택 닫기"
+msgstr "关闭记录方式选择"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:680
+msgid "기록 순서대로 {v1}개 그릇을 종류별로 쌓고 있어요"
+msgstr "正在按记录顺序将{v1}碗按类型叠放"
+
+#: src/components/MenuDistributionChart.tsx:29
+#: src/components/MenuDistributionChart.tsx:32
+msgid "기록 없음"
+msgstr "无记录"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:162
+msgid "기록 없음 "
+msgstr "暂无记录 "
+
+#: apps/mobile/app/(flows)/record/new.tsx:1318
+#: src/screens/RecordScreen.tsx:658
+msgid "기록 저장하기"
+msgstr "保存记录"
+
+#: apps/mobile/app/(flows)/record/new.tsx:925
+msgid "기록 화면을 준비하는 중…"
+msgstr "正在准备记录页面…"
+
+#: apps/mobile/app/(flows)/settings.tsx:292
+#: src/screens/MyScreen.tsx:811
+msgid "기록과 취향 리포트는 계정에 그대로 남아 있어요."
+msgstr "记录和口味报告将保留在账号中。"
+
+#: src/screens/TasteDetailScreen.tsx:231
+msgid "기록마다 매긴 5축 점수의 평균이에요. 바깥쪽일수록 5점에 가까워요."
+msgstr "各次记录五维评分的平均值，越靠外越接近5分。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:937
+msgid "기록은 계정에 저장돼요. 로그인하면 남긴 라멘이 계속 쌓여요."
+msgstr "记录将保存在您的账号中，登录后即可持续积累拉面记录。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:937
+msgid "기록은 계정에 저장돼요. 로그인하면 취향 리포트도 함께 쌓여요."
+msgstr "记录将保存在您的账号中，登录后也会积累口味报告。"
+
+#: packages/shared/src/i18n/labels.ts:97
+msgid "기록을 고치지 못했어요. 다시 시도해 주세요."
+msgstr "未能更新记录，请重试。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1154
+msgid "기록을 공개해 피드에 올려요"
+msgstr "公开记录并发布到动态"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:200
+msgid "기록을 남기면 이번 달 분포에 바로 더해져요. 이번 달이 "
+msgstr "新记录会立即计入本月分布。本月还剩"
 
 #: src/components/MonthlyReportCard.tsx:25
 msgid "기록을 남기면 이번 달 분포에 바로 더해져요. 이번 달이 {count}일 남았어요."
-msgstr ""
+msgstr "记录会立即计入本月分布。本月还剩{count}天。"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:50
+#: apps/mobile/app/(flows)/record/complete.tsx:173
+#: apps/mobile/app/(flows)/record/new.tsx:951
+#: apps/mobile/app/(flows)/record/new.tsx:981
+#: apps/mobile/app/native/my.tsx:634
+msgid "기록을 불러오는 중…"
+msgstr "正在加载记录…"
+
+#: apps/mobile/app/(flows)/record/new.tsx:971
+#: apps/mobile/app/native/my.tsx:640
+msgid "기록을 불러오지 못했어요"
+msgstr "无法加载记录"
+
+#: apps/mobile/app/native/my.tsx:408
+msgid "기록을 불러오지 못했어요 · 다시 불러오기"
+msgstr "无法加载记录 · 重新加载"
+
+#: apps/mobile/app/native/my.tsx:402
+msgid "기록을 불러오지 못했어요. 다시 불러오기"
+msgstr "无法加载记录。重新加载"
+
+#: packages/shared/src/i18n/labels.ts:96
+msgid "기록을 저장하지 못했어요. 다시 시도해 주세요."
+msgstr "未能保存记录，请重试。"
+
+#: packages/shared/src/i18n/labels.ts:98
+msgid "기록을 지우지 못했어요. 다시 시도해 주세요."
+msgstr "未能删除记录，请重试。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:180
+#: apps/mobile/app/(flows)/record/new.tsx:971
+msgid "기록을 찾을 수 없어요"
+msgstr "找不到记录"
+
+#: apps/mobile/src/components/ShopTasteCard.tsx:57
+msgid "기록이 {count}개 이상 쌓이면 비율로 보여드려요"
+msgstr "累计{count}条记录后将显示比例"
+
+#: apps/mobile/app/(flows)/settings.tsx:29
+msgid "기록이 일주일 뜸할 때만 알려드려요."
+msgstr "仅在一周未记录时提醒。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:276
+msgid "기록이 일주일 뜸할 때만 알려드릴게요."
+msgstr "仅在一周未记录时提醒。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:254
+msgid "기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요."
+msgstr "仅在一周未记录时提醒，可随时在设置中关闭。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:199
+#: src/screens/RecordCompleteScreen.tsx:83
+msgid "기록이 저장됐어요"
+msgstr "记录已保存"
+
+#: src/screens/LoungeScreen.tsx:1645
+msgid "기록하기"
+msgstr "记录"
+
+#: src/screens/TasteReportLoading.tsx:73
+msgid "기록한 {count}그릇을 바탕으로 분석해요"
+msgstr "根据记录的{count}碗进行分析"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1238
+msgid "기록할 가게를 다시 골라요"
+msgstr "重新选择记录的店铺"
+
+#: apps/mobile/app/(flows)/settings.tsx:72
+msgid "기록할 때가 되면 알려드릴게요"
+msgstr "该记录时我们会提醒您"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:258
+msgid "기록할 때가 되면 알려드릴까요?"
+msgstr "需要记录提醒吗？"
+
+#: packages/shared/src/i18n/labels.ts:124
+msgid "기름져요"
+msgstr "油润"
+
+#: src/screens/RegisterScreen.tsx:243
+msgid "기본 정보를 알려주세요"
+msgstr "请填写基本信息"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:292
+msgid "기본 정보를 알려주세요 "
+msgstr "请填写基本信息 "
 
 #: apps/mobile/app/native/map.tsx:453
 msgid "기본 지역으로 이동"
-msgstr ""
+msgstr "前往默认地区"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1107
+#: src/screens/RecordScreen.tsx:535
+msgid "기억해둘 점"
+msgstr "想记住的事"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1113
+msgid "기억해둘 점 (예: 다음엔 면을 단단하게)"
+msgstr "想记住的事（例如：下次面要硬一些）"
+
+#: apps/mobile/src/domain/lounge.ts:49
+#: packages/shared/src/i18n/labels.ts:23
+msgid "기타"
+msgstr "其他"
 
 #: apps/mobile/app/+not-found.tsx:22
 msgid "길을 잃은 한 그릇이에요"
-msgstr ""
+msgstr "这一碗迷路了"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:75
+#: src/screens/AIRecommendScreen.tsx:53
+msgid "깔끔하고 깊은 감칠맛"
+msgstr "清爽醇厚的鲜味"
+
+#: packages/shared/src/i18n/labels.ts:122
+msgid "깔끔해요"
+msgstr "清爽"
+
+#: src/screens/RegisterScreen.tsx:41
+msgid "꼬들면 애호가"
+msgstr "硬面爱好者"
+
+#: src/screens/LoungeScreen.tsx:308
+msgid "꿀팁"
+msgstr "实用技巧"
+
+#: src/screens/NotificationScreen.tsx:327
+msgid "끄면 아래 항목도 모두 받지 않습니다."
+msgstr "关闭后，下方通知也将全部停止。"
+
+#: src/screens/RecordScreen.tsx:607
+msgid "끄면 피드에 올라가지 않고 나만 볼 수 있어요."
+msgstr "关闭后不会显示在动态中，仅自己可见。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1348
+#: src/screens/RecordScreen.tsx:744
+msgid "나가기"
+msgstr "离开"
+
+#: apps/mobile/app/(flows)/record/new.tsx:157
+#: src/screens/RecordScreen.tsx:277
+msgid "나만 보기"
+msgstr "仅自己可见"
+
+#: src/screens/TasteReportLoading.tsx:30
+msgid "나의 누적 취향을 정리하고 있어요"
+msgstr "正在整理累计口味"
+
+#: src/screens/TasteReportLoading.tsx:71
+msgid "나의 라멘 취향을"
+msgstr "正在整理"
+
+#: apps/mobile/app/native/index.tsx:327
+#: src/screens/HomeScreen.tsx:81
+msgid "나의 라멘 취향을 찾는 곳"
+msgstr "发现你的拉面喜好"
+
+#: src/screens/TasteReportLoading.tsx:31
+msgid "나의 라멘 취향이 정리됐어요"
+msgstr "你的拉面口味已整理完成"
+
+#: apps/mobile/src/components/TasteStory.tsx:152
+msgid "나의 취향"
+msgstr "我的口味"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:248
+msgid "나중에"
+msgstr "稍后"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:215
+#: src/screens/RecordCompleteScreen.tsx:103
+msgid "날짜"
+msgstr "日期"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1385
+msgid "날짜 선택 완료"
+msgstr "完成日期选择"
+
+#: src/screens/MyScreen.tsx:709
+msgid "남긴 댓글"
+msgstr "我的评论"
+
+#: src/screens/RecordScreen.tsx:658
+msgid "남은 필수 {v0}개 보러 가기"
+msgstr "查看剩余{v0}个必填项"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:84
+#: apps/mobile/app/(flows)/record/complete.tsx:90
+#: apps/mobile/app/(flows)/record/complete.tsx:92
+msgid "낮게"
+msgstr "更低"
+
+#: src/screens/NotificationScreen.tsx:115
+msgid "내 글이나 기록에 새 댓글이 달렸을 때"
+msgstr "我的帖子或记录有新评论时"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:493
+msgid "내 기록 {count}그릇의 취향을 반영했어요"
+msgstr "已结合我{count}碗记录的口味"
+
+#: src/screens/RecordScreen.tsx:606
+msgid "내 기록 공개하기"
+msgstr "公开我的记录"
+
+#: packages/shared/src/i18n/labels.ts:146
+msgid "내 기록을 불러오지 못했어요."
+msgstr "无法加载我的记录。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:273
+msgid "내 댓글"
+msgstr "我的评论"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:85
+msgid "내 댓글 메뉴"
+msgstr "我的评论菜单"
+
+#: apps/mobile/app/native/my.tsx:940
+#: src/screens/MyScreen.tsx:767
+msgid "내 등급"
+msgstr "我的等级"
+
+#: src/screens/MyScreen.tsx:439
+msgid "내 라멘 취향을 모아보세요"
+msgstr "收集你的拉面口味"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:412
+#: apps/mobile/app/(flows)/log/[logId].tsx:452
+msgid "내 라멘로그"
+msgstr "我的拉面记录"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:523
+msgid "내 라멘로그 메뉴"
+msgstr "我的拉面记录菜单"
+
+#: src/screens/NotificationScreen.tsx:114
+msgid "내 라멘로그에 다른 라멘러가 공감했을 때"
+msgstr "其他拉面爱好者赞同我的记录时"
 
 #: apps/mobile/app/native/map.tsx:453
+#: src/screens/MapScreen.tsx:627
 msgid "내 위치로 이동"
-msgstr ""
+msgstr "前往我的位置"
 
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:57
+#: src/screens/RegisterScreen.tsx:45
+msgid "내 주변 라멘집 찾기"
+msgstr "寻找附近拉面店"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:493
+msgid "내 취향"
+msgstr "我的口味"
+
+#: src/screens/HomeScreen.tsx:155
+msgid "내 취향 리포트에서 달라진 점을 확인해보세요"
+msgstr "查看口味报告中的变化"
+
+#: src/screens/RecordCompleteScreen.tsx:204
+msgid "내 취향 여권 보기"
+msgstr "查看我的口味护照"
+
+#: src/screens/ShopDetailScreen.tsx:200
+#: src/screens/ShopDetailScreen.tsx:203
+msgid "내 취향 일치도"
+msgstr "我的口味匹配度"
+
+#: src/screens/TasteDetailScreen.tsx:329
+msgid "내 취향 카드"
+msgstr "我的口味卡片"
+
+#: src/screens/HomeScreen.tsx:211
+msgid "내 취향과 잘 맞는 라멘집"
+msgstr "符合你口味的拉面店"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1346
+msgid "내 취향으로 오늘의 라멘을 고르고 있어요."
+msgstr "正在按您的口味挑选今天的拉面。"
+
+#: apps/mobile/app/native/my.tsx:313
+#: src/screens/MyScreen.tsx:507
+msgid "내 활동"
+msgstr "我的活动"
+
+#: apps/mobile/app/(flows)/record/new.tsx:963
 #: apps/mobile/src/state/RaotaStore.tsx:1549
+#: packages/shared/src/i18n/labels.ts:91
 msgid "내가 남긴 기록만 고칠 수 있어요."
-msgstr ""
+msgstr "你只能编辑自己的记录。"
+
+#: apps/mobile/src/data/remote.ts:437
+#: packages/shared/src/i18n/labels.ts:81
+msgid "내가 쓴 글만 고치거나 지울 수 있어요."
+msgstr "你只能编辑或删除自己的内容。"
+
+#: src/screens/TasteDetailScreen.tsx:366
+msgid "내용 복사하기"
+msgstr "复制内容"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:151
+#: apps/mobile/app/(flows)/log/[logId].tsx:217
+msgid "내용을 입력하면 등록할 수 있어요"
+msgstr "输入内容后即可发表评论"
+
+#: apps/mobile/src/domain/hours.ts:185
+msgid "내일 {time}에 열어요"
+msgstr "明天{time}开门"
+
+#: apps/mobile/app/native/my.tsx:1019
+#: apps/mobile/src/components/TasteStory.tsx:249
+msgid "넘겨 보기"
+msgstr "滑动查看"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:642
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:766
+msgid "네이버 지도에서 길찾기"
+msgstr "Naver地图导航"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:631
+msgid "네이버 지도에서 위치와 길찾기를 열어요"
+msgstr "在Naver地图中查看位置和路线"
+
+#: apps/mobile/src/api/client.ts:331
+#: packages/shared/src/i18n/labels.ts:77
+msgid "네트워크 연결을 확인해 주세요."
+msgstr "请检查网络连接。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:84
+#: apps/mobile/app/(flows)/record/complete.tsx:90
+#: apps/mobile/app/(flows)/record/complete.tsx:92
+msgid "높게"
+msgstr "更高"
+
+#: apps/mobile/src/components/LoungeLog.tsx:156
+msgid "누르면 공감을 취소해요"
+msgstr "点击取消点赞"
+
+#: apps/mobile/src/components/LoungeLog.tsx:156
+msgid "누르면 공감해요"
+msgstr "点击点赞"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1316
+msgid "누르면 빠진 첫 질문으로 이동해요"
+msgstr "前往首个未回答的问题"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1334
+msgid "누르면 빠진 항목으로 이동해요"
+msgstr "前往未填写的项目"
+
+#: apps/mobile/app/native/lounge.tsx:169
+msgid "누르면 정렬 메뉴가 열려요"
+msgstr "点击打开排序菜单"
+
+#: packages/shared/src/i18n/labels.ts:56
+msgid "누적"
+msgstr "累计"
+
+#: packages/shared/src/domain/identity.ts:72
+msgid "누적 {total}그릇 중 {type} {count}그릇 · 육수 농도 평균 {score}"
+msgstr "累计{total}碗中，{type} {count}碗 · 汤底浓度平均 {score}"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:123
+msgid "누적 {v1}그릇 중 {v2} {v3}그릇"
+msgstr "累计{v1}碗中，{v2}占{v3}碗"
+
+#: packages/shared/src/domain/identity.ts:51
+msgid "누적 0그릇"
+msgstr "累计0碗"
+
+#: src/screens/TasteReportLoading.tsx:60
+msgid "누적 취향 분석 중"
+msgstr "正在分析累计口味"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:481
+msgid "늘었어요"
+msgstr "上升"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:58
+#: apps/mobile/app/native/map.web.tsx:44
+#: packages/shared/src/i18n/labels.ts:17
+msgid "니보시"
+msgstr "煮干"
+
+#: apps/mobile/app/native/map.web.tsx:44
+msgid "니보시 (멸치 육수)"
+msgstr "煮干鱼汤"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:300
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:305
+#: src/screens/RegisterScreen.tsx:316
+msgid "닉네임"
+msgstr "昵称"
+
+#: apps/mobile/src/domain/nickname.ts:29
+msgid "닉네임은 {max}자까지예요. 지금 {count}자예요."
+msgstr "昵称最多{max}个字符，目前{count}个。"
+
+#: apps/mobile/src/domain/nickname.ts:31
+msgid "닉네임은 한글·영문·숫자·밑줄만 쓸 수 있어요."
+msgstr "昵称仅支持韩文字母、英文字母、数字和下划线。"
+
+#: apps/mobile/src/domain/nickname.ts:7
+msgid "닉네임을 입력해 주세요. {NICKNAME_MIN}~{NICKNAME_MAX}자로 쓸 수 있어요."
+msgstr "请输入{NICKNAME_MIN}至{NICKNAME_MAX}个字符的昵称。"
+
+#: src/screens/RegisterScreen.tsx:133
+msgid "닉네임을 입력해 주세요. 2~12자로 쓸 수 있어요."
+msgstr "请输入2至12个字符的昵称。"
+
+#: apps/mobile/src/domain/nickname.ts:27
+#: src/screens/RegisterScreen.tsx:135
+msgid "닉네임이 너무 짧아요. {count}자만 더 적어 주세요."
+msgstr "昵称太短，请再输入{count}个字符。"
+
+#: src/screens/RegisterScreen.tsx:185
+msgid "님, 반가워요"
+msgstr "，你好"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:227
+msgid "님, 반가워요 "
+msgstr "，欢迎您 "
+
+#: src/screens/HomeScreen.tsx:92
+msgid "님, 반갑습니다"
+msgstr "，欢迎"
+
+#: src/screens/LoungeScreen.tsx:1030
+msgid "님에게 답글 작성 중"
+msgstr "：正在回复"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:124
+#: packages/shared/src/i18n/labels.ts:107
 msgid "다른 날 뽑은 식권까지 날짜별로 봐요"
-msgstr ""
+msgstr "按日期查看其他天领取的餐券"
 
+#: apps/mobile/app/native/map.web.tsx:503
+#: src/screens/MapScreen.tsx:754
+msgid "다른 매장명이나 라멘 종류로 찾아보세요."
+msgstr "请尝试其他店名或拉面种类。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:359
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:364
+msgid "다른 스타일 보기"
+msgstr "查看其他类型"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:359
+msgid "다른 스타일 접기"
+msgstr "收起其他类型"
+
+#: apps/mobile/app/native/my.tsx:693
+#: src/screens/MyScreen.tsx:619
+msgid "다른 이름이나 메뉴로 찾아보세요."
+msgstr "请尝试其他店名或菜单。"
+
+#: apps/mobile/app/native/my.tsx:775
+#: src/screens/MyScreen.tsx:659
+msgid "다른 이름이나 스타일로 찾아보세요."
+msgstr "请尝试其他店名或风格。"
+
+#: apps/mobile/app/native/lounge.tsx:141
+msgid "다른 종류를 고르거나 전체 라멘로그를 둘러보세요."
+msgstr "请选择其他种类或查看全部拉面记录。"
+
+#: src/screens/RecordScreen.tsx:387
+msgid "다섯 축이 모여 취향 여권이 갱신됩니다."
+msgstr "五项评分将更新你的口味护照。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:110
+msgid "다시 가고 싶나요?"
+msgstr "想再去吗？"
+
+#: apps/mobile/src/api/client.ts:477
+#: packages/shared/src/i18n/labels.ts:74
+msgid "다시 로그인해 주세요."
+msgstr "请重新登录。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:430
+#: apps/mobile/app/(flows)/record/select-shop.tsx:302
+#: apps/mobile/app/(flows)/record/select-shop.tsx:424
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:154
 #: apps/mobile/app/(flows)/tickets.tsx:43
+#: apps/mobile/app/native/index.tsx:451
+#: apps/mobile/app/native/index.tsx:504
+#: apps/mobile/app/native/lounge.tsx:125
+#: apps/mobile/app/native/lounge.tsx:190
 #: apps/mobile/app/native/map.tsx:445
+#: apps/mobile/app/native/map.web.tsx:502
+#: apps/mobile/app/native/my.tsx:637
+#: apps/mobile/app/native/my.tsx:767
 msgid "다시 불러오기"
-msgstr ""
+msgstr "重新加载"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:46
+#: apps/mobile/app/(flows)/record/new.tsx:1319
+#: apps/mobile/app/(flows)/record/new.tsx:1329
+#: src/screens/RecordScreen.tsx:639
 msgid "다시 시도"
-msgstr ""
+msgstr "重试"
 
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1199
+#: src/screens/AIRecommendScreen.tsx:412
+msgid "다시 추천받기"
+msgstr "重新推荐"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1126
+#: apps/mobile/app/(flows)/record/new.tsx:1335
+#: apps/mobile/app/(flows)/record/new.tsx:1340
+#: src/screens/AIRecommendScreen.tsx:441
+msgid "다음"
+msgstr "下一步"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:424
+msgid "다음 가게를 불러오지 못했어요"
+msgstr "无法加载更多店铺"
+
+#: apps/mobile/src/domain/hours.ts:156
+msgid "다음 날 {time}"
+msgstr "次日{time}"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:280
+msgid "다음 달 리포트가 나올 즈음 알려드릴까요?"
+msgstr "需要下月报告提醒吗？"
+
+#: apps/mobile/app/native/my.tsx:434
+#: apps/mobile/app/native/my.tsx:444
+msgid "다음 등급까지 {p0}그릇"
+msgstr "距离下一等级还需{p0}碗"
+
+#: src/screens/MyScreen.tsx:498
+msgid "다음 등급까지 {v0}그릇"
+msgstr "距离下一级还需{v0}碗"
+
+#: apps/mobile/app/native/lounge.tsx:190
+msgid "다음 라멘로그를 불러오지 못했어요"
+msgstr "无法加载更多拉面记录"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:280
+msgid "다음 라멘을 잊지 않게 알려드릴까요?"
+msgstr "需要提醒您记录下一碗吗？"
+
+#: src/screens/LoungeScreen.tsx:1358
+msgid "다음 사진"
+msgstr "下一张照片"
+
+#: apps/mobile/src/components/TasteStory.tsx:242
+msgid "다음 장 넘겨 보기"
+msgstr "下一页"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:756
+msgid "다음 추천, {v1}"
+msgstr "下一个推荐，{v1}"
+
+#: src/screens/TasteDetailScreen.tsx:295
+msgid "다음에 맛볼 한 그릇"
+msgstr "下次品尝的一碗"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:994
+msgid "다음에 맛볼 한 그릇 "
+msgstr "下一碗推荐 "
+
+#: apps/mobile/app/native/my.tsx:713
+#: apps/mobile/app/native/my.tsx:728
+#: src/screens/MyScreen.tsx:631
+msgid "단골"
+msgstr "常客"
+
+#: apps/mobile/src/components/TasteStory.tsx:164
+msgid "단골집"
+msgstr "常去的店"
+
+#: packages/shared/src/domain/identity.ts:59
+#: packages/shared/src/i18n/labels.ts:67
+msgid "단골형"
+msgstr "忠实常客"
+
+#: packages/shared/src/i18n/labels.ts:39
+msgid "단단하게"
+msgstr "偏硬"
+
+#: apps/mobile/src/components/TasteStory.tsx:50
+#: packages/shared/src/domain/identity.ts:58
+#: packages/shared/src/i18n/labels.ts:65
+msgid "단단한 면"
+msgstr "偏硬的面"
+
+#: apps/mobile/app/(flows)/record/new.tsx:136
+#: apps/mobile/src/domain/lounge.ts:118
+#: apps/mobile/src/domain/shopTaste.ts:37
+msgid "단단한 편"
+msgstr "偏硬"
+
+#: packages/shared/src/i18n/labels.ts:127
+msgid "단단해요"
+msgstr "偏硬"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:347
+#: apps/mobile/app/(flows)/taste/index.tsx:1077
 #: apps/mobile/src/components/PhotoViewer.tsx:246
+#: apps/mobile/src/components/PolicySheet.tsx:43
+#: apps/mobile/src/components/RecordMenu.tsx:51
+#: apps/mobile/src/components/RecordMenu.tsx:184
+#: apps/mobile/src/components/ui/index.tsx:1022
+#: src/components/PolicySheet.tsx:78
+#: src/components/PolicySheet.tsx:101
+#: src/screens/MyScreen.tsx:195
+#: src/screens/NotificationScreen.tsx:314
+#: src/screens/RecordScreen.tsx:671
+#: src/screens/RecordScreen.tsx:686
+#: src/screens/RecordSheet.tsx:169
+#: src/screens/RecordSheet.tsx:190
+#: src/screens/TasteDetailScreen.tsx:330
+#: src/screens/TasteDetailScreen.tsx:368
 msgid "닫기"
-msgstr ""
+msgstr "关闭"
 
+#: apps/mobile/app/(flows)/record/new.tsx:1377
+msgid "달력 닫기"
+msgstr "关闭日历"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1213
+msgid "달력을 열어 날짜를 바꿔요"
+msgstr "打开日历更改日期"
+
+#: apps/mobile/app/native/my.tsx:1036
+msgid "달마다 어떤 라멘을 먹었는지 비교해요"
+msgstr "比较每个月吃过的拉面"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:57
+#: src/screens/AIRecommendScreen.tsx:36
+msgid "닭백탕"
+msgstr "浓郁鸡白汤"
+
+#: src/screens/LoungeScreen.tsx:1004
+msgid "답글"
+msgstr "回复"
+
+#: src/screens/LoungeScreen.tsx:1035
+msgid "답글 취소"
+msgstr "取消回复"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1334
+msgid "답을 고르면 넘어가요"
+msgstr "选择答案后继续"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1015
+msgid "답을 고른 뒤 다음을 눌러주세요"
+msgstr "请选择答案后点击下一步"
+
+#: apps/mobile/app/(flows)/record/new.tsx:783
+msgid "답을 골라주세요"
+msgstr "请选择答案"
+
+#: src/screens/RecordScreen.tsx:325
+msgid "대표 스타일"
+msgstr "代表风格"
+
+#: apps/mobile/src/components/LoungeLog.tsx:508
+#: apps/mobile/src/components/LoungeLog.tsx:555
+#: src/screens/LoungeScreen.tsx:961
+#: src/screens/LoungeScreen.tsx:973
+#: src/screens/LoungeScreen.tsx:976
+#: src/screens/LoungeScreen.tsx:1443
+#: src/screens/LoungeScreen.tsx:1611
+#: src/screens/MyScreen.tsx:454
+#: src/screens/MyScreen.tsx:697
+#: src/screens/NotificationScreen.tsx:60
+msgid "댓글"
+msgstr "评论"
+
+#: src/screens/LoungeScreen.tsx:1475
+msgid "댓글 {v0}개 더 보기"
+msgstr "再查看{v0}条评论"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:552
+msgid "댓글 {v1}"
+msgstr "评论 {v1}"
+
+#: src/screens/LoungeScreen.tsx:1532
+msgid "댓글 등록"
+msgstr "发布评论"
+
+#: apps/mobile/src/components/LoungeLog.tsx:602
+msgid "댓글 신고하기"
+msgstr "举报评论"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:201
+#: src/screens/LoungeScreen.tsx:1043
+msgid "댓글 입력"
+msgstr "输入评论"
+
+#: src/screens/LoungeScreen.tsx:1495
+msgid "댓글 입력창 열기"
+msgstr "打开评论输入框"
+
+#: src/screens/LoungeScreen.tsx:1475
+msgid "댓글 접기"
+msgstr "收起评论"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:149
+msgid "댓글은 {max}자까지 쓸 수 있어요"
+msgstr "评论最多{max}个字符"
+
+#: src/screens/LoungeScreen.tsx:509
+msgid "댓글은 2자 이상 적어 주세요."
+msgstr "评论至少输入2个字符。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:151
+#: apps/mobile/app/(flows)/log/[logId].tsx:217
+msgid "댓글을 2자 이상 입력해 주세요"
+msgstr "请输入至少2个字符"
+
+#: packages/shared/src/i18n/labels.ts:100
+msgid "댓글을 남기지 못했어요. 다시 시도해 주세요."
+msgstr "未能发表评论，请重试。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:431
+msgid "댓글을 더 불러오는 중…"
+msgstr "正在加载更多评论…"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:133
+#: apps/mobile/app/(flows)/log/[logId].tsx:147
+msgid "댓글을 등록하지 못했어요. 다시 시도해 주세요."
+msgstr "评论发表失败，请重试。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:167
+msgid "댓글을 등록하지 못했어요. 다시 시도해 주세요. "
+msgstr "评论发表失败，请重试。 "
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:430
+msgid "댓글을 불러오지 못했어요"
+msgstr "无法加载评论"
+
+#: src/screens/LoungeScreen.tsx:1052
+msgid "댓글을 입력하세요"
+msgstr "请输入评论"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:306
+#: packages/shared/src/i18n/labels.ts:101
+msgid "댓글을 지우지 못했어요. 다시 시도해 주세요."
+msgstr "未能删除评论，请重试。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:111
+msgid "더 남길 감정이 있나요?"
+msgstr "还有什么想记下的吗？"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:964
+#: src/screens/AIRecommendScreen.tsx:310
+msgid "더 바라는 점"
+msgstr "还有其他要求吗？"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:92
+#: src/screens/AIRecommendScreen.tsx:189
+msgid "더 바라는 점이 있나요?"
+msgstr "还有其他要求吗？"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:425
 #: apps/mobile/app/(flows)/tickets.tsx:72
+#: apps/mobile/app/native/lounge.tsx:191
 msgid "더 불러오는 중…"
-msgstr ""
+msgstr "正在加载更多…"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:517
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:763
+msgid "더보기"
+msgstr "更多"
+
+#: src/screens/LoginScreen.tsx:223
+msgid "데모 계정으로 체험"
+msgstr "体验演示账号"
 
 #: apps/mobile/src/data/hooks.ts:70
+#: packages/shared/src/i18n/labels.ts:24
 msgid "데이터를 불러오지 못했어요"
-msgstr ""
+msgstr "未能加载数据，请重试。"
 
+#: apps/mobile/app/(flows)/ai-recommend.tsx:66
+#: src/screens/AIRecommendScreen.tsx:44
+msgid "데이트/아늑한 분위기"
+msgstr "约会与温馨氛围"
+
+#: src/screens/NotificationScreen.tsx:194
+msgid "도착한 알림이 없습니다"
+msgstr "暂无通知"
+
+#: packages/shared/src/i18n/labels.ts:59
+msgid "돈골파"
+msgstr "豚骨派"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:53
+#: apps/mobile/app/native/map.web.tsx:39
+#: packages/shared/src/i18n/labels.ts:12
+msgid "돈코츠"
+msgstr "豚骨"
+
+#: packages/shared/src/i18n/labels.ts:118
+#: src/screens/RegisterScreen.tsx:27
+msgid "돈코츠 (돼지뼈)"
+msgstr "豚骨拉面"
+
+#: apps/mobile/app/native/map.web.tsx:39
+#: src/screens/MapScreen.tsx:77
+msgid "돈코츠 라멘 (돼지뼈)"
+msgstr "豚骨拉面"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:54
+#: src/screens/AIRecommendScreen.tsx:32
+msgid "돈코츠쇼유"
+msgstr "豚骨酱油"
+
+#: apps/mobile/app/(flows)/legal/[doc].tsx:31
+#: apps/mobile/app/(flows)/record/new.tsx:960
+msgid "돌아가기"
+msgstr "返回"
+
+#: apps/mobile/app/(flows)/auth/consent.tsx:23
+msgid "동의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요."
+msgstr "同意内容保存失败，请稍后重试。"
+
+#: apps/mobile/app/(flows)/auth/consent.tsx:85
+msgid "동의하고 계속하기"
+msgstr "同意并继续"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:53
+#: src/screens/AIRecommendScreen.tsx:31
+msgid "돼지뼈 육수"
+msgstr "猪骨汤"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:358
+#: apps/mobile/src/components/LoungeLog.tsx:628
+msgid "되돌리기"
+msgstr "撤销"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:56
+#: src/screens/AIRecommendScreen.tsx:34
+msgid "된장 타레"
+msgstr "味噌调味"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:74
+#: src/screens/AIRecommendScreen.tsx:52
+msgid "두툼하고 부드러운 차슈"
+msgstr "厚切软嫩叉烧"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:66
+msgid "둘이 오래 머물기"
+msgstr "适合两人慢享"
+
+#: apps/mobile/src/components/ui/index.tsx:220
+msgid "뒤로"
+msgstr "返回"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:778
+#: apps/mobile/app/(flows)/ai-recommend.tsx:789
+#: apps/mobile/app/(flows)/ai-recommend.tsx:840
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:281
 #: apps/mobile/app/(flows)/hidden-authors.tsx:84
+#: apps/mobile/app/(flows)/log/[logId].tsx:392
+#: apps/mobile/app/(flows)/my-type/[type].tsx:84
+#: apps/mobile/app/(flows)/record/new.tsx:934
+#: apps/mobile/app/(flows)/record/new.tsx:958
+#: apps/mobile/app/(flows)/record/new.tsx:1195
+#: apps/mobile/app/(flows)/settings.tsx:121
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:152
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:456
 #: apps/mobile/app/(flows)/tickets.tsx:65
+#: apps/mobile/src/components/LoungeLog.tsx:365
+#: apps/mobile/src/components/LoungeLog.tsx:412
+#: src/screens/AIRecommendScreen.tsx:239
+#: src/screens/LoginScreen.tsx:104
+#: src/screens/MonthlyTasteScreen.tsx:57
+#: src/screens/NotificationScreen.tsx:204
+#: src/screens/RecordScreen.tsx:271
+#: src/screens/RegisterScreen.tsx:229
+#: src/screens/ShopDetailScreen.tsx:124
+#: src/screens/TasteDetailScreen.tsx:202
+#: src/screens/TasteReportLoading.tsx:62
 msgid "뒤로가기"
-msgstr ""
+msgstr "返回"
 
+#: src/screens/NotificationScreen.tsx:116
+msgid "등급 승급과 기록 리마인더"
+msgstr "等级提升和记录提醒"
+
+#: apps/mobile/app/native/my.tsx:425
+msgid "등급 안내, Lv.{p0} {p1}"
+msgstr "等级说明，Lv.{p0} {p1}"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:222
+#: src/screens/LoungeScreen.tsx:666
+#: src/screens/LoungeScreen.tsx:1062
+msgid "등록"
+msgstr "发表"
+
+#: apps/mobile/app/(flows)/settings.tsx:132
+#: src/screens/MyScreen.tsx:732
+msgid "등록된 이메일 없음"
+msgstr "尚未添加邮箱"
+
+#: src/screens/LoungeScreen.tsx:978
+#: src/screens/LoungeScreen.tsx:1445
+msgid "등록순"
+msgstr "按发布时间"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:555
+msgid "등록순 "
+msgstr "按发表顺序 "
+
+#: packages/shared/src/i18n/labels.ts:131
+msgid "딱 좋아요"
+msgstr "咸淡适中"
+
+#: apps/mobile/src/components/ShopTasteCard.tsx:64
+#: apps/mobile/src/components/ShopTasteCard.tsx:94
+msgid "또 갈래요"
+msgstr "还想再去"
+
+#: src/screens/LoginScreen.tsx:194
+msgid "또는"
+msgstr "或"
+
+#: apps/mobile/src/domain/record.ts:149
+msgid "라멘 계보를 선택해주세요."
+msgstr "请选择拉面流派。"
+
+#: src/screens/TasteReportLoading.tsx:28
+msgid "라멘 기록을 모으고 있어요"
+msgstr "正在汇总拉面记录"
+
+#: apps/mobile/app/(flows)/record/new.tsx:934
+#: apps/mobile/app/(flows)/record/new.tsx:1195
 #: apps/mobile/app/native/_layout.tsx:116
+#: src/screens/HomeScreen.tsx:351
+#: src/screens/RecordScreen.tsx:275
 msgid "라멘 기록하기"
-msgstr ""
+msgstr "记录拉面"
+
+#: packages/shared/src/i18n/labels.ts:52
+msgid "라멘 마스터"
+msgstr "拉面大师"
+
+#: packages/shared/src/i18n/labels.ts:51
+msgid "라멘 미식가"
+msgstr "拉面美食家"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:107
+msgid "라멘 사진"
+msgstr "拉面照片"
+
+#: apps/mobile/app/(flows)/record/new.tsx:898
+#: apps/mobile/app/(flows)/record/new.tsx:906
+msgid "라멘 사진 추가"
+msgstr "添加拉面照片"
+
+#: src/screens/RegisterScreen.tsx:40
+msgid "라멘 성지순례 중"
+msgstr "拉面圣地巡礼中"
+
+#: apps/mobile/app/(flows)/settings.tsx:207
+#: src/screens/MyScreen.tsx:776
+msgid "라멘 스타일"
+msgstr "拉面类型"
+
+#: packages/shared/src/i18n/labels.ts:46
+msgid "라멘 입문자"
+msgstr "拉面新手"
+
+#: apps/mobile/app/(flows)/record/new.tsx:620
+#: apps/mobile/app/(flows)/record/new.tsx:1038
+#: apps/mobile/app/(flows)/record/new.tsx:1039
+#: src/screens/RecordScreen.tsx:150
+#: src/screens/RecordScreen.tsx:331
+msgid "라멘 종류"
+msgstr "拉面类型"
+
+#: apps/mobile/src/components/ui/index.tsx:595
+msgid "라멘 종류 {p0}"
+msgstr "拉面种类：{p0}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1019
+#: apps/mobile/app/(flows)/record/select-shop.tsx:133
+msgid "라멘 종류 {v1}"
+msgstr "拉面类型：{v1}"
+
+#: apps/mobile/app/native/map.web.tsx:298
+msgid "라멘 종류를 골라요"
+msgstr "选择拉面种类"
+
+#: src/screens/MonthlyTasteScreen.tsx:102
+msgid "라멘 종류별 그릇 수와 비율"
+msgstr "按拉面种类统计的碗数和比例"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:118
+#: src/screens/RegisterScreen.tsx:440
+msgid "라멘 추천 및 소식 수신 동의"
+msgstr "接收拉面推荐与资讯"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:670
+msgid "라멘 취향 감정서"
+msgstr "拉面口味鉴定表"
+
+#: packages/shared/src/i18n/labels.ts:49
+msgid "라멘 탐험가"
+msgstr "拉面探店家"
+
+#: apps/mobile/app/native/my.tsx:912
+#: src/screens/MyScreen.tsx:755
+msgid "라멘 활동 등급"
+msgstr "拉面活动等级"
+
+#: src/screens/MyScreen.tsx:80
+msgid "라멘꿀팁"
+msgstr "拉面技巧"
+
+#: src/screens/LoungeScreen.tsx:1091
+msgid "라멘러들의 기록과 이야기"
+msgstr "拉面爱好者的记录与故事"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:392
+#: apps/mobile/app/native/my.tsx:307
+#: apps/mobile/src/components/LoungeLog.tsx:508
+#: apps/mobile/src/components/LoungeLog.tsx:555
+#: src/screens/LoungeScreen.tsx:1105
+#: src/screens/LoungeScreen.tsx:1266
+#: src/screens/MyScreen.tsx:450
+#: src/screens/ShopDetailScreen.tsx:168
+msgid "라멘로그"
+msgstr "拉面记录"
+
+#: apps/mobile/app/native/index.tsx:113
+msgid "라멘로그 {count}개"
+msgstr "{count}条拉面记录"
+
+#: apps/mobile/app/native/my.tsx:921
+#: src/screens/MyScreen.tsx:765
+msgid "라멘로그 {count}그릇 이상"
+msgstr "已记录至少{count}碗"
+
+#: packages/shared/src/i18n/labels.ts:145
+msgid "라멘로그 100그릇 이상"
+msgstr "拉面记录100碗以上"
+
+#: packages/shared/src/i18n/labels.ts:142
+msgid "라멘로그 10그릇 이상"
+msgstr "拉面记录10碗以上"
+
+#: packages/shared/src/i18n/labels.ts:141
+msgid "라멘로그 1그릇 이상"
+msgstr "拉面记录1碗以上"
+
+#: packages/shared/src/i18n/labels.ts:143
+msgid "라멘로그 30그릇 이상"
+msgstr "拉面记录30碗以上"
+
+#: packages/shared/src/i18n/labels.ts:144
+msgid "라멘로그 50그릇 이상"
+msgstr "拉面记录50碗以上"
+
+#: src/screens/NotificationScreen.tsx:114
+msgid "라멘로그 공감"
+msgstr "拉面记录赞同"
+
+#: src/screens/AIRecommendScreen.tsx:133
+msgid "라멘로그 수 정보가 아직 없어 참고만 했어요"
+msgstr "暂无记录数信息，仅作参考"
+
+#: apps/mobile/app/native/my.tsx:916
+msgid "라멘로그 수를 기준으로 등급이 올라가요. 지금은 {count}그릇, Lv.{level} {title}예요."
+msgstr "等级随记录数提升。你已记录{count}碗，当前为Lv.{level} {title}。"
+
+#: apps/mobile/app/native/my.tsx:424
+msgid "라멘로그 수에 따른 활동 등급을 설명해요"
+msgstr "查看根据拉面记录数计算的等级"
+
+#: apps/mobile/src/components/LoungeLog.tsx:602
+msgid "라멘로그 신고하기"
+msgstr "举报拉面记录"
+
+#: apps/mobile/app/native/my.tsx:484
+#: src/screens/MyScreen.tsx:524
+msgid "라멘로그 캘린더"
+msgstr "拉面记录日历"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:439
+msgid "라멘로그가 더 쌓이면 이 조건도 꼼꼼히 맞춰 드릴게요"
+msgstr "记录增加后会更准确地匹配此条件"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1065
+msgid "라멘로그가 많이 쌓인 가까운 곳 중에서 골라 봤어요."
+msgstr "从附近拥有丰富拉面记录的店铺中挑选。"
+
+#: src/screens/NotificationScreen.tsx:189
+msgid "라멘로그를 남기고 라멘러들과 소통하면 알림이 도착합니다."
+msgstr "记录拉面、与他人交流后即可收到通知。"
+
+#: apps/mobile/app/native/my.tsx:693
+#: src/screens/MyScreen.tsx:619
+msgid "라멘로그를 남기면 매장별 방문 수가 쌓여요."
+msgstr "记录拉面后可累计各店访问次数。"
+
+#: apps/mobile/app/native/my.tsx:502
+msgid "라멘로그를 남기면 캘린더가 채워져요."
+msgstr "记录拉面，填满你的日历。"
+
+#: apps/mobile/app/native/my.tsx:660
+msgid "라멘로그를 남긴 매장이에요. 방문 수를 더하면 총"
+msgstr "记录过的店铺，累计"
+
+#: src/screens/MyScreen.tsx:598
+msgid "라멘로그를 남긴 매장이에요. 방문 수를 더하면 총 {count}그릇이에요."
+msgstr "这些是拉面记录中的店铺，合计{count}碗。"
+
+#: src/screens/HomeScreen.tsx:252
+msgid "라멘로그를 남길수록 내 취향에 맞는 가게를 순위로 알려드려요."
+msgstr "记录越多，越能找到符合你口味的店。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:386
+msgid "라멘로그를 볼 수 없어요"
+msgstr "无法查看此拉面记录"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:353
+#: apps/mobile/app/native/lounge.tsx:120
+msgid "라멘로그를 불러오는 중…"
+msgstr "正在加载拉面记录…"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:386
+#: apps/mobile/app/native/lounge.tsx:129
+#: apps/mobile/app/native/lounge.tsx:135
+msgid "라멘로그를 불러오지 못했어요"
+msgstr "无法加载拉面记录"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:321
+msgid "라멘로그를 삭제하지 못했어요. 다시 시도해 주세요."
+msgstr "拉面记录删除失败，请重试。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:378
+msgid "라멘로그를 삭제했어요"
+msgstr "拉面记录已删除"
+
+#: src/screens/NotificationScreen.tsx:194
+msgid "라멘로그에 반응이 오거나 관심 라멘집에 소식이 생기면 알려드릴게요."
+msgstr "记录有互动或关注店铺有消息时会通知你。"
+
+#: apps/mobile/src/components/LoungeLog.tsx:305
+msgid "라멘로그와 댓글을 봐요"
+msgstr "查看拉面记录和评论"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:437
+#: src/screens/AIRecommendScreen.tsx:131
+msgid "라멘로그와 평점이 쌓인 곳을 우선했어요"
+msgstr "优先选择记录和评分较多的店"
+
+#: src/App.tsx:299
+#: src/screens/NewsFeedScreen.tsx:167
+msgid "라멘속보"
+msgstr "拉面快讯"
+
+#: src/screens/LoungeScreen.tsx:785
+msgid "라멘에 대한 생생한 이야기를 들려주세요 (육수 농도, 면 삶기, 웨이팅 팁 등)"
+msgstr "分享你的拉面故事（汤底浓度、面条口感、排队技巧等）"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:381
+#: apps/mobile/app/native/my.tsx:899
+msgid "라멘에 진심인 편입니다."
+msgstr "认真对待每一碗拉面。"
+
+#: src/screens/RegisterScreen.tsx:384
+msgid "라멘에 진심인 편입니다. 깊은 국물 맛을 찾아다녀요."
+msgstr "热爱拉面，寻找浓郁的汤底滋味。"
+
+#: packages/shared/src/i18n/labels.ts:47
+msgid "라멘을 즐기는 자"
+msgstr "拉面爱好者"
+
+#: src/screens/NotificationScreen.tsx:61
+msgid "라멘집"
+msgstr "拉面店"
+
+#: apps/mobile/app/native/map.web.tsx:241
+#: src/screens/LoungeScreen.tsx:713
+#: src/screens/LoungeScreen.tsx:714
+#: src/screens/LoungeScreen.tsx:1149
+#: src/screens/LoungeScreen.tsx:1150
+#: src/screens/MapScreen.tsx:504
+msgid "라멘집 검색"
+msgstr "搜索拉面店"
+
+#: src/screens/NewsFeedScreen.tsx:168
+msgid "라멘집 공식 인스타그램 소식 모아보기"
+msgstr "汇集拉面店官方Instagram动态"
+
+#: packages/shared/src/i18n/labels.ts:50
+msgid "라멘집 단골"
+msgstr "拉面常客"
+
+#: apps/mobile/app/native/index.tsx:567
+msgid "라멘집 둘러보기"
+msgstr "浏览拉面店"
+
+#: apps/mobile/app/native/map.web.tsx:245
+#: src/screens/MapScreen.tsx:501
+msgid "라멘집 이름, 계보, 지점 검색"
+msgstr "搜索店名、流派或分店"
 
 #: apps/mobile/app/native/map.tsx:323
 msgid "라멘집 지도"
-msgstr ""
+msgstr "拉面店地图"
+
+#: packages/shared/src/i18n/labels.ts:48
+msgid "라멘집 탐험가"
+msgstr "拉面探店家"
+
+#: apps/mobile/app/native/index.tsx:447
+#: apps/mobile/app/native/map.web.tsx:498
+msgid "라멘집을 불러오는 중…"
+msgstr "正在加载拉面店…"
+
+#: apps/mobile/app/native/index.tsx:454
+#: apps/mobile/app/native/map.web.tsx:506
+msgid "라멘집을 불러오지 못했어요"
+msgstr "无法加载拉面店"
 
 #: apps/mobile/app/native/map.tsx:446
 msgid "라멘집을 불러오지 못했어요."
-msgstr ""
+msgstr "无法加载拉面店。"
 
 #: apps/mobile/app/native/map.tsx:446
 msgid "라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요."
-msgstr ""
+msgstr "无法加载拉面店，请稍后重新打开。"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:678
+#: src/screens/MapScreen.tsx:742
+#: src/screens/ShopDetailScreen.tsx:293
+msgid "라스트오더"
+msgstr "最后点餐时间"
+
+#: apps/mobile/app/native/map.web.tsx:399
+#: apps/mobile/app/native/map.web.tsx:426
+#: apps/mobile/app/native/map.web.tsx:454
+#: apps/mobile/app/native/map.web.tsx:457
+msgid "라스트오더 {time}"
+msgstr "最后点单{time}"
+
+#: src/components/TasteReportCover.tsx:31
+#: src/screens/MyScreen.tsx:438
+msgid "라오타"
+msgstr "RAOTA"
+
+#: src/screens/MyScreen.tsx:479
+msgid "라오타 라멘클럽 회원"
+msgstr "RAOTA拉面俱乐部会员"
+
+#: src/screens/LoungeScreen.tsx:1090
+msgid "라오타 라운지"
+msgstr "RAOTA社区"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:268
+#: src/screens/RegisterScreen.tsx:211
+msgid "라오타 시작하기"
+msgstr "开始使用RAOTA"
+
+#: src/screens/MyScreen.tsx:791
+msgid "라오타 알림을 받을 이메일 주소를 입력해 주세요."
+msgstr "请输入接收RAOTA通知的邮箱地址。"
+
+#: apps/mobile/app/(flows)/auth/consent.tsx:77
+msgid "라오타 앱의 이용약관과 개인정보처리방침이 새로 적용돼요. 기록과 저장한 매장은 그대로 남아 있어요. "
+msgstr "RAOTA将启用新的使用条款和隐私政策，您的记录和收藏店铺将保留。 "
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:361
+msgid "라오타 지도에서 이 가게 위치를 봐요"
+msgstr "在RAOTA地图中查看此店位置"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:844
+#: src/screens/TasteDetailScreen.tsx:165
+#: src/screens/TasteDetailScreen.tsx:175
+msgid "라오타 취향 리포트"
+msgstr "RAOTA 口味报告"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:1088
+#: src/screens/TasteDetailScreen.tsx:333
+msgid "라오타 회원"
+msgstr "RAOTA用户"
+
+#: src/screens/RegisterScreen.tsx:244
+msgid "라오타에서 쓸 닉네임과 취향을 정합니다."
+msgstr "设置在RAOTA使用的昵称和偏好。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:294
+msgid "라오타에서 쓸 닉네임과 취향을 정해요. "
+msgstr "设置您的RAOTA昵称和口味偏好。 "
 
 #: apps/mobile/app/native/_layout.tsx:149
+#: apps/mobile/app/native/lounge.tsx:158
+#: packages/shared/src/i18n/labels.ts:27
+#: src/App.tsx:298
 msgid "라운지"
-msgstr ""
+msgstr "社区"
+
+#: apps/mobile/app/native/index.tsx:606
+#: apps/mobile/app/native/index.tsx:612
+msgid "라운지 가기"
+msgstr "前往社区"
+
+#: src/screens/LoungeScreen.tsx:1095
+msgid "라운지 구분"
+msgstr "社区栏目"
+
+#: src/screens/MyScreen.tsx:827
+msgid "라운지 글과 댓글은 남을 수 있고, 작성자는 탈퇴한 사용자로 표시돼요."
+msgstr "社区帖子和评论可能保留，作者将显示为已注销用户。"
+
+#: src/screens/MyScreen.tsx:710
+msgid "라운지 글에 첫 댓글을 남겨보세요."
+msgstr "在社区留下第一条评论。"
+
+#: apps/mobile/app/native/index.tsx:616
+msgid "라운지 새 라멘로그"
+msgstr "社区最新拉面记录"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:366
+#: apps/mobile/app/(flows)/log/[logId].tsx:374
+#: apps/mobile/app/(flows)/log/[logId].tsx:382
+msgid "라운지로 돌아가기"
+msgstr "返回社区"
+
+#: src/screens/MyScreen.tsx:687
+msgid "라운지에서 라멘 이야기를 나눠보세요."
+msgstr "在社区分享你的拉面故事。"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:54
 msgid "라운지에서 숨긴 사람이 여기에 모여요."
-msgstr ""
+msgstr "在社区中隐藏的用户会显示在这里。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:375
+msgid "라운지와 내 기록에서 사라졌어요."
+msgstr "已从社区和我的记录中删除。"
+
+#: apps/mobile/app/(flows)/auth/consent.tsx:81
+#: apps/mobile/app/(flows)/settings.tsx:184
+#: apps/mobile/app/(flows)/settings.tsx:291
+#: src/screens/MyScreen.tsx:745
+#: src/screens/MyScreen.tsx:807
+msgid "로그아웃"
+msgstr "退出登录"
+
+#: apps/mobile/app/(flows)/settings.tsx:300
+#: src/screens/MyScreen.tsx:805
+msgid "로그아웃할까요?"
+msgstr "退出登录？"
+
+#: apps/mobile/app/native/index.tsx:346
+#: apps/mobile/app/native/index.tsx:351
+#: src/screens/HomeScreen.tsx:96
+#: src/screens/LoginScreen.tsx:108
+#: src/screens/LoginScreen.tsx:316
+#: src/screens/MyScreen.tsx:442
+#: src/screens/RegisterScreen.tsx:235
+msgid "로그인"
+msgstr "登录"
+
+#: src/screens/LoginScreen.tsx:303
+msgid "로그인 상태 유지"
+msgstr "保持登录"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:374
+#: apps/mobile/app/(flows)/auth/login.tsx:379
+#: src/screens/LoginScreen.tsx:332
+msgid "로그인 없이 둘러보기"
+msgstr "免登录浏览"
+
+#: src/screens/LoginScreen.tsx:314
+msgid "로그인 중"
+msgstr "正在登录"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1132
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:502
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:742
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:756
+msgid "로그인 화면으로 이동해요"
+msgstr "前往登录页面"
 
 #: apps/mobile/src/state/RaotaStore.tsx:1746
+#: packages/shared/src/i18n/labels.ts:92
 msgid "로그인 후 게시글을 작성할 수 있어요."
-msgstr ""
+msgstr "登录后即可发帖。"
 
 #: apps/mobile/src/state/RaotaStore.tsx:1527
+#: packages/shared/src/i18n/labels.ts:89
 msgid "로그인 후 기록을 고칠 수 있어요."
-msgstr ""
+msgstr "登录后即可编辑记录。"
 
 #: apps/mobile/src/state/RaotaStore.tsx:1429
+#: packages/shared/src/i18n/labels.ts:88
 msgid "로그인 후 라멘 기록을 저장할 수 있어요."
-msgstr ""
+msgstr "登录后即可保存拉面记录。"
 
 #: apps/mobile/src/state/RaotaStore.tsx:1851
+#: packages/shared/src/i18n/labels.ts:93
 msgid "로그인 후 취향 리포트를 만들 수 있어요."
-msgstr ""
+msgstr "登录后即可生成口味报告。"
 
+#: apps/mobile/app/(flows)/auth/login.tsx:304
 #: apps/mobile/src/auth/social.ts:32
+#: packages/shared/src/i18n/labels.ts:83
 msgid "로그인을 취소했어요."
-msgstr ""
+msgstr "已取消登录。"
+
+#: apps/mobile/src/data/remote.ts:434
+#: packages/shared/src/i18n/labels.ts:79
+msgid "로그인이 끝났어요. 다시 로그인해 주세요."
+msgstr "登录已过期，请重新登录。"
+
+#: apps/mobile/src/api/client.ts:436
+#: packages/shared/src/i18n/labels.ts:73
+msgid "로그인이 필요해요."
+msgstr "请先登录。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:113
+#: src/screens/LoungeScreen.tsx:1073
+#: src/screens/LoungeScreen.tsx:1491
+msgid "로그인하고 댓글 남기기"
+msgstr "登录后发表评论"
+
+#: apps/mobile/app/(flows)/record/new.tsx:941
+msgid "로그인하고 한 그릇을 기록해보세요"
+msgstr "登录后记录一碗吧"
+
+#: apps/mobile/app/(flows)/record/new.tsx:936
+#: src/screens/HomeScreen.tsx:258
+#: src/screens/RegisterScreen.tsx:472
+msgid "로그인하기"
+msgstr "登录"
+
+#: src/screens/MyScreen.tsx:440
+msgid "로그인하면 기록, 가고 싶은 매장, 취향 리포트를 한곳에서 이어볼 수 있어요."
+msgstr "登录后在一处查看记录、想去的店和口味报告。"
 
 #: apps/mobile/app/native/_layout.tsx:115
 msgid "로그인하면 기록할 수 있어요"
-msgstr ""
+msgstr "登录后可记录拉面"
 
 #: apps/mobile/app/native/_layout.tsx:89
 msgid "로그인하면 내 기록을 볼 수 있어요"
-msgstr ""
+msgstr "登录后可查看记录"
+
+#: src/screens/HomeScreen.tsx:251
+msgid "로그인하면 취향 일치도를 볼 수 있어요"
+msgstr "登录后查看口味匹配度"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:43
+msgid "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+msgstr "登录失败，请稍后重试。"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:373
+msgid "로그인하지 않고 홈으로 가요"
+msgstr "无需登录，前往首页"
 
 #: apps/mobile/src/state/RaotaStore.tsx:984
+#: packages/shared/src/i18n/labels.ts:82
 msgid "로컬 데이터를 저장하지 못했습니다."
-msgstr ""
+msgstr "无法在此设备上保存数据。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:388
+msgid "를 {v1}그릇으로 가장 많이 먹었어요."
+msgstr "以{v1}碗成为吃得最多的类型。"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:1064
+msgid "리포트 다시 뽑기"
+msgstr "重新生成报告"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:739
+msgid "리포트 바로 보기"
+msgstr "立即查看报告"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:321
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:340
+msgid "링크를 열 수 없어요"
+msgstr "无法打开链接"
 
 #: apps/mobile/app/native/_layout.tsx:150
+#: packages/shared/src/i18n/labels.ts:28
+#: src/App.tsx:300
 msgid "마이"
-msgstr ""
+msgstr "我的"
+
+#: apps/mobile/app/native/index.tsx:373
+msgid "마이 탭에서 기록을 봐요"
+msgstr "在我的页面查看记录"
+
+#: apps/mobile/app/native/index.tsx:332
+msgid "마이 탭으로 가요"
+msgstr "打开我的页面"
+
+#: packages/shared/src/i18n/labels.ts:21
+#: src/screens/RegisterScreen.tsx:33
+msgid "마제소바"
+msgstr "拌面"
+
+#: apps/mobile/app/native/map.web.tsx:31
+#: src/screens/MapScreen.tsx:69
+msgid "마포 · 망원동"
+msgstr "麻浦 · 望远洞"
+
+#: apps/mobile/app/native/map.web.tsx:33
+#: src/screens/MapScreen.tsx:71
+msgid "마포 · 연남/홍대"
+msgstr "麻浦 · 延南/弘大"
+
+#: apps/mobile/app/native/map.web.tsx:32
+#: src/screens/MapScreen.tsx:70
+msgid "마포 · 합정/상수"
+msgstr "麻浦 · 合井/上水"
+
+#: apps/mobile/app/(flows)/record/new.tsx:140
+msgid "만족"
+msgstr "满意度"
+
+#: apps/mobile/src/domain/lounge.ts:168
+msgid "만족 {score} · 육수 {broth} · 면 {noodle}"
+msgstr "满意度{score} · 汤底{broth} · 面条{noodle}"
+
+#: apps/mobile/src/components/LoungeLog.tsx:230
+msgid "만족도"
+msgstr "满意度"
+
+#: apps/mobile/app/native/my.tsx:568
+#: src/screens/MyScreen.tsx:557
+msgid "많음"
+msgstr "多"
+
+#: apps/mobile/src/components/ShopTasteCard.tsx:59
+msgid "많이 먹은 메뉴"
+msgstr "最常吃的菜单"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:86
+msgid "맑게"
+msgstr "更清淡"
+
+#: packages/shared/src/i18n/labels.ts:58
+msgid "맑은"
+msgstr "清淡"
+
+#: packages/shared/src/domain/identity.ts:66
+msgid "맑은 {typeWord}"
+msgstr "清淡{typeWord}"
+
+#: apps/mobile/src/components/TasteStory.tsx:49
+#: packages/shared/src/domain/identity.ts:58
+msgid "맑은 육수"
+msgstr "清爽汤底"
+
+#: apps/mobile/app/native/index.tsx:144
+msgid "맑은 육수 취향"
+msgstr "偏爱清爽汤底"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:88
+#: src/screens/AIRecommendScreen.tsx:186
+msgid "맑은 청탕부터 묵직한 백탕까지 골라보세요."
+msgstr "从清澈的清汤到浓郁的白汤，选一种吧。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:135
+#: apps/mobile/src/domain/lounge.ts:117
+#: apps/mobile/src/domain/shopTaste.ts:36
+msgid "맑은 편"
+msgstr "偏清淡"
+
+#: packages/shared/src/i18n/labels.ts:36
+msgid "맑음"
+msgstr "清淡"
+
+#: apps/mobile/src/components/TasteFingerprint.tsx:151
+msgid "맛 지문"
+msgstr "口味指纹"
+
+#: apps/mobile/app/(flows)/record/new.tsx:630
+#: src/screens/LoungeScreen.tsx:1393
+msgid "맛 태그"
+msgstr "口味标签"
+
+#: src/screens/RecordScreen.tsx:560
+msgid "맛 태그 더 남기기"
+msgstr "添加更多口味标签"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1079
+msgid "맛 태그 분류"
+msgstr "口味标签分类"
+
+#: apps/mobile/src/components/LoungeLog.tsx:216
+msgid "맛 태그: {p0}"
+msgstr "口味标签：{p0}"
+
+#: apps/mobile/src/domain/record.ts:176
+msgid "맛 태그는 보기에서만 고를 수 있어요."
+msgstr "请从选项中选择口味标签。"
+
+#: apps/mobile/src/domain/lounge.ts:169
+msgid "맛 평가: 전체 만족도 5점 중 {score}점, 육수 {broth}, 면 {noodle}"
+msgstr "口味评价：满意度{score}/5，汤底{broth}，面条{noodle}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:134
+#: apps/mobile/src/domain/lounge.ts:116
+msgid "맛있었어요"
+msgstr "很好吃"
+
+#: src/screens/LoungeScreen.tsx:307
+#: src/screens/MyScreen.tsx:71
+msgid "맛집후기"
+msgstr "探店评价"
+
+#: apps/mobile/app/native/map.web.tsx:31
+#: packages/shared/src/i18n/labels.ts:147
+msgid "망원동"
+msgstr "望远洞"
+
+#: src/screens/AIRecommendScreen.tsx:62
+msgid "매운맛 조절 가능한 곳"
+msgstr "可调节辣度"
+
+#: src/screens/RegisterScreen.tsx:21
+msgid "매운맛파"
+msgstr "嗜辣派"
+
+#: apps/mobile/src/domain/hours.ts:94
+msgid "매일"
+msgstr "每天"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:442
+msgid "매장 분위기 정보가 채워지면 더 꼭 맞게 골라 드릴게요"
+msgstr "店铺氛围信息完善后会更准确地推荐"
+
+#: src/screens/AIRecommendScreen.tsx:136
+msgid "매장 분위기 정보는 아직 없어 참고만 했어요"
+msgstr "暂无店铺氛围信息，仅作参考"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:460
+#: src/screens/ShopDetailScreen.tsx:133
+msgid "매장 사진 선택"
+msgstr "选择店铺照片"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1144
+#: src/screens/AIRecommendScreen.tsx:461
+#: src/screens/HomeScreen.tsx:201
+msgid "매장 상세 보기"
+msgstr "查看店铺详情"
+
+#: apps/mobile/app/native/map.web.tsx:398
+msgid "매장 상세로 이동해요"
+msgstr "打开店铺详情"
+
+#: apps/mobile/app/native/my.tsx:775
+#: src/screens/MyScreen.tsx:659
+msgid "매장 상세에서 저장하면 여기에 모여요."
+msgstr "在店铺详情中收藏后即可在此查看。"
+
+#: apps/mobile/app/native/my.tsx:759
+#: src/screens/MyScreen.tsx:650
+msgid "매장 상세에서 저장한 곳이에요."
+msgstr "在店铺详情中收藏的店铺。"
+
+#: src/screens/LoungeScreen.tsx:1159
+msgid "매장 선택"
+msgstr "选择店铺"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:379
+msgid "매장 인스타그램을 열어요"
+msgstr "打开店铺Instagram"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:152
+#: src/screens/LoungeScreen.tsx:1273
+#: src/screens/NewsFeedScreen.tsx:294
+msgid "매장 정보"
+msgstr "店铺信息"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:535
+msgid "매장 정보로 이동해요"
+msgstr "前往店铺信息"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:144
+msgid "매장 정보를 불러오는 중…"
+msgstr "正在加载店铺信息…"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:159
+msgid "매장 정보를 불러오지 못했어요"
+msgstr "无法加载店铺信息"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:999
+msgid "매장 정보를 불러오지 못했어요. 잠시 뒤 다시 추천받아 주세요. "
+msgstr "无法加载店铺信息，请稍后重试。 "
+
+#: src/screens/ShopDetailScreen.tsx:224
+msgid "매장 혜택"
+msgstr "店铺优惠"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:606
+msgid "매장 혜택 "
+msgstr "店铺服务 "
+
+#: apps/mobile/src/components/TasteStory.tsx:337
+msgid "매장 화면을 열어요"
+msgstr "打开店铺页面"
+
+#: apps/mobile/app/native/my.tsx:688
+#: src/screens/MyScreen.tsx:614
+msgid "매장, 지점, 메뉴 검색"
+msgstr "搜索店铺、分店或菜单"
+
+#: apps/mobile/app/native/my.tsx:761
+#: src/screens/MyScreen.tsx:655
+msgid "매장, 지점, 스타일 검색"
+msgstr "搜索店铺、分店或风格"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:159
+msgid "매장을 찾을 수 없어요"
+msgstr "找不到店铺"
+
+#: packages/shared/src/i18n/labels.ts:134
+msgid "매콤해요"
+msgstr "微辣"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:760
+#: src/screens/ShopDetailScreen.tsx:396
+msgid "먹은 라멘 기록하기"
+msgstr "记录吃过的拉面"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:61
+msgid "먹은 라멘을 5가지 축으로 기록하고 다시 꺼내 봐요."
+msgstr "从五个维度记录拉面，随时回顾。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:61
+#: src/screens/RegisterScreen.tsx:46
+msgid "먹은 라멘을 5가지 축으로 기록하면 취향 리포트가 쌓여요."
+msgstr "从五个维度记录拉面，积累您的口味报告。"
+
+#: src/screens/MonthlyTasteScreen.tsx:145
+msgid "먹은 라멘을 기록하면"
+msgstr "记录吃过的拉面，"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:276
+msgid "먹은 라멘을 기록하면 월별로 어떤 종류를 즐겼는지 비교할 수 있어요."
+msgstr "记录吃过的拉面，即可比较每月喜欢的类型。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:618
+#: apps/mobile/app/(flows)/record/new.tsx:1025
+#: src/screens/RecordScreen.tsx:149
+#: src/screens/RecordScreen.tsx:307
+msgid "먹은 메뉴"
+msgstr "吃了什么菜品"
+
+#: apps/mobile/src/domain/record.ts:145
+msgid "먹은 메뉴를 선택하거나 입력해주세요."
+msgstr "请选择或输入吃过的菜单。"
+
+#: apps/mobile/src/domain/record.ts:134
+msgid "먼저 방문한 매장을 선택해주세요."
+msgstr "请先选择去过的店铺。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:214
+#: src/screens/RecordCompleteScreen.tsx:101
+msgid "메뉴"
+msgstr "菜品"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:73
+#: src/components/MenuDistributionChart.tsx:38
+msgid "메뉴 분포 범례"
+msgstr "菜品分布图例"
+
+#: apps/mobile/app/native/map.web.tsx:343
+#: src/screens/MapScreen.tsx:576
+msgid "메뉴 선택"
+msgstr "选择菜单"
+
+#: apps/mobile/app/native/map.web.tsx:299
+msgid "메뉴 필터: {p0}"
+msgstr "菜单筛选：{p0}"
+
+#: src/screens/MapScreen.tsx:565
+msgid "메뉴 필터: {v0}"
+msgstr "菜单筛选：{v0}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:628
+msgid "메모"
+msgstr "笔记"
+
+#: apps/mobile/src/domain/record.ts:181
+msgid "메모는 {max}자까지 남길 수 있어요. 지금 {count}자예요."
+msgstr "备注最多{max}个字符，目前{count}个。"
+
+#: packages/shared/src/i18n/labels.ts:138
+msgid "멘마 좋아요"
+msgstr "笋干好吃"
+
+#: src/screens/RegisterScreen.tsx:22
+msgid "멘마수집"
+msgstr "笋干爱好者"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:465
+#: apps/mobile/app/(flows)/record/new.tsx:142
+#: apps/mobile/src/components/ShopTasteCard.tsx:61
+#: apps/mobile/src/components/TasteStory.tsx:158
+#: packages/shared/src/i18n/labels.ts:152
+#: src/screens/AIRecommendScreen.tsx:157
+#: src/types.ts:58
+msgid "면"
+msgstr "面"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:238
+#: src/screens/ShopDetailScreen.tsx:77
+msgid "면 리필"
+msgstr "加面"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:84
+msgid "면 리필 가능한 곳"
+msgstr "可加面"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:463
+msgid "면 무료 리필"
+msgstr "免费加面"
+
+#: apps/mobile/src/domain/lounge.ts:125
+#: packages/shared/src/i18n/labels.ts:31
+msgid "면 삶기"
+msgstr "面条软硬"
+
+#: apps/mobile/app/(flows)/record/new.tsx:108
+msgid "면 삶기는 어땠나요?"
+msgstr "面的软硬如何？"
+
+#: apps/mobile/src/domain/record.ts:35
+msgid "면 삶기를 골라주세요."
+msgstr "请选择面条软硬。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:58
+msgid "멸치 육수"
+msgstr "煮干鱼汤"
+
+#: src/screens/NotificationScreen.tsx:227
+msgid "모두 읽음"
+msgstr "全部已读"
+
+#: src/screens/LoungeScreen.tsx:1620
+msgid "모든 글을 확인했습니다"
+msgstr "已查看全部帖子"
+
+#: src/screens/NewsFeedScreen.tsx:316
+msgid "모든 라멘속보를 확인했습니다. 새 소식이 올라오면 알려드릴게요."
+msgstr "已查看全部快讯。新消息发布时会通知你。"
+
+#: apps/mobile/app/native/map.web.tsx:37
+#: apps/mobile/app/native/map.web.tsx:37
+#: src/screens/MapScreen.tsx:75
+msgid "모든 메뉴"
+msgstr "全部菜单"
+
+#: apps/mobile/app/native/map.web.tsx:271
+#: src/screens/MapScreen.tsx:520
+msgid "목록"
+msgstr "列表"
+
+#: src/screens/LoungeScreen.tsx:883
+msgid "목록으로"
+msgstr "返回列表"
+
+#: apps/mobile/app/native/map.web.tsx:264
+#: src/screens/MapScreen.tsx:517
+msgid "목록으로 보기"
+msgstr "查看列表"
+
+#: apps/mobile/app/(flows)/record/new.tsx:105
+msgid "무엇을 먹었나요?"
+msgstr "吃了什么？"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1252
+msgid "무엇을 먹었는지 적어 주세요"
+msgstr "请输入吃过的菜品"
+
+#: apps/mobile/app/(flows)/legal/[doc].tsx:30
+msgid "문서를 찾을 수 없어요"
+msgstr "找不到文档"
+
+#: apps/mobile/app/(flows)/settings.tsx:176
+msgid "문의하기"
+msgstr "联系我们"
+
+#: src/screens/HomeScreen.tsx:315
+msgid "문의하기 · contact@raota.net"
+msgstr "联系我们 · contact@raota.net"
+
+#: apps/mobile/src/components/ui/index.tsx:704
+#: src/screens/RecordScreen.tsx:401
+#: src/screens/RecordScreen.tsx:446
+msgid "미선택"
+msgstr "未选择"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:56
+#: apps/mobile/app/native/map.web.tsx:42
+#: packages/shared/src/i18n/labels.ts:15
+msgid "미소"
+msgstr "味噌"
+
+#: packages/shared/src/i18n/labels.ts:120
+#: src/screens/RegisterScreen.tsx:31
+msgid "미소 (된장)"
+msgstr "味噌拉面"
+
+#: apps/mobile/app/native/map.web.tsx:42
+#: src/screens/MapScreen.tsx:80
+msgid "미소 라멘 (된장)"
+msgstr "味噌拉面"
+
+#: packages/shared/src/i18n/labels.ts:63
+msgid "미소파"
+msgstr "味噌派"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:292
+#: src/screens/RegisterScreen.tsx:242
+msgid "반가워요!"
+msgstr "欢迎！"
+
+#: src/screens/AIRecommendScreen.tsx:397
+msgid "반영"
+msgstr "已采用"
+
+#: src/screens/NotificationScreen.tsx:321
+msgid "받고 싶은 푸시 알림만 골라 켜 두세요."
+msgstr "选择希望接收的推送通知。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1013
+msgid "발행하면 취향 리포트에 반영돼요"
+msgstr "保存后将计入口味报告"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:83
+#: src/screens/AIRecommendScreen.tsx:63
+msgid "밥 무료 제공"
+msgstr "免费米饭"
+
+#: packages/shared/src/i18n/labels.ts:135
+msgid "밥 생각나요"
+msgstr "想配米饭"
+
+#: apps/mobile/src/domain/lounge.ts:209
+msgid "방금 전"
+msgstr "刚刚"
+
+#: src/screens/LoungeScreen.tsx:1306
+msgid "방문"
+msgstr "到访"
+
+#: src/screens/MyScreen.tsx:492
+msgid "방문 매장"
+msgstr "访问店铺"
+
+#: apps/mobile/app/native/my.tsx:304
+msgid "방문 매장 {count}곳"
+msgstr "访问店铺{count}家"
+
+#: apps/mobile/app/native/my.tsx:703
+msgid "방문 매장 더 보기"
+msgstr "查看更多去过的店铺"
+
+#: apps/mobile/app/native/my.tsx:700
+msgid "방문 매장 목록"
+msgstr "访问过的店铺列表"
+
+#: apps/mobile/app/native/my.tsx:308
+#: src/screens/MyScreen.tsx:451
+msgid "방문매장"
+msgstr "去过"
+
+#: apps/mobile/app/native/my.tsx:702
+msgid "방문매장 더 보기"
+msgstr "更多去过的店铺"
+
+#: apps/mobile/app/native/my.tsx:666
+#: src/screens/MyScreen.tsx:604
+msgid "방문순"
+msgstr "访问次数"
+
+#: apps/mobile/app/(flows)/record/new.tsx:622
+#: apps/mobile/app/(flows)/record/new.tsx:1384
+#: src/screens/RecordScreen.tsx:151
+#: src/screens/RecordScreen.tsx:363
+msgid "방문일"
+msgstr "到店日期"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1214
+msgid "방문일, {v1}"
+msgstr "到店日期：{v1}"
+
+#: apps/mobile/src/domain/record.ts:169
+msgid "방문일을 오늘 이전의 올바른 날짜로 선택해주세요."
+msgstr "请选择今天或之前的有效日期。"
+
+#: src/screens/ShopDetailScreen.tsx:338
+msgid "방문자 라멘로그"
+msgstr "访客拉面记录"
+
+#: apps/mobile/app/native/my.tsx:657
+#: src/screens/MyScreen.tsx:596
+msgid "방문한 라멘집"
+msgstr "去过的拉面店"
+
+#: apps/mobile/app/native/my.tsx:688
+#: src/screens/MyScreen.tsx:612
+msgid "방문한 라멘집 검색"
+msgstr "搜索去过的拉面店"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:72
+msgid "백탕 · 농후"
+msgstr "白汤 · 浓郁"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:68
+msgid "번 "
+msgstr "次 "
+
+#: src/screens/RecordCompleteScreen.tsx:86
+msgid "번째 그릇"
+msgstr "碗记录"
+
+#: apps/mobile/app/native/my.tsx:562
+msgid "범례. 하루 {p0} 순으로 빨강이 진해져요"
+msgstr "图例。每日{p0}，红色逐渐加深"
+
+#: apps/mobile/app/(flows)/settings.tsx:346
+#: src/screens/MyScreen.tsx:733
+#: src/screens/MyScreen.tsx:740
+#: src/screens/RecordScreen.tsx:302
+msgid "변경"
+msgstr "更改"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:432
+#: src/screens/MonthlyTasteScreen.tsx:104
+msgid "변화"
+msgstr "变化"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:438
+#: src/screens/MonthlyTasteScreen.tsx:111
+#: src/screens/RecordCompleteScreen.tsx:175
+msgid "변화 없음"
+msgstr "无变化"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:1038
+msgid "별점 "
+msgstr "评分"
+
+#: src/screens/ShopDetailScreen.tsx:354
+msgid "별점 {v0}점"
+msgstr "评分{v0}星"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:70
+#: src/screens/RegisterScreen.tsx:420
+#: src/screens/RegisterScreen.tsx:436
+msgid "보기"
+msgstr "查看"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:346
+#: src/screens/MonthlyTasteScreen.tsx:63
+msgid "보는 달"
+msgstr "查看月份"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:479
+msgid "보다"
+msgstr "相比"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:51
 msgid "보여줄 가게 없음"
-msgstr ""
+msgstr "没有可显示的店铺"
+
+#: apps/mobile/app/(flows)/record/new.tsx:137
+#: apps/mobile/src/components/ui/index.tsx:702
+#: apps/mobile/src/domain/lounge.ts:119
+#: apps/mobile/src/domain/shopTaste.ts:38
+msgid "보통"
+msgstr "普通"
+
+#: src/screens/TasteDetailScreen.tsx:359
+msgid "복사하지 못했어요. 아래 내용을 길게 눌러 복사해 주세요."
+msgstr "复制失败。请长按下方内容复制。"
+
+#: src/screens/TasteDetailScreen.tsx:189
+msgid "복사하지 못했어요. 아래 내용을 직접 복사해 주세요"
+msgstr "复制失败，请手动复制下方内容。"
+
+#: src/screens/LoungeScreen.tsx:779
+msgid "본문"
+msgstr "正文"
+
+#: apps/mobile/src/components/TasteStory.tsx:50
+#: packages/shared/src/domain/identity.ts:58
+#: packages/shared/src/i18n/labels.ts:66
+msgid "부드러운 면"
+msgstr "偏软的面"
+
+#: apps/mobile/app/(flows)/record/new.tsx:136
+#: apps/mobile/src/domain/lounge.ts:118
+#: apps/mobile/src/domain/shopTaste.ts:37
+msgid "부드러운 편"
+msgstr "偏软"
+
+#: packages/shared/src/i18n/labels.ts:128
+msgid "부드러워요"
+msgstr "偏软"
+
+#: packages/shared/src/i18n/labels.ts:38
+msgid "부드럽게"
+msgstr "偏软"
+
+#: apps/mobile/src/components/ui/index.tsx:930
+msgid "불러오는 중…"
+msgstr "正在加载…"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:340
+#: src/screens/MonthlyTasteScreen.tsx:99
+msgid "비교할 메뉴 기록이 모이면 비율 변화를 보여드려요."
+msgstr "记录足够后将展示占比变化。"
+
+#: src/screens/LoginScreen.tsx:259
+msgid "비밀번호"
+msgstr "密码"
+
+#: src/screens/LoginScreen.tsx:287
+msgid "비밀번호 보기"
+msgstr "显示密码"
+
+#: src/screens/LoginScreen.tsx:287
+msgid "비밀번호 숨기기"
+msgstr "隐藏密码"
+
+#: src/screens/LoginScreen.tsx:265
+msgid "비밀번호 찾기"
+msgstr "忘记密码"
+
+#: src/screens/LoginScreen.tsx:81
+msgid "비밀번호는 8자 이상입니다. 지금 {count}자예요."
+msgstr "密码至少8个字符，目前为{count}个。"
+
+#: src/screens/LoginScreen.tsx:80
+msgid "비밀번호를 입력해 주세요."
+msgstr "请输入密码。"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:706
+msgid "비슷한 한 그릇"
+msgstr "类似的一碗"
+
+#: src/screens/MonthlyTasteScreen.tsx:104
+msgid "비율"
+msgstr "比例"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:430
+msgid "비율 "
+msgstr "占比 "
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:68
+#: src/screens/AIRecommendScreen.tsx:46
+msgid "빠르고 든든한 한 끼"
+msgstr "快速又满足的一餐"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:292
+#: src/screens/RecordSheet.tsx:301
+msgid "빠른 검색어"
+msgstr "快捷搜索"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:68
+msgid "빨리 먹고 나가기"
+msgstr "快速吃好"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:883
+#: apps/mobile/app/(flows)/ai-recommend.tsx:888
+msgid "뽑은 식권 {v1}장 보기"
+msgstr "查看{v1}张餐券"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:791
+#: apps/mobile/app/native/index.tsx:407
+msgid "뽑은 식권 보기"
+msgstr "查看已领取的餐券"
 
 #: apps/mobile/app/(flows)/tickets.tsx:38
+#: packages/shared/src/i18n/labels.ts:111
 msgid "뽑은 식권이 없어요"
-msgstr ""
+msgstr "暂无餐券"
 
+#: src/screens/RegisterScreen.tsx:341
+msgid "사용 가능"
+msgstr "可以使用"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:118
+msgid "사용할 수 있는 닉네임이에요."
+msgstr "此昵称可以使用。"
+
+#: src/screens/RecordScreen.tsx:488
+msgid "사진"
+msgstr "照片"
+
+#: src/screens/ShopDetailScreen.tsx:142
+msgid "사진 {v0}"
+msgstr "照片{v0}"
+
+#: src/screens/RecordScreen.tsx:518
+msgid "사진 {v0} 삭제"
+msgstr "删除照片{v0}"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:465
+msgid "사진 {v1}"
+msgstr "照片{v1}"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1125
+msgid "사진 {v1} 삭제"
+msgstr "删除照片{v1}"
+
+#: apps/mobile/app/native/my.tsx:874
+msgid "사진 변경"
+msgstr "更换照片"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:390
+msgid "사진 보관함에서 골라요"
+msgstr "从相册中选择"
+
+#: apps/mobile/app/(flows)/record/new.tsx:898
+#: apps/mobile/app/(flows)/record/new.tsx:908
+msgid "사진 보관함에서 선택"
+msgstr "从相册选择"
+
+#: apps/mobile/app/native/my.tsx:883
+#: src/screens/LoungeScreen.tsx:800
+msgid "사진 삭제"
+msgstr "删除照片"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:127
+#: apps/mobile/app/(flows)/record/new.tsx:856
+#: apps/mobile/app/native/my.tsx:269
+msgid "사진 없이 계속"
+msgstr "不添加照片继续"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:124
+#: apps/mobile/app/(flows)/record/new.tsx:851
+#: apps/mobile/app/native/my.tsx:266
+msgid "사진 접근 권한이 필요해요"
+msgstr "需要照片访问权限"
+
+#: src/screens/LoungeScreen.tsx:811
+msgid "사진 제거"
+msgstr "移除照片"
+
+#: src/screens/LoungeScreen.tsx:793
+msgid "사진 첨부 (선택)"
+msgstr "添加照片（选填）"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1140
+#: src/screens/RecordScreen.tsx:509
+msgid "사진 추가"
+msgstr "添加照片"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1140
+msgid "사진 추가, {v1}장 중 최대 {v2}장"
+msgstr "添加照片，已选{v1}张，最多{v2}张"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:478
+msgid "사진과 메모, 받은 댓글과 공감이 모두 사라지고 되돌릴 수 없어요."
+msgstr "照片、笔记、评论和点赞均将永久删除，无法恢复。"
+
+#: apps/mobile/app/native/my.tsx:283
+msgid "사진을 불러오지 못했어요. 다시 시도해 주세요."
+msgstr "无法加载照片，请重试。"
+
+#: src/screens/RegisterScreen.tsx:282
+msgid "사진을 올리거나 캐릭터를 고르세요"
+msgstr "上传照片或选择头像角色"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:416
+#: apps/mobile/src/components/LoungeLog.tsx:385
+msgid "사진을 크게 봐요"
+msgstr "查看大图"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:475
+#: apps/mobile/app/(flows)/log/[logId].tsx:485
+msgid "삭제"
+msgstr "删除"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:383
+msgid "삭제됐거나 비공개로 바뀐 기록이에요."
+msgstr "该记录已删除或设为私密。"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:155
+msgid "삭제되었거나 잘못된 매장 링크일 수 있어요."
+msgstr "店铺可能已被删除，或链接有误。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:273
+#: apps/mobile/app/(flows)/log/[logId].tsx:412
+#: apps/mobile/app/(flows)/log/[logId].tsx:469
+msgid "삭제하기"
+msgstr "删除"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:488
+msgid "삭제한 댓글은 되돌릴 수 없어요."
+msgstr "已删除的评论无法恢复。"
+
+#: apps/mobile/app/native/my.tsx:891
+#: apps/mobile/app/native/my.tsx:895
+msgid "상태 메시지"
+msgstr "状态消息"
+
+#: apps/mobile/app/native/my.tsx:390
+#: apps/mobile/app/native/my.tsx:395
+msgid "상태 메시지를 남겨 보세요"
+msgstr "添加状态消息"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:175
+msgid "상황"
+msgstr "场景"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:941
+msgid "상황 버튼을 눌러 주세요"
+msgstr "请选择用餐场景"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1126
+msgid "상황을 골라주세요"
+msgstr "请选择用餐场景"
+
+#: src/screens/LoungeScreen.tsx:658
+msgid "새 글 작성"
+msgstr "发布新帖子"
+
+#: src/screens/TasteDetailScreen.tsx:313
+msgid "새 기록을 남기면 이 화면의 수치는 이미 더해져 있어요. 다시 정리하면 처음부터 다시 훑어봐요."
+msgstr "新记录已计入本页数据。点击更新可重新查看报告。"
+
+#: src/screens/HomeScreen.tsx:154
+msgid "새 라멘로그를 남겼어요"
+msgstr "新的拉面记录已保存"
+
+#: src/screens/NewsFeedScreen.tsx:195
+msgid "새 소식이 올라오면 이곳에 모아 드릴게요."
+msgstr "新消息发布后会显示在这里。"
+
+#: apps/mobile/app/(flows)/settings.tsx:252
+#: src/screens/MyScreen.tsx:793
+msgid "새 이메일 주소"
+msgstr "新邮箱地址"
+
+#: apps/mobile/app/(flows)/settings.tsx:250
+msgid "새 이메일 주소 "
+msgstr "新邮箱地址 "
+
+#: apps/mobile/app/native/index.tsx:115
+msgid "새로운 라멘집"
+msgstr "新拉面店"
+
+#: src/screens/MyScreen.tsx:554
+msgid "색이 진할수록 그날 기록이 많아요"
+msgstr "颜色越深，当天记录越多"
+
+#: src/screens/LoungeScreen.tsx:839
+msgid "샘플"
+msgstr "示例"
+
+#: packages/shared/src/i18n/labels.ts:150
+msgid "서교동"
+msgstr "西桥洞"
+
+#: apps/mobile/src/api/client.ts:310
+#: packages/shared/src/i18n/labels.ts:69
+msgid "서버 응답 형식이 올바르지 않아요."
+msgstr "服务器返回了异常数据。"
+
+#: apps/mobile/src/api/client.ts:534
+#: packages/shared/src/i18n/labels.ts:76
+msgid "서버 주소가 설정되지 않았어요."
+msgstr "尚未配置服务器连接。"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:144
+#: src/components/PolicySheet.tsx:12
+#: src/screens/RegisterScreen.tsx:481
+msgid "서비스 이용약관"
+msgstr "服务条款"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:105
+#: src/screens/RegisterScreen.tsx:409
+msgid "서비스 이용약관 동의"
+msgstr "同意服务条款"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:106
+#: src/screens/RegisterScreen.tsx:417
+msgid "서비스 이용약관 보기"
+msgstr "查看服务条款"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:344
+#: apps/mobile/app/(flows)/record/new.tsx:1285
+msgid "선택"
+msgstr "选填"
+
+#: src/screens/RecordScreen.tsx:536
+msgid "선택 ·"
+msgstr "选填 ·"
+
+#: src/screens/RecordScreen.tsx:562
+msgid "선택 · 국물, 면, 간, 토핑"
+msgstr "选填 · 汤底、面条、调味、配料"
+
+#: src/screens/RecordScreen.tsx:489
+msgid "선택 · 최대"
+msgstr "选填 · 最多"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:963
+msgid "선택 사항이에요"
+msgstr "选填"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:93
+msgid "선택 사항이에요. 영업 중, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요."
+msgstr "选填。营业状态、米饭、叉烧等可与店铺信息核对的条件会影响结果。"
+
+#: src/screens/AIRecommendScreen.tsx:189
+msgid "선택 사항이에요. 웨이팅, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요."
+msgstr "选填。排队、米饭、叉烧等可与店铺资料核对的条件会用于推荐。"
+
+#: src/screens/LoungeScreen.tsx:735
+msgid "선택 안 함"
+msgstr "不选择"
+
+#: apps/mobile/app/native/map.web.tsx:434
+msgid "선택 해제"
+msgstr "取消选择"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1106
+msgid "선택, {v1}자까지"
+msgstr "选填，最多{v1}个字符"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:115
+msgid "선택, 라멘 추천 및 소식 수신 동의"
+msgstr "选填，同意接收拉面推荐与资讯"
+
+#: src/screens/MyScreen.tsx:782
+msgid "선택됨"
+msgstr "已选择"
+
+#: apps/mobile/app/(flows)/settings.tsx:229
+msgid "선택됨 "
+msgstr "已选择 "
+
+#: apps/mobile/src/domain/record.ts:139
+msgid "선택한 매장 정보를 찾을 수 없습니다."
+msgstr "找不到所选店铺的信息。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:97
+msgid "선택한 조건을 확인하고 있어요"
+msgstr "正在确认所选条件"
+
+#: src/screens/AICurationLoading.tsx:7
+msgid "선택한 취향을 확인하고 있어요"
+msgstr "正在确认你的偏好"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:343
+#: apps/mobile/app/(flows)/settings.tsx:204
+#: src/screens/MyScreen.tsx:774
+msgid "선호 라멘 스타일"
+msgstr "偏好拉面类型"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:344
+msgid "선호 라멘 스타일 "
+msgstr "偏好拉面类型 "
+
+#: src/screens/RegisterScreen.tsx:356
+msgid "선호 라멘 스타일 (선택)"
+msgstr "偏好拉面风格（选填）"
+
+#: apps/mobile/app/(flows)/settings.tsx:134
+#: src/screens/MyScreen.tsx:737
+msgid "선호 스타일"
+msgstr "偏好类型"
+
+#: apps/mobile/app/(flows)/settings.tsx:80
+msgid "선호 스타일을 ''{v1}''로 바꿨어요"
+msgstr "偏好类型已改为“{v1}”"
+
+#: src/screens/MyScreen.tsx:344
+msgid "선호 스타일을 {style}로 바꿨어요"
+msgstr "偏好风格已更改为{style}"
+
+#: apps/mobile/app/(flows)/settings.tsx:82
+msgid "선호 스타일을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요."
+msgstr "偏好类型保存失败，请稍后重试。"
+
+#: apps/mobile/app/(flows)/settings.tsx:121
+#: apps/mobile/app/native/my.tsx:358
+#: apps/mobile/app/native/my.tsx:844
+msgid "설정"
+msgstr "设置"
+
+#: apps/mobile/app/(flows)/settings.tsx:68
+msgid "설정 앱을 열지 못했어요"
+msgstr "无法打开设置"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:128
+#: apps/mobile/app/(flows)/record/new.tsx:857
 #: apps/mobile/app/native/map.tsx:304
+#: apps/mobile/app/native/my.tsx:270
+#: apps/mobile/src/components/RecordMenu.tsx:52
 msgid "설정 열기"
-msgstr ""
+msgstr "打开设置"
+
+#: src/screens/NotificationScreen.tsx:358
+msgid "설정 완료"
+msgstr "完成设置"
+
+#: apps/mobile/src/components/RecordMenu.tsx:50
+msgid "설정에서 RAOTA 알림을 허용한 뒤 다시 시도해 주세요."
+msgstr "请在设置中允许 RAOTA 通知后重试。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:125
+msgid "설정에서 사진 접근을 허용하거나, 사진 없이도 계속 가입할 수 있어요."
+msgstr "请在设置中允许访问照片，也可以不添加照片继续注册。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:853
+msgid "설정에서 사진 접근을 허용하거나, 사진 없이도 계속 기록할 수 있어요."
+msgstr "请在设置中允许访问照片，也可以不添加照片继续记录。"
+
+#: apps/mobile/app/native/my.tsx:267
+msgid "설정에서 사진 접근을 허용하거나, 사진 없이도 프로필을 편집할 수 있어요."
+msgstr "请在设置中允许访问照片，也可以不添加照片继续编辑资料。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:854
+msgid "설정에서 카메라 접근을 허용하거나, 사진 없이도 계속 기록할 수 있어요."
+msgstr "请在设置中允许访问相机，也可以不添加照片继续记录。"
+
+#: src/screens/RegisterScreen.tsx:390
+msgid "소개 추천 문구"
+msgstr "推荐简介短语"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:55
+#: src/screens/AIRecommendScreen.tsx:33
+msgid "소금 타레"
+msgstr "盐味调味"
+
+#: src/screens/NewsFeedScreen.tsx:172
+msgid "소식 종류"
+msgstr "消息分类"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:52
+#: apps/mobile/app/native/map.web.tsx:38
+#: packages/shared/src/i18n/labels.ts:11
+msgid "쇼유"
+msgstr "酱油"
+
+#: packages/shared/src/i18n/labels.ts:117
+#: src/screens/RegisterScreen.tsx:26
+msgid "쇼유 (간장)"
+msgstr "酱油拉面"
+
+#: apps/mobile/app/native/map.web.tsx:38
+#: src/screens/MapScreen.tsx:76
+msgid "쇼유 라멘 (간장)"
+msgstr "酱油拉面"
+
+#: packages/shared/src/i18n/labels.ts:61
+#: src/screens/RegisterScreen.tsx:18
+msgid "쇼유파"
+msgstr "酱油派"
+
+#: apps/mobile/app/native/my.tsx:512
+msgid "수"
+msgstr "三"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:412
+#: apps/mobile/app/(flows)/log/[logId].tsx:460
+msgid "수정하기"
+msgstr "编辑"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:59
+msgid "숙주·마늘 산더미"
+msgstr "豆芽与蒜堆成山"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:92
 msgid "숨긴 사람의 라멘로그와 댓글은 라운지에 보이지 않아요. 숨김을 풀면 다시 보여요. "
-msgstr ""
+msgstr "已隐藏用户的记录和评论不会显示在社区中，取消隐藏后可再次查看。 "
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:86
+#: apps/mobile/app/(flows)/settings.tsx:135
 msgid "숨긴 사용자"
-msgstr ""
+msgstr "已隐藏用户"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:54
 msgid "숨긴 사용자가 없어요"
-msgstr ""
+msgstr "没有已隐藏用户"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:50
 msgid "숨긴 사용자를 불러오지 못했어요"
-msgstr ""
+msgstr "无法加载已隐藏用户"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:71
 msgid "숨김 해제"
-msgstr ""
+msgstr "取消隐藏"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:34
+#: apps/mobile/app/(flows)/log/[logId].tsx:335
+#: apps/mobile/src/components/LoungeLog.tsx:551
+#: packages/shared/src/i18n/labels.ts:102
 msgid "숨김을 풀지 못했어요. 다시 시도해 주세요."
-msgstr ""
+msgstr "未能取消隐藏，请重试。"
 
+#: apps/mobile/src/domain/hours.ts:176
+msgid "쉬는 시간"
+msgstr "休息中"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:103
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:811
+msgid "쉬는 시간 {v1} – {v2}"
+msgstr "休息时间 {v1} – {v2}"
+
+#: apps/mobile/src/domain/lounge.ts:45
+msgid "스팸·홍보"
+msgstr "垃圾信息或广告"
+
+#: packages/shared/src/i18n/labels.ts:132
+msgid "슴슴해요"
+msgstr "口味清淡"
+
+#: src/screens/NotificationScreen.tsx:62
+msgid "승급"
+msgstr "升级"
+
+#: src/screens/NotificationScreen.tsx:172
+msgid "승급·공지"
+msgstr "升级与公告"
+
+#: src/screens/NotificationScreen.tsx:193
+msgid "승급·공지 알림이 없습니다"
+msgstr "暂无升级与公告通知"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:55
+#: apps/mobile/app/native/map.web.tsx:41
+#: packages/shared/src/i18n/labels.ts:14
+msgid "시오"
+msgstr "盐味"
+
+#: packages/shared/src/i18n/labels.ts:119
+#: src/screens/RegisterScreen.tsx:30
+msgid "시오 (소금)"
+msgstr "盐味拉面"
+
+#: apps/mobile/app/native/map.web.tsx:41
+#: src/screens/MapScreen.tsx:79
+msgid "시오 라멘 (소금)"
+msgstr "盐味拉面"
+
+#: packages/shared/src/i18n/labels.ts:62
+msgid "시오파"
+msgstr "盐味派"
+
+#: apps/mobile/src/components/ui/index.tsx:1051
+msgid "시트"
+msgstr "面板"
+
+#: apps/mobile/app/(flows)/legal/[doc].tsx:47
+msgid "시행일 "
+msgstr "生效日期："
+
+#: apps/mobile/src/components/PolicySheet.tsx:57
+msgid "시행일 {date}"
+msgstr "生效日期：{date}"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1162
+msgid "식권 1장을 쓸까요?"
+msgstr "使用一张餐券？"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1151
+msgid "식권 쓰기"
+msgstr "使用餐券"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:792
+msgid "식권은 하루 {v1}장이에요. 내일 다시 뽑을 수 있어요."
+msgstr "每天可领取{v1}张餐券，明天可以再次领取。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:779
 #: apps/mobile/app/(flows)/tickets.tsx:40
 msgid "식권을 불러오는 중…"
-msgstr ""
+msgstr "正在加载餐券…"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:97
+msgid "식권을 뽑고 있어요"
+msgstr "正在生成餐券"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:945
+#: src/screens/AIRecommendScreen.tsx:281
+msgid "식사 상황"
+msgstr "用餐场景"
+
+#: apps/mobile/src/components/LoungeLog.tsx:605
+msgid "신고 사유"
+msgstr "举报原因"
+
+#: apps/mobile/src/components/LoungeLog.tsx:597
+msgid "신고 사유를 고르면 보낼 수 있어요"
+msgstr "选择举报原因后即可提交"
+
+#: apps/mobile/src/components/LoungeLog.tsx:540
+#: packages/shared/src/i18n/labels.ts:103
+msgid "신고를 보내지 못했어요. 다시 시도해 주세요."
+msgstr "未能提交举报，请重试。"
+
+#: apps/mobile/src/components/LoungeLog.tsx:536
+msgid "신고를 보내지 못했어요. 로그인 상태를 확인해 주세요."
+msgstr "无法发送举报，请确认登录状态。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:370
+msgid "신고를 접수했어요"
+msgstr "举报已提交"
+
+#: apps/mobile/src/components/LoungeLog.tsx:543
+msgid "신고를 접수했어요. 검토 후 조치할게요."
+msgstr "已收到举报，我们将审核处理。"
+
+#: apps/mobile/src/components/LoungeLog.tsx:513
+#: apps/mobile/src/components/LoungeLog.tsx:566
+#: apps/mobile/src/components/LoungeLog.tsx:598
+msgid "신고하기"
+msgstr "举报"
+
+#: src/screens/MyScreen.tsx:579
+msgid "신규"
+msgstr "新"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:1076
+msgid "아래 내용을 길게 눌러 복사해 주세요."
+msgstr "长按下方内容即可复制。"
+
+#: packages/shared/src/i18n/labels.ts:22
+msgid "아부라소바"
+msgstr "油拌面"
+
+#: apps/mobile/src/domain/shopTaste.ts:38
+msgid "아쉬운 편"
+msgstr "有待改善"
+
+#: apps/mobile/app/(flows)/record/new.tsx:137
+#: apps/mobile/src/domain/lounge.ts:119
+#: packages/shared/src/i18n/labels.ts:34
+msgid "아쉬움"
+msgstr "有待改善"
+
+#: apps/mobile/app/(flows)/record/new.tsx:134
+#: apps/mobile/src/domain/lounge.ts:116
+msgid "아쉬웠어요"
+msgstr "不太满意"
+
+#: apps/mobile/app/(flows)/record/new.tsx:136
+#: apps/mobile/src/domain/lounge.ts:118
+msgid "아주 단단하게"
+msgstr "非常硬"
+
+#: apps/mobile/app/(flows)/record/new.tsx:135
+#: apps/mobile/src/domain/lounge.ts:117
+msgid "아주 맑음"
+msgstr "非常清淡"
+
+#: apps/mobile/app/(flows)/record/new.tsx:136
+#: apps/mobile/src/domain/lounge.ts:118
+msgid "아주 부드럽게"
+msgstr "非常软"
+
+#: apps/mobile/app/(flows)/record/new.tsx:135
+#: apps/mobile/src/domain/lounge.ts:117
+msgid "아주 진함"
+msgstr "非常浓郁"
+
+#: src/screens/RegisterScreen.tsx:20
+msgid "아지타마"
+msgstr "溏心蛋"
+
+#: src/screens/LoginScreen.tsx:335
+msgid "아직 계정이 없으신가요?"
+msgstr "还没有账号？"
+
+#: apps/mobile/app/native/lounge.tsx:150
+msgid "아직 공개된 라멘로그가 없어요"
+msgstr "还没有公开的拉面记录"
+
+#: src/screens/LoungeScreen.tsx:1561
+msgid "아직 글이 없어요"
+msgstr "还没有帖子"
+
+#: apps/mobile/app/native/my.tsx:647
+#: src/screens/MyScreen.tsx:588
+msgid "아직 기록이 없어요"
+msgstr "还没有记录"
+
+#: apps/mobile/app/native/index.tsx:274
+msgid "아직 기록이 없어요 · 첫 그릇을 남겨 보세요"
+msgstr "还没有记录 · 记下第一碗吧"
+
+#: src/screens/MyScreen.tsx:710
+msgid "아직 남긴 댓글이 없어요"
+msgstr "还没有评论"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:450
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:452
+#: src/screens/ShopDetailScreen.tsx:116
+msgid "아직 등록된 사진이 없어요"
+msgstr "暂无照片"
+
+#: src/screens/LoungeScreen.tsx:1281
+#: src/screens/ShopDetailScreen.tsx:363
+msgid "아직 라멘로그가 없어요"
+msgstr "还没有拉面记录"
+
+#: src/screens/AIRecommendScreen.tsx:162
+msgid "아직 매장 정보와 대조하지 못해 참고만 했어요"
+msgstr "暂时无法与店铺资料核对，仅作参考"
+
+#: src/components/MonthlyTastePreview.tsx:41
+msgid "아직 모인 월별 기록이 없어요. 먹은 라멘이 쌓이면 달마다 어떤 종류를 즐겼는지 비교할 수 있어요."
+msgstr "还没有月度记录。积累拉面记录后，即可比较每月喜欢的种类。"
+
+#: apps/mobile/app/native/my.tsx:695
+#: src/screens/MyScreen.tsx:619
+msgid "아직 방문한 라멘집이 없어요"
+msgstr "还没有去过的拉面店"
+
+#: src/screens/TasteDetailScreen.tsx:225
+msgid "아직 보여드릴 취향이 없어요"
+msgstr "还没有可展示的口味数据"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:900
+msgid "아직 보여드릴 취향이 없어요 "
+msgstr "您的口味故事从这里开始 "
 
 #: apps/mobile/app/(flows)/tickets.tsx:57
+#: packages/shared/src/i18n/labels.ts:114
 msgid "아직 뽑은 식권이 없어요"
-msgstr ""
+msgstr "还没有领取过餐券"
+
+#: apps/mobile/app/(flows)/settings.tsx:134
+#: src/screens/MyScreen.tsx:739
+msgid "아직 안 정했어요"
+msgstr "尚未选择"
+
+#: src/components/MonthlyTastePreview.tsx:38
+msgid "아직 이 달의 메뉴 기록이 없어요."
+msgstr "本月还没有菜单记录。"
+
+#: src/screens/MyScreen.tsx:687
+msgid "아직 작성한 글이 없어요"
+msgstr "还没有发布帖子"
+
+#: apps/mobile/app/native/my.tsx:777
+#: src/screens/MyScreen.tsx:659
+msgid "아직 저장한 라멘집이 없어요"
+msgstr "还没有收藏的拉面店"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:378
+msgid "아직 집계 중이에요 "
+msgstr "仍在统计中 "
+
+#: packages/shared/src/domain/identity.ts:49
+#: packages/shared/src/i18n/labels.ts:54
+msgid "아직 취향을 모으는 중"
+msgstr "正在探索口味"
+
+#: apps/mobile/app/native/index.tsx:45
+msgid "아침"
+msgstr "早餐"
+
+#: apps/mobile/app/(flows)/settings.tsx:138
+#: src/screens/MyScreen.tsx:483
+#: src/screens/NotificationScreen.tsx:209
+msgid "알림"
+msgstr "通知"
+
+#: src/screens/MyScreen.tsx:483
+msgid "알림 {v0}개 안 읽음"
+msgstr "{v0}条未读通知"
+
+#: apps/mobile/src/components/RecordMenu.tsx:50
+msgid "알림 권한이 꺼져 있어요"
+msgstr "通知权限已关闭"
+
+#: apps/mobile/src/components/ui/index.tsx:864
+msgid "알림 닫기"
+msgstr "关闭通知"
+
+#: src/screens/NotificationScreen.tsx:277
+msgid "알림 목록"
+msgstr "通知列表"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:249
+#: apps/mobile/app/(flows)/record/complete.tsx:271
+#: src/screens/NewsFeedScreen.tsx:247
+msgid "알림 받기"
+msgstr "接收提醒"
+
+#: src/screens/NotificationScreen.tsx:235
+msgid "알림 설정"
+msgstr "通知设置"
+
+#: src/screens/NotificationScreen.tsx:291
+msgid "알림 설정 닫기"
+msgstr "关闭通知设置"
+
+#: src/screens/NotificationScreen.tsx:184
+msgid "알림 설정을 저장했습니다."
+msgstr "通知设置已保存。"
+
+#: src/screens/NotificationScreen.tsx:307
+msgid "알림 수신 설정"
+msgstr "通知接收设置"
+
+#: src/screens/NotificationScreen.tsx:243
+msgid "알림 종류"
+msgstr "通知类型"
+
+#: src/screens/NewsFeedScreen.tsx:247
+msgid "알림 켜짐"
+msgstr "通知已开启"
+
+#: src/screens/HomeScreen.tsx:110
+msgid "알림센터 (로그인 필요)"
+msgstr "通知（需登录）"
+
+#: src/screens/HomeScreen.tsx:110
+msgid "알림센터 열기{v0}"
+msgstr "打开通知{v0}"
+
+#: apps/mobile/app/(flows)/settings.tsx:72
+msgid "알림을 껐어요. 언제든 다시 켤 수 있어요"
+msgstr "提醒已关闭，可随时重新开启"
+
+#: apps/mobile/src/components/TasteStory.tsx:50
+msgid "알맞게 삶은 면"
+msgstr "软硬适中的面条"
+
+#: apps/mobile/app/(flows)/settings.tsx:195
+msgid "앱 버전 "
+msgstr "应用版本 "
+
+#: src/screens/NotificationScreen.tsx:326
+msgid "앱 푸시 알림 받기"
+msgstr "接收应用推送通知"
+
+#: apps/mobile/app/native/index.tsx:48
+msgid "야식"
+msgstr "夜宵"
+
+#: apps/mobile/app/(flows)/auth/consent.tsx:71
+msgid "약관 동의"
+msgstr "同意条款"
+
+#: apps/mobile/app/(flows)/settings.tsx:172
+#: src/screens/HomeScreen.tsx:307
+msgid "약관 및 문의"
+msgstr "条款与联系"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:95
+#: apps/mobile/src/components/ConsentChecklist.tsx:99
+#: src/screens/RegisterScreen.tsx:403
+msgid "약관 전체 동의"
+msgstr "同意全部条款"
+
+#: apps/mobile/app/(flows)/auth/consent.tsx:75
+msgid "약관에 동의하고"
+msgstr "同意条款后"
+
+#: packages/shared/src/i18n/labels.ts:130
+msgid "양 많아요"
+msgstr "面量足"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:241
+#: src/screens/ShopDetailScreen.tsx:80
+msgid "양념"
+msgstr "调味料"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:344
+msgid "어느 가게를\n"
+"기록할까요?"
+msgstr "想记录\n"
+"哪家店？"
+
+#: src/screens/RecordSheet.tsx:185
+msgid "어느 가게를 기록할까요?"
+msgstr "要记录哪家店？"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:89
+#: src/screens/AIRecommendScreen.tsx:187
+msgid "어떤 상황에서 드시나요?"
+msgstr "是什么用餐场景？"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:97
+#: src/screens/AICurationLoading.tsx:7
+msgid "어울리는 라멘집을 찾고 있어요"
+msgstr "正在寻找适合的拉面店"
+
+#: apps/mobile/src/domain/lounge.ts:214
+msgid "어제"
+msgstr "昨天"
+
+#: packages/shared/src/i18n/labels.ts:125
+msgid "어패류 향"
+msgstr "鱼介香"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:495
+msgid "에 자주 간 라멘집 "
+msgstr "常去的拉面店 "
 
 #: apps/mobile/app/(flows)/tickets.tsx:44
+#: apps/mobile/app/native/lounge.tsx:126
+#: packages/shared/src/i18n/labels.ts:113
 msgid "연결을 확인하고 다시 불러와 주세요."
-msgstr ""
+msgstr "请检查网络连接后重新加载。"
+
+#: apps/mobile/src/data/remote.ts:433
+#: packages/shared/src/i18n/labels.ts:78
+msgid "연결을 확인한 뒤 다시 시도해 주세요."
+msgstr "请检查网络连接后重试。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:841
+#: apps/mobile/app/(flows)/record/new.tsx:965
+msgid "연결을 확인한 뒤 다시 시도해주세요."
+msgstr "请检查网络连接后重试。"
+
+#: src/screens/LoungeScreen.tsx:722
+msgid "연관 라멘집"
+msgstr "关联拉面店"
+
+#: src/screens/LoungeScreen.tsx:700
+msgid "연관 라멘집 태그 (선택)"
+msgstr "关联拉面店（选填）"
+
+#: apps/mobile/app/native/map.web.tsx:33
+msgid "연남/홍대"
+msgstr "延南/弘大"
+
+#: packages/shared/src/i18n/labels.ts:149
+msgid "연남동"
+msgstr "延南洞"
+
+#: src/screens/NewsFeedScreen.tsx:21
+msgid "영업 공지"
+msgstr "营业公告"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:83
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:59
+#: apps/mobile/app/native/index.tsx:36
+#: apps/mobile/app/native/map.web.tsx:67
+#: src/screens/HomeScreen.tsx:26
+#: src/screens/MapScreen.tsx:55
+#: src/screens/ShopDetailScreen.tsx:43
+msgid "영업 정보 확인 필요"
+msgstr "营业信息待确认"
+
+#: apps/mobile/src/domain/hours.ts:180
+msgid "영업 종료"
+msgstr "营业结束"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:84
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:53
+#: apps/mobile/app/native/index.tsx:37
+#: apps/mobile/app/native/map.web.tsx:68
+#: apps/mobile/app/native/map.web.tsx:326
+#: apps/mobile/src/domain/hours.ts:174
+#: src/screens/HomeScreen.tsx:26
+#: src/screens/MapScreen.tsx:55
+#: src/screens/MapScreen.tsx:599
+#: src/screens/RecordSheet.tsx:91
+#: src/screens/ShopDetailScreen.tsx:37
+msgid "영업 중"
+msgstr "营业中"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:94
+#: src/screens/RecordSheet.tsx:238
+msgid "영업 중만"
+msgstr "仅营业中"
+
+#: apps/mobile/app/native/map.web.tsx:317
+msgid "영업 중인 곳만 보기"
+msgstr "仅显示营业中的店铺"
+
+#: src/screens/AIRecommendScreen.tsx:128
+msgid "영업 중인 곳이 없어 가까운 곳을 우선했어요"
+msgstr "暂无营业中的店铺，优先推荐附近的店铺"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:661
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:672
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:779
+#: src/screens/ShopDetailScreen.tsx:256
+#: src/screens/ShopDetailScreen.tsx:285
+msgid "영업시간"
+msgstr "营业时间"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:673
+#: src/screens/ShopDetailScreen.tsx:286
+msgid "영업시간 정보가 아직 없어요"
+msgstr "暂无营业时间信息"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:655
+msgid "영업시간, {v1}{v2}. {v3}"
+msgstr "营业时间：{v1}{v2}。{v3}"
+
+#: src/screens/RecordScreen.tsx:542
+msgid "예: 다음엔 면을 단단하게 부탁하기"
+msgstr "例：下次请把面煮硬一点"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:311
+#: src/screens/RegisterScreen.tsx:328
+msgid "예: 라멘러버, 멘마수집가"
+msgstr "例如：RamenLover、MenmaCollector"
+
+#: src/screens/AIRecommendScreen.tsx:315
+msgid "예: 차슈가 부드럽고 국물이 덜 짠 곳"
+msgstr "例：叉烧软嫩、汤不太咸的店"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:970
+msgid "예: 차슈가 푸짐하고 지금 영업 중인 곳"
+msgstr "例如：叉烧丰富、正在营业的店"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1031
+#: src/screens/RecordScreen.tsx:314
+msgid "예: 특제 쇼유 라멘"
+msgstr "例如：特制酱油拉面"
+
+#: apps/mobile/app/(flows)/record/new.tsx:991
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:803
+#: apps/mobile/app/native/index.tsx:273
+#: src/screens/ShopDetailScreen.tsx:274
+msgid "오늘"
+msgstr "今天"
+
+#: apps/mobile/app/native/index.tsx:367
+msgid "오늘 {p0}은\n"
+"어떤 라멘으로 할까요?"
+msgstr "今天{p0}\n"
+"想吃什么拉面？"
+
+#: src/screens/AIRecommendScreen.tsx:350
+msgid "오늘 {v0}님을 위한 라멘집"
+msgstr "今天为{v0}推荐的店"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1010
+msgid "오늘 {v1}님을 위한 라멘집"
+msgstr "今天为{v1}推荐的拉面店"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1154
+msgid "오늘 남은 마지막 식권이에요. 자정에 다시 {v1}장이 채워져요."
+msgstr "这是今天最后一张餐券，午夜将补充{v1}张。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:877
+msgid "오늘 남은 식권 {v1}장"
+msgstr "今天剩余{v1}张餐券"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1155
+msgid "오늘 남은 식권 {v1}장 중 1장을 써요. 자정에 다시 {v2}장이 채워져요."
+msgstr "将使用今天剩余{v1}张中的1张，午夜将补充{v2}张。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:874
+msgid "오늘 남은 식권 {v1}장, 하루 {v2}장"
+msgstr "今天剩余{v1}张餐券，每天{v2}张"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:820
+msgid "오늘 라스트오더 {v1}"
+msgstr "今天最后点餐：{v1}"
+
+#: apps/mobile/app/native/lounge.tsx:148
+msgid "오늘 먹은 한 그릇을 공개로 기록하면 여기에 올라가요."
+msgstr "公开记录今天的一碗，就会显示在这里。"
+
+#: src/screens/LoungeScreen.tsx:1282
+msgid "오늘 먹은 한 그릇을 첫 기록으로 남겨보세요."
+msgstr "从今天吃的一碗开始记录。"
+
+#: apps/mobile/app/native/index.tsx:401
+msgid "오늘 뭐 먹지?"
+msgstr "今天吃什么？"
+
+#: apps/mobile/app/native/index.tsx:390
+#: src/screens/HomeScreen.tsx:133
+msgid "오늘 뭐 먹지? AI 라멘 큐레이터"
+msgstr "今天吃什么？AI 拉面精选"
+
+#: apps/mobile/app/native/index.tsx:390
+msgid "오늘 뭐 먹지? AI 라멘 큐레이터, 오늘 식권을 다 뽑았어요"
+msgstr "今天吃什么？AI 拉面精选。今天的餐券已用完。"
+
+#: src/screens/LoungeScreen.tsx:1551
+msgid "오늘 방문한 라멘집이 있다면 아래 버튼으로 라멘로그를 남겨보세요"
+msgstr "今天去过拉面店？点击下方按钮留下记录。"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:114
 msgid "오늘 뽑은 식권"
-msgstr ""
+msgstr "今天的餐券"
+
+#: apps/mobile/app/native/index.tsx:429
+msgid "오늘 뽑은 식권 {p0}장"
+msgstr "今天已抽{p0}张餐券"
+
+#: apps/mobile/app/native/index.tsx:421
+msgid "오늘 뽑은 식권 {p0}장, 남은 식권 {p1}장"
+msgstr "今天已抽{p0}张，剩余{p1}张餐券"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:882
+#: apps/mobile/app/native/index.tsx:420
+msgid "오늘 뽑은 식권을 골라 다시 볼 수 있어요"
+msgstr "选择今天领取的餐券即可再次查看"
+
+#: apps/mobile/app/native/index.tsx:389
+msgid "오늘 뽑은 식권을 다시 볼 수 있어요"
+msgstr "重新查看今天的餐券"
+
+#: apps/mobile/app/native/index.tsx:439
+#: apps/mobile/app/native/index.tsx:442
+msgid "오늘 식권 {count}장 남았어요"
+msgstr "今天还剩{count}张餐券"
+
+#: apps/mobile/app/native/index.tsx:403
+msgid "오늘 식권 {p0}장을 다 뽑았어요. 내일 다시 채워져요"
+msgstr "今天的{p0}张餐券已用完，明天将补充。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:796
+msgid "오늘 식권을 다 뽑았어요"
+msgstr "今天的餐券已用完"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:114
+msgid "오늘 식권을 다 뽑았어요. 내일 다시 뽑을 수 있어요"
+msgstr "今天的餐券已用完，明天可再次领取"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:88
+#: src/screens/AIRecommendScreen.tsx:186
+msgid "오늘 어떤 국물이 당기나요?"
+msgstr "今天想喝什么汤？"
+
+#: apps/mobile/src/domain/hours.ts:180
+msgid "오늘 휴무"
+msgstr "今日休息"
+
+#: src/screens/ShopDetailScreen.tsx:258
+msgid "오늘({day})"
+msgstr "今天（{day}）"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:235
+msgid "오늘({v1}) {v2}{v3}"
+msgstr "今天（{v1}）{v2}{v3}"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:235
+msgid "오늘({v1}) 영업시간 정보 없음"
+msgstr "今天（{v1}）暂无营业时间信息"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:235
+msgid "오늘({v1}) 휴무"
+msgstr "今天（{v1}）休息"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1010
+#: src/screens/AIRecommendScreen.tsx:350
+msgid "오늘의 추천"
+msgstr "今日推荐"
+
+#: src/screens/AICurationLoading.tsx:7
+msgid "오늘의 추천을 정리하고 있어요"
+msgstr "正在整理今日推荐"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:97
+msgid "오늘의 추천이 준비됐어요"
+msgstr "今日推荐已准备好"
+
+#: apps/mobile/app/native/index.tsx:462
+#: apps/mobile/app/native/index.tsx:499
+msgid "오늘의 큐레이션"
+msgstr "今日精选"
+
+#: src/screens/HomeScreen.tsx:166
+msgid "오늘의 큐레이션 라멘집"
+msgstr "今日精选拉面店"
+
+#: apps/mobile/app/native/index.tsx:465
+msgid "오늘의 큐레이션, {p0}{p1}{p2}{p3}, 매장 상세 보기"
+msgstr "今日精选，{p0}{p1}{p2}{p3}，查看店铺"
+
+#: apps/mobile/app/native/index.tsx:501
+msgid "오늘의 큐레이션을 불러오는 중…"
+msgstr "正在加载今日精选…"
+
+#: apps/mobile/app/native/index.tsx:507
+msgid "오늘의 큐레이션을 불러오지 못했어요"
+msgstr "无法加载今日精选"
+
+#: apps/mobile/app/native/index.tsx:507
+msgid "오늘의 큐레이션을 준비 중이에요"
+msgstr "正在准备今日精选"
+
+#: src/screens/HomeScreen.tsx:178
+msgid "오늘의 픽"
+msgstr "今日精选"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1025
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1379
+msgid "오늘의 한 그릇"
+msgstr "今日一碗"
+
+#: src/screens/AICurationLoading.tsx:31
+msgid "오늘의 한 그릇을"
+msgstr "正在寻找"
+
+#: src/screens/AICurationLoading.tsx:7
+msgid "오늘의 한 그릇을 골랐어요"
+msgstr "已选好今天的一碗"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1335
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1341
+msgid "오늘의 한 그릇을 찾았어요"
+msgstr "找到今天的一碗了"
+
+#: src/screens/RegisterScreen.tsx:272
+msgid "올린 사진 지우기"
+msgstr "删除已上传的照片"
+
+#: src/screens/RegisterScreen.tsx:258
+msgid "올린 프로필 사진"
+msgstr "已上传的头像"
+
+#: src/screens/MyScreen.tsx:351
+msgid "올바른 이메일 주소를 입력해 주세요"
+msgstr "请输入有效的邮箱地址"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1386
+msgid "완료"
+msgstr "完成"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:654
+msgid "요일별 영업시간을 시트로 열어요"
+msgstr "查看每周营业时间"
+
+#: apps/mobile/src/api/client.ts:297
+#: packages/shared/src/i18n/labels.ts:70
+msgid "요청을 처리하지 못했어요."
+msgstr "未能处理请求，请重试。"
+
+#: apps/mobile/src/api/client.ts:329
+#: packages/shared/src/i18n/labels.ts:72
+msgid "요청을 취소했어요."
+msgstr "请求已取消。"
+
+#: apps/mobile/src/api/client.ts:318
+msgid "요청이 실패했어요. (HTTP {status})"
+msgstr "请求失败。（HTTP {status}）"
+
+#: apps/mobile/app/(flows)/legal/[doc].tsx:31
+msgid "요청한 문서가 없어요"
+msgstr "请求的文档不存在"
 
 #: apps/mobile/app/+not-found.tsx:23
 msgid "요청한 화면을 찾을 수 없습니다."
-msgstr ""
+msgstr "找不到请求的页面。"
+
+#: apps/mobile/src/domain/lounge.ts:46
+msgid "욕설·혐오"
+msgstr "辱骂或仇恨"
+
+#: apps/mobile/src/components/LoungeLog.tsx:564
+msgid "운영 정책에 어긋나는 글을 알려주세요"
+msgstr "请举报违反运营政策的内容"
+
+#: src/screens/MyScreen.tsx:715
+msgid "원문:"
+msgstr "原文："
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:63
+#: src/screens/RegisterScreen.tsx:47
+msgid "원하는 국물과 분위기를 고르면 오늘의 한 곳을 골라 드려요."
+msgstr "选择想要的汤底和氛围，为您挑选今天的一家店。"
+
+#: apps/mobile/app/native/my.tsx:512
+msgid "월"
+msgstr "一"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:195
+msgid "월 집계 중 "
+msgstr "月统计中 "
+
+#: apps/mobile/app/(flows)/settings.tsx:28
+msgid "월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요."
+msgstr "仅在月报截止前或一周未记录时提醒。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:263
+msgid "월별 기록을 불러오는 중…"
+msgstr "正在加载每月记录…"
+
+#: src/components/MonthlyTastePreview.tsx:43
+msgid "월별 분포 보기"
+msgstr "查看每月分布"
+
+#: src/components/MonthlyTastePreview.tsx:43
+msgid "월별 분포 비교하기"
+msgstr "比较每月分布"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:261
+#: apps/mobile/app/native/my.tsx:1047
+#: src/components/MonthlyTastePreview.tsx:29
+#: src/screens/MonthlyTasteScreen.tsx:58
+msgid "월별 취향 변화"
+msgstr "每月口味变化"
+
+#: apps/mobile/app/native/my.tsx:1037
+msgid "월별 취향 변화, {p0}"
+msgstr "每月口味变化，{p0}"
+
+#: src/screens/MonthlyTasteScreen.tsx:145
+msgid "월별로 어떤 종류를 즐겼는지 비교할 수 있어요."
+msgstr "即可比较每月喜欢的种类。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:67
+#: src/screens/AIRecommendScreen.tsx:45
+msgid "웨이팅 감수 맛집"
+msgstr "值得排队的美味"
+
+#: src/screens/AIRecommendScreen.tsx:61
+msgid "웨이팅 적은 곳"
+msgstr "排队较少"
+
+#: src/screens/TasteDetailScreen.tsx:283
+msgid "위"
+msgstr "名"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1115
+msgid "위에서 하나를 골라야 다음으로 갈 수 있어요"
+msgstr "请先在上方选择一项"
 
 #: apps/mobile/app/native/map.tsx:304
 msgid "위치 권한이 없어 망원·합정 일대를 보여드려요."
-msgstr ""
+msgstr "未获得位置权限，显示望远和合井一带。"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:268
+msgid "위치를 켜면 가까운 순으로 보여요"
+msgstr "开启定位后按距离排序"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:268
+msgid "위치를 확인하는 중…"
+msgstr "正在获取位置…"
+
+#: apps/mobile/app/(flows)/record/new.tsx:141
+#: apps/mobile/src/components/ShopTasteCard.tsx:60
+#: apps/mobile/src/components/TasteStory.tsx:157
+msgid "육수"
+msgstr "汤底"
+
+#: apps/mobile/src/domain/lounge.ts:124
+#: packages/shared/src/i18n/labels.ts:30
+msgid "육수 농도"
+msgstr "汤底浓度"
+
+#: apps/mobile/app/(flows)/record/new.tsx:107
+msgid "육수 농도는 어땠나요?"
+msgstr "汤底浓度如何？"
+
+#: apps/mobile/src/domain/record.ts:34
+msgid "육수 농도를 골라주세요."
+msgstr "请选择汤底浓度。"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:240
+#: src/screens/ShopDetailScreen.tsx:79
+msgid "육수 추가"
+msgstr "加汤"
+
+#: apps/mobile/src/domain/lounge.ts:47
+msgid "음란물"
+msgstr "色情内容"
+
+#: apps/mobile/src/api/client.ts:326
+#: packages/shared/src/i18n/labels.ts:71
+msgid "응답이 너무 늦어요. 잠시 후 다시 시도해 주세요."
+msgstr "请求超时，请稍后重试。"
+
+#: src/screens/MonthlyTasteScreen.tsx:73
+msgid "의 취향"
+msgstr "的口味"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:371
+msgid "의 취향 "
+msgstr "的口味 "
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1136
+#: src/screens/AIRecommendScreen.tsx:455
+msgid "이 가게 기록하기"
+msgstr "记录这家店"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:106
+msgid "이 가게로 기록을 시작해요"
+msgstr "开始记录这家店"
+
+#: apps/mobile/src/components/ShopTasteCard.tsx:64
+#: apps/mobile/src/components/ShopTasteCard.tsx:70
+msgid "이 가게의 맛"
+msgstr "这家店的口味"
+
+#: src/screens/ShopDetailScreen.tsx:364
+msgid "이 가게의 첫 번째 기록을 남겨보세요."
+msgstr "成为第一位记录这家店的人。"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:333
+msgid "이 검색어로 찾아요"
+msgstr "使用此关键词搜索"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:45
+msgid "이 계정으로는 로그인할 수 없어요. 탈퇴한 계정은 30일이 지나야 다시 가입할 수 있어요."
+msgstr "无法使用此账号登录，注销满30天后方可重新注册。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:66
+msgid "이 그릇도 기록으로 남겼어요."
+msgstr "又记录下了一碗。"
+
+#: apps/mobile/app/native/my.tsx:502
+msgid "이 기간에는 기록이 없어요."
+msgstr "此期间没有记录。"
+
+#: src/screens/MyScreen.tsx:560
+msgid "이 기간에는 기록이 없어요. 라멘로그를 남기면 캘린더가 채워져요."
+msgstr "此期间没有记录。留下拉面记录即可填满日历。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:211
+#: src/screens/LoungeScreen.tsx:1500
+#: src/screens/LoungeScreen.tsx:1522
+msgid "이 기록에 댓글을 남겨보세요"
+msgstr "为这条记录留个评论吧"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:391
+#: src/screens/MonthlyTasteScreen.tsx:82
+msgid "이 달에는 분포를 보여줄 메뉴 기록이 없어요."
+msgstr "本月暂无可展示分布的菜品记录。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:491
+msgid "이 댓글을 삭제할까요?"
+msgstr "删除这条评论？"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:481
+msgid "이 라멘로그를 삭제할까요?"
+msgstr "删除这条拉面记录？"
+
+#: apps/mobile/app/(flows)/legal/[doc].tsx:50
+#: apps/mobile/src/components/PolicySheet.tsx:55
+#: src/components/PolicySheet.tsx:85
+msgid "이 문서는 한국어 원문으로 제공됩니다."
+msgstr "本文档以韩语原文提供。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:359
+msgid "이 사람의 라멘로그와 댓글은 라운지에 보이지 않아요."
+msgstr "该用户的拉面记录和评论已在社区中隐藏。"
+
+#: apps/mobile/src/components/LoungeLog.tsx:574
+msgid "이 사람의 라멘로그와 댓글이 보이지 않아요"
+msgstr "隐藏此用户的记录和评论"
+
+#: apps/mobile/src/components/LoungeLog.tsx:513
+#: apps/mobile/src/components/LoungeLog.tsx:576
+msgid "이 사용자 숨기기"
+msgstr "隐藏此用户"
+
+#: apps/mobile/src/components/LoungeLog.tsx:497
+msgid "이 사용자를 숨기지 못했어요. 다시 시도해 주세요."
+msgstr "无法隐藏此用户，请重试。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:640
+msgid "이 식권을 지금은 보여드릴 수 없어요"
+msgstr "暂时无法显示这张餐券"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:739
+msgid "이 식권의 가게를 지금은 보여드릴 수 없어요"
+msgstr "暂时无法显示此餐券的店铺"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:50
 msgid "이 식권의 추천을 다시 봐요"
-msgstr ""
+msgstr "重新查看此餐券的推荐"
+
+#: src/screens/AIRecommendScreen.tsx:146
+msgid "이 요소가 적힌 가게가 없어 참고만 했어요"
+msgstr "没有标注此特色的店铺，仅作参考"
+
+#: apps/mobile/app/native/my.tsx:1106
+msgid "이 종류 기록만 모아 봐요"
+msgstr "查看此种类的记录"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:53
+msgid "이 종류로 남긴 기록이 생기면 여기에 모여요."
+msgstr "此类型的记录会显示在这里。"
+
+#: src/screens/TasteDetailScreen.tsx:297
+msgid "이 종류로 폭을 넓혀보세요."
+msgstr "试试这个种类，拓展你的口味。"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:999
+msgid "이 종류로 폭을 넓혀보세요. "
+msgstr "尝试这种类型，拓展口味吧。 "
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:451
+msgid "이 특징이 적힌 가게가 늘면 더 정확히 골라 드릴게요"
+msgstr "标注此特点的店铺增加后会更准确地推荐"
+
+#: apps/mobile/src/components/RecordMenu.tsx:55
+msgid "이 환경에서는 알림을 보낼 수 없어요"
+msgstr "此环境不支持通知"
+
+#: apps/mobile/app/native/my.tsx:668
+#: src/screens/MapScreen.tsx:701
+#: src/screens/MyScreen.tsx:606
+msgid "이름순"
+msgstr "名称"
+
+#: apps/mobile/app/(flows)/settings.tsx:126
+#: src/screens/MyScreen.tsx:730
+msgid "이메일"
+msgstr "邮箱"
+
+#: src/screens/LoginScreen.tsx:207
+msgid "이메일 로그인 접기"
+msgstr "收起邮箱登录"
+
+#: apps/mobile/app/(flows)/settings.tsx:246
+#: src/screens/MyScreen.tsx:789
+msgid "이메일 변경"
+msgstr "更改邮箱"
+
+#: src/screens/LoginScreen.tsx:233
+msgid "이메일 주소"
+msgstr "邮箱地址"
+
+#: apps/mobile/app/(flows)/settings.tsx:98
+#: src/screens/MyScreen.tsx:359
+msgid "이메일 주소를 바꿨어요"
+msgstr "邮箱地址已更新"
+
+#: src/screens/LoginScreen.tsx:78
+msgid "이메일 주소를 입력해 주세요. 예: ramen@example.com"
+msgstr "请输入邮箱地址，例如ramen@example.com。"
+
+#: apps/mobile/app/(flows)/settings.tsx:31
+msgid "이메일 형식이 아니에요. 예: ramen@example.com"
+msgstr "请输入有效邮箱，例如：ramen@example.com"
+
+#: src/screens/LoginScreen.tsx:79
+msgid "이메일 형식이 아닙니다. @와 도메인을 포함해 다시 입력해 주세요."
+msgstr "请输入包含@和域名的有效邮箱。"
+
+#: src/screens/LoginScreen.tsx:207
+msgid "이메일로 로그인"
+msgstr "使用邮箱登录"
+
+#: src/screens/RegisterScreen.tsx:471
+msgid "이미 계정이 있으신가요?"
+msgstr "已有账号？"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:51
+msgid "이미 사용 중인 닉네임이에요. 다른 닉네임을 적어 주세요."
+msgstr "此昵称已被使用，请更换昵称。"
+
+#: apps/mobile/src/data/remote.ts:436
+#: packages/shared/src/i18n/labels.ts:80
+msgid "이미 삭제됐거나 볼 수 없는 글이에요."
+msgstr "该内容已被删除或无法查看。"
 
 #: apps/mobile/src/state/RaotaStore.tsx:1542
+#: packages/shared/src/i18n/labels.ts:90
 msgid "이미 삭제된 기록이에요."
-msgstr ""
+msgstr "该记录已被删除。"
+
+#: src/screens/RegisterScreen.tsx:121
+msgid "이미지는 5MB 이하만 올릴 수 있어요."
+msgstr "只能上传5MB以下的图片。"
+
+#: src/screens/RecordCompleteScreen.tsx:190
+msgid "이번 그릇 정리"
+msgstr "本碗小结"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:254
+msgid "이번 그릇 정리. {v1}"
+msgstr "本碗总结：{v1}"
+
+#: src/screens/RecordCompleteScreen.tsx:144
+msgid "이번 기록 정보를 불러오지 못했어요."
+msgstr "无法加载此记录。"
+
+#: src/screens/MyScreen.tsx:493
+msgid "이번 달"
+msgstr "本月"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:401
+msgid "이번 달 "
+msgstr "本月"
 
 #: apps/mobile/src/notifications/reminders.ts:79
 msgid "이번 달 {bowls} 더 기록하면 월간 리포트가 나와요"
-msgstr ""
+msgstr "本月再记录{bowls}即可生成月度报告"
+
+#: apps/mobile/app/native/index.tsx:273
+msgid "이번 달 {count}그릇 · 마지막 기록 {when}"
+msgstr "本月{count}碗 · 上次记录{when}"
+
+#: apps/mobile/app/native/my.tsx:1033
+msgid "이번 달 {count}그릇 집계 중 · {months}개월 비교"
+msgstr "本月已记录{count}碗 · 比较{months}个月"
+
+#: src/screens/MonthlyTasteScreen.tsx:85
+msgid "이번 달 {total}그릇 중 종류가 확인된 {typed}그릇 기준이에요."
+msgstr "基于本月{total}碗中已确认种类的{typed}碗。"
 
 #: src/components/MonthlyReportCard.tsx:34
 msgid "이번 달 {v0}그릇 이상 모이면 다음 달부터 달라진 비율을 비교할 수 있어요."
-msgstr ""
+msgstr "本月记录至少{v0}碗，下月起即可比较比例变化。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:190
+msgid "이번 달 {v1}그릇 이상 모이면 다음 달부터 달라진 비율을 비교할 수 있어요."
+msgstr "本月记录满{v1}碗，下月起即可比较类型占比变化。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:275
+msgid "이번 달 기록이 {v1}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요."
+msgstr "本月记录满{v1}碗，下月1日即可查看月报。仅在截止前或一周未记录时提醒。"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:253
+msgid "이번 달 기록이 {v1}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요."
+msgstr "本月记录满{v1}碗，下月1日即可查看月报。仅在截止前或一周未记录时提醒，可随时在设置中关闭。"
+
+#: src/screens/TasteDetailScreen.tsx:217
+msgid "이번에 남긴 기록"
+msgstr "本次新增的记录"
+
+#: src/screens/NewsFeedScreen.tsx:22
+msgid "이벤트"
+msgstr "活动"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:54
+#: apps/mobile/app/native/map.web.tsx:40
+#: packages/shared/src/i18n/labels.ts:13
+msgid "이에케"
+msgstr "家系"
+
+#: apps/mobile/app/native/map.web.tsx:40
+#: src/screens/MapScreen.tsx:78
+#: src/screens/RegisterScreen.tsx:28
+msgid "이에케 (돈코츠쇼유)"
+msgstr "家系（豚骨酱油）"
+
+#: packages/shared/src/i18n/labels.ts:60
+msgid "이에케파"
+msgstr "家系派"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:385
+#: apps/mobile/app/(flows)/legal/[doc].tsx:44
+#: apps/mobile/app/(flows)/settings.tsx:173
+#: apps/mobile/src/components/PolicySheet.tsx:38
+#: src/screens/HomeScreen.tsx:309
+msgid "이용약관"
+msgstr "使用条款"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1112
+#: apps/mobile/app/(flows)/record/new.tsx:1310
+#: src/screens/AIRecommendScreen.tsx:427
+msgid "이전"
+msgstr "上一步"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:324
+msgid "이전 기록"
+msgstr "之前的记录"
+
+#: apps/mobile/app/native/my.tsx:592
+msgid "이전 기록 더 보기"
+msgstr "查看更早记录"
+
+#: src/screens/MonthlyTasteScreen.tsx:93
+msgid "이전 기록과 달라진 메뉴"
+msgstr "与上次记录相比的菜单变化"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:485
+#: src/screens/MonthlyTasteScreen.tsx:120
+msgid "이전 기록과 메뉴 비율이 같아요."
+msgstr "与之前记录的类型占比相同。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:840
+msgid "이전 단계로"
+msgstr "上一步"
+
+#: src/screens/LoungeScreen.tsx:1346
+msgid "이전 사진"
+msgstr "上一张照片"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1305
+msgid "이전 질문"
+msgstr "上一题"
+
+#: src/screens/AIRecommendScreen.tsx:407
+msgid "이전에 받은 추천이에요. 조건을 바꾸려면 다시 추천받기를 눌러주세요."
+msgstr "这是之前的推荐。点击重新推荐可更改条件。"
+
+#: src/screens/LoungeScreen.tsx:306
+#: src/screens/LoungeScreen.tsx:348
+msgid "인기"
+msgstr "热门"
+
+#: apps/mobile/app/native/lounge.tsx:31
+#: apps/mobile/app/native/map.web.tsx:50
+msgid "인기순"
+msgstr "人气"
+
+#: apps/mobile/app/(flows)/record/new.tsx:134
+#: apps/mobile/src/domain/lounge.ts:116
+msgid "인생 라멘이에요"
+msgstr "人生挚爱拉面"
+
+#: src/screens/NewsFeedScreen.tsx:304
+msgid "인스타 원문"
+msgstr "Instagram原文"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:378
+#: src/screens/ShopDetailScreen.tsx:83
+msgid "인스타그램"
+msgstr "Instagram"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:44
+msgid "인터넷 연결을 확인하고 다시 시도해 주세요."
+msgstr "请检查网络连接后重试。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:200
+msgid "일 남았어요. "
+msgstr "天。 "
+
+#: src/screens/MapScreen.tsx:679
+msgid "일치도"
+msgstr "匹配度"
+
+#: src/screens/NotificationScreen.tsx:93
+msgid "읽지 않음, {type}: {title}"
+msgstr "未读, {type}：{title}"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:55
+#: src/screens/ShopDetailScreen.tsx:39
+msgid "임시 휴업"
+msgstr "暂停营业"
+
+#: src/screens/TasteDetailScreen.tsx:230
+msgid "입맛 5축"
+msgstr "口味五维"
+
+#: src/screens/TasteDetailScreen.tsx:50
+msgid "입맛 5축 레이더. {v0}"
+msgstr "口味五维雷达图。{v0}"
+
+#: src/screens/LoginScreen.tsx:124
+msgid "잊지 않도록"
+msgstr "美味的每一碗"
+
+#: src/screens/RegisterScreen.tsx:39
+msgid "자가제면 탐험가"
+msgstr "自制面探索者"
+
+#: src/screens/LoungeScreen.tsx:310
+msgid "자유"
+msgstr "闲聊"
+
+#: src/screens/MyScreen.tsx:89
+msgid "자유게시판"
+msgstr "闲聊区"
+
+#: apps/mobile/app/(flows)/record/new.tsx:155
+msgid "자주"
+msgstr "经常"
+
+#: src/screens/NotificationScreen.tsx:191
+msgid "자주 가는 라멘집을 찜하면 한정 메뉴와 휴무 소식을 받아볼 수 있습니다."
+msgstr "收藏常去的店，即可收到限定菜单和休息消息。"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:68
+msgid "자주 간 곳 "
+msgstr "常去店铺："
+
+#: apps/mobile/app/(flows)/taste/index.tsx:946
+#: src/screens/TasteDetailScreen.tsx:169
+#: src/screens/TasteDetailScreen.tsx:273
+#: src/screens/TasteDetailScreen.tsx:349
+msgid "자주 간 라멘집"
+msgstr "常去的拉面店"
+
+#: apps/mobile/app/(flows)/record/new.tsx:152
+#: packages/shared/src/i18n/labels.ts:42
+msgid "자주 갈래요"
+msgstr "想经常去"
+
+#: packages/shared/src/i18n/labels.ts:43
+msgid "자주 감"
+msgstr "经常去"
+
+#: src/screens/AIRecommendScreen.tsx:318
+msgid "자주 찾는 조건"
+msgstr "常用偏好"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:977
+msgid "자주 찾는 조건 "
+msgstr "常用条件 "
+
+#: apps/mobile/app/(flows)/record/new.tsx:1350
+msgid "작성 중인 기록이 있어요. 지금까지 고른 평가와 사진은 저장되지 않아요."
+msgstr "记录尚未完成，离开后已选评价和照片将不会保存。"
+
+#: src/screens/MyScreen.tsx:453
+msgid "작성글"
+msgstr "我的帖子"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1356
+#: src/screens/RecordScreen.tsx:729
+msgid "작성을 그만둘까요?"
+msgstr "放弃填写？"
+
+#: src/screens/MyScreen.tsx:686
+msgid "작성한 글"
+msgstr "我的帖子"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:113
+msgid "잠시 후 다시 시도해 주세요"
+msgstr "请稍后重试"
+
+#: apps/mobile/app/native/my.tsx:638
+#: apps/mobile/app/native/my.tsx:768
+msgid "잠시 후 다시 시도해 주세요."
+msgstr "请稍后重试。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:383
+#: apps/mobile/app/(flows)/record/select-shop.tsx:303
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:155
+#: apps/mobile/app/native/index.tsx:452
+#: apps/mobile/app/native/index.tsx:505
+#: apps/mobile/app/native/map.web.tsx:503
+msgid "잠시 후 다시 열어 주세요."
+msgstr "请稍后重新打开。"
+
+#: apps/mobile/app/native/lounge.tsx:133
+msgid "잠시 후 라운지를 다시 열어 주세요."
+msgstr "请稍后重新打开社区。"
+
+#: src/screens/RecordScreen.tsx:489
+msgid "장"
+msgstr "张"
+
+#: apps/mobile/app/native/my.tsx:1017
+msgid "장 이야기"
+msgstr "篇故事"
+
+#: apps/mobile/app/(flows)/record/new.tsx:144
+#: apps/mobile/src/components/LoungeLog.tsx:230
+msgid "재방문"
+msgstr "再访"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:240
+msgid "재방문 {v1}"
+msgstr "再次光顾：{v1}"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:241
+#: apps/mobile/src/domain/lounge.ts:127
+#: packages/shared/src/i18n/labels.ts:33
+#: src/screens/RecordCompleteScreen.tsx:131
+msgid "재방문 의사"
+msgstr "再访意愿"
+
+#: src/screens/RecordCompleteScreen.tsx:130
+msgid "재방문 의사 {v0}"
+msgstr "再访意愿：{v0}"
+
+#: apps/mobile/src/domain/record.ts:37
+msgid "재방문 의사를 골라주세요."
+msgstr "请选择再访意愿。"
+
+#: apps/mobile/app/native/index.tsx:47
+msgid "저녁"
+msgstr "晚餐"
+
+#: apps/mobile/app/(flows)/settings.tsx:242
+#: apps/mobile/app/native/my.tsx:860
+#: src/screens/MyScreen.tsx:798
+msgid "저장"
+msgstr "保存"
+
+#: src/screens/HomeScreen.tsx:65
+msgid "저장 목록에서 기록하기"
+msgstr "从收藏列表记录"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1329
+#: src/screens/MyScreen.tsx:798
+msgid "저장 중…"
+msgstr "正在保存…"
+
+#: src/screens/ShopDetailScreen.tsx:127
+msgid "저장 취소"
+msgstr "取消收藏"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:177
+msgid "저장된 기록을 다시 찾지 못했어요. 홈에서 라멘로그를 확인해 주세요."
+msgstr "找不到已保存的记录，请在首页查看拉面记录。"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:752
+#: src/screens/ShopDetailScreen.tsx:389
+msgid "저장됨"
+msgstr "已收藏"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:743
+msgid "저장됨, 가고 싶어요 취소"
+msgstr "已收藏，取消想去收藏"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1329
+msgid "저장하기"
+msgstr "保存"
+
+#: src/screens/RecordScreen.tsx:658
+msgid "저장하는 중…"
+msgstr "正在保存…"
+
+#: apps/mobile/app/(flows)/record/new.tsx:843
+#: apps/mobile/app/(flows)/record/new.tsx:1009
+msgid "저장하지 못했어요. {v1}"
+msgstr "保存失败。{v1}"
+
+#: src/screens/RecordScreen.tsx:633
+msgid "저장하지 못했어요. 연결을 확인한 뒤 다시 시도해주세요."
+msgstr "保存失败。请检查网络后重试。"
+
+#: apps/mobile/app/(flows)/settings.tsx:32
+msgid "저장하지 못했어요. 잠시 뒤 다시 시도해 주세요."
+msgstr "保存失败，请稍后重试。"
+
+#: apps/mobile/app/native/my.tsx:761
+#: src/screens/MyScreen.tsx:653
+msgid "저장한 라멘집 검색"
+msgstr "搜索收藏的拉面店"
+
+#: apps/mobile/app/native/my.tsx:764
+msgid "저장한 라멘집을 불러오는 중…"
+msgstr "正在加载收藏的拉面店…"
+
+#: apps/mobile/app/native/my.tsx:771
+msgid "저장한 라멘집을 불러오지 못했어요"
+msgstr "无法加载收藏的拉面店"
+
+#: apps/mobile/app/native/my.tsx:784
+#: apps/mobile/app/native/my.tsx:785
+msgid "저장한 매장 더 보기"
+msgstr "更多收藏店铺"
+
+#: apps/mobile/app/native/my.tsx:782
+msgid "저장한 매장 목록"
+msgstr "收藏的店铺列表"
+
+#: apps/mobile/src/components/TasteStory.tsx:49
+msgid "적당한 농도의 육수"
+msgstr "适中浓度的汤底"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:471
+msgid "적어 주신 조건은 매장 정보가 채워지는 대로 맞춰 드릴게요"
+msgstr "店铺信息完善后会匹配您的要求"
+
+#: apps/mobile/app/native/my.tsx:563
+#: src/screens/MyScreen.tsx:555
+msgid "적음"
+msgstr "少"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:94
+#: apps/mobile/app/native/lounge.tsx:181
+#: src/screens/LoungeScreen.tsx:305
+#: src/screens/NewsFeedScreen.tsx:19
+#: src/screens/NotificationScreen.tsx:169
+#: src/screens/RecordSheet.tsx:233
+#: src/screens/TasteDetailScreen.tsx:252
+#: src/screens/TasteDetailScreen.tsx:274
+msgid "전체"
+msgstr "全部"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:918
+msgid "전체 "
+msgstr "共"
+
+#: src/components/TasteReportCover.tsx:29
+msgid "전체 {count}그릇 기준"
+msgstr "基于共{count}碗"
+
+#: src/screens/TasteDetailScreen.tsx:133
+msgid "전체 {count}그릇으로 취향을 다시 정리했어요"
+msgstr "已根据全部{count}碗更新口味报告"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:822
+msgid "전체 {v1}그릇으로 취향을 다시 정리했어요"
+msgstr "已用全部{v1}碗更新口味分析"
+
+#: apps/mobile/app/native/lounge.tsx:179
+msgid "전체 라멘 종류"
+msgstr "全部拉面种类"
+
+#: src/screens/AICurationLoading.tsx:33
+msgid "전체 라멘집에서 골라요"
+msgstr "从全部拉面店中挑选"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:421
+msgid "전체 라멘집으로 넓혀서 골라 봤어요"
+msgstr "已扩大至所有拉面店进行挑选"
+
+#: apps/mobile/src/domain/lounge.ts:123
+#: packages/shared/src/i18n/labels.ts:29
+msgid "전체 만족도"
+msgstr "整体满意度"
+
+#: apps/mobile/app/(flows)/record/new.tsx:106
+msgid "전체 만족도는 어땠나요?"
+msgstr "整体满意度如何？"
+
+#: apps/mobile/src/domain/record.ts:33
+msgid "전체 만족도를 골라주세요."
+msgstr "请选择整体满意度。"
+
+#: src/screens/LoungeScreen.tsx:1137
+#: src/screens/LoungeScreen.tsx:1173
+msgid "전체 매장"
+msgstr "全部店铺"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:312
+#: apps/mobile/app/native/lounge.tsx:140
+msgid "전체 보기"
+msgstr "查看全部"
+
+#: apps/mobile/app/native/map.web.tsx:30
+#: apps/mobile/app/native/map.web.tsx:30
+#: src/screens/MapScreen.tsx:68
+msgid "전체 지역"
+msgstr "全部地区"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:352
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:769
+msgid "전화"
+msgstr "电话"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:690
+msgid "전화를 걸어요"
+msgstr "拨打电话"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:696
+#: src/screens/ShopDetailScreen.tsx:307
+msgid "전화번호"
+msgstr "电话号码"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:691
+msgid "전화번호, {v1}"
+msgstr "电话：{v1}"
+
+#: apps/mobile/app/native/index.tsx:46
+msgid "점심"
+msgstr "午餐"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:364
+msgid "접기"
+msgstr "收起"
+
+#: src/screens/LoginScreen.tsx:218
+msgid "접속 중"
+msgstr "正在连接"
+
+#: apps/mobile/app/native/map.web.tsx:517
+#: apps/mobile/app/native/my.tsx:663
+#: src/screens/LoungeScreen.tsx:1221
+#: src/screens/MapScreen.tsx:700
+#: src/screens/MyScreen.tsx:602
+msgid "정렬"
+msgstr "排序"
+
+#: apps/mobile/app/native/lounge.tsx:210
+msgid "정렬 메뉴 닫기"
+msgstr "关闭排序菜单"
+
+#: apps/mobile/app/native/lounge.tsx:160
+msgid "정렬 및 라멘 종류"
+msgstr "排序和拉面种类"
+
+#: apps/mobile/app/native/lounge.tsx:170
+msgid "정렬, {p0}"
+msgstr "排序，{p0}"
+
+#: src/screens/TasteReportLoading.tsx:71
+msgid "정리하고 있어요"
+msgstr "你的拉面口味"
+
+#: src/screens/LoungeScreen.tsx:765
+msgid "제목"
+msgstr "标题"
+
+#: src/screens/LoungeScreen.tsx:772
+msgid "제목을 입력하세요"
+msgstr "请输入标题"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1103
+msgid "조건 바꿔 다시 고르기"
+msgstr "更改条件重新选择"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:315
+msgid "조건에 맞는 가게가 없어요"
+msgstr "没有符合条件的店铺"
+
+#: src/screens/RecordSheet.tsx:247
+msgid "조건에 맞는 가게가 없어요."
+msgstr "没有符合条件的店铺。"
+
+#: apps/mobile/app/native/map.web.tsx:387
+#: src/screens/MapScreen.tsx:688
+msgid "조건에 맞는 라멘집이 없어요"
+msgstr "没有符合条件的拉面店"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1337
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1341
+msgid "조건에 맞는 한 그릇을\n"
+"찾는 중"
+msgstr "正在寻找\n"
+"符合条件的一碗"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1335
+msgid "조건에 맞는 한 그릇을 찾는 중"
+msgstr "正在寻找符合条件的一碗"
+
+#: apps/mobile/app/(flows)/record/new.tsx:137
+#: apps/mobile/src/domain/lounge.ts:119
+msgid "조금 아쉬움"
+msgstr "稍欠缺"
+
+#: src/screens/LoungeScreen.tsx:966
+msgid "조회"
+msgstr "浏览"
+
+#: apps/mobile/app/native/my.tsx:1101
+#: src/screens/MonthlyTasteScreen.tsx:104
+msgid "종류"
+msgstr "种"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:426
+msgid "종류 "
+msgstr "类型 "
+
+#: apps/mobile/app/native/my.tsx:1100
+msgid "종류별 기록"
+msgstr "按种类查看记录"
+
+#: src/components/MonthlyTastePreview.tsx:30
+msgid "종류별 분포"
+msgstr "种类分布"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:416
+#: src/screens/MonthlyTasteScreen.tsx:93
+#: src/screens/TasteDetailScreen.tsx:251
+msgid "종류별로 먹은 라멘"
+msgstr "按类型统计拉面"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:916
+msgid "종류별로 먹은 라멘 "
+msgstr "各类型拉面 "
+
+#: apps/mobile/app/(flows)/taste/index.tsx:118
+#: src/components/TasteReportCover.tsx:28
+msgid "종합 리포트"
+msgstr "综合报告"
+
+#: src/components/TasteReportCover.tsx:60
+msgid "종합 리포트 보기"
+msgstr "查看综合报告"
+
+#: apps/mobile/app/native/my.tsx:1001
+msgid "종합 리포트 보기. {p0}, {p1}그릇을 기록했어요, {p2}곳을 다녔어요. {p3}장 이야기"
+msgstr "查看综合报告。{p0}，记录{p1}碗，去过{p2}家店。{p3}篇故事"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:648
+#: src/screens/TasteReportLoading.tsx:65
+msgid "종합 취향 리포트"
+msgstr "综合口味报告"
+
+#: src/screens/LoungeScreen.tsx:955
+msgid "좋아요"
+msgstr "赞"
+
+#: src/screens/LoungeScreen.tsx:1603
+msgid "좋아요 취소, {v0}개"
+msgstr "取消点赞，{v0}个赞"
+
+#: src/screens/LoungeScreen.tsx:1603
+msgid "좋아요, {v0}개"
+msgstr "点赞，{v0}个赞"
+
+#: src/screens/LoungeScreen.tsx:1216
+#: src/screens/LoungeScreen.tsx:1238
+msgid "좋아요순"
+msgstr "最多赞"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:358
+msgid "좋았던 한 그릇, 잊지 않도록 "
+msgstr "记住每一碗美味 "
+
+#: src/screens/LoginScreen.tsx:123
+msgid "좋았던 한 그릇을"
+msgstr "记住"
+
+#: apps/mobile/app/(flows)/record/new.tsx:137
+#: apps/mobile/src/domain/lounge.ts:119
+msgid "좋음"
+msgstr "不错"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:49
+#: src/screens/RecordSheet.tsx:68
+msgid "주변"
+msgstr "附近"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:234
+#: apps/mobile/app/(flows)/record/select-shop.tsx:236
+msgid "주변 가게"
+msgstr "附近店铺"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:275
+msgid "주변 가게의 거리와 영업 상태 조건을 고를 수 있어요"
+msgstr "按距离和营业状态筛选附近店铺"
+
+#: apps/mobile/src/components/RecordMenu.tsx:20
+#: src/screens/HomeScreen.tsx:64
+msgid "주변 라멘집 기록하기"
+msgstr "记录附近的拉面店"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:309
+msgid "주변에 등록된 가게가 아직 없어요"
+msgstr "附近暂无已收录店铺"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:637
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:648
+#: src/screens/ShopDetailScreen.tsx:242
+msgid "주소"
+msgstr "地址"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:649
+#: src/screens/ShopDetailScreen.tsx:243
+msgid "주소 정보가 아직 없어요"
+msgstr "暂无地址信息"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:632
+msgid "주소, {v1}"
+msgstr "地址：{v1}"
 
 #: apps/mobile/app/native/_layout.tsx:110
+#: src/App.tsx:740
 msgid "주요 메뉴"
-msgstr ""
+msgstr "主导航"
+
+#: src/screens/AIRecommendScreen.tsx:60
+msgid "주차 가능한 곳"
+msgstr "可以停车"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:84
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:53
+#: apps/mobile/app/native/index.tsx:37
+#: apps/mobile/app/native/map.web.tsx:68
+#: apps/mobile/src/domain/hours.ts:178
+#: src/screens/HomeScreen.tsx:26
+#: src/screens/MapScreen.tsx:55
+#: src/screens/RecordSheet.tsx:91
+#: src/screens/ShopDetailScreen.tsx:37
+msgid "준비 중"
+msgstr "准备中"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:67
+msgid "줄 서도 가는 곳"
+msgstr "排队也想吃"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:481
+msgid "줄었어요"
+msgstr "下降"
+
+#: apps/mobile/app/(flows)/record/new.tsx:135
+#: apps/mobile/app/(flows)/record/new.tsx:136
+#: apps/mobile/src/domain/lounge.ts:117
+#: apps/mobile/src/domain/lounge.ts:118
+#: apps/mobile/src/domain/shopTaste.ts:36
+#: apps/mobile/src/domain/shopTaste.ts:37
+msgid "중간"
+msgstr "适中"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:176
+msgid "중요"
+msgstr "重点"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1126
+msgid "중요한 요소를 골라주세요"
+msgstr "请选择最看重的特点"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:438
+#: src/screens/MonthlyTasteScreen.tsx:111
+msgid "증가"
+msgstr "上升"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:89
+#: src/screens/AIRecommendScreen.tsx:187
+msgid "지금 갈 수 있는 곳과 여유 있는 방문을 구분해 추천해요."
+msgstr "根据即刻用餐或悠闲到店的情况推荐。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:459
+#: src/screens/AIRecommendScreen.tsx:154
+msgid "지금 영업 중"
+msgstr "当前营业中"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:433
+#: src/screens/AIRecommendScreen.tsx:128
+msgid "지금 영업 중이고 가까운 곳을 우선했어요"
+msgstr "优先选择附近正在营业的店"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:82
+msgid "지금 영업 중인 곳"
+msgstr "正在营业"
+
+#: apps/mobile/src/components/TasteStory.tsx:133
+msgid "지금까지"
+msgstr "截至目前"
+
+#: src/screens/RecordScreen.tsx:730
+msgid "지금까지 고른 평가와 사진은 저장되지 않아요."
+msgstr "目前选择的评分和照片将不会保存。"
+
+#: apps/mobile/app/native/my.tsx:1060
+#: packages/shared/src/i18n/labels.ts:108
+msgid "지금까지 뽑은 AI 식권을 날짜별로 다시 봐요"
+msgstr "按日期回顾已领取的AI餐券"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:112
+msgid "지금은 AI 추천을 만들 수 없어 인기 라멘집을 보여드려요"
+msgstr "暂时无法生成AI推荐，为您展示热门拉面店"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:67
 msgid "지금은 보여줄 가게가 없어요"
-msgstr ""
+msgstr "暂时没有可显示的店铺"
 
 #: apps/mobile/app/(flows)/tickets.tsx:67
+#: apps/mobile/app/native/my.tsx:1061
+#: apps/mobile/app/native/my.tsx:1071
+#: packages/shared/src/i18n/labels.ts:105
 msgid "지난 식권"
-msgstr ""
+msgstr "历史餐券"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:130
+#: packages/shared/src/i18n/labels.ts:106
 msgid "지난 식권 보기"
-msgstr ""
+msgstr "查看历史餐券"
 
 #: apps/mobile/app/(flows)/tickets.tsx:48
+#: packages/shared/src/i18n/labels.ts:112
 msgid "지난 식권을 불러오지 못했어요"
-msgstr ""
+msgstr "未能加载历史餐券"
 
+#: apps/mobile/app/(flows)/taste/archive.tsx:324
+msgid "지난달"
+msgstr "上个月"
+
+#: src/screens/MonthlyTasteScreen.tsx:93
+msgid "지난달과 달라진 메뉴"
+msgstr "与上个月相比的菜单变化"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:208
 #: src/components/MonthlyReportCard.tsx:28
 msgid "지난달과 비교 가능"
-msgstr ""
+msgstr "可与上个月比较"
 
+#: apps/mobile/app/(flows)/taste/archive.tsx:202
 #: src/components/MonthlyReportCard.tsx:28
 msgid "지난달과 비교하는 데 필요한 기록"
-msgstr ""
+msgstr "与上个月比较所需的记录"
 
 #: apps/mobile/src/notifications/reminders.ts:92
 msgid "지난주에 먹은 라멘, 남겨볼까요?"
-msgstr ""
+msgstr "记录一下上周吃的拉面吧？"
 
 #: apps/mobile/app/native/_layout.tsx:148
+#: apps/mobile/app/native/map.web.tsx:271
+#: packages/shared/src/i18n/labels.ts:26
+#: src/App.tsx:297
+#: src/screens/MapScreen.tsx:520
 msgid "지도"
-msgstr ""
+msgstr "地图"
+
+#: apps/mobile/app/native/map.web.tsx:264
+#: src/screens/MapScreen.tsx:517
+msgid "지도로 보기"
+msgstr "查看地图"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:154
+msgid "지도에서 다시 찾기"
+msgstr "在地图中查找"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:360
+#: apps/mobile/app/native/index.tsx:557
+#: apps/mobile/app/native/index.tsx:563
+#: src/screens/HomeScreen.tsx:268
+msgid "지도에서 보기"
+msgstr "在地图上查看"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:57
+#: src/screens/RegisterScreen.tsx:45
+msgid "지도에서 영업 여부와 라스트오더를 확인하고 바로 찾아가요."
+msgstr "在地图上确认营业状态和最后点餐时间后直接前往。"
+
+#: apps/mobile/app/native/map.web.tsx:640
+msgid "지도와 현재 위치는 앱에서 보여드려요. 여기서는 목록으로 볼 수 있어요."
+msgstr "地图和当前位置可在应用中查看。这里可浏览列表。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:59
+#: apps/mobile/app/native/map.web.tsx:45
+#: packages/shared/src/i18n/labels.ts:18
+msgid "지로"
+msgstr "二郎系"
+
+#: apps/mobile/app/native/map.web.tsx:45
+msgid "지로 (지로계)"
+msgstr "二郎系"
+
+#: apps/mobile/app/native/map.web.tsx:343
+#: src/screens/MapScreen.tsx:544
+msgid "지역 선택"
+msgstr "选择地区"
+
+#: apps/mobile/app/native/map.web.tsx:280
+msgid "지역 필터: {p0}"
+msgstr "地区筛选：{p0}"
+
+#: src/screens/MapScreen.tsx:533
+msgid "지역 필터: {v0}"
+msgstr "地区筛选：{v0}"
+
+#: apps/mobile/app/native/map.web.tsx:279
+msgid "지역을 골라요"
+msgstr "选择地区"
+
+#: apps/mobile/app/(flows)/record/new.tsx:966
+msgid "지워졌거나 볼 수 없는 기록이에요."
+msgstr "该记录已删除或无法查看。"
+
+#: apps/mobile/src/components/RecordMenu.tsx:22
+#: src/screens/HomeScreen.tsx:66
+msgid "직접 검색해서 기록하기"
+msgstr "搜索店铺并记录"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:73
+msgid "직접 뽑은 면"
+msgstr "店内自制面"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:467
+#: src/screens/AIRecommendScreen.tsx:158
+msgid "직접 입력: {prompt}"
+msgstr "自定义：{prompt}"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:86
+msgid "진하게"
+msgstr "更浓郁"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:72
+#: src/screens/AIRecommendScreen.tsx:50
+msgid "진하고 묵직한 국물"
+msgstr "浓郁厚重的汤底"
+
+#: packages/shared/src/i18n/labels.ts:57
+msgid "진한"
+msgstr "浓郁"
+
+#: packages/shared/src/domain/identity.ts:66
+msgid "진한 {typeWord}"
+msgstr "浓郁{typeWord}"
+
+#: src/screens/RegisterScreen.tsx:38
+msgid "진한 국물파"
+msgstr "浓汤派"
+
+#: apps/mobile/src/components/TasteStory.tsx:49
+#: packages/shared/src/domain/identity.ts:58
+msgid "진한 육수"
+msgstr "浓郁汤底"
+
+#: apps/mobile/app/native/index.tsx:143
+msgid "진한 육수 취향"
+msgstr "偏爱浓郁汤底"
+
+#: apps/mobile/app/(flows)/record/new.tsx:135
+#: apps/mobile/src/domain/lounge.ts:117
+#: apps/mobile/src/domain/shopTaste.ts:36
+msgid "진한 편"
+msgstr "偏浓郁"
+
+#: packages/shared/src/i18n/labels.ts:37
+msgid "진함"
+msgstr "浓郁"
+
+#: packages/shared/src/i18n/labels.ts:121
+msgid "진해요"
+msgstr "浓郁"
+
+#: packages/shared/src/i18n/labels.ts:133
+msgid "짭짤해요"
+msgstr "偏咸"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:60
+#: src/screens/AIRecommendScreen.tsx:35
+msgid "찍어 먹는 면"
+msgstr "蘸汤面"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:303
+msgid "찜을 바꾸지 못했어요. 다시 시도해 주세요."
+msgstr "收藏更新失败，请重试。"
+
+#: apps/mobile/app/native/my.tsx:251
+#: packages/shared/src/i18n/labels.ts:95
+msgid "찜을 해제하지 못했어요. 다시 시도해 주세요."
+msgstr "未能取消收藏，请重试。"
+
+#: packages/shared/src/i18n/labels.ts:94
+msgid "찜하지 못했어요. 다시 시도해 주세요."
+msgstr "未能收藏店铺，请重试。"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:50
+#: src/screens/RecordSheet.tsx:69
+#: src/screens/RecordSheet.tsx:262
+msgid "찜한 가게"
+msgstr "收藏店铺"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:288
+msgid "찜한 가게 {v1}곳"
+msgstr "已收藏{v1}家店"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:322
+msgid "찜한 가게가 없어요"
+msgstr "暂无收藏店铺"
+
+#: src/screens/RecordSheet.tsx:257
+msgid "찜한 가게가 없어요."
+msgstr "还没有收藏的店铺。"
+
+#: apps/mobile/src/components/RecordMenu.tsx:21
+msgid "찜한 가게에서 기록하기"
+msgstr "记录收藏的店铺"
+
+#: src/screens/NotificationScreen.tsx:117
+msgid "찜한 라멘집의 한정 메뉴, 휴무 소식"
+msgstr "收藏店铺的限定菜单和休息通知"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:461
+#: src/screens/AIRecommendScreen.tsx:156
+msgid "차슈"
+msgstr "叉烧"
+
+#: packages/shared/src/i18n/labels.ts:136
+msgid "차슈 좋아요"
+msgstr "叉烧好吃"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:81
+#: src/screens/AIRecommendScreen.tsx:59
+msgid "차슈가 푸짐한 곳"
+msgstr "叉烧丰富"
+
+#: src/screens/RegisterScreen.tsx:19
+msgid "차슈러버"
+msgstr "叉烧爱好者"
+
+#: src/screens/AIRecommendScreen.tsx:397
+msgid "참고만"
+msgstr "仅供参考"
+
+#: src/screens/AICurationLoading.tsx:31
+msgid "찾고 있어요"
+msgstr "今天的一碗"
+
+#: src/screens/MyScreen.tsx:817
+msgid "처리 중…"
+msgstr "处理中…"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:142
+msgid "처음 {date}"
+msgstr "首次{date}"
+
+#: apps/mobile/app/native/index.tsx:265
+msgid "처음이라면 여기부터"
+msgstr "第一次就从这里开始"
+
+#: apps/mobile/app/(flows)/auth/login.tsx:383
+msgid "처음이면 간편 로그인 뒤 닉네임과 약관 동의만 하면 가입이 끝나요. "
+msgstr "首次使用？快捷登录后设置昵称并同意条款即可完成注册。 "
+
+#: src/screens/RecordScreen.tsx:514
+msgid "첨부 사진 {v0}"
+msgstr "已添加照片{v0}"
+
+#: src/screens/LoungeScreen.tsx:806
+msgid "첨부한 사진 미리보기"
+msgstr "已添加照片预览"
+
+#: src/screens/RecordCompleteScreen.tsx:153
+msgid "첫 그릇"
+msgstr "第一碗"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:908
+#: apps/mobile/app/native/my.tsx:644
+#: apps/mobile/app/native/my.tsx:992
+msgid "첫 그릇 기록하기"
+msgstr "记录第一碗"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:902
+msgid "첫 그릇을 기록하면\n"
+"취향과 종류별 분포가 여기에 쌓여요."
+msgstr "记录第一碗后，\n"
+"口味分析和类型分布会显示在这里。"
+
+#: packages/shared/src/domain/identity.ts:50
+#: packages/shared/src/i18n/labels.ts:55
+msgid "첫 그릇을 기록하면 어떤 라멘을 좋아하는지 보여드려요."
+msgstr "记录第一碗拉面，发现你的口味偏好。"
+
+#: apps/mobile/app/native/my.tsx:645
+msgid "첫 그릇을 남기면 여기에 쌓여요."
+msgstr "记录第一碗后，就会在这里显示。"
+
+#: src/screens/LoungeScreen.tsx:1562
+msgid "첫 글을 올려 라멘러들과 이야기를 시작해 보세요."
+msgstr "发布第一篇帖子，与拉面爱好者交流。"
+
+#: src/screens/RecordCompleteScreen.tsx:175
+msgid "첫 기록"
+msgstr "首次记录"
+
+#: src/screens/ShopDetailScreen.tsx:371
+msgid "첫 기록 남기기"
+msgstr "留下第一条记录"
+
+#: packages/shared/src/i18n/labels.ts:53
+msgid "첫 기록 전"
+msgstr "尚无记录"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:67
+msgid "첫 기록이에요."
+msgstr "这是您的第一条记录。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:279
+#: src/screens/MonthlyTasteScreen.tsx:144
+msgid "첫 달의 메뉴부터 모아볼까요?"
+msgstr "从第一个月的记录开始吧？"
+
+#: src/screens/LoungeScreen.tsx:982
+#: src/screens/LoungeScreen.tsx:1481
+msgid "첫 댓글을 남겨 대화를 시작해 보세요."
+msgstr "留下第一条评论，开始交流。"
+
+#: apps/mobile/app/(flows)/log/[logId].tsx:426
+msgid "첫 댓글을 남겨 대화를 시작해 보세요. "
+msgstr "留下第一条评论，开启交流吧。 "
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:340
+#: src/screens/MonthlyTasteScreen.tsx:99
+msgid "첫 월별 기록이에요. 다음 달부터 변화를 비교해요."
+msgstr "这是第一个月的记录，下月起可比较变化。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:75
+msgid "청탕 · 맑은 국물"
+msgstr "清汤 · 清澈汤底"
+
+#: apps/mobile/app/native/my.tsx:584
+#: src/screens/MapScreen.tsx:698
+msgid "총"
+msgstr "共"
+
+#: src/screens/MonthlyTasteScreen.tsx:80
+msgid "총 {total}그릇 중 {styles}가 공동 1위예요."
+msgstr "在总共{total}碗中，{styles}并列第一。"
+
+#: src/screens/MonthlyTasteScreen.tsx:81
+msgid "총 {total}그릇 중 {styles}를 {count}그릇으로 가장 많이 먹었어요."
+msgstr "在总共{total}碗中，{styles}吃得最多，共{count}碗。"
+
+#: src/screens/MyScreen.tsx:491
+msgid "총 라멘로그"
+msgstr "拉面记录总数"
+
+#: apps/mobile/app/native/my.tsx:303
+msgid "총 라멘로그 {count}그릇"
+msgstr "共{count}碗拉面记录"
+
+#: packages/shared/src/i18n/labels.ts:35
+msgid "최고"
+msgstr "非常满意"
+
+#: src/screens/MyScreen.tsx:498
+msgid "최고 등급"
+msgstr "最高等级"
+
+#: apps/mobile/app/native/my.tsx:434
+#: apps/mobile/app/native/my.tsx:444
+msgid "최고 등급이에요"
+msgstr "已达到最高等级"
+
+#: src/screens/MyScreen.tsx:566
+msgid "최근"
+msgstr "最近"
+
+#: apps/mobile/app/(flows)/my-type/[type].tsx:142
+msgid "최근 {date}"
+msgstr "最近{date}"
+
+#: apps/mobile/app/native/my.tsx:175
+#: apps/mobile/app/native/my.tsx:176
+#: src/screens/MyScreen.tsx:386
+msgid "최근 1년"
+msgstr "最近一年"
+
+#: apps/mobile/app/native/my.tsx:581
+#: src/screens/MyScreen.tsx:565
+msgid "최근 기록"
+msgstr "最近记录"
+
+#: apps/mobile/app/native/my.tsx:589
+msgid "최근 기록 목록"
+msgstr "最近记录列表"
+
+#: src/components/TasteReportCover.tsx:61
+#: src/screens/TasteDetailScreen.tsx:312
+msgid "최근 기록으로 다시 정리"
+msgstr "根据最近记录更新"
+
+#: apps/mobile/app/native/lounge.tsx:30
+#: apps/mobile/app/native/my.tsx:667
+#: src/screens/LoungeScreen.tsx:1216
+#: src/screens/LoungeScreen.tsx:1238
+#: src/screens/MyScreen.tsx:605
+msgid "최신순"
+msgstr "最新"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:177
+msgid "추가"
+msgstr "追加"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1001
+msgid "추가 감정"
+msgstr "补充感想"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1013
+msgid "추가 감정도 함께 발행돼요"
+msgstr "补充感想也会一同保存"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:961
+msgid "추가 조건"
+msgstr "其他条件"
+
+#: apps/mobile/app/native/index.tsx:529
+msgid "추천 {p0}위, {p1}{p2}, {p3}, 매장 상세 보기"
+msgstr "推荐第{p0}名，{p1}{p2}，{p3}，查看店铺"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1406
+#: src/screens/AICurationLoading.tsx:59
+msgid "추천 바로 보기"
+msgstr "立即查看推荐"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1050
+msgid "추천 이유 "
+msgstr "推荐理由 "
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1329
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1399
+#: src/screens/AICurationLoading.tsx:25
+msgid "추천 조건으로 돌아가기"
+msgstr "返回推荐条件"
+
+#: src/screens/AIRecommendScreen.tsx:384
+msgid "추천에 쓴 조건"
+msgstr "已使用的条件"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1062
+msgid "추천에 쓴 조건 "
+msgstr "推荐参考条件 "
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1308
+msgid "추천을 가져오지 못했어요. 고른 조건은 그대로예요"
+msgstr "无法获取推荐，已保留您选择的条件"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:996
+msgid "추천할 라멘집을 찾지 못했어요"
+msgstr "未找到合适的拉面店"
+
+#: src/screens/MapScreen.tsx:635
+msgid "축소"
+msgstr "缩小"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1150
+#: apps/mobile/app/(flows)/log/[logId].tsx:273
+#: apps/mobile/app/(flows)/log/[logId].tsx:412
+#: apps/mobile/app/(flows)/record/new.tsx:898
+#: apps/mobile/app/(flows)/record/new.tsx:909
+#: apps/mobile/app/(flows)/record/select-shop.tsx:229
+#: apps/mobile/app/(flows)/settings.tsx:241
+#: apps/mobile/src/components/LoungeLog.tsx:513
+#: apps/mobile/src/components/RecordMenu.tsx:58
+#: apps/mobile/src/components/ui/index.tsx:1218
+#: src/screens/LoungeScreen.tsx:654
+#: src/screens/MyScreen.tsx:242
+#: src/screens/MyScreen.tsx:797
+msgid "취소"
+msgstr "取消"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:207
+#: src/screens/RecordCompleteScreen.tsx:92
+#: src/screens/RecordCompleteScreen.tsx:94
+msgid "취향 기록지"
+msgstr "口味记录表"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:864
+msgid "취향 리포트 공유"
+msgstr "分享口味报告"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:289
+msgid "취향 리포트 보기"
+msgstr "查看口味报告"
+
+#: src/screens/RecordCompleteScreen.tsx:151
+msgid "취향 여권 변화"
+msgstr "口味护照变化"
+
+#: src/screens/AIRecommendScreen.tsx:358
+msgid "취향 일치도"
+msgstr "口味匹配度"
+
+#: src/screens/HomeScreen.tsx:212
+msgid "취향 일치도 순"
+msgstr "按口味匹配度"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:870
+#: src/screens/TasteDetailScreen.tsx:205
+msgid "취향 종합 리포트"
+msgstr "综合口味报告"
+
+#: src/screens/TasteDetailScreen.tsx:186
+msgid "취향 카드 내용을 복사했어요"
+msgstr "口味卡片内容已复制"
+
+#: src/components/TasteReportCover.tsx:39
+msgid "취향 특징"
+msgstr "口味特点"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:126
+msgid "취향 특징: {v1}"
+msgstr "口味特点：{v1}"
+
+#: src/screens/MapScreen.tsx:701
+msgid "취향순"
+msgstr "口味匹配"
+
+#: apps/mobile/app/(flows)/taste/index.tsx:874
+msgid "취향을 불러오는 중…"
+msgstr "正在加载口味资料…"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:60
+#: packages/shared/src/i18n/labels.ts:19
+#: src/screens/RegisterScreen.tsx:32
+msgid "츠케멘"
+msgstr "蘸面"
+
+#: apps/mobile/app/(flows)/record/new.tsx:851
+msgid "카메라 접근 권한이 필요해요"
+msgstr "需要相机访问权限"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1139
+msgid "카메라나 사진 보관함에서 가져와요"
+msgstr "拍照或从相册中选择"
+
+#: apps/mobile/app/(flows)/record/new.tsx:898
+#: apps/mobile/app/(flows)/record/new.tsx:907
+msgid "카메라로 촬영"
+msgstr "拍照"
+
+#: src/screens/LoginScreen.tsx:146
+msgid "카카오 로그인 중"
+msgstr "正在通过Kakao登录"
 
 #: apps/mobile/src/auth/social.ts:66
+#: packages/shared/src/i18n/labels.ts:84
 msgid "카카오 로그인이 설정되지 않았어요."
-msgstr ""
+msgstr "尚未配置Kakao登录。"
 
+#: apps/mobile/app/(flows)/auth/login.tsx:192
+msgid "카카오로 계속하기"
+msgstr "通过Kakao继续"
+
+#: src/screens/LoginScreen.tsx:148
+msgid "카카오로 시작하기"
+msgstr "通过Kakao继续"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:369
+#: src/screens/ShopDetailScreen.tsx:84
+msgid "캐치테이블"
+msgstr "Catch Table"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:370
+msgid "캐치테이블에서 예약·웨이팅을 해요"
+msgstr "通过Catch Table预约或排队"
+
+#: src/screens/MyScreen.tsx:526
+msgid "캘린더 기간"
+msgstr "日历期间"
+
+#: apps/mobile/app/native/my.tsx:488
+msgid "캘린더 기간 {p0}"
+msgstr "日历范围：{p0}"
+
+#: src/screens/LoungeScreen.tsx:1116
+msgid "커뮤니티"
+msgstr "社区"
+
+#: src/screens/LoungeScreen.tsx:595
+msgid "커뮤니티에 글을 올렸습니다."
+msgstr "帖子已发布到社区。"
+
+#: packages/shared/src/i18n/labels.ts:126
+msgid "탄력 있어요"
+msgstr "有嚼劲"
+
+#: packages/shared/src/i18n/labels.ts:20
+msgid "탄탄멘"
+msgstr "担担面"
+
+#: apps/mobile/app/(flows)/settings.tsx:304
+#: src/screens/MyScreen.tsx:817
+msgid "탈퇴하기"
+msgstr "注销账号"
+
+#: apps/mobile/app/(flows)/settings.tsx:308
+#: src/screens/MyScreen.tsx:823
+msgid "탈퇴하면 바로 로그아웃되고, 30일 뒤 같은 계정으로 다시 가입할 수 있어요."
+msgstr "注销后会立即退出登录，30天后可使用同一账号重新注册。"
+
+#: apps/mobile/app/(flows)/settings.tsx:112
+msgid "탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요."
+msgstr "注销失败，请稍后重试。"
+
+#: packages/shared/src/i18n/labels.ts:64
+msgid "탐험파"
+msgstr "探索派"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:73
+#: src/screens/AIRecommendScreen.tsx:51
+msgid "탱글탱글 자가제면"
+msgstr "弹牙自制面"
+
+#: apps/mobile/src/components/RecordMenu.tsx:48
+msgid "테스트 알림을 예약했어요"
+msgstr "已安排测试通知"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:57
+#: apps/mobile/app/native/map.web.tsx:43
+#: packages/shared/src/i18n/labels.ts:16
+msgid "토리파이탄"
+msgstr "鸡白汤"
+
+#: apps/mobile/app/native/map.web.tsx:43
+#: src/screens/MapScreen.tsx:81
+#: src/screens/RegisterScreen.tsx:29
+msgid "토리파이탄 (닭백탕)"
+msgstr "鸡白汤"
+
+#: apps/mobile/src/api/client.ts:507
+#: packages/shared/src/i18n/labels.ts:75
+msgid "토큰을 다시 받지 못했어요."
+msgstr "无法续期登录状态，请重新登录。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:143
+#: apps/mobile/src/components/ShopTasteCard.tsx:62
+#: apps/mobile/src/domain/lounge.ts:126
+#: packages/shared/src/i18n/labels.ts:32
+#: src/types.ts:60
+msgid "토핑"
+msgstr "配料"
+
+#: packages/shared/src/domain/identity.ts:60
+#: packages/shared/src/i18n/labels.ts:68
+msgid "토핑 중시"
+msgstr "注重配料"
+
+#: apps/mobile/app/(flows)/record/new.tsx:109
+msgid "토핑은 어땠나요?"
+msgstr "配料如何？"
+
+#: apps/mobile/src/domain/record.ts:36
+msgid "토핑을 골라주세요."
+msgstr "请选择配料。"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:74
+msgid "토핑이 주인공"
+msgstr "配料是主角"
+
+#: src/screens/AIRecommendScreen.tsx:373
+#: src/screens/ShopDetailScreen.tsx:188
+msgid "특징"
+msgstr "特色"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:565
+msgid "특징: {v1}"
+msgstr "特点：{v1}"
+
+#: packages/shared/src/i18n/labels.ts:139
+msgid "파 향 좋아요"
+msgstr "葱香浓郁"
+
+#: src/screens/LoginScreen.tsx:183
+msgid "패스키 인증 중"
+msgstr "正在验证通行密钥"
+
+#: src/screens/LoginScreen.tsx:185
+msgid "패스키로 시작하기"
+msgstr "使用通行密钥继续"
+
+#: src/screens/RecordCompleteScreen.tsx:184
+msgid "평소 평균과 같은 점수를 줘서"
+msgstr "本次评分与平时平均分相同，"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:88
+#: packages/shared/src/i18n/labels.ts:115
+msgid "평소보다 면을 단단하게 느낀 그릇이에요."
+msgstr "这碗的面比平时更硬。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:88
+#: packages/shared/src/i18n/labels.ts:116
+msgid "평소보다 면을 부드럽게 느낀 그릇이에요."
+msgstr "这碗的面比平时更软。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:86
+msgid "평소보다 육수를 {v1} 느낀 그릇이에요."
+msgstr "这碗的汤底比平时{v1}。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:92
+msgid "평소보다 재방문 의사를 {v1} 남긴 그릇이에요."
+msgstr "这碗的再次光顾意愿比平时{v1}。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:84
+msgid "평소보다 전체 만족도를 {v1} 남긴 그릇이에요."
+msgstr "这碗的整体满意度评分比平时{v1}。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:90
+msgid "평소보다 토핑 점수를 {v1} 남긴 그릇이에요."
+msgstr "这碗的配料评分比平时{v1}。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:79
+msgid "평소와 비슷한 점수로 남긴 그릇이에요."
+msgstr "这碗的评分与平时相近。"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:57
+#: src/screens/ShopDetailScreen.tsx:41
+msgid "폐업"
+msgstr "已停业"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:221
+#: apps/mobile/app/native/my.tsx:955
+msgid "프로필 사진"
+msgstr "头像"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:402
+msgid "프로필 사진 (선택)"
+msgstr "头像（选填）"
+
+#: apps/mobile/app/native/my.tsx:870
+msgid "프로필 사진 변경"
+msgstr "更换头像"
+
+#: apps/mobile/app/native/my.tsx:879
+msgid "프로필 사진 삭제"
+msgstr "删除头像"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:391
+msgid "프로필 사진 선택"
+msgstr "选择头像"
+
+#: src/screens/RegisterScreen.tsx:254
+msgid "프로필 사진 올리기"
+msgstr "上传头像"
+
+#: apps/mobile/app/native/my.tsx:369
+msgid "프로필 사진과 상태 메시지 바꾸기"
+msgstr "更改头像和状态消息"
+
+#: src/screens/RegisterScreen.tsx:284
+msgid "프로필 캐릭터"
+msgstr "头像角色"
+
+#: apps/mobile/app/native/my.tsx:862
+msgid "프로필 편집"
+msgstr "编辑个人资料"
+
+#: apps/mobile/app/native/my.tsx:295
+msgid "프로필을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요."
+msgstr "无法保存个人资料，请稍后重试。"
+
+#: apps/mobile/app/(flows)/record/new.tsx:1154
+msgid "피드에 올리지 않고 나만 볼 수 있어요"
+msgstr "不发布到动态，仅自己可见"
+
+#: src/screens/RecordScreen.tsx:285
+#: src/screens/RecordScreen.tsx:385
+msgid "필수"
+msgstr "必填"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:25
+#: src/screens/RegisterScreen.tsx:139
+msgid "필수 약관 두 가지에 동의해야 가입할 수 있어요."
+msgstr "需同意两项必填条款才能注册。"
+
+#: apps/mobile/app/(flows)/auth/consent.tsx:22
+msgid "필수 약관 두 가지에 동의해야 계속할 수 있어요."
+msgstr "请同意两项必选条款后继续。"
+
+#: src/screens/RecordScreen.tsx:647
+msgid "필수 항목을 모두 채웠어요"
+msgstr "必填项已全部填写"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:109
+msgid "필수, 개인정보 수집 및 이용 동의"
+msgstr "必填，同意个人信息收集与使用"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:102
+msgid "필수, 서비스 이용약관 동의"
+msgstr "必填，同意服务条款"
+
+#: apps/mobile/app/native/map.web.tsx:330
+#: src/screens/MapScreen.tsx:607
+msgid "필터 초기화"
+msgstr "重置筛选"
+
+#: apps/mobile/app/(flows)/record/select-shop.tsx:313
+msgid "필터를 풀면 더 많은 가게를 볼 수 있어요."
+msgstr "清除筛选条件可查看更多店铺。"
+
+#: apps/mobile/app/(flows)/taste/archive.tsx:190
+#: apps/mobile/app/(flows)/taste/archive.tsx:340
 #: apps/mobile/src/notifications/reminders.ts:62
 msgid "한 그릇"
-msgstr ""
+msgstr "一碗"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:60
+#: src/screens/RegisterScreen.tsx:46
+msgid "한 그릇 라멘로그"
+msgstr "一碗一记录"
+
+#: src/screens/RecordScreen.tsx:284
+msgid "한 그릇 정보"
+msgstr "这一碗的信息"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:90
+#: src/screens/AIRecommendScreen.tsx:188
+msgid "한 그릇에서 가장 포기할 수 없는 것은?"
+msgstr "一碗拉面中最不能妥协的是什么？"
+
+#: apps/mobile/app/(flows)/record/new.tsx:155
+msgid "한 번"
+msgstr "一次"
+
+#: apps/mobile/app/(flows)/record/new.tsx:152
+#: packages/shared/src/i18n/labels.ts:41
+msgid "한 번이면 충분"
+msgstr "尝过一次就好"
+
+#: apps/mobile/src/components/ShopTasteCard.tsx:54
+msgid "한 번이면 충분 {count}명"
+msgstr "{count}人觉得一次就够"
+
+#: src/screens/RegisterScreen.tsx:350
+msgid "한글, 영문, 숫자 2~12자"
+msgstr "2至12个韩文、英文字母或数字"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:118
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:304
+msgid "한글, 영문, 숫자, 밑줄 {v1}~{v2}자"
+msgstr "{v1}–{v2}个字符，可使用韩文、英文字母、数字或下划线"
+
+#: packages/shared/src/i18n/labels.ts:45
+msgid "한번이면 충분"
+msgstr "尝过一次就好"
+
+#: src/screens/NewsFeedScreen.tsx:20
+msgid "한정 메뉴"
+msgstr "限定菜单"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:378
+msgid "한줄 소개"
+msgstr "个人简介"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:374
+#: src/screens/RegisterScreen.tsx:379
+msgid "한줄 소개 (선택)"
+msgstr "个人简介（选填）"
+
+#: apps/mobile/app/native/map.web.tsx:32
+msgid "합정/상수"
+msgstr "合井/上水"
+
+#: packages/shared/src/i18n/labels.ts:148
+msgid "합정동"
+msgstr "合井洞"
+
+#: src/screens/NewsFeedScreen.tsx:194
+msgid "해당하는 소식이 없어요"
+msgstr "没有相关消息"
+
+#: src/screens/NewsFeedScreen.tsx:276
+msgid "핵심 요약"
+msgstr "重点摘要"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:65
+#: src/screens/AIRecommendScreen.tsx:43
+msgid "혼밥하기 좋은 곳"
+msgstr "适合独自用餐"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:65
+msgid "혼자 편하게"
+msgstr "一个人也自在"
 
 #: apps/mobile/app/native/_layout.tsx:147
+#: packages/shared/src/i18n/labels.ts:25
+#: src/App.tsx:296
 msgid "홈"
-msgstr ""
+msgstr "首页"
+
+#: src/screens/TasteDetailScreen.tsx:226
+msgid "홈에서 첫 그릇을 기록하면"
+msgstr "在首页记录第一碗，"
+
+#: src/screens/MyScreen.tsx:588
+msgid "홈에서 첫 그릇을 남기면 여기에 쌓여요."
+msgstr "在首页记录第一碗后就会显示在这里。"
+
+#: apps/mobile/app/(flows)/record/complete.tsx:176
+#: apps/mobile/app/(flows)/record/complete.tsx:291
+#: src/screens/RecordCompleteScreen.tsx:210
+msgid "홈으로"
+msgstr "首页"
 
 #: apps/mobile/app/+not-found.tsx:25
 msgid "홈으로 돌아가기"
-msgstr ""
+msgstr "返回首页"
+
+#: src/screens/MapScreen.tsx:632
+msgid "확대"
+msgstr "放大"
+
+#: apps/mobile/app/native/my.tsx:910
+#: apps/mobile/src/components/ui/index.tsx:1217
+#: src/screens/MyScreen.tsx:756
+msgid "확인"
+msgstr "确认"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1355
+msgid "확인 중"
+msgstr "正在确认"
+
+#: apps/mobile/src/components/ConsentChecklist.tsx:139
+#: src/screens/RegisterScreen.tsx:493
+msgid "확인하고 동의"
+msgstr "确认并同意"
+
+#: apps/mobile/app/(flows)/ai-recommend.tsx:1355
+msgid "확인했어요"
+msgstr "已确认"
+
+#: src/screens/NotificationScreen.tsx:170
+msgid "활동"
+msgstr "动态"
+
+#: src/screens/NotificationScreen.tsx:116
+msgid "활동 등급 승급, 라멘로그 캘린더 리마인드"
+msgstr "活动等级提升与拉面记录提醒"
+
+#: src/screens/NotificationScreen.tsx:193
+msgid "활동 등급 승급과 서비스 업데이트 소식이 여기에 표시됩니다."
+msgstr "等级提升和服务更新消息会显示在这里。"
+
+#: src/screens/NotificationScreen.tsx:189
+msgid "활동 알림이 없습니다"
+msgstr "暂无动态通知"
+
+#: apps/mobile/app/(flows)/settings.tsx:191
+#: apps/mobile/app/(flows)/settings.tsx:315
+#: src/screens/MyScreen.tsx:750
+#: src/screens/MyScreen.tsx:815
+msgid "회원 탈퇴"
+msgstr "注销账号"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:281
+#: apps/mobile/app/native/index.tsx:354
+#: apps/mobile/app/native/index.tsx:359
+#: src/screens/HomeScreen.tsx:102
+#: src/screens/LoginScreen.tsx:114
+#: src/screens/LoginScreen.tsx:336
+#: src/screens/MyScreen.tsx:443
+#: src/screens/RegisterScreen.tsx:233
+msgid "회원가입"
+msgstr "注册"
+
+#: apps/mobile/app/(flows)/auth/onboarding.tsx:435
+#: src/screens/RegisterScreen.tsx:463
+msgid "회원가입 완료"
+msgstr "完成注册"
+
+#: apps/mobile/src/domain/shopTaste.ts:38
+msgid "훌륭한 편"
+msgstr "出色"
+
+#: apps/mobile/app/(flows)/record/new.tsx:137
+#: apps/mobile/src/domain/lounge.ts:119
+#: packages/shared/src/i18n/labels.ts:40
+msgid "훌륭함"
+msgstr "出色"
+
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:791
+msgid "휴무"
+msgstr "休息"

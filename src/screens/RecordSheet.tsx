@@ -1,5 +1,6 @@
-import { t } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { t, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { labelOf, translate } from "@raota/shared"
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Crosshair, Bookmark, Search, X, ChevronRight } from 'lucide-react'
 import { SHOP_CATALOG, type ShopCatalogItem } from '../data/shops'
@@ -63,10 +64,10 @@ const QUICK_KEYWORDS = Array.from(
   ]),
 )
 
-const MODES: Array<{ id: RecordSheetMode; label: string; Icon: typeof Crosshair }> = [
-  { id: 'nearby', label: '주변', Icon: Crosshair },
-  { id: 'saved', label: '찜한 가게', Icon: Bookmark },
-  { id: 'search', label: '검색', Icon: Search },
+const MODES: Array<{ id: RecordSheetMode; label: MessageDescriptor; Icon: typeof Crosshair }> = [
+  { id: 'nearby', label: msg`주변`, Icon: Crosshair },
+  { id: 'saved', label: msg`찜한 가게`, Icon: Bookmark },
+  { id: 'search', label: msg`검색`, Icon: Search },
 ]
 
 function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
@@ -211,7 +212,7 @@ export default function RecordSheet({
               >
                 <Icon className="w-4 h-4" aria-hidden="true" />
                 <span>
-                  {legacyT(label)}
+                  {translate(label)}
                   {count !== null && <span className={active ? 'text-white/70' : 'text-[#6B6E73]'}> {count}</span>}
                 </span>
               </button>
@@ -306,7 +307,7 @@ export default function RecordSheet({
                         onClick={() => setSearchQuery(keyword)}
                         className="min-h-11 px-4 rounded-[60px] border border-[#E2E2E2] bg-white text-[13px] font-bold text-[#25282B] active:bg-[#F2F2F2]"
                       >
-                        {legacyT(keyword)}
+                        {labelOf(keyword)}
                       </button>
                     ))}
                   </div>

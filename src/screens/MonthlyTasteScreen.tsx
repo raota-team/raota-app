@@ -1,5 +1,5 @@
 import { t, ph } from "@lingui/core/macro";
-import { t as legacyT } from "@raota/shared"
+import { labelOf } from "@raota/shared"
 import { useId, useState } from 'react'
 import { ChevronDown, ChevronLeft, Utensils } from 'lucide-react'
 import MonthlyReportCard from '../components/MonthlyReportCard'
@@ -39,11 +39,12 @@ export default function MonthlyTasteScreen({ onBack, reports, monthlyRecordCount
   // 집계 중인 달은 실제 기록 수(App의 monthlyRecordCounts) 기준으로 비교 가능 여부를 정한다.
   const enoughForCompare = !inProgressMonth || inProgressMonth.recordCount >= MONTHLY_REPORT_TARGET
   const canCompare = Boolean(previous && distribution.total && before.total && enoughForCompare)
-  const previousLabel = previous && selected && reportMonthIndex(selected) - reportMonthIndex(previous) === 1 ? '지난달' : '이전 기록'
+  const previousIsLastMonth = Boolean(previous && selected && reportMonthIndex(selected) - reportMonthIndex(previous) === 1)
   const differences = distribution.items.map((item, index) => ({ ...item, difference: item.pct - before.items[index].pct }))
   const biggestChange = [...differences].sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference))[0]
   const favoriteCount = Math.max(...distribution.items.map(item => item.count))
   const favorites = distribution.items.filter(item => item.count === favoriteCount && item.count > 0)
+  const favoriteStyles = favorites.map(item => labelOf(item.name)).join(' · ')
   const includeYear = Boolean(previous && selected && Math.floor(reportMonthIndex(previous) / 12) !== Math.floor(reportMonthIndex(selected) / 12))
   const shortMonth = (report: DistributionSource) => shortReportMonth(report, includeYear)
   const past = selected && isPastReport(selected) ? selected : null
@@ -71,11 +72,13 @@ export default function MonthlyTasteScreen({ onBack, reports, monthlyRecordCount
           <section className="border-t border-line px-4 py-5" aria-labelledby="monthly-distribution-title">
             <p className="text-[12px] font-bold text-ink-sub">{shortMonth(selected)}{t`의 취향`}{inProgress ? t` · 집계 중` : ''}</p>
             <h2 id="monthly-distribution-title" className="mt-1 text-[20px] font-extrabold leading-snug tracking-tight">
-              {monthIdentity ? legacyT(monthIdentity.title) : t`${ph({ v0: shortMonth(selected) })}의 메뉴 분포`}
+              {monthIdentity ? monthIdentity.title : t`${ph({ v0: shortMonth(selected) })}의 메뉴 분포`}
             </h2>
             <p className="mt-2 text-[14px] leading-6 text-ink-sub">
               {distribution.total
-                ? legacyT(favorites.length > 1 ? "총 {total}그릇 중 {styles}가 공동 1위예요." : "총 {total}그릇 중 {styles}를 {count}그릇으로 가장 많이 먹었어요.", {total: distribution.total, styles: favorites.map(item => legacyT(item.name)).join(' · '), count: favoriteCount})
+                ? favorites.length > 1
+                  ? t`총 ${ph({ total: distribution.total })}그릇 중 ${ph({ styles: favoriteStyles })}가 공동 1위예요.`
+                  : t`총 ${ph({ total: distribution.total })}그릇 중 ${ph({ styles: favoriteStyles })}를 ${ph({ count: favoriteCount })}그릇으로 가장 많이 먹었어요.`
                 : t`이 달에는 분포를 보여줄 메뉴 기록이 없어요.`}
             </p>
             {monthIdentity && <p className="mt-1 text-[13px] font-medium leading-5 text-ink-sub">{monthIdentity.evidence}</p>}
@@ -87,7 +90,7 @@ export default function MonthlyTasteScreen({ onBack, reports, monthlyRecordCount
           </section>
 
           <section className="border-t border-line px-4 py-5" aria-labelledby="monthly-compare-title">
-            <h3 id="monthly-compare-title" className="text-[17px] font-extrabold">{canCompare ? t`${ph({ period: legacyT(previousLabel) })}과 달라진 메뉴` : t`종류별로 먹은 라멘`}</h3>
+            <h3 id="monthly-compare-title" className="text-[17px] font-extrabold">{canCompare ? (previousIsLastMonth ? t`지난달과 달라진 메뉴` : t`이전 기록과 달라진 메뉴`) : t`종류별로 먹은 라멘`}</h3>
             <p className="mt-1.5 text-[13px] leading-5 text-ink-sub">
               {canCompare
                 ? t`각 달에 먹은 라멘의 종류별 비율을 비교해요.`
@@ -102,7 +105,7 @@ export default function MonthlyTasteScreen({ onBack, reports, monthlyRecordCount
               </thead>
               <tbody className="divide-y divide-line">
                 {differences.map(item => <tr key={item.name}>
-                  <th scope="row" className="py-3 text-left font-bold"><span className="flex items-center gap-2"><span className={`h-2.5 w-2.5 shrink-0 rounded-xs ${item.color}`} aria-hidden="true" />{legacyT(item.name)}</span></th>
+                  <th scope="row" className="py-3 text-left font-bold"><span className="flex items-center gap-2"><span className={`h-2.5 w-2.5 shrink-0 rounded-xs ${item.color}`} aria-hidden="true" />{labelOf(item.name)}</span></th>
                   <td className="py-3 text-right text-ink-sub">{item.count}{t`그릇`}</td>
                   <td className="py-3 text-right font-bold">{distribution.total ? item.pct + '%' : '—'}</td>
                   {canCompare && <td className={`py-3 text-right whitespace-nowrap ${item.difference > 0 ? 'font-bold text-brand' : 'text-ink-sub'}`}><span aria-label={item.difference ? t`${ph({ v0: Math.abs(item.difference) })}퍼센트포인트 ${ph({ v1: item.difference > 0 ? t`증가` : t`감소` })}` : t`변화 없음`}>{item.difference ? `${item.difference > 0 ? '+' : '−'}${Math.abs(item.difference)}%p` : '—'}</span></td>}
@@ -110,7 +113,11 @@ export default function MonthlyTasteScreen({ onBack, reports, monthlyRecordCount
               </tbody>
             </table>
             {canCompare && previous && <div className="mt-2 border-t border-line pt-4">
-              <p className="text-[14px] leading-6 text-ink">{biggestChange.difference ? legacyT(biggestChange.difference > 0 ? "{style} 비율이 {period}보다 {difference}%p 늘었어요." : "{style} 비율이 {period}보다 {difference}%p 줄었어요.", {style: legacyT(biggestChange.name), period: shortMonth(previous), difference: Math.abs(biggestChange.difference)}) : t`이전 기록과 메뉴 비율이 같아요.`}</p>
+              <p className="text-[14px] leading-6 text-ink">{biggestChange.difference
+                ? biggestChange.difference > 0
+                  ? t`${ph({ style: labelOf(biggestChange.name) })} 비율이 ${ph({ period: shortMonth(previous) })}보다 ${ph({ difference: Math.abs(biggestChange.difference) })}%p 늘었어요.`
+                  : t`${ph({ style: labelOf(biggestChange.name) })} 비율이 ${ph({ period: shortMonth(previous) })}보다 ${ph({ difference: Math.abs(biggestChange.difference) })}%p 줄었어요.`
+                : t`이전 기록과 메뉴 비율이 같아요.`}</p>
               <p className="mt-1 text-[12px] leading-5 text-ink-sub">{t`%p는 두 달의 비율 차이예요. 비율은 그릇 수를 기준으로 반올림했어요.`}</p>
             </div>}
           </section>
