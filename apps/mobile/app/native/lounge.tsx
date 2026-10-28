@@ -1,5 +1,6 @@
+import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
+import { t as legacyT } from "@raota/shared"
 import { FlashList, type FlashListRef, type ListRenderItem } from "@shopify/flash-list"
 import { useFocusEffect } from "expo-router"
 import { Check, Soup } from "lucide-react-native"
@@ -110,47 +111,47 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
 
   const filtered = type !== LOUNGE_ALL_TYPES
   const empty = feed.isLoading ? (
-    <LoadingState label={t("라멘로그를 불러오는 중…")} />
+    <LoadingState label={t`라멘로그를 불러오는 중…`} />
   ) : feed.error ? (
     // 서버에서 읽을 때만 다시 불러올 수 있다. 기기 저장소 오류는 다시 읽어도 같아서 안내만 한다
     isRemote("lounge") ? (
       <EmptyState
-        actionLabel={t("다시 불러오기")}
-        description={t("연결을 확인하고 다시 불러와 주세요.")}
+        actionLabel={t`다시 불러오기`}
+        description={t`연결을 확인하고 다시 불러와 주세요.`}
         icon={<Soup color={colors.textMuted} size={32} />}
         onAction={onRetry}
-        title={t("라멘로그를 불러오지 못했어요")}
+        title={t`라멘로그를 불러오지 못했어요`}
       />
     ) : (
       <EmptyState
-        description={t("잠시 후 라운지를 다시 열어 주세요.")}
+        description={t`잠시 후 라운지를 다시 열어 주세요.`}
         icon={<Soup color={colors.textMuted} size={32} />}
-        title={t("라멘로그를 불러오지 못했어요")}
+        title={t`라멘로그를 불러오지 못했어요`}
       />
     )
   ) : filtered ? (
     <EmptyState
-      actionLabel={t("전체 보기")}
-      description={t("다른 종류를 고르거나 전체 라멘로그를 둘러보세요.")}
+      actionLabel={t`전체 보기`}
+      description={t`다른 종류를 고르거나 전체 라멘로그를 둘러보세요.`}
       icon={<Soup color={colors.textMuted} size={32} />}
       onAction={() => changeType(LOUNGE_ALL_TYPES)}
-      title={t("{p0} 라멘로그가 아직 없어요", { p0: t(type) })}
+      title={t`${ph({ p0: legacyT(type) })} 라멘로그가 아직 없어요`}
     />
   ) : (
     <EmptyState
-      description={t("오늘 먹은 한 그릇을 공개로 기록하면 여기에 올라가요.")}
+      description={t`오늘 먹은 한 그릇을 공개로 기록하면 여기에 올라가요.`}
       icon={<Soup color={colors.textMuted} size={32} />}
-      title={t("아직 공개된 라멘로그가 없어요")}
+      title={t`아직 공개된 라멘로그가 없어요`}
     />
   )
 
-  const sortLabel = t(LOUNGE_SORTS.find((option) => option.value === sort)?.label ?? LOUNGE_SORTS[0].label)
+  const sortLabel = legacyT(LOUNGE_SORTS.find((option) => option.value === sort)?.label ?? LOUNGE_SORTS[0].label)
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <Header large title={t("라운지")} />
+      <Header large title={t`라운지`} />
       <ScrollView
-        accessibilityLabel={t("정렬 및 라멘 종류")}
+        accessibilityLabel={t`정렬 및 라멘 종류`}
         contentContainerStyle={styles.chips}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -159,8 +160,8 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
         <View collapsable={false} ref={sortChipRef}>
           {/* 기본 최신순일 때는 비선택, 사용자가 다른 정렬을 고르면 선택 상태로 구분한다 */}
           <Chip
-            accessibilityHint={t("누르면 정렬 메뉴가 열려요")}
-            accessibilityLabel={t("정렬, {p0}", { p0: sortLabel })}
+            accessibilityHint={t`누르면 정렬 메뉴가 열려요`}
+            accessibilityLabel={t`정렬, ${ph({ p0: sortLabel })}`}
             label={`${sortLabel} ▾`}
             onPress={openSortMenu}
             selected={sort !== DEFAULT_SORT}
@@ -169,9 +170,9 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
         </View>
         {LOUNGE_TYPE_FILTERS.map((option) => (
           <Chip
-            accessibilityLabel={option === LOUNGE_ALL_TYPES ? t("전체 라멘 종류") : t("{p0} 라멘만 보기", { p0: t(option) })}
+            accessibilityLabel={option === LOUNGE_ALL_TYPES ? t`전체 라멘 종류` : t`${ph({ p0: legacyT(option) })} 라멘만 보기`}
             key={option}
-            label={t(option)}
+            label={legacyT(option)}
             onPress={() => changeType(option)}
             selected={type === option}
           />
@@ -180,8 +181,8 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
       <FlashList
         ListEmptyComponent={empty}
         ListFooterComponent={feed.error && feed.data.length ? (
-          <EmptyState actionLabel={t("다시 불러오기")} onAction={feed.loadMore} title={t("다음 라멘로그를 불러오지 못했어요")} />
-        ) : feed.hasMore && feed.isLoading ? <LoadingState label={t("더 불러오는 중…")} /> : null}
+          <EmptyState actionLabel={t`다시 불러오기`} onAction={feed.loadMore} title={t`다음 라멘로그를 불러오지 못했어요`} />
+        ) : feed.hasMore && feed.isLoading ? <LoadingState label={t`더 불러오는 중…`} /> : null}
         contentContainerStyle={styles.listContent}
         data={feed.data}
         keyExtractor={keyOfLog}
@@ -200,19 +201,19 @@ function LoungeBody({ type, sort, setType, setSort, onRetry }: LoungeBodyProps) 
       />
       <Modal animationType="fade" onRequestClose={() => setMenuPosition(null)} presentationStyle="overFullScreen" statusBarTranslucent transparent visible={menuPosition !== null}>
         <View style={styles.menuOverlay}>
-          <Pressable accessibilityLabel={t("정렬 메뉴 닫기")} accessibilityRole="button" onPress={() => setMenuPosition(null)} style={StyleSheet.absoluteFill} testID="lounge-sort-dismiss" />
+          <Pressable accessibilityLabel={t`정렬 메뉴 닫기`} accessibilityRole="button" onPress={() => setMenuPosition(null)} style={StyleSheet.absoluteFill} testID="lounge-sort-dismiss" />
           {menuPosition ? (
             <View accessibilityViewIsModal onAccessibilityEscape={() => setMenuPosition(null)} style={[styles.sortMenu, { left: menuPosition.left, top: menuPosition.top, maxHeight: windowHeight - menuPosition.top - spacing.gutter }]} testID="lounge-sort-menu">
               {LOUNGE_SORTS.map((option) => (
                 <Pressable
-                  accessibilityLabel={t(option.label)}
+                  accessibilityLabel={legacyT(option.label)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: sort === option.value }}
                   key={option.value}
                   onPress={() => changeSort(option.value)}
                   style={({ pressed }) => [styles.sortOption, pressed && styles.sortOptionPressed]}
                 >
-                  <AppText variant="button">{t(option.label)}</AppText>
+                  <AppText variant="button">{legacyT(option.label)}</AppText>
                   <View style={styles.sortCheck}>
                     {sort === option.value ? <Check color={colors.ink} size={18} strokeWidth={2.5} /> : null}
                   </View>

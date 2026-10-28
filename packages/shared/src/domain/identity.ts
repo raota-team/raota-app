@@ -1,6 +1,7 @@
+import { t, ph } from "@lingui/core/macro";
 import type { TasteAxisKey, TasteProfile } from "../types"
 import { TASTE_AXES } from "./taste"
-import { t } from "../i18n"
+import { t as legacyT } from "../i18n"
 import { MENU_CATEGORY_NAMES, bowlsFromLogs, typeCountsOf, type BowlLogLike, type MenuCategoryName } from "./ledger"
 
 /** 누적 종류 분포 = 기존 원장 + 이번 세션 기록 */
@@ -46,23 +47,23 @@ export function tasteIdentity(typeCounts: Record<string, number>, profile: Taste
   const brothWord = dense ? '진한' : '맑은'
   if (!leader || profile.count === 0) {
     return {
-      title: t('아직 취향을 모으는 중'),
-      description: t('첫 그릇을 기록하면 어떤 라멘을 좋아하는지 보여드려요.'),
-      evidence: t('{scope} 0그릇', { scope: t(scope) }),
+      title: t`아직 취향을 모으는 중`,
+      description: t`첫 그릇을 기록하면 어떤 라멘을 좋아하는지 보여드려요.`,
+      evidence: t`${ph({ scope: legacyT(scope) })} 0그릇`,
       tags: [],
       leader: null,
       dense,
       total,
     }
   }
-  const firmness = t(profile.scores.noodleFirmness >= 3.5 ? '단단한 면' : '부드러운 면')
-  const tags = [t('{broth} 육수', { broth: t(brothWord) }), firmness]
-  if (profile.scores.revisit >= 4) tags.push(t('단골형'))
-  else if (profile.scores.topping >= 4) tags.push(t('토핑 중시'))
+  const firmness = legacyT(profile.scores.noodleFirmness >= 3.5 ? '단단한 면' : '부드러운 면')
+  const tags = [t`${ph({ broth: legacyT(brothWord) })} 육수`, firmness]
+  if (profile.scores.revisit >= 4) tags.push(t`단골형`)
+  else if (profile.scores.topping >= 4) tags.push(t`토핑 중시`)
   return {
-    title: t('{broth} {type}', { broth: t(brothWord), type: t(TYPE_WORD[leader.name]) }),
-    description: t('{type}를 가장 많이 먹었고, 육수는 {broth} 쪽을 좋아해요.', { type: t(leader.name), broth: t(brothWord).toLowerCase() }),
-    evidence: t('{scope} {total}그릇 중 {type} {count}그릇 · 육수 농도 평균 {score}', { scope: t(scope), total, type: t(leader.name), count: leader.count, score: profile.scores.brothDensity.toFixed(1) }),
+    title: t`${ph({ broth: legacyT(brothWord) })} ${ph({ type: legacyT(TYPE_WORD[leader.name]) })}`,
+    description: t`${ph({ type: legacyT(leader.name) })}를 가장 많이 먹었고, 육수는 ${ph({ broth: legacyT(brothWord).toLowerCase() })} 쪽을 좋아해요.`,
+    evidence: t`${ph({ scope: legacyT(scope) })} ${total}그릇 중 ${ph({ type: legacyT(leader.name) })} ${ph({ count: leader.count })}그릇 · 육수 농도 평균 ${ph({ score: profile.scores.brothDensity.toFixed(1) })}`,
     tags,
     leader,
     dense,
@@ -83,7 +84,7 @@ export interface MetricItem {
 export function metricsFromProfile(profile: TasteProfile): MetricItem[] {
   return TASTE_AXES.map(axis => {
     const score = Math.max(0, Math.min(5, profile.scores[axis.key]))
-    return { key: axis.key, label: t(axis.label), score, myVal: score / 5 }
+    return { key: axis.key, label: legacyT(axis.label), score, myVal: score / 5 }
   })
 }
 

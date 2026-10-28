@@ -1,4 +1,5 @@
-import { getLocale, t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { getLocale, t as legacyT } from "@raota/shared"
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
 import { ChevronLeft, ChevronDown, Check, ImagePlus, X, AlertCircle } from 'lucide-react'
 import {
@@ -166,9 +167,9 @@ export default function RecordScreen({
 
   const missingMessage = (() => {
     if (isComplete) return null
-    const shown = missing.slice(0, 3).map(item => t(item.label))
+    const shown = missing.slice(0, 3).map(item => legacyT(item.label))
     const rest = missing.length - shown.length
-    if (getLocale() !== 'ko') return t("필수 항목을 확인해 주세요: {fields}", {fields: shown.join(', ') + (rest ? t(" 외 {count}개", {count: rest}) : '')})
+    if (getLocale() !== 'ko') return t`필수 항목을 확인해 주세요: ${ph({ fields: shown.join(', ') + (rest ? t` 외 ${ph({ count: rest })}개` : '') })}`
     const subject = rest > 0 ? `${shown.join(', ')} 외 ${rest}개` : shown.join(', ')
     const verb = missing.some(item => item.kind === 'text') ? '채워주세요' : '골라주세요'
     return `${subject}${objectParticle(subject)} ${verb}`
@@ -273,26 +274,26 @@ export default function RecordScreen({
             type="button"
             onClick={handleBack}
             className="w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2]"
-            aria-label={t("뒤로가기")}
+            aria-label={t`뒤로가기`}
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[20px] font-extrabold tracking-tight truncate">{t("라멘 기록하기")}</h1>
+          <h1 className="text-[20px] font-extrabold tracking-tight truncate">{t`라멘 기록하기`}</h1>
         </div>
-        <span className="shrink-0 text-[12px] font-bold text-[#6B6E73]">{isPublic ? t("공개 기록") : t("나만 보기")}</span>
+        <span className="shrink-0 text-[12px] font-bold text-[#6B6E73]">{isPublic ? t`공개 기록` : t`나만 보기`}</span>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
         {/* 1. 한 그릇 정보 */}
         <section className="px-4 pt-5 pb-6" aria-labelledby="sec-basic">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 id="sec-basic" className="text-[17px] font-extrabold tracking-tight">{t("한 그릇 정보")}</h2>
-            <span className="text-[12px] font-bold text-[#6B6E73]">{t("필수")}</span>
+            <h2 id="sec-basic" className="text-[17px] font-extrabold tracking-tight">{t`한 그릇 정보`}</h2>
+            <span className="text-[12px] font-bold text-[#6B6E73]">{t`필수`}</span>
           </div>
 
           <div className="space-y-4">
             <div>
-              <span id="label-shop" className="block text-[14px] font-bold mb-1.5">{t("가게")}</span>
+              <span id="label-shop" className="block text-[14px] font-bold mb-1.5">{t`가게`}</span>
               <button
                 type="button"
                 aria-labelledby="label-shop shop-value"
@@ -304,19 +305,19 @@ export default function RecordScreen({
                   <span className="block text-[15px] font-bold truncate">{shop.name}</span>
                   {shop.branch && <span className="block text-[13px] text-[#6B6E73] truncate">{shop.branch}</span>}
                 </span>
-                <span className="shrink-0 text-[13px] font-bold text-[#E60000]">{t("변경")}</span>
+                <span className="shrink-0 text-[13px] font-bold text-[#E60000]">{t`변경`}</span>
               </button>
             </div>
 
             <div>
-              <label htmlFor="menu-name" className="block text-[14px] font-bold mb-1.5">{t("먹은 메뉴")}</label>
+              <label htmlFor="menu-name" className="block text-[14px] font-bold mb-1.5">{t`먹은 메뉴`}</label>
               <input
                 id="menu-name"
                 ref={registerField('menu')}
                 type="text"
                 value={menuName}
                 onChange={e => setMenuName(e.target.value)}
-                placeholder={t("예: 특제 쇼유 라멘")}
+                placeholder={t`예: 특제 쇼유 라멘`}
                 aria-required="true"
                 aria-invalid={isMissing('menu') || undefined}
                 className={inputClass(isMissing('menu'))}
@@ -327,14 +328,14 @@ export default function RecordScreen({
                   onClick={() => setMenuName(shop.style)}
                   className="mt-2 min-h-11 px-4 rounded-[60px] border border-[#E2E2E2] text-[13px] font-bold text-[#25282B] active:bg-[#F2F2F2]"
                 >
-                  {t("대표 스타일")} {shop.style}{t("(으)로 채우기")}</button>
+                  {t`대표 스타일`} {shop.style}{t`(으)로 채우기`}</button>
               )}
             </div>
 
             <div>
               <div className="flex items-baseline justify-between mb-1.5">
-                <span id="label-ramen-type" className="text-[14px] font-bold">{t("라멘 종류")}</span>
-                {isMissing('ramenType') && <span className="text-[12px] font-bold text-[#E60000]">{t("골라주세요")}</span>}
+                <span id="label-ramen-type" className="text-[14px] font-bold">{t`라멘 종류`}</span>
+                {isMissing('ramenType') && <span className="text-[12px] font-bold text-[#E60000]">{t`골라주세요`}</span>}
               </div>
               <div
                 ref={registerField('ramenType')}
@@ -357,7 +358,7 @@ export default function RecordScreen({
                       onClick={() => setRamenType(type)}
                       className={chipClass(selected)}
                     >
-                      {t(type)}
+                      {legacyT(type)}
                     </button>
                   )
                 })}
@@ -365,7 +366,7 @@ export default function RecordScreen({
             </div>
 
             <div>
-              <label htmlFor="visited-at" className="block text-[14px] font-bold mb-1.5">{t("방문일")}</label>
+              <label htmlFor="visited-at" className="block text-[14px] font-bold mb-1.5">{t`방문일`}</label>
               <input
                 id="visited-at"
                 ref={registerField('visitedAt')}
@@ -386,10 +387,10 @@ export default function RecordScreen({
         {/* 2. 5축 평가 */}
         <section className="px-4 pt-5 pb-6" aria-labelledby="sec-axes">
           <div className="flex items-baseline justify-between mb-1">
-            <h2 id="sec-axes" className="text-[17px] font-extrabold tracking-tight">{t("5축 평가")}</h2>
-            <span className="text-[12px] font-bold text-[#6B6E73]">{t("필수")}</span>
+            <h2 id="sec-axes" className="text-[17px] font-extrabold tracking-tight">{t`5축 평가`}</h2>
+            <span className="text-[12px] font-bold text-[#6B6E73]">{t`필수`}</span>
           </div>
-          <p className="text-[13px] text-[#6B6E73] mb-5">{t("다섯 축이 모여 취향 여권이 갱신됩니다.")}</p>
+          <p className="text-[13px] text-[#6B6E73] mb-5">{t`다섯 축이 모여 취향 여권이 갱신됩니다.`}</p>
 
           <div className="space-y-6">
             {SCORE_AXES.map((axis, index) => {
@@ -400,10 +401,10 @@ export default function RecordScreen({
                   <div className="flex items-baseline justify-between mb-2">
                     <span id={`axis-${axis.key}`} className="text-[14px] font-bold">
                       <span className="text-[#6B6E73] mr-1.5">{index + 1}</span>
-                      {t(axis.label)}
+                      {legacyT(axis.label)}
                     </span>
                     <span className={`text-[12px] font-bold ${value ? 'text-[#E60000]' : invalid ? 'text-[#E60000]' : 'text-[#6B6E73]'}`}>
-                      {value ? t("{v0}점", { v0: value }) : invalid ? t("골라주세요") : t("미선택")}
+                      {value ? t`${ph({ v0: value })}점` : invalid ? t`골라주세요` : t`미선택`}
                     </span>
                   </div>
                   <div
@@ -423,7 +424,7 @@ export default function RecordScreen({
                           type="button"
                           role="radio"
                           aria-checked={selected}
-                          aria-label={t("{v0} {v1}점", { v0: axis.label, v1: n })}
+                          aria-label={t`${ph({ v0: axis.label })} ${ph({ v1: n })}점`}
                           tabIndex={focusable ? 0 : -1}
                           onClick={() => setScores(prev => ({ ...prev, [axis.key]: n }))}
                           className={segmentClass(selected)}
@@ -434,8 +435,8 @@ export default function RecordScreen({
                     })}
                   </div>
                   <div className="flex justify-between mt-1.5 text-[12px] font-medium text-[#6B6E73]">
-                    <span>{t(axis.low)}</span>
-                    <span>{t(axis.high)}</span>
+                    <span>{legacyT(axis.low)}</span>
+                    <span>{legacyT(axis.high)}</span>
                   </div>
                 </div>
               )
@@ -445,10 +446,10 @@ export default function RecordScreen({
               <div className="flex items-baseline justify-between mb-2">
                 <span id="axis-revisit" className="text-[14px] font-bold">
                   <span className="text-[#6B6E73] mr-1.5">5</span>
-                  {t(REVISIT_AXIS.label)}
+                  {legacyT(REVISIT_AXIS.label)}
                 </span>
                 <span className={`text-[12px] font-bold ${revisit ? 'text-[#E60000]' : isMissing('revisit') ? 'text-[#E60000]' : 'text-[#6B6E73]'}`}>
-                  {revisit ? t("{v0}점", { v0: REVISIT_SCORE[revisit] }) : isMissing('revisit') ? t("골라주세요") : t("미선택")}
+                  {revisit ? t`${ph({ v0: REVISIT_SCORE[revisit] })}점` : isMissing('revisit') ? t`골라주세요` : t`미선택`}
                 </span>
               </div>
               <div
@@ -472,14 +473,14 @@ export default function RecordScreen({
                       onClick={() => setRevisit(option)}
                       className={`${segmentClass(selected)} text-[13px] px-1`}
                     >
-                      {t(option)}
+                      {legacyT(option)}
                     </button>
                   )
                 })}
               </div>
               <div className="flex justify-between mt-1.5 text-[12px] font-medium text-[#6B6E73]">
-                <span>{t(REVISIT_AXIS.low)}</span>
-                <span>{t(REVISIT_AXIS.high)}</span>
+                <span>{legacyT(REVISIT_AXIS.low)}</span>
+                <span>{legacyT(REVISIT_AXIS.high)}</span>
               </div>
             </div>
           </div>
@@ -490,8 +491,8 @@ export default function RecordScreen({
         {/* 3. 사진 (선택) */}
         <section className="px-4 pt-5 pb-6" aria-labelledby="sec-photos">
           <div className="flex items-baseline justify-between mb-3">
-            <h2 id="sec-photos" className="text-[17px] font-extrabold tracking-tight">{t("사진")}</h2>
-            <span className="text-[12px] font-bold text-[#6B6E73]">{t("선택 · 최대")} {MAX_PHOTOS}{t("장")}</span>
+            <h2 id="sec-photos" className="text-[17px] font-extrabold tracking-tight">{t`사진`}</h2>
+            <span className="text-[12px] font-bold text-[#6B6E73]">{t`선택 · 최대`} {MAX_PHOTOS}{t`장`}</span>
           </div>
           <input
             ref={fileInputRef}
@@ -511,16 +512,16 @@ export default function RecordScreen({
                 className="shrink-0 w-24 h-24 rounded-[6px] border border-dashed border-[#BEBEBE] bg-[#F7F7F7] flex flex-col items-center justify-center gap-1 text-[#6B6E73] active:bg-[#F2F2F2]"
               >
                 <ImagePlus className="w-6 h-6" aria-hidden="true" />
-                <span className="text-[12px] font-bold">{photos.length === 0 ? t("사진 추가") : `${photos.length}/${MAX_PHOTOS}`}</span>
+                <span className="text-[12px] font-bold">{photos.length === 0 ? t`사진 추가` : `${photos.length}/${MAX_PHOTOS}`}</span>
               </button>
             )}
             {photos.map((url, index) => (
               <div key={url} className="relative shrink-0 w-24 h-24 rounded-[6px] overflow-hidden border border-[#E2E2E2] bg-[#F2F2F2]">
-                <img src={url} alt={t("첨부 사진 {v0}", { v0: index + 1 })} className="w-full h-full object-cover" />
+                <img src={url} alt={t`첨부 사진 ${ph({ v0: index + 1 })}`} className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => removePhoto(url)}
-                  aria-label={t("사진 {v0} 삭제", { v0: index + 1 })}
+                  aria-label={t`사진 ${ph({ v0: index + 1 })} 삭제`}
                   className="absolute top-0 right-0 w-11 h-11 flex items-start justify-end p-1.5"
                 >
                   <span className="w-6 h-6 rounded-full bg-[#25282B] text-white flex items-center justify-center">
@@ -537,14 +538,14 @@ export default function RecordScreen({
         {/* 4. 메모 (선택) */}
         <section className="px-4 pt-5 pb-6" aria-labelledby="sec-note">
           <div className="flex items-baseline justify-between mb-3">
-            <label id="sec-note" htmlFor="note" className="text-[17px] font-extrabold tracking-tight">{t("기억해둘 점")}</label>
-            <span className="text-[12px] font-bold text-[#6B6E73]">{t("선택 ·")} {note.length}/1000</span>
+            <label id="sec-note" htmlFor="note" className="text-[17px] font-extrabold tracking-tight">{t`기억해둘 점`}</label>
+            <span className="text-[12px] font-bold text-[#6B6E73]">{t`선택 ·`} {note.length}/1000</span>
           </div>
           <textarea
             id="note"
             value={note}
             onChange={e => setNote(e.target.value.slice(0, 1000))}
-            placeholder={t("예: 다음엔 면을 단단하게 부탁하기")}
+            placeholder={t`예: 다음엔 면을 단단하게 부탁하기`}
             rows={3}
             className="w-full text-[14px] text-[#25282B] placeholder:text-[#6B6E73] bg-[#F7F7F7] border border-[#E2E2E2] rounded-[6px] p-3.5 resize-none outline-none focus:border-[#25282B] focus:bg-white transition-colors leading-relaxed"
           />
@@ -562,9 +563,9 @@ export default function RecordScreen({
             className="w-full px-4 min-h-14 py-3 flex items-center justify-between gap-3 text-left active:bg-[#F7F7F7]"
           >
             <span>
-              <span id="sec-tags" className="block text-[17px] font-extrabold tracking-tight">{t("맛 태그 더 남기기")}</span>
+              <span id="sec-tags" className="block text-[17px] font-extrabold tracking-tight">{t`맛 태그 더 남기기`}</span>
               <span className="block text-[13px] text-[#6B6E73] mt-0.5">
-                {t("선택 · 국물, 면, 간, 토핑")}{selectedTagCount > 0 ? t(" · {v0}개 선택", { v0: selectedTagCount }) : ''}
+                {t`선택 · 국물, 면, 간, 토핑`}{selectedTagCount > 0 ? t` · ${ph({ v0: selectedTagCount })}개 선택` : ''}
               </span>
             </span>
             <ChevronDown
@@ -578,8 +579,8 @@ export default function RecordScreen({
               {TASTE_FIELDS.map(field => (
                 <div key={field.key}>
                   <div className="flex items-baseline justify-between mb-2">
-                    <span id={`tag-${field.key}`} className="text-[14px] font-bold">{t(field.label)}</span>
-                    <span className="text-[12px] font-bold text-[#6B6E73]">{tasteNotes[field.key].length}{t("개 선택")}</span>
+                    <span id={`tag-${field.key}`} className="text-[14px] font-bold">{legacyT(field.label)}</span>
+                    <span className="text-[12px] font-bold text-[#6B6E73]">{tasteNotes[field.key].length}{t`개 선택`}</span>
                   </div>
                   <div role="group" aria-labelledby={`tag-${field.key}`} className="flex flex-wrap gap-2">
                     {field.options.map(option => {
@@ -592,7 +593,7 @@ export default function RecordScreen({
                           onClick={() => toggleTasteNote(field.key, option)}
                           className={chipClass(selected)}
                         >
-                          {t(option)}
+                          {legacyT(option)}
                         </button>
                       )
                     })}
@@ -608,8 +609,8 @@ export default function RecordScreen({
         {/* 6. 공개 설정 */}
         <section className="px-4 py-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <span id="label-public" className="block text-[15px] font-bold">{t("내 기록 공개하기")}</span>
-            <span className="block text-[13px] text-[#6B6E73] mt-0.5">{t("끄면 피드에 올라가지 않고 나만 볼 수 있어요.")}</span>
+            <span id="label-public" className="block text-[15px] font-bold">{t`내 기록 공개하기`}</span>
+            <span className="block text-[13px] text-[#6B6E73] mt-0.5">{t`끄면 피드에 올라가지 않고 나만 볼 수 있어요.`}</span>
           </div>
           <button
             type="button"
@@ -635,13 +636,13 @@ export default function RecordScreen({
           <div role="alert" className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 shrink-0 text-[#E60000]" aria-hidden="true" />
             <p className="flex-1 min-w-0 text-[13px] font-medium text-[#25282B] leading-snug">
-              {t("저장하지 못했어요. 연결을 확인한 뒤 다시 시도해주세요.")}</p>
+              {t`저장하지 못했어요. 연결을 확인한 뒤 다시 시도해주세요.`}</p>
             <button
               type="button"
               onClick={handleRetry}
               className="shrink-0 min-h-11 px-5 rounded-[60px] bg-[#E60000] text-white text-[14px] font-bold"
             >
-              {t("다시 시도")}</button>
+              {t`다시 시도`}</button>
           </div>
         ) : (
           <>
@@ -649,7 +650,7 @@ export default function RecordScreen({
               aria-live="polite"
               className={`text-[12px] font-bold mb-2 leading-snug ${isComplete ? 'text-[#6B6E73]' : attempted ? 'text-[#E60000]' : 'text-[#6B6E73]'}`}
             >
-              {isComplete ? t("필수 항목을 모두 채웠어요") : missingMessage}
+              {isComplete ? t`필수 항목을 모두 채웠어요` : missingMessage}
             </p>
             <button
               type="button"
@@ -660,7 +661,7 @@ export default function RecordScreen({
                 isComplete && !isSaving ? 'bg-[#E60000] text-white active:bg-[#CC0000]' : 'bg-[#F2F2F2] text-[#6B6E73]'
               }`}
             >
-              {isSaving ? t("저장하는 중…") : isComplete ? t("기록 저장하기") : t("남은 필수 {v0}개 보러 가기", { v0: missing.length })}
+              {isSaving ? t`저장하는 중…` : isComplete ? t`기록 저장하기` : t`남은 필수 ${ph({ v0: missing.length })}개 보러 가기`}
             </button>
           </>
         )}
@@ -673,7 +674,7 @@ export default function RecordScreen({
             type="button"
             className="absolute inset-0 bg-black/50 anim-fade-in"
             onClick={() => setShowShopSheet(false)}
-            aria-label={t("닫기")}
+            aria-label={t`닫기`}
             tabIndex={-1}
           />
           <div
@@ -684,11 +685,11 @@ export default function RecordScreen({
           >
             <div className="flex items-center justify-between pl-5 pr-2 pt-3 pb-2 shrink-0">
               <h3 id="shop-sheet-title" ref={shopSheetTitleRef} tabIndex={-1} className="text-[17px] font-extrabold tracking-tight outline-none">
-                {t("가게 고르기")}</h3>
+                {t`가게 고르기`}</h3>
               <button
                 type="button"
                 onClick={() => setShowShopSheet(false)}
-                aria-label={t("닫기")}
+                aria-label={t`닫기`}
                 className="w-11 h-11 rounded-full flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2]"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
@@ -731,8 +732,8 @@ export default function RecordScreen({
             aria-describedby="leave-desc"
             className="relative w-full bg-white rounded-[12px] p-5 anim-fade-in-up"
           >
-            <h3 id="leave-title" className="text-[17px] font-extrabold tracking-tight mb-1">{t("작성을 그만둘까요?")}</h3>
-            <p id="leave-desc" className="text-[14px] text-[#6B6E73] mb-5">{t("지금까지 고른 평가와 사진은 저장되지 않아요.")}</p>
+            <h3 id="leave-title" className="text-[17px] font-extrabold tracking-tight mb-1">{t`작성을 그만둘까요?`}</h3>
+            <p id="leave-desc" className="text-[14px] text-[#6B6E73] mb-5">{t`지금까지 고른 평가와 사진은 저장되지 않아요.`}</p>
             <div className="flex gap-2">
               <button
                 ref={leaveStayRef}
@@ -740,13 +741,13 @@ export default function RecordScreen({
                 onClick={() => setShowLeaveConfirm(false)}
                 className="flex-1 min-h-11 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2]"
               >
-                {t("계속 작성")}</button>
+                {t`계속 작성`}</button>
               <button
                 type="button"
                 onClick={onBack}
                 className="flex-1 min-h-11 rounded-[60px] bg-[#E60000] text-white text-[14px] font-bold active:bg-[#CC0000]"
               >
-                {t("나가기")}</button>
+                {t`나가기`}</button>
             </div>
           </div>
         </div>

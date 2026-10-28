@@ -1,5 +1,6 @@
+import { t, ph } from "@lingui/core/macro";
 import {
-  t, formatDate, getLocale,
+  t as legacyT, formatDate, getLocale,
   RAMEN_TYPES,
   REVISIT_SCORE,
   type ContentReport,
@@ -136,7 +137,7 @@ export interface TasteSummaryRow {
 
 function wordOf(key: Exclude<TasteAxisKey, "revisit">, score: number) {
   const index = Math.min(5, Math.max(1, Math.round(score))) - 1
-  return t(AXIS_WORDS[key][index])
+  return legacyT(AXIS_WORDS[key][index])
 }
 
 /** 맛 평가 다섯 줄. 점수가 없는 옛 기록이면 빈 배열 */
@@ -148,7 +149,7 @@ export function tasteSummaryOf(log: Pick<RamenLog, "scores" | "revisit">): Taste
     { key: "brothDensity", label: AXIS_LABELS.brothDensity, word: wordOf("brothDensity", scores.brothDensity) },
     { key: "noodleFirmness", label: AXIS_LABELS.noodleFirmness, word: wordOf("noodleFirmness", scores.noodleFirmness) },
     { key: "topping", label: AXIS_LABELS.topping, word: wordOf("topping", scores.topping), score: scores.topping },
-    { key: "revisit", label: AXIS_LABELS.revisit, word: t(log.revisit), score: REVISIT_SCORE[log.revisit] },
+    { key: "revisit", label: AXIS_LABELS.revisit, word: legacyT(log.revisit), score: REVISIT_SCORE[log.revisit] },
   ]
 }
 
@@ -162,8 +163,8 @@ export function compactTasteSummary(log: Pick<RamenLog, "scores" | "revisit">): 
   const broth = wordOf("brothDensity", scores.brothDensity)
   const noodle = wordOf("noodleFirmness", scores.noodleFirmness)
   return {
-    text: t("만족 {score} · 육수 {broth} · 면 {noodle}", { score: Math.round(scores.satisfaction), broth, noodle }),
-    label: t("맛 평가: 전체 만족도 5점 중 {score}점, 육수 {broth}, 면 {noodle}", { score: Math.round(scores.satisfaction), broth, noodle }),
+    text: t`만족 ${ph({ score: Math.round(scores.satisfaction) })} · 육수 ${broth} · 면 ${noodle}`,
+    label: t`맛 평가: 전체 만족도 5점 중 ${ph({ score: Math.round(scores.satisfaction) })}점, 육수 ${broth}, 면 ${noodle}`,
   }
 }
 
@@ -203,13 +204,13 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   const time = Date.parse(iso)
   if (!Number.isFinite(time)) return iso
   const minutes = Math.floor((now.getTime() - time) / 60000)
-  if (minutes < 1) return t("방금 전")
-  if (minutes < 60) return t("{count}분 전", { count: minutes })
+  if (minutes < 1) return t`방금 전`
+  if (minutes < 60) return t`${ph({ count: minutes })}분 전`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return t("{count}시간 전", { count: hours })
+  if (hours < 24) return t`${ph({ count: hours })}시간 전`
   const days = Math.floor(hours / 24)
-  if (days === 1) return t("어제")
-  if (days < 7) return t("{days}일 전", { days })
+  if (days === 1) return t`어제`
+  if (days < 7) return t`${days}일 전`
   const date = new Date(time)
   if (getLocale() !== "ko") return formatDate(date, { month: "short", day: "numeric", ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" as const }) })
   const label = `${date.getMonth() + 1}월 ${date.getDate()}일`

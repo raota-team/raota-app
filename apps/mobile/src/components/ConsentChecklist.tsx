@@ -1,5 +1,6 @@
+import { t } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
+import { t as legacyT } from "@raota/shared"
 import { useState, type ReactNode } from "react"
 import { Check } from "lucide-react-native"
 import { Pressable, StyleSheet, View } from "react-native"
@@ -66,7 +67,7 @@ function ViewLink({ label, onPress }: { label: string; onPress: () => void }) {
       style={({ pressed }) => [styles.viewLink, pressed && styles.pressedWash]}
     >
       <AppText capScale tone="muted" variant="meta">
-        {t("보기")}</AppText>
+        {t`보기`}</AppText>
     </Pressable>
   )
 }
@@ -80,7 +81,7 @@ export interface ConsentChecklistProps {
   errorMessage?: string
 }
 
-export function ConsentChecklist({ value, onChange, showError, errorMessage = t(CONSENT_REQUIRED_ERROR) }: ConsentChecklistProps) {
+export function ConsentChecklist({ value, onChange, showError, errorMessage = legacyT(CONSENT_REQUIRED_ERROR) }: ConsentChecklistProps) {
   useLocale()
   const [policy, setPolicy] = useState<PolicyType | null>(null)
   const error = showError && (!value.terms || !value.privacy)
@@ -91,30 +92,30 @@ export function ConsentChecklist({ value, onChange, showError, errorMessage = t(
       <View style={styles.termsAll}>
         <CheckRow
           checked={allAgreed}
-          label={t("약관 전체 동의")}
+          label={t`약관 전체 동의`}
           onChange={(next) => onChange({ terms: next, privacy: next, marketing: next })}
           strong
         >
-          {t("약관 전체 동의")}</CheckRow>
+          {t`약관 전체 동의`}</CheckRow>
       </View>
       <View style={styles.termRow}>
-        <CheckRow checked={value.terms} label={t("필수, 서비스 이용약관 동의")} onChange={(terms) => onChange({ ...value, terms })}>
+        <CheckRow checked={value.terms} label={t`필수, 서비스 이용약관 동의`} onChange={(terms) => onChange({ ...value, terms })}>
           <AppText style={styles.bold} tone="sub" variant="meta">
-            {t("[필수]")}</AppText>{" "}
-          {t("서비스 이용약관 동의")}</CheckRow>
-        <ViewLink label={t("서비스 이용약관 보기")} onPress={() => setPolicy("terms")} />
+            {t`[필수]`}</AppText>{" "}
+          {t`서비스 이용약관 동의`}</CheckRow>
+        <ViewLink label={t`서비스 이용약관 보기`} onPress={() => setPolicy("terms")} />
       </View>
       <View style={styles.termRow}>
-        <CheckRow checked={value.privacy} label={t("필수, 개인정보 수집 및 이용 동의")} onChange={(privacy) => onChange({ ...value, privacy })}>
+        <CheckRow checked={value.privacy} label={t`필수, 개인정보 수집 및 이용 동의`} onChange={(privacy) => onChange({ ...value, privacy })}>
           <AppText style={styles.bold} tone="sub" variant="meta">
-            {t("[필수]")}</AppText>{" "}
-          {t("개인정보 수집 및 이용 동의")}</CheckRow>
-        <ViewLink label={t("개인정보 수집 및 이용 동의 보기")} onPress={() => setPolicy("privacy")} />
+            {t`[필수]`}</AppText>{" "}
+          {t`개인정보 수집 및 이용 동의`}</CheckRow>
+        <ViewLink label={t`개인정보 수집 및 이용 동의 보기`} onPress={() => setPolicy("privacy")} />
       </View>
-      <CheckRow checked={value.marketing} label={t("선택, 라멘 추천 및 소식 수신 동의")} onChange={(marketing) => onChange({ ...value, marketing })}>
+      <CheckRow checked={value.marketing} label={t`선택, 라멘 추천 및 소식 수신 동의`} onChange={(marketing) => onChange({ ...value, marketing })}>
         <AppText style={styles.bold} tone="sub" variant="meta">
-          {t("[선택]")}</AppText>{" "}
-        {t("라멘 추천 및 소식 수신 동의")}</CheckRow>
+          {t`[선택]`}</AppText>{" "}
+        {t`라멘 추천 및 소식 수신 동의`}</CheckRow>
       <AppText
         accessibilityElementsHidden={!error}
         accessibilityLiveRegion={error ? "polite" : undefined}
@@ -135,12 +136,12 @@ export function ConsentChecklist({ value, onChange, showError, errorMessage = t(
               if (policy === "privacy") onChange({ ...value, privacy: true })
               setPolicy(null)
             }}
-            title={t("확인하고 동의")}
+            title={t`확인하고 동의`}
             variant="secondary"
           />
         }
         onClose={() => setPolicy(null)}
-        title={policy === "privacy" ? t("개인정보 수집 및 이용 동의") : policy === "terms" ? t("서비스 이용약관") : undefined}
+        title={policy === "privacy" ? t`개인정보 수집 및 이용 동의` : policy === "terms" ? t`서비스 이용약관` : undefined}
         type={policy}
       />
     </View>

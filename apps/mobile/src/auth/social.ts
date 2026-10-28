@@ -1,4 +1,4 @@
-import { t } from "@raota/shared"
+import { t } from "@lingui/core/macro";
 import * as AppleAuthentication from "expo-apple-authentication"
 import * as Crypto from "expo-crypto"
 import { Platform } from "react-native"
@@ -29,7 +29,7 @@ const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim(
 /** 사용자가 제공자 화면을 닫았다. 오류 안내 없이 로그인 화면에 머문다 */
 export class SocialSignInCancelled extends Error {
   constructor(readonly provider: SocialProvider) {
-    super(t("로그인을 취소했어요."))
+    super(t`로그인을 취소했어요.`)
     this.name = "SocialSignInCancelled"
   }
 }
@@ -63,7 +63,7 @@ function prepareGoogle(webClientId: string) {
 }
 
 async function kakaoCredential(): Promise<OauthLoginRequest> {
-  if (!KAKAO_NATIVE_APP_KEY) throw new Error(t("카카오 로그인이 설정되지 않았어요."))
+  if (!KAKAO_NATIVE_APP_KEY) throw new Error(t`카카오 로그인이 설정되지 않았어요.`)
   await prepareKakao(KAKAO_NATIVE_APP_KEY)
   try {
     const token = await kakaoLogin()
@@ -77,12 +77,12 @@ async function kakaoCredential(): Promise<OauthLoginRequest> {
 }
 
 async function googleCredential(): Promise<OauthLoginRequest> {
-  if (!GOOGLE_WEB_CLIENT_ID) throw new Error(t("Google 로그인이 설정되지 않았어요."))
+  if (!GOOGLE_WEB_CLIENT_ID) throw new Error(t`Google 로그인이 설정되지 않았어요.`)
   prepareGoogle(GOOGLE_WEB_CLIENT_ID)
   try {
     const response = await GoogleSignin.signIn()
     if (response.type === "cancelled") throw new SocialSignInCancelled("google")
-    if (!response.data.idToken) throw new Error(t("Google에서 로그인 정보를 받지 못했어요."))
+    if (!response.data.idToken) throw new Error(t`Google에서 로그인 정보를 받지 못했어요.`)
     return { provider: "GOOGLE", idToken: response.data.idToken }
   } catch (error) {
     if (isErrorWithCode(error) && error.code === statusCodes.SIGN_IN_CANCELLED) throw new SocialSignInCancelled("google")
@@ -102,7 +102,7 @@ async function appleCredential(): Promise<OauthLoginRequest> {
       nonce: hashedNonce,
     })
     if (!credential.identityToken || !credential.authorizationCode) {
-      throw new Error(t("Apple에서 로그인 정보를 받지 못했어요."))
+      throw new Error(t`Apple에서 로그인 정보를 받지 못했어요.`)
     }
     return {
       provider: "APPLE",

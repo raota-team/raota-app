@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { t as legacyT } from "@raota/shared"
 import { useState, useEffect, useRef } from 'react'
 import type { UserProfile } from '../types'
 import { RotateCcw, ChevronLeft, ChevronRight, Check, Minus, Sparkles, PenLine } from 'lucide-react'
@@ -63,15 +64,15 @@ interface Condition {
 
 function conditionLabel(condition: Condition) {
   const params = {...condition.labelParams}
-  if (typeof params.style === 'string') params.style = t(params.style)
-  return t(condition.label, params)
+  if (typeof params.style === 'string') params.style = legacyT(params.style)
+  return legacyT(condition.label, params)
 }
 
 function conditionNote(condition: Condition) {
   const params = {...condition.noteParams}
-  if (typeof params.style === 'string') params.style = t(params.style)
-  if (condition.matchedLabels) params.matches = condition.matchedLabels.map(label => t(label)).join(', ')
-  return t(condition.note, params)
+  if (typeof params.style === 'string') params.style = legacyT(params.style)
+  if (condition.matchedLabels) params.matches = condition.matchedLabels.map(label => legacyT(label)).join(', ')
+  return legacyT(condition.note, params)
 }
 
 interface Curation {
@@ -224,13 +225,13 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
       {/* 상단 바 */}
       <header className="flex-shrink-0 bg-white px-3 py-2 border-b border-[#E2E2E2] flex items-center justify-between gap-2">
         <div className="flex items-center gap-1 min-w-0">
-          <button type="button" onClick={onBack} className="w-11 h-11 rounded-full flex items-center justify-center active:bg-[#F2F2F2] transition-colors" aria-label={t("뒤로가기")}>
+          <button type="button" onClick={onBack} className="w-11 h-11 rounded-full flex items-center justify-center active:bg-[#F2F2F2] transition-colors" aria-label={t`뒤로가기`}>
             <ChevronLeft className="w-5 h-5" aria-hidden="true" />
           </button>
-          <h1 className="text-[17px] font-extrabold tracking-tight truncate">{t("AI 라멘 큐레이터")}</h1>
+          <h1 className="text-[17px] font-extrabold tracking-tight truncate">{t`AI 라멘 큐레이터`}</h1>
         </div>
         {typeof step === 'number' && (
-          <span className="text-[12px] font-bold text-[#6B6E73] shrink-0 tabular-nums" aria-label={t("4단계 중 {v0}단계", { v0: step })}>
+          <span className="text-[12px] font-bold text-[#6B6E73] shrink-0 tabular-nums" aria-label={t`4단계 중 ${ph({ v0: step })}단계`}>
             {step} / 4
           </span>
         )}
@@ -244,19 +245,19 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
               <div className="h-full bg-[#E60000] rounded-full transition-[width] duration-200" style={{ width: `${(step / 4) * 100}%` }} />
             </div>
             <h2 ref={stepHeadingRef} tabIndex={-1} className="text-[20px] font-extrabold tracking-tight leading-snug break-keep outline-none">
-              {t(STEP_TITLES[step].title)}
+              {legacyT(STEP_TITLES[step].title)}
             </h2>
-            <p className="text-[13px] text-[#6B6E73] mt-1.5 break-keep">{t(STEP_TITLES[step].help)}</p>
+            <p className="text-[13px] text-[#6B6E73] mt-1.5 break-keep">{legacyT(STEP_TITLES[step].help)}</p>
 
             {step === 1 && (
-              <div role="radiogroup" aria-label={t("국물 베이스")} className="grid grid-cols-2 gap-2 mt-5">
+              <div role="radiogroup" aria-label={t`국물 베이스`} className="grid grid-cols-2 gap-2 mt-5">
                 {SOUP_OPTIONS.map(soup => {
                   const active = inputs.soupId === soup.id
                   return (
                     <button key={soup.id} type="button" role="radio" aria-checked={active} onClick={() => setInput('soupId', soup.id)} className={`${optionClass(active)} min-h-16 px-3.5 py-3 flex items-center justify-between gap-2`}>
                       <span className="min-w-0">
-                        <span className="block text-[15px] font-bold break-keep">{t(soup.label)}</span>
-                        <span className={`block text-[12px] mt-0.5 ${active ? 'text-white/70' : 'text-[#6B6E73]'}`}>{t(soup.sub)}</span>
+                        <span className="block text-[15px] font-bold break-keep">{legacyT(soup.label)}</span>
+                        <span className={`block text-[12px] mt-0.5 ${active ? 'text-white/70' : 'text-[#6B6E73]'}`}>{legacyT(soup.sub)}</span>
                       </span>
                       {active && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
                     </button>
@@ -266,12 +267,12 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
             )}
 
             {step === 2 && (
-              <div role="radiogroup" aria-label={t("식사 상황")} className="space-y-2 mt-5">
+              <div role="radiogroup" aria-label={t`식사 상황`} className="space-y-2 mt-5">
                 {MOOD_OPTIONS.map(mood => {
                   const active = inputs.mood === mood
                   return (
                     <button key={mood} type="button" role="radio" aria-checked={active} onClick={() => setInput('mood', mood)} className={`${optionClass(active)} w-full min-h-14 px-4 py-3 flex items-center justify-between gap-3`}>
-                      <span className="text-[15px] font-bold break-keep">{t(mood)}</span>
+                      <span className="text-[15px] font-bold break-keep">{legacyT(mood)}</span>
                       {active ? <Check className="w-4 h-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="w-4 h-4 shrink-0 text-[#6B6E73]" aria-hidden="true" />}
                     </button>
                   )
@@ -280,12 +281,12 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
             )}
 
             {step === 3 && (
-              <div role="radiogroup" aria-label={t("가장 중요한 요소")} className="space-y-2 mt-5">
+              <div role="radiogroup" aria-label={t`가장 중요한 요소`} className="space-y-2 mt-5">
                 {PRIORITY_OPTIONS.map(option => {
                   const active = inputs.priority === option.label
                   return (
                     <button key={option.label} type="button" role="radio" aria-checked={active} onClick={() => setInput('priority', option.label)} className={`${optionClass(active)} w-full min-h-14 px-4 py-3 flex items-center justify-between gap-3`}>
-                      <span className="text-[15px] font-bold break-keep">{t(option.label)}</span>
+                      <span className="text-[15px] font-bold break-keep">{legacyT(option.label)}</span>
                       {active ? <Check className="w-4 h-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="w-4 h-4 shrink-0 text-[#6B6E73]" aria-hidden="true" />}
                     </button>
                   )
@@ -295,15 +296,15 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
 
             {step === 4 && (
               <div className="mt-5">
-                <label htmlFor="ai-custom-prompt" className="sr-only">{t("더 바라는 점")}</label>
+                <label htmlFor="ai-custom-prompt" className="sr-only">{t`더 바라는 점`}</label>
                 <textarea
                   id="ai-custom-prompt"
                   value={inputs.prompt}
                   onChange={e => setInput('prompt', e.target.value)}
-                  placeholder={t("예: 차슈가 부드럽고 국물이 덜 짠 곳")}
+                  placeholder={t`예: 차슈가 부드럽고 국물이 덜 짠 곳`}
                   className="w-full h-24 p-3.5 bg-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] text-[14px] text-[#25282B] placeholder-[#6B6E73] outline-none focus:border-[#25282B] resize-none"
                 />
-                <p className="text-[13px] font-bold text-[#6B6E73] mt-4 mb-2">{t("자주 찾는 조건")}</p>
+                <p className="text-[13px] font-bold text-[#6B6E73] mt-4 mb-2">{t`자주 찾는 조건`}</p>
                 <div className="flex flex-wrap gap-2">
                   {QUICK_PROMPTS.map(promptText => {
                     const added = inputs.prompt.includes(promptText)
@@ -319,7 +320,7 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
                         className={`min-h-11 px-3.5 rounded-[60px] border text-[13px] font-bold transition-colors ${added ? 'border-[#25282B] bg-[#25282B] text-white' : 'border-[#E2E2E2] bg-white text-[#25282B] active:bg-[#F2F2F2]'}`}
                       >
                         {added ? '' : '+ '}
-                        {t(promptText)}
+                        {legacyT(promptText)}
                       </button>
                     )
                   })}
@@ -333,17 +334,17 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
           <div className="px-5 pt-5 pb-6 anim-fade-in">
             <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#E60000] bg-[#FFF0F0] px-3 py-1 rounded-[60px]">
               <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-              {t("AI 취향 매칭 결과")}</span>
+              {t`AI 취향 매칭 결과`}</span>
             <h2 ref={resultHeadingRef} tabIndex={-1} className="text-[20px] font-extrabold tracking-tight mt-2 break-keep outline-none">
-              {nickname ? t("오늘 {v0}님을 위한 라멘집", { v0: nickname }) : t("오늘의 추천")}
+              {nickname ? t`오늘 ${ph({ v0: nickname })}님을 위한 라멘집` : t`오늘의 추천`}
             </h2>
 
             <article className="mt-4 bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden">
               <div className="relative aspect-[16/10] bg-[#E9E9E9]">
-                {result.shop.photos[0] && <img src={result.shop.photos[0]} alt={t("{v0} 대표 사진", { v0: result.shop.name })} className="w-full h-full object-cover" />}
+                {result.shop.photos[0] && <img src={result.shop.photos[0]} alt={t`${ph({ v0: result.shop.name })} 대표 사진`} className="w-full h-full object-cover" />}
                 {result.shop.matchScore > 0 && (
                   <span className="absolute top-3 right-3 bg-[#E60000] text-white text-[13px] font-extrabold px-2.5 py-1 rounded-[4px] tabular-nums">
-                    {t("취향 일치도")} {result.shop.matchScore}%
+                    {t`취향 일치도`} {result.shop.matchScore}%
                   </span>
                 )}
               </div>
@@ -358,9 +359,9 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
                   <p className="text-[14px] leading-relaxed text-[#25282B] mt-3 pl-3 border-l border-[#25282B] break-keep">{result.shop.description}</p>
                 )}
                 {result.shop.tags.length > 0 && (
-                  <ul className="flex gap-1.5 flex-wrap mt-3" aria-label={t("특징")}>
+                  <ul className="flex gap-1.5 flex-wrap mt-3" aria-label={t`특징`}>
                     {result.shop.tags.map(tag => (
-                      <li key={tag} className="bg-[#F2F2F2] text-[12px] font-bold px-2.5 py-1 rounded-[4px]">{t(tag)}</li>
+                      <li key={tag} className="bg-[#F2F2F2] text-[12px] font-bold px-2.5 py-1 rounded-[4px]">{legacyT(tag)}</li>
                     ))}
                   </ul>
                 )}
@@ -369,7 +370,7 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
 
             {result.conditions.length > 0 && (
               <section className="mt-5" aria-labelledby="ai-conditions-heading">
-                <h3 id="ai-conditions-heading" className="text-[15px] font-bold pb-2 border-b border-[#E2E2E2]">{t("추천에 쓴 조건")}</h3>
+                <h3 id="ai-conditions-heading" className="text-[15px] font-bold pb-2 border-b border-[#E2E2E2]">{t`추천에 쓴 조건`}</h3>
                 <ul className="divide-y divide-[#E2E2E2]">
                   {result.conditions.map(condition => (
                     <li key={condition.label} className="py-3 flex items-start gap-3">
@@ -382,7 +383,7 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
                       <div className="min-w-0">
                         <p className="text-[14px] font-bold break-keep">
                           {conditionLabel(condition)}
-                          <span className={`ml-1.5 text-[12px] ${condition.applied ? 'text-[#25282B]' : 'text-[#6B6E73]'}`}>{condition.applied ? t("반영") : t("참고만")}</span>
+                          <span className={`ml-1.5 text-[12px] ${condition.applied ? 'text-[#25282B]' : 'text-[#6B6E73]'}`}>{condition.applied ? t`반영` : t`참고만`}</span>
                         </p>
                         <p className="text-[13px] text-[#6B6E73] mt-0.5 break-keep">{conditionNote(condition)}</p>
                       </div>
@@ -392,12 +393,12 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
               </section>
             )}
             {result.conditions.length === 0 && (
-              <p className="mt-4 text-[13px] text-[#6B6E73] break-keep">{t("이전에 받은 추천이에요. 조건을 바꾸려면 다시 추천받기를 눌러주세요.")}</p>
+              <p className="mt-4 text-[13px] text-[#6B6E73] break-keep">{t`이전에 받은 추천이에요. 조건을 바꾸려면 다시 추천받기를 눌러주세요.`}</p>
             )}
 
             <button type="button" onClick={restart} className="mt-3 min-h-11 inline-flex items-center gap-1.5 text-[14px] font-bold text-[#25282B]">
               <RotateCcw className="w-4 h-4" aria-hidden="true" />
-              {t("다시 추천받기")}</button>
+              {t`다시 추천받기`}</button>
           </div>
         )}
       </div>
@@ -412,7 +413,7 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
                 onClick={() => setStep((step - 1) as Step)}
                 className="flex-1 h-13 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2] transition-colors"
               >
-                {t("이전")}</button>
+                {t`이전`}</button>
             )}
             <button
               type="button"
@@ -422,11 +423,11 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
               {step === 4 ? (
                 <>
                   <Sparkles className="w-4 h-4" aria-hidden="true" />
-                  <span>{t("AI 맞춤 추천받기")}</span>
+                  <span>{t`AI 맞춤 추천받기`}</span>
                 </>
               ) : (
                 <>
-                  <span>{t("다음")}</span>
+                  <span>{t`다음`}</span>
                   <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </>
               )}
@@ -440,13 +441,13 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
               className="flex-1 h-13 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2] transition-colors flex items-center justify-center gap-1.5"
             >
               <PenLine className="w-4 h-4" aria-hidden="true" />
-              {t("이 가게 기록하기")}</button>
+              {t`이 가게 기록하기`}</button>
             <button
               type="button"
               onClick={() => onShopClick(result.shop.name)}
               className="flex-1 h-13 rounded-[60px] bg-[#E60000] text-white font-bold text-[14px] active:bg-[#CC0000] transition-colors flex items-center justify-center gap-1"
             >
-              {t("매장 상세 보기")}<ChevronRight className="w-4 h-4" aria-hidden="true" />
+              {t`매장 상세 보기`}<ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         ) : null}

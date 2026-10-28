@@ -1,5 +1,6 @@
+import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
+import { t as legacyT } from "@raota/shared"
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react"
 import {
   Pressable,
@@ -49,7 +50,7 @@ export function tasteLeanWords(scores: Pick<TasteScores, "brothDensity" | "noodl
   const lean = (score: number) => (score >= 3.5 ? "high" : score <= 2.5 ? "low" : "mid")
   const broth = { high: "진한 육수", mid: "적당한 농도의 육수", low: "맑은 육수" }[lean(scores.brothDensity)]
   const noodle = { high: "단단한 면", mid: "알맞게 삶은 면", low: "부드러운 면" }[lean(scores.noodleFirmness)]
-  return { broth: t(broth), noodle: t(noodle) }
+  return { broth: legacyT(broth), noodle: legacyT(noodle) }
 }
 
 /** 큰 글씨 조각. accent는 맛 지문 파랑으로 칠한다 */
@@ -109,9 +110,10 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   const slides: Slide[] = [
     {
       key: "count",
-      kicker: t("지금까지"),
-      big: [t("{count}그릇을\n기록했어요", { count: recordCount })],
-      sub: [t("{count}곳을 다녔어요", { count: visits.length })],
+      kicker: t`지금까지`,
+      big: [t`${ph({ count: recordCount })}그릇을
+기록했어요`],
+      sub: [t`${ph({ count: visits.length })}곳을 다녔어요`],
       dark: true,
       bowls: bowls.slice(0, MAX_BOWL_DOTS).map((bowl) => menuCategoryOf(bowl.type)),
     },
@@ -119,17 +121,18 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   if (top) {
     slides.push({
       key: "soup",
-      kicker: t("가장 많이 먹은 국물"),
-      big: [`${t(top)} `, { accent: t("{count}그릇", { count: typeCounts[top] }) }],
-      sub: rest.length ? [rest.map((name) => `${t(name)} ${typeCounts[name]}`).join(" · ")] : [],
+      kicker: t`가장 많이 먹은 국물`,
+      big: [`${legacyT(top)} `, { accent: t`${ph({ count: typeCounts[top] })}그릇` }],
+      sub: rest.length ? [rest.map((name) => `${legacyT(name)} ${typeCounts[name]}`).join(" · ")] : [],
       shares: ranked.map((name) => ({ name, count: typeCounts[name] })),
     })
   }
   slides.push({
     key: "taste",
-    kicker: t("나의 취향"),
-    big: [{ accent: broth }, t("에\n"), { accent: noodle }],
-    sub: [t(identity.title), ...(identity.tags.length ? [identity.tags.map((tag) => `#${t(tag)}`).join(" ")] : [])],
+    kicker: t`나의 취향`,
+    big: [{ accent: broth }, t`에
+`, { accent: noodle }],
+    sub: [legacyT(identity.title), ...(identity.tags.length ? [identity.tags.map((tag) => `#${legacyT(tag)}`).join(" ")] : [])],
     pips: [
       { label: "육수", value: scores.brothDensity },
       { label: "면", value: scores.noodleFirmness },
@@ -138,9 +141,10 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
   if (favorite) {
     slides.push({
       key: "regular",
-      kicker: t("단골집"),
-      big: [t("{name}에\n", { name: favorite.name }), { accent: t("{count}번 갔어요", { count: favorite.visitCount }) }],
-      sub: runnerUp ? [t("그다음은 {name} {count}번", { name: runnerUp.name, count: runnerUp.visitCount })] : [],
+      kicker: t`단골집`,
+      big: [t`${ph({ name: favorite.name })}에
+`, { accent: t`${ph({ count: favorite.visitCount })}번 갔어요` }],
+      sub: runnerUp ? [t`그다음은 ${ph({ name: runnerUp.name })} ${ph({ count: runnerUp.visitCount })}번`] : [],
       photo: favorite.photo || undefined,
       onPress: onOpenFavorite,
     })
@@ -215,14 +219,14 @@ export function TasteStory({ recordCount, bowls, visits, typeCounts, scores, ide
           </AppText>
           {last ? null : (
             <Pressable
-              accessibilityLabel={t("다음 장 넘겨 보기")}
+              accessibilityLabel={t`다음 장 넘겨 보기`}
               accessibilityRole="button"
               hitSlop={12}
               onPress={advance}
               style={({ pressed }) => [styles.more, pressed && styles.pressed]}
               testID="taste-story-next"
             >
-              <AppText capScale style={styles.moreText} variant="meta">{t("넘겨 보기")}</AppText>
+              <AppText capScale style={styles.moreText} variant="meta">{t`넘겨 보기`}</AppText>
               <ArrowRight color={palette.ink} size={14} />
             </Pressable>
           )}
@@ -237,7 +241,7 @@ function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: nu
   const tone = slide.dark ? "onDark" : "ink"
   const subTone = slide.dark ? "onDark" : "sub"
   const bigText = slide.big.map((part) => (typeof part === "string" ? part : part.accent)).join("")
-  const pipsText = slide.pips?.map((pip) => t("{label} {value}점", { label: t(pip.label), value: pip.value.toFixed(1) })).join(", ")
+  const pipsText = slide.pips?.map((pip) => t`${ph({ label: legacyT(pip.label) })} ${ph({ value: pip.value.toFixed(1) })}점`).join(", ")
   const label = [slide.kicker, bigText.replace(/\n/g, " "), slide.sub.join(" · "), pipsText].filter(Boolean).join(". ")
   const total = slide.shares?.reduce((sum, share) => sum + share.count, 0) ?? 0
   // 사진은 카드 오른쪽 면을 위아래 끝까지 채운다. 글은 그 폭만큼 비켜 선다
@@ -272,8 +276,8 @@ function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: nu
       {slide.pips?.length ? (
         <View style={[styles.footer, styles.pipRows]}>
           {slide.pips.map((pip) => (
-            <View key={t(pip.label)} style={styles.pipRow}>
-              <AppText capScale style={styles.pipLabel} tone="muted" variant="meta">{t(pip.label)}</AppText>
+            <View key={legacyT(pip.label)} style={styles.pipRow}>
+              <AppText capScale style={styles.pipLabel} tone="muted" variant="meta">{legacyT(pip.label)}</AppText>
               <View style={styles.pips}>
                 {[1, 2, 3, 4, 5].map((step) => (
                   <View key={step} style={[styles.pip, step <= Math.round(pip.value) && styles.pipOn]} />
@@ -310,7 +314,7 @@ function StorySlide({ slide, width, first, bowlEdge }: { slide: Slide; width: nu
   if (slide.onPress) {
     return (
       <Pressable
-        accessibilityHint={t("매장 화면을 열어요")}
+        accessibilityHint={t`매장 화면을 열어요`}
         accessibilityLabel={label}
         accessibilityRole="button"
         onPress={slide.onPress}

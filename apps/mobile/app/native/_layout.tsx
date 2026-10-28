@@ -1,5 +1,5 @@
+import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
 import * as Haptics from "expo-haptics"
 import { Tabs, router, useFocusEffect } from "expo-router"
 import { Home, MapPin, MessagesSquare, Plus, UserRound, type LucideIcon } from "lucide-react-native"
@@ -86,8 +86,8 @@ export function RaotaTabBar({ state, descriptors, navigation, insets }: TabBarPr
 
     return (
       <Pressable
-        accessibilityHint={routeName === "my" && !currentUser ? t("로그인하면 내 기록을 볼 수 있어요") : undefined}
-        accessibilityLabel={t("{p0} 탭", { p0: label })}
+        accessibilityHint={routeName === "my" && !currentUser ? t`로그인하면 내 기록을 볼 수 있어요` : undefined}
+        accessibilityLabel={t`${ph({ p0: label })} 탭`}
         accessibilityRole="tab"
         accessibilityState={{ selected: focused }}
         key={route.key}
@@ -107,13 +107,13 @@ export function RaotaTabBar({ state, descriptors, navigation, insets }: TabBarPr
   if (keyboardVisible) return null
 
   return (
-    <View accessibilityLabel={t("주요 메뉴")} style={[styles.bar, { paddingBottom: Math.max(0, insets.bottom - RECORD_HOME_INDICATOR_OVERLAP) }]}>
+    <View accessibilityLabel={t`주요 메뉴`} style={[styles.bar, { paddingBottom: Math.max(0, insets.bottom - RECORD_HOME_INDICATOR_OVERLAP) }]}>
       <View accessibilityRole="tablist" style={styles.row}>
         {renderTab("index")}
         {renderTab("map")}
         <Pressable
-          accessibilityHint={currentUser ? undefined : t("로그인하면 기록할 수 있어요")}
-          accessibilityLabel={t("라멘 기록하기")}
+          accessibilityHint={currentUser ? undefined : t`로그인하면 기록할 수 있어요`}
+          accessibilityLabel={t`라멘 기록하기`}
           accessibilityRole="button"
           accessibilityState={{ expanded: menuOpen }}
           onLongPress={__DEV__ ? () => openReminderTestMenu(monthly.current?.recordCount ?? 0) : undefined}
@@ -144,10 +144,10 @@ export default function TabLayout() {
   }, [isHydrated])
   return (
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <RaotaTabBar {...props} />}>
-      <Tabs.Screen name="index" options={{ title: t("홈") }} />
-      <Tabs.Screen name="map" options={{ title: t("지도") }} />
-      <Tabs.Screen name="lounge" options={{ title: t("라운지") }} />
-      <Tabs.Screen name="my" options={{ title: t("마이") }} />
+      <Tabs.Screen name="index" options={{ title: t`홈` }} />
+      <Tabs.Screen name="map" options={{ title: t`지도` }} />
+      <Tabs.Screen name="lounge" options={{ title: t`라운지` }} />
+      <Tabs.Screen name="my" options={{ title: t`마이` }} />
     </Tabs>
   )
 }

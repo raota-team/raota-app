@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { t as legacyT } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { useEffect, useMemo, useState } from "react"
 import { router } from "expo-router"
@@ -70,7 +71,7 @@ export function MenuDistributionChart({
           />
         ))}
       </View>
-      <View accessibilityLabel={t("메뉴 분포 범례")} style={styles.legend}>
+      <View accessibilityLabel={t`메뉴 분포 범례`} style={styles.legend}>
         {MENU_CATEGORY_NAMES.map((name) => (
           <View key={name} style={styles.legendItem}>
             <SoupDot type={name} size={10} />
@@ -131,13 +132,13 @@ function DistributionBar({
           variant="meta"
         >
           {shortReportMonth(report, includeYear)}
-          {inProgress ? t(" · 집계 중") : selected ? t(" · 선택한 달") : t(" · 지난달")}
+          {inProgress ? t` · 집계 중` : selected ? t` · 선택한 달` : t` · 지난달`}
         </AppText>
         <AppText capScale style={[styles.tabular, styles.chartTotal]} tone="sub" variant="meta">
-          {total}{t("그릇 ")}</AppText>
+          {total}{t`그릇 `}</AppText>
       </View>
       <View
-        accessibilityLabel={t("{v1} 메뉴 분포. {v2}", { v1: report.period, v2: summary })}
+        accessibilityLabel={t`${ph({ v1: report.period })} 메뉴 분포. ${ph({ v2: summary })}`}
         accessibilityRole="image"
         accessible
         onLayout={({ nativeEvent }) => setTrackWidth(nativeEvent.layout.width)}
@@ -159,7 +160,7 @@ function DistributionBar({
           </Animated.View>
         ) : (
           <AppText capScale style={styles.barEmpty} tone="sub" variant="meta">
-            {t("기록 없음 ")}</AppText>
+            {t`기록 없음 `}</AppText>
         )}
       </View>
     </View>
@@ -187,32 +188,32 @@ function lightSoup(name: string) {
 function MonthlyReportCard({ counts, hasPrevious }: { counts: Record<string, number>; hasPrevious: boolean }) {
   const report = monthlyReportStatus(counts)
   const ready = report.remaining === 0
-  const message = !hasPrevious ? t("이번 달 {v1}그릇 이상 모이면 다음 달부터 달라진 비율을 비교할 수 있어요.", { v1: MONTHLY_REPORT_TARGET }) : ready ? t("{v1}그릇이 모여서 지난달과 비율을 비교할 수 있어요.", { v1: MONTHLY_REPORT_TARGET }) : t("{v1} 더 기록하면 지난달과 비율을 비교할 수 있어요.", { v1: report.remaining === 1 ? t("한 그릇") : t("{v1}그릇", { v1: report.remaining }) })
+  const message = !hasPrevious ? t`이번 달 ${ph({ v1: MONTHLY_REPORT_TARGET })}그릇 이상 모이면 다음 달부터 달라진 비율을 비교할 수 있어요.` : ready ? t`${ph({ v1: MONTHLY_REPORT_TARGET })}그릇이 모여서 지난달과 비율을 비교할 수 있어요.` : t`${ph({ v1: report.remaining === 1 ? t`한 그릇` : t`${ph({ v1: report.remaining })}그릇` })} 더 기록하면 지난달과 비율을 비교할 수 있어요.`
   return (
     <View style={styles.nowCard}>
       <View style={styles.rowBetween}>
         <AppText accessibilityRole="header" variant="sectionTitle">
-          {report.month}{t("월 집계 중 ")}</AppText>
+          {report.month}{t`월 집계 중 `}</AppText>
         <AppText capScale style={styles.tabular} variant="secondary">
-          {report.count}{t("그릇 ")}</AppText>
+          {report.count}{t`그릇 `}</AppText>
       </View>
       <AppText lineBreakStrategyIOS="hangul-word" style={styles.cardIntro} tone="sub" variant="secondary">
-        {t("기록을 남기면 이번 달 분포에 바로 더해져요. 이번 달이 ")}{report.daysLeft}{t("일 남았어요. ")}</AppText>
+        {t`기록을 남기면 이번 달 분포에 바로 더해져요. 이번 달이 `}{report.daysLeft}{t`일 남았어요. `}</AppText>
       <View
-        accessibilityLabel={t("지난달과 비교하는 데 필요한 기록")}
+        accessibilityLabel={t`지난달과 비교하는 데 필요한 기록`}
         accessibilityRole="progressbar"
         accessibilityValue={{
           min: 0,
           max: MONTHLY_REPORT_TARGET,
           now: Math.min(report.count, MONTHLY_REPORT_TARGET),
-          text: t("{v1}그릇 기록, {v2}", { v1: report.count, v2: ready ? t("지난달과 비교 가능") : t("{v1}그릇 더 필요", { v1: report.remaining }) }),
+          text: t`${ph({ v1: report.count })}그릇 기록, ${ph({ v2: ready ? t`지난달과 비교 가능` : t`${ph({ v1: report.remaining })}그릇 더 필요` })}`,
         }}
         style={styles.progressTrack}
       >
         <View style={[styles.progressFill, { width: `${report.progress * 100}%` }]} />
       </View>
       <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.progressHint} tone="muted" variant="meta">
-        {t(message)}{hasPrevious && !ready ? t(" (한 달 {v1}그릇부터)", { v1: MONTHLY_REPORT_TARGET }) : ""}
+        {legacyT(message)}{hasPrevious && !ready ? t` (한 달 ${ph({ v1: MONTHLY_REPORT_TARGET })}그릇부터)` : ""}
       </AppText>
     </View>
   )
@@ -258,9 +259,9 @@ export function MonthlyTasteView({ initialSelectedId }: { initialSelectedId?: st
   return (
     <SafeAreaView edges={["top", "bottom", "left", "right"]} style={styles.root}>
       <StatusBar style="auto" />
-      <Header align="center" onBack={goBack} title={t("월별 취향 변화")} titleStyle={typography.sectionTitle} />
+      <Header align="center" onBack={goBack} title={t`월별 취향 변화`} titleStyle={typography.sectionTitle} />
       {isLoading ? (
-        <LoadingState fullScreen label={t("월별 기록을 불러오는 중…")} />
+        <LoadingState fullScreen label={t`월별 기록을 불러오는 중…`} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {selected ? (
@@ -273,10 +274,10 @@ export function MonthlyTasteView({ initialSelectedId }: { initialSelectedId?: st
             />
           ) : (
             <EmptyState
-              description={t("먹은 라멘을 기록하면 월별로 어떤 종류를 즐겼는지 비교할 수 있어요.")}
+              description={t`먹은 라멘을 기록하면 월별로 어떤 종류를 즐겼는지 비교할 수 있어요.`}
               icon={<Utensils color={colors.ink} size={28} />}
               style={styles.section}
-              title={t("첫 달의 메뉴부터 모아볼까요?")}
+              title={t`첫 달의 메뉴부터 모아볼까요?`}
             />
           )}
           <View style={styles.section}>
@@ -321,7 +322,7 @@ function MonthDetail({
   // 집계 중인 달은 실제 기록 수가 3그릇 이상일 때만 비교한다
   const enoughForCompare = !inProgressMonth || inProgressMonth.recordCount >= MONTHLY_REPORT_TARGET
   const canCompare = Boolean(previous && distribution.total && before.total && enoughForCompare)
-  const previousLabel = previous && reportMonthIndex(selected) - reportMonthIndex(previous) === 1 ? t("지난달") : t("이전 기록")
+  const previousLabel = previous && reportMonthIndex(selected) - reportMonthIndex(previous) === 1 ? t`지난달` : t`이전 기록`
   const differences = distribution.items.map((item, index) => ({ ...item, difference: item.pct - before.items[index].pct }))
   const tableRows = differences
   const biggestChange = [...differences].sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference))[0]
@@ -337,13 +338,13 @@ function MonthDetail({
   const untyped = inProgressMonth ? inProgressMonth.recordCount - inProgressMonth.typedCount : 0
   const remaining = inProgressMonth ? MONTHLY_REPORT_TARGET - inProgressMonth.recordCount : 0
 
-  const compareHint = canCompare ? t("각 달에 먹은 라멘의 종류별 비율을 비교해요.") : inProgressMonth && previous && distribution.total ? t("{v1} 더 기록하면 {v2}과 비교할 수 있어요. 한 달 {v3}그릇 미만이면 비교하지 않아요.", { v1: remaining === 1 ? t("한 그릇") : t("{v1}그릇", { v1: remaining }), v2: shortMonth(previous), v3: MONTHLY_REPORT_TARGET }) : previous ? t("비교할 메뉴 기록이 모이면 비율 변화를 보여드려요.") : t("첫 월별 기록이에요. 다음 달부터 변화를 비교해요.")
+  const compareHint = canCompare ? t`각 달에 먹은 라멘의 종류별 비율을 비교해요.` : inProgressMonth && previous && distribution.total ? t`${ph({ v1: remaining === 1 ? t`한 그릇` : t`${ph({ v1: remaining })}그릇` })} 더 기록하면 ${ph({ v2: shortMonth(previous) })}과 비교할 수 있어요. 한 달 ${ph({ v3: MONTHLY_REPORT_TARGET })}그릇 미만이면 비교하지 않아요.` : previous ? t`비교할 메뉴 기록이 모이면 비율 변화를 보여드려요.` : t`첫 월별 기록이에요. 다음 달부터 변화를 비교해요.`
 
   return (
     <>
       {/* 월 선택. 이번 달은 "집계 중" */}
       <ScrollView
-        accessibilityLabel={t("보는 달")}
+        accessibilityLabel={t`보는 달`}
         accessibilityRole="tablist"
         contentContainerStyle={styles.monthChips}
         horizontal
@@ -354,10 +355,10 @@ function MonthDetail({
           const label = `${shortReportMonth(report)}${isPastReport(report) ? "" : " · 집계 중"}`
           return (
             <Chip
-              accessibilityLabel={t("{v1}{v2}", { v1: report.period, v2: isPastReport(report) ? "" : " 집계 중" })}
+              accessibilityLabel={t`${ph({ v1: report.period })}${ph({ v2: isPastReport(report) ? "" : " 집계 중" })}`}
               accessibilityRole="tab"
               key={report.id}
-              label={t(label)}
+              label={legacyT(label)}
               onPress={() => onSelect(report.id)}
               selected={active}
             />
@@ -368,27 +369,27 @@ function MonthDetail({
       <View style={styles.monthIntro}>
         <View style={styles.monthTitle}>
           <AppText accessibilityRole="header" tone={monthIdentity ? "sub" : "ink"} variant={monthIdentity ? "secondary" : "screenTitle"}>
-            {shortMonth(selected)}{t("의 취향 ")}</AppText>
+            {shortMonth(selected)}{t`의 취향 `}</AppText>
           {monthIdentity ? (
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} variant="headline">
-              {t(monthIdentity.title)}
+              {legacyT(monthIdentity.title)}
             </AppText>
           ) : inProgressMonth ? (
             <AppText style={styles.gapTop1} tone="sub" variant="cardTitle">
-              {t("아직 집계 중이에요 ")}</AppText>
+              {t`아직 집계 중이에요 `}</AppText>
           ) : null}
         </View>
         <AppText lineBreakStrategyIOS="hangul-word" style={styles.monthSummary} tone="sub" variant="secondary">
           {distribution.total ? (
             <>
-              {distribution.total}{t("그릇 중")}{" "}
+              {distribution.total}{t`그릇 중`}{" "}
               <AppText style={styles.bold} variant="secondary">
                 {favorites.map((item) => item.name).join("·")}
               </AppText>
-              {favorites.length > 1 ? t("가 공동 1위예요.") : t("를 {v1}그릇으로 가장 많이 먹었어요.", { v1: favoriteCount })}
+              {favorites.length > 1 ? t`가 공동 1위예요.` : t`를 ${ph({ v1: favoriteCount })}그릇으로 가장 많이 먹었어요.`}
             </>
           ) : (
-            t("이 달에는 분포를 보여줄 메뉴 기록이 없어요.")
+            t`이 달에는 분포를 보여줄 메뉴 기록이 없어요.`
           )}
         </AppText>
         {monthIdentity ? (
@@ -398,7 +399,7 @@ function MonthDetail({
         ) : null}
         {inProgressMonth && untyped > 0 ? (
           <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
-            {t("이번 달 ")}{inProgressMonth.recordCount}{t("그릇 중 종류가 확인된 ")}{inProgressMonth.typedCount}{t("그릇 기준이에요. ")}</AppText>
+            {t`이번 달 `}{inProgressMonth.recordCount}{t`그릇 중 종류가 확인된 `}{inProgressMonth.typedCount}{t`그릇 기준이에요. `}</AppText>
         ) : null}
         {past ? (
           <View style={styles.note}>
@@ -413,32 +414,32 @@ function MonthDetail({
       <View style={styles.section}>
         <AppText accessibilityRole="header" variant="sectionTitle">
           {/* 표는 메뉴가 아니라 국물 종류를 비교한다 */}
-          {canCompare ? t("{v1}과 달라진 종류", { v1: previousLabel }) : t("종류별로 먹은 라멘")}
+          {canCompare ? t`${ph({ v1: previousLabel })}과 달라진 종류` : t`종류별로 먹은 라멘`}
         </AppText>
         <AppText lineBreakStrategyIOS="hangul-word" style={styles.compareHint} tone="sub" variant="secondary">
           {compareHint}
         </AppText>
         {/* 종류가 확인된 그릇이 없는 달은 0그릇 줄만 늘어놓지 않고 표를 감춘다(위 요약이 이유를 말한다) */}
         {distribution.total ? (
-          <View accessibilityLabel={t("{v1} 라멘 종류별 그릇 수와 비율", { v1: selected.period })} style={styles.table}>
+          <View accessibilityLabel={t`${ph({ v1: selected.period })} 라멘 종류별 그릇 수와 비율`} style={styles.table}>
             <View style={[styles.tableRow, styles.tableHead]}>
               <AppText capScale style={styles.colName} tone="sub" variant="secondary">
-                {t("종류 ")}</AppText>
+                {t`종류 `}</AppText>
               <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
-                {t("그릇 수 ")}</AppText>
+                {t`그릇 수 `}</AppText>
               <AppText capScale style={styles.colNum} tone="sub" variant="secondary">
-                {t("비율 ")}</AppText>
+                {t`비율 `}</AppText>
               <View style={styles.changeNum}>
-                {canCompare ? <AppText capScale tone="sub" variant="secondary">{t("변화")}</AppText> : null}
+                {canCompare ? <AppText capScale tone="sub" variant="secondary">{t`변화`}</AppText> : null}
               </View>
             </View>
             {tableRows.map((item) => {
               // 변화가 없으면 칸을 비운다. "—"를 두지 않고 줄 라벨이 "변화 없음"을 읽어 준다
               const changeText = item.difference ? `${item.difference > 0 ? "+" : "−"}${Math.abs(item.difference)}%p` : ""
-              const changeLabel = item.difference ? t("{v1}퍼센트포인트 {v2}", { v1: Math.abs(item.difference), v2: item.difference > 0 ? t("증가") : t("감소") }) : t("변화 없음")
+              const changeLabel = item.difference ? t`${ph({ v1: Math.abs(item.difference) })}퍼센트포인트 ${ph({ v2: item.difference > 0 ? t`증가` : t`감소` })}` : t`변화 없음`
               return (
                 <View
-                  accessibilityLabel={t("{v1} {v2}그릇, {v3}%{v4}", { v1: item.name, v2: item.count, v3: item.pct, v4: canCompare ? `, ${changeLabel}` : "" })}
+                  accessibilityLabel={t`${ph({ v1: item.name })} ${ph({ v2: item.count })}그릇, ${ph({ v3: item.pct })}%${ph({ v4: canCompare ? `, ${changeLabel}` : "" })}`}
                   accessible
                   key={item.name}
                   style={styles.tableRow}
@@ -447,7 +448,7 @@ function MonthDetail({
                     {item.name}
                   </AppText>
                   <AppText capScale style={[styles.colNum, styles.tabular]} tone="sub" variant="secondary">
-                    {item.count}{t("그릇 ")}</AppText>
+                    {item.count}{t`그릇 `}</AppText>
                   <AppText capScale style={[styles.colNum, styles.tabular, styles.bold]} variant="secondary">
                     {item.pct}%
                   </AppText>
@@ -476,13 +477,13 @@ function MonthDetail({
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.compareSummary} variant="secondary">
               {biggestChange.difference ? (
                 <>
-                  <AppText style={styles.bold} variant="secondary">{biggestChange.name}</AppText> {t(" 비율이 ")}{shortMonth(previous)}{t("보다")}{" "}
+                  <AppText style={styles.bold} variant="secondary">{biggestChange.name}</AppText> {t` 비율이 `}{shortMonth(previous)}{t`보다`}{" "}
                   <AppText style={styles.bold} variant="secondary">
-                    {Math.abs(biggestChange.difference)}%p {biggestChange.difference > 0 ? t("늘었어요") : t("줄었어요")}.
+                    {Math.abs(biggestChange.difference)}%p {biggestChange.difference > 0 ? t`늘었어요` : t`줄었어요`}.
                   </AppText>
                 </>
               ) : (
-                t("이전 기록과 메뉴 비율이 같아요.")
+                t`이전 기록과 메뉴 비율이 같아요.`
               )}
             </AppText>
           ) : null}
@@ -492,11 +493,11 @@ function MonthDetail({
       {past && past.topShops.length > 0 ? (
         <View style={styles.section}>
           <AppText accessibilityRole="header" variant="sectionTitle">
-            {shortMonth(past)}{t("에 자주 간 라멘집 ")}</AppText>
+            {shortMonth(past)}{t`에 자주 간 라멘집 `}</AppText>
           <View style={styles.sectionContent}>
             {past.topShops.map((shop, index) => (
               <View
-                accessibilityLabel={t("{v1}위 {v2}{v3}, {v4}, {v5}그릇", { v1: index + 1, v2: shop.name, v3: shop.branch ? ` ${shop.branch}` : "", v4: shop.topMenu, v5: shop.visitCount })}
+                accessibilityLabel={t`${ph({ v1: index + 1 })}위 ${ph({ v2: shop.name })}${ph({ v3: shop.branch ? ` ${shop.branch}` : "" })}, ${ph({ v4: shop.topMenu })}, ${ph({ v5: shop.visitCount })}그릇`}
                 accessible
                 key={shop.name}
                 style={[styles.shopRow, index > 0 && styles.shopDivider]}
@@ -514,7 +515,7 @@ function MonthDetail({
                   </AppText>
                 </View>
                 <AppText style={styles.tabular} variant="bodyStrong">
-                  {shop.visitCount}{t("그릇 ")}</AppText>
+                  {shop.visitCount}{t`그릇 `}</AppText>
               </View>
             ))}
           </View>

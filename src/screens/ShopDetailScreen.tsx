@@ -1,4 +1,5 @@
-import { formatNumber, t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { formatNumber, t as legacyT } from "@raota/shared"
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronDown, Bookmark, Store, ImageOff, PenLine, Phone, Check, CalendarCheck } from 'lucide-react'
 import type { ShopCatalogItem } from '../data/shops'
@@ -103,14 +104,14 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
             <img
               key={photo}
               src={photo}
-              alt={t("{v0} 대표 사진", { v0: shop.name })}
+              alt={t`${ph({ v0: shop.name })} 대표 사진`}
               onLoad={() => setPhotoLoaded(true)}
               className={`w-full h-full object-cover transition-opacity duration-200 ${photoLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-[#6B6E73]">
               <ImageOff className="w-7 h-7" aria-hidden="true" />
-              <span className="text-[13px] font-medium">{t("아직 등록된 사진이 없어요")}</span>
+              <span className="text-[13px] font-medium">{t`아직 등록된 사진이 없어요`}</span>
             </div>
           )}
           {photo && shop.photos.length > 1 && (
@@ -118,16 +119,16 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
           )}
 
           <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pt-3 z-10">
-            <button type="button" onClick={onBack} className={iconButtonClass} aria-label={t("뒤로가기")}>
+            <button type="button" onClick={onBack} className={iconButtonClass} aria-label={t`뒤로가기`}>
               <ChevronLeft className="w-5 h-5" aria-hidden="true" />
             </button>
-            <button type="button" onClick={handleSave} className={iconButtonClass} aria-label={savedShop ? t("저장 취소") : t("가고 싶어요")} aria-pressed={savedShop}>
+            <button type="button" onClick={handleSave} className={iconButtonClass} aria-label={savedShop ? t`저장 취소` : t`가고 싶어요`} aria-pressed={savedShop}>
               <Bookmark className="w-5 h-5" fill={savedShop ? '#E60000' : 'none'} color={savedShop ? '#E60000' : 'currentColor'} aria-hidden="true" />
             </button>
           </div>
 
           {shop.photos.length > 1 && (
-            <div className="absolute bottom-3 left-4 right-4 flex gap-2 z-10 overflow-x-auto no-scrollbar" role="group" aria-label={t("매장 사진 선택")}>
+            <div className="absolute bottom-3 left-4 right-4 flex gap-2 z-10 overflow-x-auto no-scrollbar" role="group" aria-label={t`매장 사진 선택`}>
               {shop.photos.map((p, i) => (
                 <button
                   type="button"
@@ -136,7 +137,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                     if (i !== photoIdx) setPhotoLoaded(false)
                     setPhotoIdx(i)
                   }}
-                  aria-label={t("사진 {v0}", { v0: i + 1 })}
+                  aria-label={t`사진 ${ph({ v0: i + 1 })}`}
                   aria-pressed={photoIdx === i}
                   className={`w-12 h-12 rounded-[6px] overflow-hidden border-2 flex-shrink-0 transition-opacity bg-[#E9E9E9] ${
                     photoIdx === i ? 'border-[#E60000] opacity-100' : 'border-white/70 opacity-75'
@@ -152,7 +153,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
         {/* 2. 매장 헤드라인 */}
         <section className="px-5 pt-5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-bold">
-            <span className={status.open ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {t(status.label)}</span>
+            <span className={status.open ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {legacyT(status.label)}</span>
             {shop.distanceM > 0 && (
               <>
                 <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
@@ -162,7 +163,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
             {shop.reviewCount > 0 && (
               <>
                 <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
-                <span className="text-[#6B6E73]">{t("라멘로그")} {formatNumber(shop.reviewCount)}{t("개")}</span>
+                <span className="text-[#6B6E73]">{t`라멘로그`} {formatNumber(shop.reviewCount)}{t`개`}</span>
               </>
             )}
             {shop.rating > 0 && (
@@ -182,10 +183,10 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
           {shop.address && <p className="text-[13px] text-[#6B6E73] mt-1 break-keep">{shop.address}</p>}
 
           {shop.tags.length > 0 && (
-            <ul className="flex flex-wrap gap-1.5 mt-3" aria-label={t("특징")}>
+            <ul className="flex flex-wrap gap-1.5 mt-3" aria-label={t`특징`}>
               {shop.tags.map(tag => (
                 <li key={tag} className="bg-[#F2F2F2] px-2.5 py-1 rounded-[4px] text-[12px] font-bold text-[#25282B]">
-                  {t(tag)}
+                  {legacyT(tag)}
                 </li>
               ))}
             </ul>
@@ -194,10 +195,10 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
           {shop.matchScore > 0 && (
             <div className="mt-4 pt-4 border-t border-[#E2E2E2]">
               <div className="flex items-baseline justify-between">
-                <span className="text-[13px] font-bold text-[#6B6E73]">{t("내 취향 일치도")}</span>
+                <span className="text-[13px] font-bold text-[#6B6E73]">{t`내 취향 일치도`}</span>
                 <span className="text-[20px] font-extrabold tracking-tight text-[#E60000]">{shop.matchScore}%</span>
               </div>
-              <div className="mt-2 h-1.5 rounded-full bg-[#F2F2F2] overflow-hidden" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={shop.matchScore} aria-label={t("내 취향 일치도")}>
+              <div className="mt-2 h-1.5 rounded-full bg-[#F2F2F2] overflow-hidden" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={shop.matchScore} aria-label={t`내 취향 일치도`}>
                 <div className="h-full bg-[#E60000] rounded-full" style={{ width: `${shop.matchScore}%` }} />
               </div>
             </div>
@@ -209,7 +210,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
           <section className="mx-5 mt-5 bg-[#F2F2F2] rounded-[6px] p-4">
             <div className="flex items-center gap-1.5 mb-1.5 text-[13px] font-bold">
               <Store className="w-4 h-4" aria-hidden="true" />
-              <span>{t("가게 소개")}</span>
+              <span>{t`가게 소개`}</span>
             </div>
             <p className="text-[14px] leading-relaxed break-keep">{shop.description}</p>
           </section>
@@ -218,11 +219,11 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
         {/* 4. 매장 제공 혜택 */}
         {perks.length > 0 && (
           <section className="px-5 mt-5">
-            <h2 className="text-[17px] font-extrabold tracking-tight mb-2.5">{t("매장 혜택")}</h2>
+            <h2 className="text-[17px] font-extrabold tracking-tight mb-2.5">{t`매장 혜택`}</h2>
             <dl className="grid grid-cols-2 gap-2">
               {perks.map(perk => (
                 <div key={perk.label} className="bg-[#F2F2F2] py-2.5 px-3 rounded-[6px]">
-                  <dt className="text-[12px] text-[#6B6E73] font-bold">{t(perk.label)}</dt>
+                  <dt className="text-[12px] text-[#6B6E73] font-bold">{legacyT(perk.label)}</dt>
                   <dd className="text-[13px] font-bold mt-0.5 break-keep">{perk.value}</dd>
                 </div>
               ))}
@@ -232,12 +233,12 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
 
         {/* 5. 가게 상세 정보 */}
         <section className="mx-5 mt-5 rounded-[6px] bg-[#25282B] p-5 text-white">
-          <h2 className="text-[17px] font-extrabold tracking-tight mb-3">{t("가게 상세 정보")}</h2>
+          <h2 className="text-[17px] font-extrabold tracking-tight mb-3">{t`가게 상세 정보`}</h2>
 
           <div className="text-[14px]">
             <div className="flex justify-between gap-4 border-b border-white/15 py-3">
-              <span className="text-white/70 flex-shrink-0">{t("주소")}</span>
-              <span className="text-right break-keep font-medium">{shop.address || t("주소 정보가 아직 없어요")}</span>
+              <span className="text-white/70 flex-shrink-0">{t`주소`}</span>
+              <span className="text-right break-keep font-medium">{shop.address || t`주소 정보가 아직 없어요`}</span>
             </div>
 
             <div className="border-b border-white/15">
@@ -250,9 +251,9 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                     aria-controls="shop-hours-detail"
                     className="w-full min-h-11 flex justify-between items-center gap-4 py-2 text-left"
                   >
-                    <span className="text-white/70 flex-shrink-0">{t("영업시간")}</span>
+                    <span className="text-white/70 flex-shrink-0">{t`영업시간`}</span>
                     <span className="flex items-center gap-2 font-medium">
-                      <span className="text-[12px] font-bold text-white/70">{t("오늘(")}{t(todayShort)})</span>
+                      <span className="text-[12px] font-bold text-white/70">{t`오늘(`}{legacyT(todayShort)})</span>
                       <span>{todayTimeText}</span>
                       <ChevronDown className={`w-4 h-4 text-white/70 transition-transform duration-200 ${showHoursDetail ? 'rotate-180' : ''}`} aria-hidden="true" />
                     </span>
@@ -266,8 +267,8 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                         return (
                           <li key={h} className={`flex justify-between px-2 py-1.5 rounded-[4px] ${isToday ? 'bg-white/10 font-bold' : 'text-white/80'}`}>
                             <span className="flex items-center gap-2">
-                              {t(day)}
-                              {isToday && <span className="text-[12px] font-bold text-[#FF6B6B]">{t("오늘")}</span>}
+                              {legacyT(day)}
+                              {isToday && <span className="text-[12px] font-bold text-[#FF6B6B]">{t`오늘`}</span>}
                             </span>
                             <span>{rest.join(':').trim()}</span>
                           </li>
@@ -278,29 +279,29 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                 </>
               ) : (
                 <div className="flex justify-between gap-4 py-3">
-                  <span className="text-white/70 flex-shrink-0">{t("영업시간")}</span>
-                  <span className="text-right text-white/80">{t("영업시간 정보가 아직 없어요")}</span>
+                  <span className="text-white/70 flex-shrink-0">{t`영업시간`}</span>
+                  <span className="text-right text-white/80">{t`영업시간 정보가 아직 없어요`}</span>
                 </div>
               )}
             </div>
 
             {shop.lastOrder && (
               <div className="flex justify-between gap-4 border-b border-white/15 py-3">
-                <span className="text-white/70 flex-shrink-0">{t("라스트오더")}</span>
+                <span className="text-white/70 flex-shrink-0">{t`라스트오더`}</span>
                 <span className="font-medium">{shop.lastOrder}</span>
               </div>
             )}
 
             {shop.priceRange && (
               <div className="flex justify-between gap-4 border-b border-white/15 py-3">
-                <span className="text-white/70 flex-shrink-0">{t("가격대")}</span>
+                <span className="text-white/70 flex-shrink-0">{t`가격대`}</span>
                 <span className="font-medium">{shop.priceRange}</span>
               </div>
             )}
 
             {shop.phone && (
               <div className="flex justify-between items-center gap-4 border-b border-white/15 py-1.5">
-                <span className="text-white/70 flex-shrink-0">{t("전화번호")}</span>
+                <span className="text-white/70 flex-shrink-0">{t`전화번호`}</span>
                 <a href={`tel:${shop.phone}`} className="min-h-11 inline-flex items-center gap-1.5 font-medium">
                   <Phone className="w-4 h-4 text-white/70" aria-hidden="true" />
                   {shop.phone}
@@ -320,7 +321,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                   className="flex-1 h-11 rounded-[6px] bg-white/10 border border-white/15 text-white text-[13px] font-bold flex items-center justify-center gap-2 active:bg-white/20 transition-colors"
                 >
                   <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>{t(label)}</span>
+                  <span>{legacyT(label)}</span>
                 </a>
               ))}
             </div>
@@ -331,9 +332,9 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
         <section className="px-5 mt-6">
           <div className="flex items-baseline justify-between pb-3 border-b border-[#E2E2E2]">
             <h2 className="text-[17px] font-extrabold tracking-tight">
-              {t("방문자 라멘로그")}{shop.reviews.length > 0 && <span className="text-[#6B6E73] font-bold"> {shop.reviews.length}</span>}
+              {t`방문자 라멘로그`}{shop.reviews.length > 0 && <span className="text-[#6B6E73] font-bold"> {shop.reviews.length}</span>}
             </h2>
-            {shop.reviews.length > 0 && <span className="text-[12px] font-bold text-[#6B6E73]">{t("구글 리뷰 연동")}</span>}
+            {shop.reviews.length > 0 && <span className="text-[12px] font-bold text-[#6B6E73]">{t`구글 리뷰 연동`}</span>}
           </div>
 
           {shop.reviews.length > 0 ? (
@@ -347,7 +348,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
                     </div>
                     <span className="text-[12px] text-[#6B6E73] shrink-0">{r.time}</span>
                   </div>
-                  <span className="text-[12px] font-bold text-[#6B6E73]" aria-label={t("별점 {v0}점", { v0: r.rating })}>
+                  <span className="text-[12px] font-bold text-[#6B6E73]" aria-label={t`별점 ${ph({ v0: r.rating })}점`}>
                     {'★'.repeat(Math.max(0, Math.min(5, Math.round(r.rating))))}
                   </span>
                   <p className="text-[14px] text-[#25282B] leading-relaxed mt-1 break-keep">{r.text}</p>
@@ -356,15 +357,15 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
             </ul>
           ) : (
             <div className="py-8 text-center">
-              <p className="text-[15px] font-bold">{t("아직 라멘로그가 없어요")}</p>
-              <p className="text-[13px] text-[#6B6E73] mt-1">{t("이 가게의 첫 번째 기록을 남겨보세요.")}</p>
+              <p className="text-[15px] font-bold">{t`아직 라멘로그가 없어요`}</p>
+              <p className="text-[13px] text-[#6B6E73] mt-1">{t`이 가게의 첫 번째 기록을 남겨보세요.`}</p>
               <button
                 type="button"
                 onClick={onRecord}
                 className="mt-4 inline-flex items-center gap-1.5 min-h-11 px-5 rounded-[60px] border border-[#25282B] text-[14px] font-bold active:bg-[#F2F2F2] transition-colors"
               >
                 <PenLine className="w-4 h-4" aria-hidden="true" />
-                {t("첫 기록 남기기")}</button>
+                {t`첫 기록 남기기`}</button>
             </div>
           )}
         </section>
@@ -382,14 +383,14 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
             }`}
           >
             <Bookmark className="w-4.5 h-4.5" fill={savedShop ? '#E60000' : 'none'} aria-hidden="true" />
-            {savedShop ? t("저장됨") : t("가고 싶어요")}
+            {savedShop ? t`저장됨` : t`가고 싶어요`}
           </button>
           <button
             type="button"
             onClick={onRecord}
             className="flex-1 h-13 rounded-[60px] bg-[#E60000] text-white text-[14px] font-bold active:scale-98 transition-transform flex items-center justify-center"
           >
-            {t("먹은 라멘 기록하기")}</button>
+            {t`먹은 라멘 기록하기`}</button>
         </div>
       </footer>
 
@@ -397,7 +398,7 @@ export default function ShopDetailScreen({ shop, savedShop, isLoggedIn = true, o
         <div role="status" className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 flex justify-center pointer-events-none anim-fade-in-up">
           <div className="bg-[#25282B] text-white text-[13px] font-bold px-4 py-3 rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] flex items-center gap-2 whitespace-nowrap">
             <Check className="w-4 h-4 text-[#FF6B6B]" aria-hidden="true" />
-            <span>{t("가고 싶은 라멘집에 저장했어요")}</span>
+            <span>{t`가고 싶은 라멘집에 저장했어요`}</span>
           </div>
         </div>
       )}

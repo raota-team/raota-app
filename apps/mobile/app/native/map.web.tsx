@@ -1,6 +1,7 @@
+import { t, ph } from "@lingui/core/macro";
 import { getLocale } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
+import { t as legacyT } from "@raota/shared"
 import { router, useIsFocused, useLocalSearchParams } from "expo-router"
 import { Check, ChevronDown, List, Map as MapIcon, MapPin, Search, X } from "lucide-react-native"
 import { useEffect, useMemo, useState, type ReactElement } from "react"
@@ -57,7 +58,7 @@ function distanceLabel(shop: MapShop) {
   return shop.distanceM > 0
     ? formatDistance(shop.distanceM)
     : "unknownFields" in shop && Array.isArray(shop.unknownFields) && shop.unknownFields.includes("distance")
-      ? t("거리 정보 없음")
+      ? t`거리 정보 없음`
       : formatDistance(shop.distanceM)
 }
 
@@ -223,8 +224,8 @@ export function MapHeader({
   }, [focused])
   const regionOption = REGION_OPTIONS.find((option) => option.value === filters.region) ?? REGION_OPTIONS[0]
   const menuOption = MENU_OPTIONS.find((option) => option.value === filters.menu) ?? MENU_OPTIONS[0]
-  const regionLabel = t(regionOption.label)
-  const menuLabel = t(menuOption.label)
+  const regionLabel = legacyT(regionOption.label)
+  const menuLabel = legacyT(menuOption.label)
   const regionActive = filters.region !== "ALL"
   const menuActive = filters.menu !== "ALL"
   const options = picker === "region" ? REGION_OPTIONS : MENU_OPTIONS
@@ -237,11 +238,11 @@ export function MapHeader({
         <View style={[styles.searchBox, viewMode === "map" && styles.mapFloating]}>
           <Search color={colors.textMuted} size={16} />
           <TextInput
-            accessibilityLabel={t("라멘집 검색")}
+            accessibilityLabel={t`라멘집 검색`}
             clearButtonMode="never"
             maxFontSizeMultiplier={maxFontScale}
             onChangeText={filters.setSearch}
-            placeholder={t("라멘집 이름, 계보, 지점 검색")}
+            placeholder={t`라멘집 이름, 계보, 지점 검색`}
             placeholderTextColor={colors.textMuted}
             returnKeyType="search"
             style={styles.searchInput}
@@ -249,7 +250,7 @@ export function MapHeader({
           />
           {filters.search ? (
             <Pressable
-              accessibilityLabel={t("검색어 지우기")}
+              accessibilityLabel={t`검색어 지우기`}
               accessibilityRole="button"
               onPress={() => filters.setSearch("")}
               style={styles.clearButton}
@@ -260,14 +261,14 @@ export function MapHeader({
         </View>
         {onToggleView ? (
           <Pressable
-            accessibilityLabel={viewMode === "map" ? t("목록으로 보기") : t("지도로 보기")}
+            accessibilityLabel={viewMode === "map" ? t`목록으로 보기` : t`지도로 보기`}
             accessibilityRole="button"
             onPress={onToggleView}
             style={({ pressed }) => [styles.toggle, viewMode === "map" && styles.mapFloating, pressed && styles.pressedWash]}
           >
             {viewMode === "map" ? <List color={colors.ink} size={18} /> : <MapIcon color={colors.ink} size={18} />}
             <AppText capScale style={styles.bold} variant="meta">
-              {viewMode === "map" ? t("목록") : t("지도")}
+              {viewMode === "map" ? t`목록` : t`지도`}
             </AppText>
           </Pressable>
         ) : null}
@@ -275,8 +276,8 @@ export function MapHeader({
 
       <FilterRow narrow={scrollFilters}>
         <Pressable
-          accessibilityHint={t("지역을 골라요")}
-          accessibilityLabel={t("지역 필터: {p0}", { p0: regionLabel })}
+          accessibilityHint={t`지역을 골라요`}
+          accessibilityLabel={t`지역 필터: ${ph({ p0: regionLabel })}`}
           accessibilityRole="button"
           accessibilityState={{ expanded: picker === "region" }}
           hitSlop={{ top: 2, bottom: 2 }}
@@ -289,13 +290,13 @@ export function MapHeader({
             style={[styles.filterText, regionActive && styles.filterTextActive]}
             variant="button"
           >
-            {t(regionOption.short)}
+            {legacyT(regionOption.short)}
           </AppText>
           <ChevronDown color={regionActive ? colors.onSelected : colors.ink} size={16} />
         </Pressable>
         <Pressable
-          accessibilityHint={t("라멘 종류를 골라요")}
-          accessibilityLabel={t("메뉴 필터: {p0}", { p0: menuLabel })}
+          accessibilityHint={t`라멘 종류를 골라요`}
+          accessibilityLabel={t`메뉴 필터: ${ph({ p0: menuLabel })}`}
           accessibilityRole="button"
           accessibilityState={{ expanded: picker === "menu" }}
           hitSlop={{ top: 2, bottom: 2 }}
@@ -308,12 +309,12 @@ export function MapHeader({
             style={[styles.filterText, menuActive && styles.filterTextActive]}
             variant="button"
           >
-            {t(menuOption.short)}
+            {legacyT(menuOption.short)}
           </AppText>
           <ChevronDown color={menuActive ? colors.onSelected : colors.ink} size={16} />
         </Pressable>
         <Pressable
-          accessibilityLabel={t("영업 중인 곳만 보기")}
+          accessibilityLabel={t`영업 중인 곳만 보기`}
           accessibilityRole="switch"
           accessibilityState={{ checked: filters.onlyOpen }}
           hitSlop={{ top: 2, bottom: 2 }}
@@ -322,11 +323,11 @@ export function MapHeader({
         >
           <View style={styles.openDot} testID="map-open-lamp" />
           <AppText capScale style={[styles.bold, filters.onlyOpen && styles.filterTextActive]} variant="button">
-            {t("영업 중")}</AppText>
+            {t`영업 중`}</AppText>
         </Pressable>
         {filters.hasActiveFilter ? (
           <Pressable
-            accessibilityLabel={t("필터 초기화")}
+            accessibilityLabel={t`필터 초기화`}
             accessibilityRole="button"
             hitSlop={{ top: 2, bottom: 2 }}
             onPress={filters.resetFilters}
@@ -339,7 +340,7 @@ export function MapHeader({
 
       <BottomSheet
         onClose={() => setPicker(null)}
-        title={picker === "region" ? t("지역 선택") : t("메뉴 선택")}
+        title={picker === "region" ? t`지역 선택` : t`메뉴 선택`}
         visible={picker !== null}
       >
         <View accessibilityRole="radiogroup" style={styles.optionList}>
@@ -347,7 +348,7 @@ export function MapHeader({
             const selected = option.value === current
             return (
               <Pressable
-                accessibilityLabel={t(option.label)}
+                accessibilityLabel={legacyT(option.label)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
                 key={option.value}
@@ -359,7 +360,7 @@ export function MapHeader({
                 style={({ pressed }) => [styles.option, selected && styles.optionSelected, pressed && !selected && styles.pressedWash]}
               >
                 <AppText style={selected && styles.onSelectedText} variant="secondary">
-                  {t(option.label)}
+                  {legacyT(option.label)}
                 </AppText>
                 <View style={styles.optionCheck}>
                   {selected ? <Check color={colors.onSelected} size={16} /> : null}
@@ -383,9 +384,9 @@ export function QuickView({ shop, onClose }: { shop: MapShop | null; onClose?: (
     return (
       <View accessibilityLiveRegion="polite" style={[styles.quickView, styles.quickEmpty]}>
         <AppText style={styles.center} variant="cardTitle">
-          {t("조건에 맞는 라멘집이 없어요")}</AppText>
+          {t`조건에 맞는 라멘집이 없어요`}</AppText>
         <AppText style={[styles.center, styles.gapTop]} tone="muted" variant="secondary">
-          {t("검색어나 필터를 바꿔 다시 찾아보세요.")}</AppText>
+          {t`검색어나 필터를 바꿔 다시 찾아보세요.`}</AppText>
       </View>
     )
   }
@@ -394,8 +395,8 @@ export function QuickView({ shop, onClose }: { shop: MapShop | null; onClose?: (
     // ✕는 카드 버튼 안이 아니라 옆에 둔다. 버튼 안에 넣으면 VoiceOver가 카드 하나로 묶어 ✕에 닿지 못한다
     <View>
     <Pressable
-      accessibilityHint={t("매장 상세로 이동해요")}
-      accessibilityLabel={t("{p0}{p1}{p2}{p3}, 매장 상세 보기", { p0: shopLabel(shop), p1: shop.style ? `, ${shop.style}` : "", p2: shop.spec ? `, ${shop.spec}` : "", p3: shop.lastOrder ? `, ${t("라스트오더 {time}", { time: shop.lastOrder })}` : "" })}
+      accessibilityHint={t`매장 상세로 이동해요`}
+      accessibilityLabel={t`${ph({ p0: shopLabel(shop) })}${ph({ p1: shop.style ? `, ${shop.style}` : "" })}${ph({ p2: shop.spec ? `, ${shop.spec}` : "" })}${ph({ p3: shop.lastOrder ? `, ${t`라스트오더 ${ph({ time: shop.lastOrder })}`}` : "" })}, 매장 상세 보기`}
       accessibilityRole="button"
       onPress={() => openShop(shop.id)}
       style={({ pressed }) => [styles.quickView, styles.quickRow, pressed && styles.pressedWash]}
@@ -418,11 +419,11 @@ export function QuickView({ shop, onClose }: { shop: MapShop | null; onClose?: (
           <View style={styles.statusRow}>
             <View style={[styles.openDot, !status.open && styles.hiddenDot]} testID={status.open ? "map-open-status-lamp" : undefined} />
             <AppText capScale numberOfLines={1} style={[status.open && styles.bold, status.open && styles.openText]} tone={status.open ? "ink" : "muted"} variant="meta">
-              {t(status.label)}
+              {legacyT(status.label)}
             </AppText>
           </View>
           <AppText capScale numberOfLines={1} style={styles.flexShrinkGrow} tone="muted" variant="meta">
-            {` · ${distanceLabel(shop)}${shop.lastOrder ? ` · ${t("라스트오더 {time}", { time: shop.lastOrder })}` : ""}`}
+            {` · ${distanceLabel(shop)}${shop.lastOrder ? ` · ${t`라스트오더 ${ph({ time: shop.lastOrder })}`}` : ""}`}
           </AppText>
         </View>
       </View>
@@ -430,7 +431,7 @@ export function QuickView({ shop, onClose }: { shop: MapShop | null; onClose?: (
       {onClose ? (
         // 고른 가게를 풀어 지도만 보게 한다
         <Pressable
-          accessibilityLabel={t("선택 해제")}
+          accessibilityLabel={t`선택 해제`}
           accessibilityRole="button"
           hitSlop={spacing.x2}
           onPress={onClose}
@@ -450,10 +451,10 @@ export function QuickView({ shop, onClose }: { shop: MapShop | null; onClose?: (
 function ListRow({ shop }: { shop: MapShop }) {
   useLocale()
   const status = statusOf(shop)
-  const lastOrder = shop.lastOrder ? t("라스트오더 {time}", { time: shop.lastOrder }) : null
+  const lastOrder = shop.lastOrder ? t`라스트오더 ${ph({ time: shop.lastOrder })}` : null
   return (
     <Pressable
-      accessibilityLabel={t("{p0}{p1}, 매장 상세 보기", { p0: shopLabel(shop), p1: shop.lastOrder ? `, ${t("라스트오더 {time}", { time: shop.lastOrder })}` : "" })}
+      accessibilityLabel={t`${ph({ p0: shopLabel(shop) })}${ph({ p1: shop.lastOrder ? `, ${t`라스트오더 ${ph({ time: shop.lastOrder })}`}` : "" })}, 매장 상세 보기`}
       accessibilityRole="button"
       onPress={() => openShop(shop.id)}
       style={({ pressed }) => [styles.listRow, pressed && styles.pressedWash]}
@@ -476,7 +477,7 @@ function ListRow({ shop }: { shop: MapShop }) {
           <View style={styles.statusRow}>
             <View style={[styles.openDot, !status.open && styles.hiddenDot]} testID={status.open ? "map-open-status-lamp" : undefined} />
             <AppText capScale numberOfLines={1} style={[status.open && styles.bold, status.open && styles.openText]} tone={status.open ? "ink" : "muted"} variant="meta">
-              {t(status.label)}
+              {legacyT(status.label)}
             </AppText>
           </View>
           <AppText capScale tone="muted" variant="meta">
@@ -494,15 +495,15 @@ export function ShopListView({ filters, notice, onRetry }: { filters: MapFilters
     <FlatList
       ListEmptyComponent={
         filters.isLoading && !filters.filtered.length ? (
-          <LoadingState label={t("라멘집을 불러오는 중…")} />
+          <LoadingState label={t`라멘집을 불러오는 중…`} />
         ) : (
           <EmptyState
             // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
-            actionLabel={filters.error && filters.remote ? t("다시 불러오기") : undefined}
-            description={filters.error ? t("잠시 후 다시 열어 주세요.") : t("다른 매장명이나 라멘 종류로 찾아보세요.")}
+            actionLabel={filters.error && filters.remote ? t`다시 불러오기` : undefined}
+            description={filters.error ? t`잠시 후 다시 열어 주세요.` : t`다른 매장명이나 라멘 종류로 찾아보세요.`}
             icon={<Search color={colors.inkSub} size={24} />}
             onAction={onRetry}
-            title={filters.error ? t("라멘집을 불러오지 못했어요") : t("검색 결과가 없어요")}
+            title={filters.error ? t`라멘집을 불러오지 못했어요` : t`검색 결과가 없어요`}
           />
         )
       }
@@ -511,15 +512,15 @@ export function ShopListView({ filters, notice, onRetry }: { filters: MapFilters
           {notice}
           <View style={styles.listHead}>
             <AppText capScale style={styles.bold} variant="cardTitle">
-              {t("{p0}곳", { p0: filters.filtered.length })}
+              {t`${ph({ p0: filters.filtered.length })}곳`}
             </AppText>
-            <View accessibilityLabel={t("정렬")} accessibilityRole="radiogroup" style={styles.sortGroup}>
+            <View accessibilityLabel={t`정렬`} accessibilityRole="radiogroup" style={styles.sortGroup}>
               <View style={styles.sortInner}>
                 {SORT_OPTIONS.map((option) => {
                   const selected = filters.sort === option.value
                   return (
                     <Pressable
-                      accessibilityLabel={t(option.label)}
+                      accessibilityLabel={legacyT(option.label)}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: selected }}
                       key={option.value}
@@ -528,7 +529,7 @@ export function ShopListView({ filters, notice, onRetry }: { filters: MapFilters
                       style={({ pressed }) => [styles.sortButton, selected && styles.sortButtonActive, pressed && !selected && styles.sortButtonPressed]}
                     >
                       <AppText capScale style={[styles.bold, selected && styles.onSelectedText]} variant="button">
-                        {t(option.label)}
+                        {legacyT(option.label)}
                       </AppText>
                     </Pressable>
                   )
@@ -636,7 +637,7 @@ function WebMapBody({ onRetry }: { onRetry: () => void }) {
       <ShopListView
         filters={filters}
         onRetry={onRetry}
-        notice={<LocationNotice message={t("지도와 현재 위치는 앱에서 보여드려요. 여기서는 목록으로 볼 수 있어요.")} />}
+        notice={<LocationNotice message={t`지도와 현재 위치는 앱에서 보여드려요. 여기서는 목록으로 볼 수 있어요.`} />}
       />
     </View>
   )

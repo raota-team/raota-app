@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t } from "@lingui/core/macro";
+import { t as legacyT } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { useEffect, useState, type ReactElement } from "react"
 import { router, useLocalSearchParams } from "expo-router"
@@ -43,9 +44,9 @@ const LOGIN_OFFLINE = "인터넷 연결을 확인하고 다시 시도해 주세�
 const LOGIN_UNAVAILABLE_ACCOUNT = "이 계정으로는 로그인할 수 없어요. 탈퇴한 계정은 30일이 지나야 다시 가입할 수 있어요."
 
 function loginErrorMessage(error: unknown): string {
-  if (!isApiError(error)) return t(LOGIN_FAILED)
-  if (error.isOffline) return t(LOGIN_OFFLINE)
-  return t(error.code === "UNAUTHORIZED" ? LOGIN_UNAVAILABLE_ACCOUNT : LOGIN_FAILED)
+  if (!isApiError(error)) return legacyT(LOGIN_FAILED)
+  if (error.isOffline) return legacyT(LOGIN_OFFLINE)
+  return legacyT(error.code === "UNAUTHORIZED" ? LOGIN_UNAVAILABLE_ACCOUNT : LOGIN_FAILED)
 }
 
 /** 제공자 브랜드 가이드가 정한 색. RAOTA 토큰 밖의 예외라 이 화면에만 둔다 */
@@ -102,7 +103,7 @@ function CollageColumn({ column, index }: { column: (typeof COLLAGE_COLUMNS)[num
         {[0, 1].map((copy) =>
           column.photos.map((photo, order) => (
             <ResilientUriImage
-              accessibilityLabel={t("라멘 사진")}
+              accessibilityLabel={t`라멘 사진`}
               key={`${copy}-${order}`}
               style={[styles.collagePhoto, { height: column.heights[order] }]}
               uri={COLLAGE_PHOTOS[photo]}
@@ -197,7 +198,7 @@ function ProviderButton({ id, label, Mark, onPress, disabled }: (typeof PROVIDER
   const textColor = id === "apple" ? (darkApple ? colors.black : colors.white) : id === "kakao" ? PROVIDER_BRAND.kakaoLabel : colors.black
   return (
     <Pressable
-      accessibilityLabel={t(label)}
+      accessibilityLabel={legacyT(label)}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
@@ -216,7 +217,7 @@ function ProviderButton({ id, label, Mark, onPress, disabled }: (typeof PROVIDER
         <Mark color={textColor} />
       </View>
       <AppText maxFontSizeMultiplier={1.3} numberOfLines={1} style={{ color: textColor }} variant="button">
-        {t(label)}
+        {legacyT(label)}
       </AppText>
     </Pressable>
   )
@@ -231,7 +232,7 @@ function LegalLink({ doc, label }: { doc: "terms" | "privacy"; label: string }) 
       style={({ pressed }) => pressed && styles.pressedWash}
     >
       <AppText style={styles.legalLinkText} tone="sub" variant="meta">
-        {t(label)}
+        {legacyT(label)}
       </AppText>
     </Pressable>
   )
@@ -299,7 +300,7 @@ export default function LoginScreen() {
       }
       setToast(
         error instanceof SocialSignInCancelled
-          ? { message: t("로그인을 취소했어요."), critical: false }
+          ? { message: t`로그인을 취소했어요.`, critical: false }
           : { message: loginErrorMessage(error), critical: true },
       )
     } finally {
@@ -353,9 +354,9 @@ export default function LoginScreen() {
             />
           </Pressable>
           <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.headline} variant="screenTitle">
-            {t("좋았던 한 그릇, 잊지 않도록 ")}</AppText>
+            {t`좋았던 한 그릇, 잊지 않도록 `}</AppText>
           <AppText lineBreakStrategyIOS="hangul-word" style={styles.subtitle} tone="sub" variant="secondary">
-            {t("가고 싶은 곳, 다녀온 곳을 라오타에 모아두세요. ")}</AppText>
+            {t`가고 싶은 곳, 다녀온 곳을 라오타에 모아두세요. `}</AppText>
         </View>
         <View style={styles.providers}>
           {providers.map((provider) => (
@@ -368,21 +369,21 @@ export default function LoginScreen() {
           ))}
         </View>
         <Pressable
-          accessibilityHint={t("로그인하지 않고 홈으로 가요")}
-          accessibilityLabel={t("로그인 없이 둘러보기")}
+          accessibilityHint={t`로그인하지 않고 홈으로 가요`}
+          accessibilityLabel={t`로그인 없이 둘러보기`}
           accessibilityRole="button"
           onPress={browseAsGuest}
           style={({ pressed }) => [styles.guest, pressed && styles.pressedWash]}
         >
-          <AppText variant="button">{t("로그인 없이 둘러보기")}</AppText>
+          <AppText variant="button">{t`로그인 없이 둘러보기`}</AppText>
         </Pressable>
         <View style={styles.legal}>
           <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="muted" variant="meta">
-            {t("처음이면 간편 로그인 뒤 닉네임과 약관 동의만 하면 가입이 끝나요. ")}</AppText>
+            {t`처음이면 간편 로그인 뒤 닉네임과 약관 동의만 하면 가입이 끝나요. `}</AppText>
           <View style={styles.legalLinks}>
-            <LegalLink doc="terms" label={t("이용약관")} />
+            <LegalLink doc="terms" label={t`이용약관`} />
             <AppText tone="sub" variant="meta">·</AppText>
-            <LegalLink doc="privacy" label={t("개인정보처리방침")} />
+            <LegalLink doc="privacy" label={t`개인정보처리방침`} />
           </View>
         </View>
       </ScrollView>

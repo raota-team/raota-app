@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { t as legacyT } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { useRef, useState } from "react"
 import { router } from "expo-router"
@@ -113,17 +114,17 @@ export default function OnboardingScreen() {
   const nicknameTaken = availability === "taken" || rejectedNickname === nicknameValidation.normalized
   const nicknameError = nicknameValidation.error ?? (nicknameTaken ? NICKNAME_TAKEN_ERROR : null)
   const showNicknameError = Boolean(nicknameError) && (attempted || nickname.length > 0)
-  const nicknameNote = availability === "available" ? t("사용할 수 있는 닉네임이에요.") : t("한글, 영문, 숫자, 밑줄 {v1}~{v2}자", { v1: NICKNAME_MIN, v2: NICKNAME_MAX })
+  const nicknameNote = availability === "available" ? t`사용할 수 있는 닉네임이에요.` : t`한글, 영문, 숫자, 밑줄 ${ph({ v1: NICKNAME_MIN })}~${ph({ v2: NICKNAME_MAX })}자`
 
   const pickAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
       Alert.alert(
-        t("사진 접근 권한이 필요해요"),
-        t("설정에서 사진 접근을 허용하거나, 사진 없이도 계속 가입할 수 있어요."),
+        t`사진 접근 권한이 필요해요`,
+        t`설정에서 사진 접근을 허용하거나, 사진 없이도 계속 가입할 수 있어요.`,
         [
-          { text: t("사진 없이 계속"), style: "cancel" },
-          { text: t("설정 열기"), onPress: () => void Linking.openSettings() },
+          { text: t`사진 없이 계속`, style: "cancel" },
+          { text: t`설정 열기`, onPress: () => void Linking.openSettings() },
         ],
       )
       return
@@ -216,15 +217,15 @@ export default function OnboardingScreen() {
           <View style={styles.doneHead}>
             <View style={styles.doneAvatar}>
               {registered.avatar ? (
-                <Image accessibilityLabel={t("프로필 사진")} contentFit="cover" source={{ uri: sizedImageUri(registered.avatar, 120) }} style={styles.fill} />
+                <Image accessibilityLabel={t`프로필 사진`} contentFit="cover" source={{ uri: sizedImageUri(registered.avatar, 120) }} style={styles.fill} />
               ) : (
                 <UserRound color={colors.textMuted} size={36} />
               )}
             </View>
             <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.center} variant="headline">
-              {registered.nickname}{t("님, 반가워요 ")}</AppText>
+              {registered.nickname}{t`님, 반가워요 `}</AppText>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.center} tone="sub" variant="body">
-              {t(registered.level)} Lv.{registered.levelNumber} {t(" · 첫 그릇을 기록하면 취향 분석이 시작돼요 ")}</AppText>
+              {legacyT(registered.level)} Lv.{registered.levelNumber} {t` · 첫 그릇을 기록하면 취향 분석이 시작돼요 `}</AppText>
           </View>
           <View style={styles.features}>
             {ONBOARDING_FEATURES.map(({ Icon, title, desc }, index) => (
@@ -233,7 +234,7 @@ export default function OnboardingScreen() {
                   <Icon color={colors.ink} size={20} />
                 </View>
                 <View style={styles.flexShrink}>
-                  <AppText variant="cardTitle">{t(title)}</AppText>
+                  <AppText variant="cardTitle">{legacyT(title)}</AppText>
                   <AppText lineBreakStrategyIOS="hangul-word" style={styles.featureDescription} tone="sub" variant="secondary">
                     {desc}
                   </AppText>
@@ -243,17 +244,17 @@ export default function OnboardingScreen() {
           </View>
         </ScrollView>
         <ConfirmDialog
-          cancelLabel={t("나중에")}
-          confirmLabel={t("알림 받기")}
+          cancelLabel={t`나중에`}
+          confirmLabel={t`알림 받기`}
           loading={reminder.busy}
           message={
             TASTE_REPORT_ENABLED
-              ? t("이번 달 기록이 {v1}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요.", { v1: MONTHLY_REPORT_TARGET })
-              : t("기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요.")
+              ? t`이번 달 기록이 ${ph({ v1: MONTHLY_REPORT_TARGET })}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요.`
+              : t`기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요.`
           }
           onCancel={reminder.decline}
           onConfirm={() => void reminder.accept()}
-          title={t("기록할 때가 되면 알려드릴까요?")}
+          title={t`기록할 때가 되면 알려드릴까요?`}
           visible={reminder.visible}
         />
 
@@ -263,7 +264,7 @@ export default function OnboardingScreen() {
             onPress={() => router.replace("/native")}
             rightIcon={<ChevronRight color={colors.onDark} size={20} />}
             size="large"
-            title={t("라오타 시작하기")}
+            title={t`라오타 시작하기`}
           />
         </StickyActionBar>
       </SafeAreaView>
@@ -276,7 +277,7 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView edges={["top"]} style={styles.root}>
       <StatusBar style="auto" />
-      <Header backLabel={t("뒤로가기")} onBack={leave} title={t("회원가입")} />
+      <Header backLabel={t`뒤로가기`} onBack={leave} title={t`회원가입`} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.content}
@@ -287,26 +288,26 @@ export default function OnboardingScreen() {
         >
           <View style={styles.intro}>
             <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.introTitle} variant="headline">
-              {t("반가워요!")}{"\n"}{t("기본 정보를 알려주세요 ")}</AppText>
+              {t`반가워요!`}{"\n"}{t`기본 정보를 알려주세요 `}</AppText>
             <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="body">
-              {t("라오타에서 쓸 닉네임과 취향을 정해요. ")}</AppText>
+              {t`라오타에서 쓸 닉네임과 취향을 정해요. `}</AppText>
           </View>
 
           {/* 닉네임 */}
           <View onLayout={(event) => (nicknameBlockY.current = event.nativeEvent.layout.y)} style={styles.field}>
             <View style={styles.fieldHead}>
-              <AppText nativeID="nickname-label" variant="button">{t("닉네임")}</AppText>
+              <AppText nativeID="nickname-label" variant="button">{t`닉네임`}</AppText>
               <CharacterCount max={NICKNAME_MAX} prefix="· " value={nicknameValidation.length} />
             </View>
             <TextInput
-              accessibilityHint={showNicknameError && nicknameError ? nicknameError : t("한글, 영문, 숫자, 밑줄 {v1}~{v2}자", { v1: NICKNAME_MIN, v2: NICKNAME_MAX })}
-              accessibilityLabel={t("닉네임")}
+              accessibilityHint={showNicknameError && nicknameError ? nicknameError : t`한글, 영문, 숫자, 밑줄 ${ph({ v1: NICKNAME_MIN })}~${ph({ v2: NICKNAME_MAX })}자`}
+              accessibilityLabel={t`닉네임`}
               autoComplete="nickname"
               autoCorrect={false}
               maxLength={NICKNAME_MAX}
               onChangeText={setNickname}
               onSubmitEditing={() => void submit()}
-              placeholder={t("예: 라멘러버, 멘마수집가")}
+              placeholder={t`예: 라멘러버, 멘마수집가`}
               placeholderTextColor={colors.textMuted}
               ref={nicknameRef}
               returnKeyType="done"
@@ -323,7 +324,7 @@ export default function OnboardingScreen() {
                 tone="sub"
                 variant="secondary"
               >
-                {t(NICKNAME_REQUIRED_ERROR)}
+                {legacyT(NICKNAME_REQUIRED_ERROR)}
               </AppText>
               <AppText
                 accessibilityLiveRegion={showNicknameError ? "polite" : undefined}
@@ -338,9 +339,9 @@ export default function OnboardingScreen() {
           </View>
 
           {/* 선호 스타일(선택) */}
-          <View accessibilityLabel={t("선호 라멘 스타일")} style={styles.field}>
-            <AppText style={styles.styleTitle} variant="sectionTitle">{t("선호 라멘 스타일 ")}<AppText tone="muted" variant="meta">{t("선택")}</AppText></AppText>
-            <AppText tone="muted" variant="secondary">{t("가장 끌리는 한 그릇을 골라주세요.")}</AppText>
+          <View accessibilityLabel={t`선호 라멘 스타일`} style={styles.field}>
+            <AppText style={styles.styleTitle} variant="sectionTitle">{t`선호 라멘 스타일 `}<AppText tone="muted" variant="meta">{t`선택`}</AppText></AppText>
+            <AppText tone="muted" variant="secondary">{t`가장 끌리는 한 그릇을 골라주세요.`}</AppText>
             <View style={styles.chips}>
               {RAMEN_STYLE_OPTIONS.slice(0, showMoreStyles ? undefined : 6).map((style) => (
                 <Chip
@@ -354,12 +355,12 @@ export default function OnboardingScreen() {
               ))}
             </View>
             <Pressable
-              accessibilityLabel={showMoreStyles ? t("다른 스타일 접기") : t("다른 스타일 보기")}
+              accessibilityLabel={showMoreStyles ? t`다른 스타일 접기` : t`다른 스타일 보기`}
               accessibilityRole="button"
               onPress={() => setShowMoreStyles((value) => !value)}
               style={styles.moreStyles}
             >
-              <AppText tone="sub" variant="meta">{showMoreStyles ? t("접기") : t("다른 스타일 보기")}</AppText>
+              <AppText tone="sub" variant="meta">{showMoreStyles ? t`접기` : t`다른 스타일 보기`}</AppText>
             </Pressable>
           </View>
 
@@ -369,14 +370,14 @@ export default function OnboardingScreen() {
           {/* 한줄 소개(선택) */}
           <View style={styles.field}>
             <View style={styles.fieldHead}>
-              <AppText variant="button">{t("한줄 소개 (선택)")}</AppText>
+              <AppText variant="button">{t`한줄 소개 (선택)`}</AppText>
               <CharacterCount max={BIO_MAX} value={bio.length} />
             </View>
             <TextInput
-              accessibilityLabel={t("한줄 소개")}
+              accessibilityLabel={t`한줄 소개`}
               maxLength={BIO_MAX}
               onChangeText={setBio}
-              placeholder={t("라멘에 진심인 편입니다.")}
+              placeholder={t`라멘에 진심인 편입니다.`}
               placeholderTextColor={colors.textMuted}
               style={styles.input}
               value={bio}
@@ -385,22 +386,22 @@ export default function OnboardingScreen() {
           {/* 프로필 사진은 유지하되 필수 입력 아래에 둔다. */}
           <View style={styles.avatarBlock}>
             <Pressable
-              accessibilityHint={t("사진 보관함에서 골라요")}
-              accessibilityLabel={t("프로필 사진 선택")}
+              accessibilityHint={t`사진 보관함에서 골라요`}
+              accessibilityLabel={t`프로필 사진 선택`}
               accessibilityRole="button"
               onPress={() => void pickAvatar()}
               style={({ pressed }) => [styles.avatar, pressed && pressFade]}
             >
               {avatar ? (
-                <Image accessibilityLabel={t("고른 프로필 사진")} contentFit="cover" source={{ uri: sizedImageUri(avatar, 120) }} style={styles.fill} />
+                <Image accessibilityLabel={t`고른 프로필 사진`} contentFit="cover" source={{ uri: sizedImageUri(avatar, 120) }} style={styles.fill} />
               ) : (
                 <UserRound color={colors.textMuted} size={24} />
               )}
             </Pressable>
-            <AppText tone="muted" variant="secondary">{t("프로필 사진 (선택)")}</AppText>
+            <AppText tone="muted" variant="secondary">{t`프로필 사진 (선택)`}</AppText>
             <Pressable
               accessibilityElementsHidden={!avatar}
-              accessibilityLabel={t("고른 사진 지우기")}
+              accessibilityLabel={t`고른 사진 지우기`}
               accessibilityRole="button"
               disabled={!avatar}
               importantForAccessibility={avatar ? "auto" : "no-hide-descendants"}
@@ -430,7 +431,7 @@ export default function OnboardingScreen() {
             loading={saving}
             onPress={() => void submit()}
             size="large"
-            title={t("회원가입 완료")}
+            title={t`회원가입 완료`}
           />
         </StickyActionBar>
       </KeyboardAvoidingView>

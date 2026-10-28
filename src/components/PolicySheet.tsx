@@ -1,4 +1,5 @@
-import { getLocale, t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { getLocale, t as legacyT } from "@raota/shared"
 import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
@@ -55,7 +56,7 @@ export default function PolicySheet({ type, title, onClose, footer }: Props) {
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col justify-end">
-      <button type="button" className="anim-fade-in absolute inset-0 bg-black/50" onClick={onClose} aria-label={t("{v0} 닫기", { v0: t(policy.title) })} tabIndex={-1} />
+      <button type="button" className="anim-fade-in absolute inset-0 bg-black/50" onClick={onClose} aria-label={t`${ph({ v0: legacyT(policy.title) })} 닫기`} tabIndex={-1} />
       <section
         role="dialog"
         aria-modal="true"
@@ -67,20 +68,20 @@ export default function PolicySheet({ type, title, onClose, footer }: Props) {
         </div>
         <div className="flex items-center justify-between border-b border-[#F2F2F2] py-1 pl-5 pr-2">
           <h2 id={titleId} className="text-[17px] font-black text-[#25282B]">
-            {t(title ?? policy.title)}
+            {legacyT(title ?? policy.title)}
           </h2>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label={t("닫기")}
+            aria-label={t`닫기`}
             className="flex h-11 w-11 items-center justify-center rounded-full text-[#6B6E73] hover:bg-[#F2F2F2] hover:text-[#25282B]"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
         <div className="space-y-3 overflow-y-auto p-5 text-[14px] leading-relaxed text-[#4A4D52]">
-          {getLocale() !== "ko" && <p role="note" className="text-[13px] text-[#6B6E73]">{t("이 문서는 한국어 원문으로 제공됩니다.")}</p>}
+          {getLocale() !== "ko" && <p role="note" className="text-[13px] text-[#6B6E73]">{t`이 문서는 한국어 원문으로 제공됩니다.`}</p>}
           {policy.sections.map(section => (
             <p key={section.heading}>
               <strong className="text-[#25282B]">{section.heading}</strong>
@@ -96,7 +97,7 @@ export default function PolicySheet({ type, title, onClose, footer }: Props) {
               onClick={onClose}
               className="h-12 w-full rounded-[60px] bg-[#25282B] text-[15px] font-bold text-white transition-opacity active:opacity-90"
             >
-              {t("닫기")}</button>
+              {t`닫기`}</button>
           )}
         </div>
       </section>

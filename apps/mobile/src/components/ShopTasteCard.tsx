@@ -1,5 +1,6 @@
+import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
+import { t as legacyT } from "@raota/shared"
 import { useEffect, useRef, type ReactNode } from "react"
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native"
 import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withTiming } from "react-native-reanimated"
@@ -50,25 +51,25 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
   }))
 
   const rest = [
-    revisit.sometimes > 0 ? t("가끔 생각남 {count}명", { count: revisit.sometimes }) : null,
-    revisit.once > 0 ? t("한 번이면 충분 {count}명", { count: revisit.once }) : null,
+    revisit.sometimes > 0 ? t`가끔 생각남 ${ph({ count: revisit.sometimes })}명` : null,
+    revisit.once > 0 ? t`한 번이면 충분 ${ph({ count: revisit.once })}명` : null,
   ].filter(Boolean).join(" · ")
   const headline = revisitHeadlineOf(summary)
-  const sampleNote = showRatio ? null : t("기록이 {count}개 이상 쌓이면 비율로 보여드려요", { count: SHOP_TASTE_RATIO_MIN_LOGS })
+  const sampleNote = showRatio ? null : t`기록이 ${ph({ count: SHOP_TASTE_RATIO_MIN_LOGS })}개 이상 쌓이면 비율로 보여드려요`
   const cells = [
-    { label: "많이 먹은 메뉴", value: summary.topMenuCount > 1 ? t("{menu} · {count}명", { menu: summary.topMenu, count: summary.topMenuCount }) : summary.topMenu },
+    { label: "많이 먹은 메뉴", value: summary.topMenuCount > 1 ? t`${ph({ menu: summary.topMenu })} · ${ph({ count: summary.topMenuCount })}명` : summary.topMenu },
     { label: "육수", value: summary.broth },
     { label: "면", value: summary.noodle },
     { label: "토핑", value: summary.topping },
   ]
-  const label = `${t("이 가게의 맛")}. ${t("공개 라멘로그 {p0}개", { p0: count })}. ${showRatio ? `${t("또 갈래요")} ${percent}%, ` : ""}${headline}${rest ? `, ${rest}` : ""}${sampleNote ? `. ${sampleNote}` : ""}. ${cells.map((cell) => `${t(cell.label)} ${cell.value}`).join(", ")}`
+  const label = `${t`이 가게의 맛`}. ${t`공개 라멘로그 ${ph({ p0: count })}개`}. ${showRatio ? `${t`또 갈래요`} ${percent}%, ` : ""}${headline}${rest ? `, ${rest}` : ""}${sampleNote ? `. ${sampleNote}` : ""}. ${cells.map((cell) => `${legacyT(cell.label)} ${cell.value}`).join(", ")}`
 
   return (
     <View accessibilityLabel={label} accessibilityRole="text" accessible style={[styles.card, style]}>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={styles.header}>
-          <AppText variant="cardTitle">{t("이 가게의 맛")}</AppText>
-          <AppText capScale tone="muted" variant="meta">{t("공개 라멘로그 {p0}개", { p0: count })}</AppText>
+          <AppText variant="cardTitle">{t`이 가게의 맛`}</AppText>
+          <AppText capScale tone="muted" variant="meta">{t`공개 라멘로그 ${ph({ p0: count })}개`}</AppText>
         </View>
         <View style={styles.revisit}>
           {showRatio ? (
@@ -91,7 +92,7 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
               </Svg>
               <View style={styles.ringCenter}>
                 <AppText capScale style={styles.ringValue} variant="sectionTitle">{`${percent}%`}</AppText>
-                <AppText capScale tone="muted" variant="meta">{t("또 갈래요")}</AppText>
+                <AppText capScale tone="muted" variant="meta">{t`또 갈래요`}</AppText>
               </View>
             </View>
           ) : null}
@@ -104,7 +105,7 @@ export function ShopTasteCard({ summary, play = true, style }: { summary: ShopTa
         <View style={styles.grid}>
           {cells.map((cell, index) => (
             <Reveal from={0.35 + index * 0.08} key={cell.label} progress={progress} style={[styles.cell, index % 2 === 1 && styles.cellRight, index >= 2 && styles.cellBottom]} to={0.75 + index * 0.06}>
-              <AppText capScale tone="muted" variant="meta">{t(cell.label)}</AppText>
+              <AppText capScale tone="muted" variant="meta">{legacyT(cell.label)}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.cellValue} variant="bodyStrong">{cell.value}</AppText>
             </Reveal>
           ))}

@@ -1,5 +1,6 @@
+import { t, ph } from "@lingui/core/macro";
 import {
-  t, getLocale,
+  t as legacyT, getLocale,
   RAMEN_TYPES,
   TASTE_AXES,
   TASTE_FIELDS,
@@ -120,22 +121,22 @@ export function validateRecordDraft(
   if (!draft.shopId?.trim() || /^(?:0+|-\d+)$/.test(draft.shopId)) {
     errors.push({
       field: "shopId",
-      message: t("먼저 방문한 매장을 선택해주세요."),
+      message: t`먼저 방문한 매장을 선택해주세요.`,
     })
   } else if (validShopIds && !validShopIds.has(draft.shopId)) {
     errors.push({
       field: "shopId",
-      message: t("선택한 매장 정보를 찾을 수 없습니다."),
+      message: t`선택한 매장 정보를 찾을 수 없습니다.`,
     })
   }
   if (!draft.menuName?.trim()) {
     errors.push({
       field: "menuName",
-      message: t("먹은 메뉴를 선택하거나 입력해주세요."),
+      message: t`먹은 메뉴를 선택하거나 입력해주세요.`,
     })
   }
   if (!draft.ramenType?.trim() || !RAMEN_TYPES.includes(draft.ramenType)) {
-    errors.push({ field: "ramenType", message: t("라멘 계보를 선택해주세요.") })
+    errors.push({ field: "ramenType", message: t`라멘 계보를 선택해주세요.` })
   }
 
   const visitedAt = draft.visitedAt?.trim() ?? ""
@@ -155,20 +156,20 @@ export function validateRecordDraft(
   ) {
     errors.push({
       field: "visitedAt",
-      message: t("방문일을 오늘 이전의 올바른 날짜로 선택해주세요."),
+      message: t`방문일을 오늘 이전의 올바른 날짜로 선택해주세요.`,
     })
   }
   for (const axis of missingScoreAxes(draft)) {
     const label = TASTE_AXES.find(({ key }) => key === axis)?.label ?? axis
-    errors.push({ field: "scores", axis, message: t("{label} 골라주세요.", { label: getLocale() === "ko" ? withObjectParticle(label) : t(label) }) })
+    errors.push({ field: "scores", axis, message: t`${ph({ label: getLocale() === "ko" ? withObjectParticle(label) : legacyT(label) })} 골라주세요.` })
   }
   if (!hasValidTasteNotes(draft.tasteNotes)) {
-    errors.push({ field: "tasteNotes", message: t("맛 태그는 보기에서만 고를 수 있어요.") })
+    errors.push({ field: "tasteNotes", message: t`맛 태그는 보기에서만 고를 수 있어요.` })
   }
   if ((draft.note?.length ?? 0) > RECORD_NOTE_MAX_LENGTH) {
     errors.push({
       field: "note",
-      message: t("메모는 {max}자까지 남길 수 있어요. 지금 {count}자예요.", { max: RECORD_NOTE_MAX_LENGTH, count: draft.note?.length ?? 0 }),
+      message: t`메모는 ${ph({ max: RECORD_NOTE_MAX_LENGTH })}자까지 남길 수 있어요. 지금 ${ph({ count: draft.note?.length ?? 0 })}자예요.`,
     })
   }
 

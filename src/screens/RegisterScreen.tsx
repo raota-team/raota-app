@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { t as legacyT } from "@raota/shared"
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, X, Camera, MapPin, Sparkles } from 'lucide-react'
 import RamenIcon from '../components/icons/RamenIcon'
@@ -124,7 +125,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
     trimmedNickname.length === 0
       ? '닉네임을 입력해 주세요. 2~12자로 쓸 수 있어요.'
       : trimmedNickname.length < NICKNAME_MIN
-        ? t("닉네임이 너무 짧아요. {count}자만 더 적어 주세요.", {count: NICKNAME_MIN - trimmedNickname.length})
+        ? t`닉네임이 너무 짧아요. ${ph({ count: NICKNAME_MIN - trimmedNickname.length })}자만 더 적어 주세요.`
         : null
   const showNicknameError = (submitAttempted || nickname.length > 0) && nicknameError
   const isFormValid = isNicknameValid && agreeTerms && agreePrivacy
@@ -174,9 +175,9 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
             <span className="mx-auto mb-3 flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[#F2F2F2] text-[36px]">
               {registeredUser.avatar ? <img src={registeredUser.avatar} alt="" className="h-full w-full object-cover" /> : <span aria-hidden="true">{presetEmoji}</span>}
             </span>
-            <h2 className="text-[24px] font-black leading-snug tracking-tight text-[#25282B]">{registeredUser.nickname}{t("님, 반가워요")}</h2>
+            <h2 className="text-[24px] font-black leading-snug tracking-tight text-[#25282B]">{registeredUser.nickname}{t`님, 반가워요`}</h2>
             <p className="mt-1 text-[14px] text-[#6B6E73]">
-              {t(registeredUser.level)} Lv.{registeredUser.levelNumber}  {t("· 첫 그릇을 기록하면 취향 분석이 시작돼요")}</p>
+              {legacyT(registeredUser.level)} Lv.{registeredUser.levelNumber}  {t`· 첫 그릇을 기록하면 취향 분석이 시작돼요`}</p>
           </div>
 
           <ul className="mt-8 divide-y divide-[#F2F2F2] border-y border-[#E2E2E2]">
@@ -186,8 +187,8 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                   <Icon className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[15px] font-black text-[#25282B]">{t(title)}</p>
-                  <p className="mt-0.5 text-[13px] leading-relaxed text-[#6B6E73]">{t(desc)}</p>
+                  <p className="text-[15px] font-black text-[#25282B]">{legacyT(title)}</p>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-[#6B6E73]">{legacyT(desc)}</p>
                 </div>
               </li>
             ))}
@@ -200,7 +201,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
             onClick={() => onRegisterSuccess(registeredUser)}
             className="flex h-13 w-full items-center justify-center gap-2 rounded-[60px] bg-[#E60000] text-[15px] font-black text-white transition-opacity active:opacity-90"
           >
-            <span>{t("라오타 시작하기")}</span>
+            <span>{t`라오타 시작하기`}</span>
             <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
@@ -218,22 +219,22 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
           type="button"
           onClick={onBack}
           className="flex h-11 w-11 items-center justify-center rounded-full text-[#25282B] transition-colors hover:bg-[#F2F2F2]"
-          aria-label={t("뒤로가기")}
+          aria-label={t`뒤로가기`}
         >
           <ChevronLeft className="h-6 w-6" aria-hidden="true" />
         </button>
-        <h1 className="text-[17px] font-black tracking-tight text-[#25282B]">{t("회원가입")}</h1>
+        <h1 className="text-[17px] font-black tracking-tight text-[#25282B]">{t`회원가입`}</h1>
         <button type="button" onClick={onLoginClick} className="flex min-h-11 items-center rounded-[6px] px-2.5 text-[14px] font-black text-[#E60000]">
-          {t("로그인")}</button>
+          {t`로그인`}</button>
       </header>
 
       <div className="no-scrollbar flex-1 overflow-y-auto">
         <div className="anim-fade-in mx-auto w-full max-w-[400px] px-5 pb-8 pt-6">
           <div className="mb-6">
             <h2 className="mb-1.5 text-[24px] font-black leading-tight tracking-tight text-[#25282B]">
-              {t("반가워요!")}<br />
-              <span className="text-[#E60000]">{t("기본 정보를 알려주세요")}</span></h2>
-            <p className="text-[14px] text-[#6B6E73]">{t("라오타에서 쓸 닉네임과 취향을 정합니다.")}</p>
+              {t`반가워요!`}<br />
+              <span className="text-[#E60000]">{t`기본 정보를 알려주세요`}</span></h2>
+            <p className="text-[14px] text-[#6B6E73]">{t`라오타에서 쓸 닉네임과 취향을 정합니다.`}</p>
           </div>
 
           <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -243,11 +244,11 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  aria-label={t("프로필 사진 올리기")}
+                  aria-label={t`프로필 사진 올리기`}
                   className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-[#E2E2E2] bg-[#F2F2F2] transition-colors hover:border-[#E60000]"
                 >
                   {uploadedAvatarUrl ? (
-                    <img src={uploadedAvatarUrl} alt={t("올린 프로필 사진")} className="h-full w-full object-cover" />
+                    <img src={uploadedAvatarUrl} alt={t`올린 프로필 사진`} className="h-full w-full object-cover" />
                   ) : (
                     <span aria-hidden="true" className="text-[40px]">
                       {AVATAR_PRESETS.find(a => a.id === selectedAvatarPreset)?.emoji ?? '🍜'}
@@ -261,7 +262,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                   <button
                     type="button"
                     onClick={() => setUploadedAvatarUrl(null)}
-                    aria-label={t("올린 사진 지우기")}
+                    aria-label={t`올린 사진 지우기`}
                     className="absolute -right-3 -top-3 flex h-11 w-11 items-center justify-center"
                   >
                     <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E2E2E2] bg-white text-[#6B6E73]">
@@ -271,9 +272,9 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                 )}
               </div>
               <input type="file" ref={fileInputRef} className="sr-only" accept="image/*" onChange={handleImageChange} tabIndex={-1} aria-hidden="true" />
-              <p className="mt-2 text-[13px] font-bold text-[#6B6E73]">{t("사진을 올리거나 캐릭터를 고르세요")}</p>
+              <p className="mt-2 text-[13px] font-bold text-[#6B6E73]">{t`사진을 올리거나 캐릭터를 고르세요`}</p>
 
-              <div role="group" aria-label={t("프로필 캐릭터")} className="mt-1 flex items-center gap-0.5">
+              <div role="group" aria-label={t`프로필 캐릭터`} className="mt-1 flex items-center gap-0.5">
                 {AVATAR_PRESETS.map(preset => {
                   const isSelected = !uploadedAvatarUrl && selectedAvatarPreset === preset.id
                   return (
@@ -284,7 +285,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                         setUploadedAvatarUrl(null)
                         setSelectedAvatarPreset(preset.id)
                       }}
-                      aria-label={t(preset.label)}
+                      aria-label={legacyT(preset.label)}
                       aria-pressed={isSelected}
                       className="flex h-11 w-11 items-center justify-center"
                     >
@@ -305,7 +306,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <label htmlFor="register-nickname" className="text-[14px] font-black text-[#25282B]">
-                  {t("닉네임")} <span className="text-[#E60000]">*</span>
+                  {t`닉네임`} <span className="text-[#E60000]">*</span>
                 </label>
                 <span className="text-[13px] text-[#6B6E73]" aria-live="polite">
                   {nickname.length}/{NICKNAME_MAX}
@@ -317,7 +318,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                   ref={nicknameRef}
                   type="text"
                   autoComplete="nickname"
-                  placeholder={t("예: 라멘러버, 멘마수집가")}
+                  placeholder={t`예: 라멘러버, 멘마수집가`}
                   value={nickname}
                   onChange={e => setNickname(e.target.value)}
                   maxLength={NICKNAME_MAX}
@@ -330,22 +331,22 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                 {nickname.length > 0 && isNicknameValid && (
                   <span className="absolute right-3.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 text-[13px] font-bold text-[#25282B]">
                     <Check className="h-4 w-4 text-[#E60000]" aria-hidden="true" />
-                    {t("사용 가능")}</span>
+                    {t`사용 가능`}</span>
                 )}
               </div>
               {showNicknameError ? (
                 <p id="register-nickname-error" role="alert" className="mt-1.5 text-[13px] font-medium text-[#E60000]">
-                  {nicknameError && t(nicknameError)}
+                  {nicknameError && legacyT(nicknameError)}
                 </p>
               ) : (
                 <p id="register-nickname-hint" className="mt-1.5 text-[13px] text-[#6B6E73]">
-                  {t("한글, 영문, 숫자 2~12자")}</p>
+                  {t`한글, 영문, 숫자 2~12자`}</p>
               )}
             </div>
 
             {/* 선호 스타일 */}
             <fieldset>
-              <legend className="mb-1 text-[14px] font-black text-[#25282B]">{t("선호 라멘 스타일 (선택)")}</legend>
+              <legend className="mb-1 text-[14px] font-black text-[#25282B]">{t`선호 라멘 스타일 (선택)`}</legend>
               <div className="flex flex-wrap gap-x-1 gap-y-0">
                 {RAMEN_STYLE_OPTIONS.map(style => {
                   const isSelected = favoriteStyle === style.key
@@ -356,7 +357,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                           isSelected ? 'bg-[#E60000] text-white' : 'bg-[#F2F2F2] text-[#4A4D52]'
                         }`}
                       >
-                        {t(style.name)}
+                        {legacyT(style.name)}
                       </span>
                     </button>
                   )
@@ -368,21 +369,21 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <label htmlFor="register-bio" className="text-[14px] font-black text-[#25282B]">
-                  {t("한줄 소개 (선택)")}</label>
+                  {t`한줄 소개 (선택)`}</label>
                 <span className="text-[13px] text-[#6B6E73]">{bio.length}/60</span>
               </div>
               <textarea
                 id="register-bio"
-                placeholder={t("라멘에 진심인 편입니다. 깊은 국물 맛을 찾아다녀요.")}
+                placeholder={t`라멘에 진심인 편입니다. 깊은 국물 맛을 찾아다녀요.`}
                 value={bio}
                 onChange={e => setBio(e.target.value)}
                 maxLength={60}
                 className="min-h-[72px] w-full resize-none rounded-[6px] border border-[#E2E2E2] bg-white px-3.5 py-2.5 text-[14px] text-[#25282B] outline-none transition-colors placeholder:text-[#6B6E73] focus:border-[#E60000]"
               />
-              <div role="group" aria-label={t("소개 추천 문구")} className="no-scrollbar flex items-center gap-1 overflow-x-auto">
+              <div role="group" aria-label={t`소개 추천 문구`} className="no-scrollbar flex items-center gap-1 overflow-x-auto">
                 {QUICK_BIO_TAGS.map(tag => (
                   <button key={tag} type="button" onClick={() => setBio(tag)} className="flex min-h-11 shrink-0 items-center">
-                    <span className="rounded-[32px] bg-[#F2F2F2] px-3 py-1 text-[13px] font-medium text-[#4A4D52]">+ {t(tag)}</span>
+                    <span className="rounded-[32px] bg-[#F2F2F2] px-3 py-1 text-[13px] font-medium text-[#4A4D52]">+ {legacyT(tag)}</span>
                   </button>
                 ))}
               </div>
@@ -392,13 +393,13 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
             <div className="border-t border-[#E2E2E2] pt-3">
               <div className="border-b border-[#F2F2F2]">
                 <CheckRow id="agree-all" checked={isAllAgreed} onChange={handleToggleAllAgreed} strong>
-                  {t("약관 전체 동의")}</CheckRow>
+                  {t`약관 전체 동의`}</CheckRow>
               </div>
 
               <div className="pt-1">
                 <div className="flex items-center justify-between gap-2">
                   <CheckRow id="agree-terms" checked={agreeTerms} onChange={setAgreeTerms}>
-                    <strong className="text-[#E60000]">{t("[필수]")}</strong>  {t("서비스 이용약관 동의")}</CheckRow>
+                    <strong className="text-[#E60000]">{t`[필수]`}</strong>  {t`서비스 이용약관 동의`}</CheckRow>
                   <button
                     type="button"
                     onClick={e => {
@@ -406,15 +407,15 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                       setTermsModalType('terms')
                     }}
                     aria-haspopup="dialog"
-                    aria-label={t("서비스 이용약관 보기")}
+                    aria-label={t`서비스 이용약관 보기`}
                     className="min-h-11 min-w-11 shrink-0 px-2 text-[13px] text-[#6B6E73] underline underline-offset-2 hover:text-[#25282B]"
                   >
-                    {t("보기")}</button>
+                    {t`보기`}</button>
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
                   <CheckRow id="agree-privacy" checked={agreePrivacy} onChange={setAgreePrivacy}>
-                    <strong className="text-[#E60000]">{t("[필수]")}</strong>  {t("개인정보 수집 및 이용 동의")}</CheckRow>
+                    <strong className="text-[#E60000]">{t`[필수]`}</strong>  {t`개인정보 수집 및 이용 동의`}</CheckRow>
                   <button
                     type="button"
                     onClick={e => {
@@ -422,18 +423,18 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
                       setTermsModalType('privacy')
                     }}
                     aria-haspopup="dialog"
-                    aria-label={t("개인정보 수집 및 이용 동의 보기")}
+                    aria-label={t`개인정보 수집 및 이용 동의 보기`}
                     className="min-h-11 min-w-11 shrink-0 px-2 text-[13px] text-[#6B6E73] underline underline-offset-2 hover:text-[#25282B]"
                   >
-                    {t("보기")}</button>
+                    {t`보기`}</button>
                 </div>
 
                 <CheckRow id="agree-marketing" checked={agreeMarketing} onChange={setAgreeMarketing}>
-                  <span className="font-bold text-[#6B6E73]">{t("[선택]")}</span>  {t("라멘 추천 및 소식 수신 동의")}</CheckRow>
+                  <span className="font-bold text-[#6B6E73]">{t`[선택]`}</span>  {t`라멘 추천 및 소식 수신 동의`}</CheckRow>
               </div>
               {agreementError && (
                 <p role="alert" className="mt-1 text-[13px] font-medium text-[#E60000]">
-                  {agreementError && t(agreementError)}
+                  {agreementError && legacyT(agreementError)}
                 </p>
               )}
             </div>
@@ -448,11 +449,11 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
               {isLoading ? (
                 <>
                   <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>{t("가입 처리 중")}</span>
+                  <span>{t`가입 처리 중`}</span>
                 </>
               ) : (
                 <>
-                  <span>{t("회원가입 완료")}</span>
+                  <span>{t`회원가입 완료`}</span>
                   <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 </>
               )}
@@ -460,8 +461,8 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
           </form>
 
           <p className="mt-2 flex min-h-11 items-center justify-center gap-1 text-center text-[14px] text-[#6B6E73]">
-            {t("이미 계정이 있으신가요?")}<button type="button" onClick={onLoginClick} className="min-h-11 px-1 font-black text-[#25282B] underline underline-offset-2 hover:text-[#E60000]">
-              {t("로그인하기")}</button>
+            {t`이미 계정이 있으신가요?`}<button type="button" onClick={onLoginClick} className="min-h-11 px-1 font-black text-[#25282B] underline underline-offset-2 hover:text-[#E60000]">
+              {t`로그인하기`}</button>
           </p>
         </div>
       </div>
@@ -470,7 +471,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
       {termsModalType && (
         <PolicySheet
           type={termsModalType}
-          title={termsModalType === 'terms' ? t("서비스 이용약관") : t("개인정보 수집 및 이용 동의")}
+          title={termsModalType === 'terms' ? t`서비스 이용약관` : t`개인정보 수집 및 이용 동의`}
           onClose={closeTerms}
           footer={
             <button
@@ -482,7 +483,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
               }}
               className="h-12 w-full rounded-[60px] bg-[#25282B] text-[15px] font-bold text-white transition-opacity active:opacity-90"
             >
-              {t("확인하고 동의")}</button>
+              {t`확인하고 동의`}</button>
           }
         />
       )}
@@ -493,7 +494,7 @@ export default function RegisterScreen({ onBack, onLoginClick, onRegisterSuccess
           className="anim-fade-in-up pointer-events-none absolute bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[32px] bg-[#25282B] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <RamenIcon className="h-4 w-4 shrink-0 text-[#E60000]" aria-hidden="true" />
-          <span>{t(toastMessage)}</span>
+          <span>{legacyT(toastMessage)}</span>
         </div>
       )}
     </div>

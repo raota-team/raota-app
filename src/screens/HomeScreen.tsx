@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { t as legacyT } from "@raota/shared"
 import { useCallback, useEffect, useState } from 'react'
 import { Bell, PenLine, X, Crosshair, Bookmark, Search, ChevronRight, Sparkles, Check } from 'lucide-react'
 import type { UserProfile } from '../types'
@@ -78,7 +79,7 @@ export default function HomeScreen({
                 <span className="block text-[20px] font-extrabold tracking-tight leading-none whitespace-nowrap">
                   RAOTA<span className="text-[#E60000]">.</span>
                 </span>
-                <p className="text-[12px] font-bold text-[#6B6E73] mt-1 truncate">{t("나의 라멘 취향을 찾는 곳")}</p>
+                <p className="text-[12px] font-bold text-[#6B6E73] mt-1 truncate">{t`나의 라멘 취향을 찾는 곳`}</p>
               </div>
             </div>
 
@@ -89,17 +90,17 @@ export default function HomeScreen({
                   onClick={onUserClick}
                   className="min-h-11 px-2 text-[13px] font-bold text-[#25282B] flex items-center active:opacity-70 transition-opacity"
                 >
-                  <span className="text-[#E60000]">{user.nickname}</span>{t("님, 반갑습니다")}</button>
+                  <span className="text-[#E60000]">{user.nickname}</span>{t`님, 반갑습니다`}</button>
               ) : (
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={onLoginClick} className="min-h-11 px-2.5 text-[13px] font-bold text-[#25282B] active:opacity-70 transition-opacity">
-                    {t("로그인")}</button>
+                    {t`로그인`}</button>
                   <button
                     type="button"
                     onClick={onRegisterClick}
                     className="hidden min-[360px]:inline-flex items-center h-11 px-3 text-[13px] font-bold text-white bg-[#E60000] rounded-[6px] active:bg-[#CC0000] transition-colors"
                   >
-                    {t("회원가입")}</button>
+                    {t`회원가입`}</button>
                 </div>
               )}
 
@@ -107,7 +108,7 @@ export default function HomeScreen({
                 type="button"
                 onClick={onNotificationClick}
                 className="relative w-11 h-11 text-[#25282B] flex items-center justify-center active:opacity-70 transition-opacity"
-                aria-label={loggedIn ? t("알림센터 열기{v0}", { v0: unreadNotificationsCount ? t(", 읽지 않은 알림 {count}개", {count: unreadNotificationsCount}) : '' }) : t("알림센터 (로그인 필요)")}
+                aria-label={loggedIn ? t`알림센터 열기${ph({ v0: unreadNotificationsCount ? t`, 읽지 않은 알림 ${ph({ count: unreadNotificationsCount })}개` : '' })}` : t`알림센터 (로그인 필요)`}
               >
                 <Bell className="w-5 h-5" aria-hidden="true" />
                 {loggedIn && unreadNotificationsCount !== undefined && unreadNotificationsCount > 0 && (
@@ -130,8 +131,8 @@ export default function HomeScreen({
                 <Sparkles className="w-5 h-5" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-[15px] font-bold tracking-tight">{t("오늘 뭐 먹지? AI 라멘 큐레이터")}</h2>
-                <p className="text-[13px] text-white/70 mt-0.5 break-keep">{t("국물과 상황에 맞는 오늘의 한 그릇 추천")}</p>
+                <h2 className="text-[15px] font-bold tracking-tight">{t`오늘 뭐 먹지? AI 라멘 큐레이터`}</h2>
+                <p className="text-[13px] text-white/70 mt-0.5 break-keep">{t`국물과 상황에 맞는 오늘의 한 그릇 추천`}</p>
               </div>
             </div>
             <ChevronRight className="w-5 h-5 text-white/70 shrink-0" aria-hidden="true" />
@@ -151,8 +152,8 @@ export default function HomeScreen({
                   <Check className="w-4 h-4" aria-hidden="true" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[14px] font-bold truncate">{t("새 라멘로그를 남겼어요")}</p>
-                  <p className="text-[13px] text-[#6B6E73] truncate mt-0.5">{t("내 취향 리포트에서 달라진 점을 확인해보세요")}</p>
+                  <p className="text-[14px] font-bold truncate">{t`새 라멘로그를 남겼어요`}</p>
+                  <p className="text-[13px] text-[#6B6E73] truncate mt-0.5">{t`내 취향 리포트에서 달라진 점을 확인해보세요`}</p>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-[#6B6E73] shrink-0" aria-hidden="true" />
@@ -163,7 +164,7 @@ export default function HomeScreen({
         {/* 4. 오늘의 큐레이션 라멘집 */}
         <section className="px-5 pt-6">
           <div className="flex items-baseline justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
-            <h2 className="text-[17px] font-extrabold tracking-tight">{t("오늘의 큐레이션 라멘집")}</h2>
+            <h2 className="text-[17px] font-extrabold tracking-tight">{t`오늘의 큐레이션 라멘집`}</h2>
             <span className="text-[12px] font-bold text-[#6B6E73]">{formatDistance(TODAY_PICK.distanceM)} · {TODAY_PICK.style}</span>
           </div>
 
@@ -173,9 +174,9 @@ export default function HomeScreen({
             className="w-full text-left bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden active:scale-[0.99] transition-transform"
           >
             <div className="relative aspect-[4/3] bg-[#E9E9E9]">
-              {TODAY_PICK.photos[0] && <img src={TODAY_PICK.photos[0]} alt={t("{v0} 대표 사진", { v0: TODAY_PICK.name })} className="w-full h-full object-cover" />}
+              {TODAY_PICK.photos[0] && <img src={TODAY_PICK.photos[0]} alt={t`${ph({ v0: TODAY_PICK.name })} 대표 사진`} className="w-full h-full object-cover" />}
               <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 to-transparent" />
-              <span className="absolute top-3 left-3 bg-white text-[#25282B] text-[12px] font-bold px-2.5 py-1 rounded-[4px]">{t("오늘의 픽")}</span>
+              <span className="absolute top-3 left-3 bg-white text-[#25282B] text-[12px] font-bold px-2.5 py-1 rounded-[4px]">{t`오늘의 픽`}</span>
               <div className="absolute inset-x-0 bottom-0 p-4 text-white">
                 <p className="text-[13px] font-bold text-white/80">{TODAY_PICK.spec}</p>
                 <h3 className="text-[20px] font-extrabold tracking-tight leading-tight mt-0.5">
@@ -193,12 +194,12 @@ export default function HomeScreen({
                 <div className="flex gap-1.5 min-w-0 overflow-hidden">
                   {TODAY_PICK.tags.slice(0, 2).map(tag => (
                     <span key={tag} className="bg-[#F2F2F2] px-2.5 py-1 rounded-[4px] font-bold text-[12px] whitespace-nowrap">
-                      {t(tag)}
+                      {legacyT(tag)}
                     </span>
                   ))}
                 </div>
                 <span className="inline-flex items-center gap-0.5 text-[13px] font-bold text-[#E60000] shrink-0">
-                  {t("매장 상세 보기")}<ChevronRight className="w-4 h-4" aria-hidden="true" />
+                  {t`매장 상세 보기`}<ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </span>
               </div>
             </div>
@@ -208,8 +209,8 @@ export default function HomeScreen({
         {/* 5. 내 취향과 잘 맞는 라멘집 (원장 matchScore 순) */}
         <section className="px-5 pt-7">
           <div className="flex items-baseline justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
-            <h2 className="text-[17px] font-extrabold tracking-tight">{t("내 취향과 잘 맞는 라멘집")}</h2>
-            {loggedIn && <span className="text-[12px] font-bold text-[#6B6E73]">{t("취향 일치도 순")}</span>}
+            <h2 className="text-[17px] font-extrabold tracking-tight">{t`내 취향과 잘 맞는 라멘집`}</h2>
+            {loggedIn && <span className="text-[12px] font-bold text-[#6B6E73]">{t`취향 일치도 순`}</span>}
           </div>
 
           {loggedIn ? (
@@ -248,14 +249,14 @@ export default function HomeScreen({
             </ol>
           ) : (
             <div className="rounded-[6px] border border-dashed border-[#BEBEBE] px-5 py-6 text-center">
-              <p className="text-[15px] font-bold">{t("로그인하면 취향 일치도를 볼 수 있어요")}</p>
-              <p className="text-[13px] text-[#6B6E73] mt-1 break-keep">{t("라멘로그를 남길수록 내 취향에 맞는 가게를 순위로 알려드려요.")}</p>
+              <p className="text-[15px] font-bold">{t`로그인하면 취향 일치도를 볼 수 있어요`}</p>
+              <p className="text-[13px] text-[#6B6E73] mt-1 break-keep">{t`라멘로그를 남길수록 내 취향에 맞는 가게를 순위로 알려드려요.`}</p>
               <button
                 type="button"
                 onClick={onLoginClick}
                 className="mt-4 inline-flex items-center min-h-11 px-5 rounded-[60px] bg-[#E60000] text-white text-[14px] font-bold active:bg-[#CC0000] transition-colors"
               >
-                {t("로그인하기")}</button>
+                {t`로그인하기`}</button>
             </div>
           )}
         </section>
@@ -263,9 +264,9 @@ export default function HomeScreen({
         {/* 6. 가까운 라멘집 (원장 distanceM 순) */}
         <section className="px-5 pt-7 pb-8">
           <div className="flex items-baseline justify-between pb-2 mb-3 border-b border-[#E2E2E2]">
-            <h2 className="text-[17px] font-extrabold tracking-tight">{t("가까운 라멘집")}</h2>
+            <h2 className="text-[17px] font-extrabold tracking-tight">{t`가까운 라멘집`}</h2>
             <button type="button" onClick={onMapClick} className="min-h-11 -my-2 text-[13px] font-bold text-[#6B6E73] inline-flex items-center gap-0.5">
-              {t("지도에서 보기")}<ChevronRight className="w-4 h-4" aria-hidden="true" />
+              {t`지도에서 보기`}<ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -292,7 +293,7 @@ export default function HomeScreen({
                       <div className="flex items-center gap-1.5 mt-1 text-[12px] font-bold whitespace-nowrap">
                         <span className="text-[#25282B]">{formatDistance(shop.distanceM)}</span>
                         <span className="text-[#BEBEBE]" aria-hidden="true">·</span>
-                        <span className={open ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {t(statusOf(shop))}</span>
+                        <span className={open ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>● {legacyT(statusOf(shop))}</span>
                       </div>
                     </div>
                   </button>
@@ -304,26 +305,26 @@ export default function HomeScreen({
 
         {/* 7. 푸터 */}
         <footer className="px-5 pb-6 text-center">
-          <nav aria-label={t("약관 및 문의")} className="flex flex-wrap items-center justify-center text-[12px] font-bold text-[#6B6E73]">
+          <nav aria-label={t`약관 및 문의`} className="flex flex-wrap items-center justify-center text-[12px] font-bold text-[#6B6E73]">
             <button type="button" onClick={() => setPolicy('terms')} className="inline-flex items-center min-h-11 px-2 hover:text-[#25282B]">
-              {t("이용약관")}</button>
+              {t`이용약관`}</button>
             <span aria-hidden="true" className="text-[#BEBEBE]">·</span>
             <button type="button" onClick={() => setPolicy('privacy')} className="inline-flex items-center min-h-11 px-2 text-[#25282B]">
-              {t("개인정보처리방침")}</button>
+              {t`개인정보처리방침`}</button>
           </nav>
           <a href="mailto:contact@raota.net" className="inline-flex items-center min-h-11 px-3 text-[12px] font-bold text-[#6B6E73]">
-            {t("문의하기 · contact@raota.net")}</a>
-          <p className="text-[12px] text-[#6B6E73]">{t("© 2026 RAOTA · 라멘에 진심인 사람들")}</p>
+            {t`문의하기 · contact@raota.net`}</a>
+          <p className="text-[12px] text-[#6B6E73]">{t`© 2026 RAOTA · 라멘에 진심인 사람들`}</p>
         </footer>
       </div>
 
       {policy && <PolicySheet type={policy} onClose={closePolicy} />}
 
       {/* 기록하기 플로팅 메뉴 */}
-      {fabOpen && <button type="button" aria-label={t("기록 메뉴 닫기")} className="absolute inset-0 z-30 bg-black/50 anim-fade-in" onClick={() => setFabOpen(false)} />}
+      {fabOpen && <button type="button" aria-label={t`기록 메뉴 닫기`} className="absolute inset-0 z-30 bg-black/50 anim-fade-in" onClick={() => setFabOpen(false)} />}
       <div className="absolute bottom-3 right-3 z-40 flex flex-col items-end gap-2.5 max-w-[calc(100%-24px)]">
         {fabOpen && (
-          <div className="flex flex-col items-end gap-2" role="group" aria-label={t("기록 방법 선택")}>
+          <div className="flex flex-col items-end gap-2" role="group" aria-label={t`기록 방법 선택`}>
             {fabItems.map(({ mode, label, Icon, delay }) => (
               <button
                 key={mode}
@@ -335,7 +336,7 @@ export default function HomeScreen({
                 style={{ animationDelay: delay }}
                 className="flex items-center gap-2 animate-[fadeSlideUp_0.15s_ease-out_both] active:scale-95 transition-transform"
               >
-                <span className="text-[13px] font-bold text-[#25282B] bg-white px-3.5 py-2.5 rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">{t(label)}</span>
+                <span className="text-[13px] font-bold text-[#25282B] bg-white px-3.5 py-2.5 rounded-[6px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">{legacyT(label)}</span>
                 <span className="w-11 h-11 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)] flex items-center justify-center shrink-0">
                   <Icon className="w-4.5 h-4.5 text-[#E60000]" aria-hidden="true" />
                 </span>
@@ -348,7 +349,7 @@ export default function HomeScreen({
           type="button"
           onClick={() => setFabOpen(prev => !prev)}
           aria-expanded={fabOpen}
-          aria-label={fabOpen ? t("기록 메뉴 닫기") : t("라멘 기록하기")}
+          aria-label={fabOpen ? t`기록 메뉴 닫기` : t`라멘 기록하기`}
           className={`w-13 h-13 rounded-full flex items-center justify-center transition-colors active:scale-95 shadow-[0_4px_16px_rgba(0,0,0,0.12)] ${
             fabOpen ? 'bg-[#25282B] text-white' : 'bg-[#E60000] text-white'
           }`}

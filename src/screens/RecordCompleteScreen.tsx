@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { t as legacyT } from "@raota/shared"
 import type { RamenLog, TasteProfile } from '../types'
 import { REVISIT_OPTIONS } from '../types'
 import { TASTE_AXES, profileDelta, scoresFromLog } from '../utils/taste'
@@ -69,36 +70,36 @@ export default function RecordCompleteScreen({
 
   const comment = (() => {
     if (!lastLog) return null
-    const bowl = t("{shop}의 {style} 한 그릇", {shop: lastLog.shop.name, style: t(lastLog.ramenType)})
-    if (!scores || !topAxis) return t("{bowl}이 {count}번째 기록으로 남았어요.", {bowl, count: recordCount})
-    return t("{bowl}. 이번 그릇은 {axis} {score}점이 가장 높았고, 재방문 의사는 ‘{revisit}’으로 남겼어요.", {bowl, axis: t(topAxis.label), score: scores[topAxis.key], revisit: t(lastLog.revisit)})
+    const bowl = t`${ph({ shop: lastLog.shop.name })}의 ${ph({ style: legacyT(lastLog.ramenType) })} 한 그릇`
+    if (!scores || !topAxis) return t`${bowl}이 ${ph({ count: recordCount })}번째 기록으로 남았어요.`
+    return t`${bowl}. 이번 그릇은 ${ph({ axis: legacyT(topAxis.label) })} ${ph({ score: scores[topAxis.key] })}점이 가장 높았고, 재방문 의사는 ‘${ph({ revisit: legacyT(lastLog.revisit) })}’으로 남겼어요.`
   })()
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-white text-[#25282B]">
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
         <header className="px-5 pt-7 pb-5">
-          <p className="text-[13px] font-bold text-[#6B6E73]">{t("기록이 저장됐어요")}</p>
-          <p className="mt-1 flex items-baseline gap-1.5" aria-label={t("{v0}번째 그릇", { v0: recordCount })}>
+          <p className="text-[13px] font-bold text-[#6B6E73]">{t`기록이 저장됐어요`}</p>
+          <p className="mt-1 flex items-baseline gap-1.5" aria-label={t`${ph({ v0: recordCount })}번째 그릇`}>
             <span className="text-[48px] leading-none font-extrabold tracking-[-2px] tabular-nums">{recordCount}</span>
-            <span className="text-[17px] font-bold">{t("번째 그릇")}</span>
+            <span className="text-[17px] font-bold">{t`번째 그릇`}</span>
           </p>
         </header>
 
         <div className="px-4 pb-6 space-y-6">
           {lastLog ? (
-            <section aria-label={t("취향 기록지")} className="anim-fade-in-up border-[1.5px] border-[#25282B] rounded-[3px] bg-[#FFFDF8]">
+            <section aria-label={t`취향 기록지`} className="anim-fade-in-up border-[1.5px] border-[#25282B] rounded-[3px] bg-[#FFFDF8]">
               <div className="flex items-center justify-between px-3.5 py-2.5 border-b-[1.5px] border-[#25282B]">
-                <span className="text-[15px] font-extrabold tracking-tight">{t("취향 기록지")}</span>
+                <span className="text-[15px] font-extrabold tracking-tight">{t`취향 기록지`}</span>
                 <span className="text-[12px] font-bold tabular-nums text-[#6B6E73]">No.{String(recordCount).padStart(4, '0')}</span>
               </div>
               <div className="flex items-center gap-3 px-3.5 py-2.5 border-b border-[#25282B]/25">
                 <dl className="flex-1 min-w-0 grid grid-cols-[44px_1fr] gap-y-1 text-[13px]">
-                  <dt className="text-[#6B6E73] font-bold">{t("가게")}</dt>
+                  <dt className="text-[#6B6E73] font-bold">{t`가게`}</dt>
                   <dd className="font-bold truncate">{[lastLog.shop.name, lastLog.shop.branch].filter(Boolean).join(' ')}</dd>
-                  <dt className="text-[#6B6E73] font-bold">{t("메뉴")}</dt>
-                  <dd className="font-bold truncate">{`${lastLog.menuName} (${t(lastLog.ramenType)})`}</dd>
-                  <dt className="text-[#6B6E73] font-bold">{t("날짜")}</dt>
+                  <dt className="text-[#6B6E73] font-bold">{t`메뉴`}</dt>
+                  <dd className="font-bold truncate">{`${lastLog.menuName} (${legacyT(lastLog.ramenType)})`}</dd>
+                  <dt className="text-[#6B6E73] font-bold">{t`날짜`}</dt>
                   <dd className="font-bold tabular-nums">{lastLog.visitedAt.replace(/^(\d{4})\D+(\d{2})\D+(\d{2}).*$/, '$1.$2.$3')}</dd>
                 </dl>
                 {lastLog.imageUrl && (
@@ -109,10 +110,10 @@ export default function RecordCompleteScreen({
               <ul>
                 {scores &&
                   SCALE_AXES.map((axis, index) => (
-                    <li key={axis.key} aria-label={t("{v0} {v1}점", { v0: t(axis.label), v1: scores[axis.key] })} className="px-3.5 pt-3 pb-2.5 border-b border-[#25282B]/10">
-                      <span className="text-[14px] font-bold" aria-hidden="true">{t(axis.label)}</span>
+                    <li key={axis.key} aria-label={t`${ph({ v0: legacyT(axis.label) })} ${ph({ v1: scores[axis.key] })}점`} className="px-3.5 pt-3 pb-2.5 border-b border-[#25282B]/10">
+                      <span className="text-[14px] font-bold" aria-hidden="true">{legacyT(axis.label)}</span>
                       <div className="mt-1.5 flex items-center gap-2 text-[11px] text-[#6B6E73]" aria-hidden="true">
-                        <span className="w-14 shrink-0">{t(axis.low)}</span>
+                        <span className="w-14 shrink-0">{legacyT(axis.low)}</span>
                         <div className="flex-1 grid grid-cols-5">
                           {[1, 2, 3, 4, 5].map(value => (
                             <span key={value} className="relative h-7 flex items-center justify-center text-[15px] font-bold text-[#25282B] tabular-nums">
@@ -121,16 +122,16 @@ export default function RecordCompleteScreen({
                             </span>
                           ))}
                         </div>
-                        <span className="w-14 shrink-0 text-right">{t(axis.high)}</span>
+                        <span className="w-14 shrink-0 text-right">{legacyT(axis.high)}</span>
                       </div>
                     </li>
                   ))}
-                <li aria-label={t("재방문 의사 {v0}", { v0: t(lastLog.revisit) })} className="px-3.5 pt-3 pb-3">
-                  <span className="text-[14px] font-bold" aria-hidden="true">{t("재방문 의사")}</span>
+                <li aria-label={t`재방문 의사 ${ph({ v0: legacyT(lastLog.revisit) })}`} className="px-3.5 pt-3 pb-3">
+                  <span className="text-[14px] font-bold" aria-hidden="true">{t`재방문 의사`}</span>
                   <div className="mt-2 grid grid-cols-3 gap-2" aria-hidden="true">
                     {REVISIT_ROW.map(option => (
                       <span key={option} className="relative h-8 flex items-center justify-center text-[13px] font-bold">
-                        {t(option)}
+                        {legacyT(option)}
                         {lastLog.revisit === option && <PenCircle order={scores ? SCALE_AXES.length : 0} />}
                       </span>
                     ))}
@@ -139,16 +140,16 @@ export default function RecordCompleteScreen({
               </ul>
             </section>
           ) : (
-            <p className="text-[14px] text-[#6B6E73]">{t("이번 기록 정보를 불러오지 못했어요.")}</p>
+            <p className="text-[14px] text-[#6B6E73]">{t`이번 기록 정보를 불러오지 못했어요.`}</p>
           )}
 
           {/* 취향 여권 변화 */}
           {delta && scores && profileBefore && profileAfter && (
             <section aria-labelledby="delta-title" className="anim-fade-in-up">
               <div className="flex items-baseline justify-between pb-2 mb-1 border-b border-[#E2E2E2]">
-                <h2 id="delta-title" className="text-[17px] font-extrabold tracking-tight">{t("취향 여권 변화")}</h2>
+                <h2 id="delta-title" className="text-[17px] font-extrabold tracking-tight">{t`취향 여권 변화`}</h2>
                 <span className="text-[12px] font-bold text-[#6B6E73]">
-                  {isFirstBowl ? t("첫 그릇") : t("{v0}그릇 → {v1}그릇 평균", { v0: profileBefore.count, v1: profileAfter.count })}
+                  {isFirstBowl ? t`첫 그릇` : t`${ph({ v0: profileBefore.count })}그릇 → ${ph({ v1: profileAfter.count })}그릇 평균`}
                 </span>
               </div>
               <ul className="divide-y divide-[#F2F2F2]">
@@ -158,7 +159,7 @@ export default function RecordCompleteScreen({
                   const after = (profileAfter.exact ?? profileAfter.scores)[axis.key]
                   return (
                     <li key={axis.key} className="flex items-center justify-between gap-3 py-2.5">
-                      <span className="text-[14px] font-bold">{t(axis.label)}</span>
+                      <span className="text-[14px] font-bold">{legacyT(axis.label)}</span>
                       <div className="text-right shrink-0 tabular-nums">
                         {isFirstBowl ? (
                           <span className="text-[14px] font-bold">{after.toFixed(1)}</span>
@@ -170,7 +171,7 @@ export default function RecordCompleteScreen({
                           </span>
                         )}
                         <span className={`block text-[12px] font-bold ${change === 0 ? 'text-[#6B6E73]' : 'text-[#E60000]'}`}>
-                          {isFirstBowl ? t("첫 기록") : change === 0 ? t("변화 없음") : formatDelta(change)}
+                          {isFirstBowl ? t`첫 기록` : change === 0 ? t`변화 없음` : formatDelta(change)}
                         </span>
                       </div>
                     </li>
@@ -179,13 +180,13 @@ export default function RecordCompleteScreen({
               </ul>
               {nothingMoved && (
                 <p className="text-[12px] text-[#6B6E73] pt-2">
-                  {t("평소 평균과 같은 점수를 줘서")} {profileBefore.count}{t("그릇 평균이 그대로예요.")}</p>
+                  {t`평소 평균과 같은 점수를 줘서`} {profileBefore.count}{t`그릇 평균이 그대로예요.`}</p>
               )}
             </section>
           )}
 
           {comment && (
-            <section aria-label={t("이번 그릇 정리")} className="anim-fade-in-up bg-[#F2F2F2] rounded-[6px] px-4 py-3.5">
+            <section aria-label={t`이번 그릇 정리`} className="anim-fade-in-up bg-[#F2F2F2] rounded-[6px] px-4 py-3.5">
               <p className="text-[14px] leading-relaxed">{comment}</p>
             </section>
           )}
@@ -199,13 +200,13 @@ export default function RecordCompleteScreen({
           onClick={onViewTaste}
           className="w-full h-13 rounded-[60px] bg-[#E60000] text-white text-[15px] font-bold active:bg-[#CC0000] transition-colors"
         >
-          {t("내 취향 여권 보기")}</button>
+          {t`내 취향 여권 보기`}</button>
         <button
           type="button"
           onClick={onHome}
           className="w-full min-h-11 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2] transition-colors"
         >
-          {t("홈으로")}</button>
+          {t`홈으로`}</button>
       </footer>
     </div>
   )

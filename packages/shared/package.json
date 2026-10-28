@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@lingui/core": "6.10.1"
   }
 }

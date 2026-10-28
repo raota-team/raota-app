@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { t as legacyT } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { Image } from "expo-image"
 import { router, useLocalSearchParams } from "expo-router"
@@ -46,25 +47,25 @@ export default function MyTypeScreen() {
 
   const body = () => {
     if (!summary) {
-      if (bowlsQuery.isLoading) return <LoadingState label={t("기록을 불러오는 중…")} style={styles.state} />
+      if (bowlsQuery.isLoading) return <LoadingState label={t`기록을 불러오는 중…`} style={styles.state} />
       return (
         <EmptyState
-          description={t("이 종류로 남긴 기록이 생기면 여기에 모여요.")}
+          description={t`이 종류로 남긴 기록이 생기면 여기에 모여요.`}
           style={styles.state}
-          title={t("{v1} 기록이 없어요", { v1: t(type) })}
+          title={t`${ph({ v1: legacyT(type) })} 기록이 없어요`}
         />
       )
     }
     return (
       <>
         <View style={styles.summary}>
-          <AppText variant="headline">{rows.length}{t("그릇")}</AppText>
+          <AppText variant="headline">{rows.length}{t`그릇`}</AppText>
           <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
             {summary.line}
           </AppText>
           {summary.favorite ? (
             <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
-              {t("자주 간 곳 ")}<AppText variant="bodyStrong">{summary.favorite.name}</AppText> {summary.favorite.count}{t("번 ")}</AppText>
+              {t`자주 간 곳 `}<AppText variant="bodyStrong">{summary.favorite.name}</AppText> {summary.favorite.count}{t`번 `}</AppText>
           ) : null}
         </View>
         <View style={styles.grid}>
@@ -80,9 +81,9 @@ export default function MyTypeScreen() {
     <Screen>
       <Header
         align="center"
-        backLabel={t("뒤로가기")}
+        backLabel={t`뒤로가기`}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/native/my"))}
-        title={t("{v1} 모아 보기", { v1: t(type) })}
+        title={t`${ph({ v1: legacyT(type) })} 모아 보기`}
         titleStyle={typography.sectionTitle}
       />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.section }]} style={styles.scroll}>
@@ -138,7 +139,7 @@ function summarize(rows: BowlRow[]): { line: string; favorite: { name: string; c
     visits.set(key, { name: row.name, count: (seen?.count ?? 0) + 1 })
   }
   const dates = rows.map((row) => row.date).sort()
-  const line = [t("가게 {count}곳", { count: visits.size }), t("처음 {date}", { date: dotted(dates[0]) }), rows.length > 1 ? t("최근 {date}", { date: dotted(dates[dates.length - 1]) }) : null]
+  const line = [t`가게 ${ph({ count: visits.size })}곳`, t`처음 ${ph({ date: dotted(dates[0]) })}`, rows.length > 1 ? t`최근 ${ph({ date: dotted(dates[dates.length - 1]) })}` : null]
     .filter(Boolean)
     .join(" · ")
   const top = [...visits.values()].sort((a, b) => b.count - a.count)[0]

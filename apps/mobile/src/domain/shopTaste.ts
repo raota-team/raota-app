@@ -1,4 +1,5 @@
-import { t, scoresFromLog, type RamenLog } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { t as legacyT, scoresFromLog, type RamenLog } from "@raota/shared"
 
 /**
  * 가게 상세의 "이 가게의 맛". 여러 사람의 공개 라멘로그를 모아
@@ -43,10 +44,10 @@ export const SHOP_TASTE_RATIO_MIN_LOGS = 5
 
 /** "3명 중 2명이 또 가고 싶대요". 모두 같으면 "모두"로 줄이고, 한 명뿐이면 "모두"를 쓰지 않는다 */
 export function revisitHeadlineOf({ count, revisit }: ShopTasteSummary): string {
-  const everyone = count === 1 ? t("1명이") : t("{count}명 모두", { count })
-  if (revisit.often === 0) return t("{people} 한 번쯤 가 볼 만하대요", { people: everyone })
-  if (revisit.often === count) return t("{people} 또 가고 싶대요", { people: everyone })
-  return t("{count}명 중 {often}명이 또 가고 싶대요", { count, often: revisit.often })
+  const everyone = count === 1 ? t`1명이` : t`${count}명 모두`
+  if (revisit.often === 0) return t`${ph({ people: everyone })} 한 번쯤 가 볼 만하대요`
+  if (revisit.often === count) return t`${ph({ people: everyone })} 또 가고 싶대요`
+  return t`${count}명 중 ${ph({ often: revisit.often })}명이 또 가고 싶대요`
 }
 
 export function shopTasteSummaryOf(logs: readonly RamenLog[]): ShopTasteSummary | null {
@@ -72,8 +73,8 @@ export function shopTasteSummaryOf(logs: readonly RamenLog[]): ShopTasteSummary 
     revisit,
     topMenu,
     topMenuCount,
-    broth: t(BROTH[leanOf(rated.map(({ scores }) => scores.brothDensity))]),
-    noodle: t(NOODLE[leanOf(rated.map(({ scores }) => scores.noodleFirmness))]),
-    topping: t(TOPPING[leanOf(rated.map(({ scores }) => scores.topping))]),
+    broth: legacyT(BROTH[leanOf(rated.map(({ scores }) => scores.brothDensity))]),
+    noodle: legacyT(NOODLE[leanOf(rated.map(({ scores }) => scores.noodleFirmness))]),
+    topping: legacyT(TOPPING[leanOf(rated.map(({ scores }) => scores.topping))]),
   }
 }

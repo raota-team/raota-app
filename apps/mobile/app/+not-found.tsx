@@ -1,4 +1,4 @@
-import { t } from "@raota/shared"
+import { t } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
 import { Link, Stack } from "expo-router"
 import { StyleSheet, Text, View } from "react-native"
@@ -19,10 +19,10 @@ export default function NotFoundScreen() {
         }}
       />
       <Text style={styles.code}>404</Text>
-      <Text style={styles.title}>{t("길을 잃은 한 그릇이에요")}</Text>
-      <Text style={styles.description}>{t("요청한 화면을 찾을 수 없습니다.")}</Text>
+      <Text style={styles.title}>{t`길을 잃은 한 그릇이에요`}</Text>
+      <Text style={styles.description}>{t`요청한 화면을 찾을 수 없습니다.`}</Text>
       <Link asChild href="/">
-        <Button style={styles.link} title={t("홈으로 돌아가기")} />
+        <Button style={styles.link} title={t`홈으로 돌아가기`} />
       </Link>
     </View>
   )

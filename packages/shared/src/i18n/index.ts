@@ -1,4 +1,10 @@
+import { i18n, type MessageDescriptor } from "@lingui/core"
 import { coreMessages } from "./core"
+import { messages as enMessages } from "./locales/en/messages"
+import { messages as esMessages } from "./locales/es/messages"
+import { messages as jaMessages } from "./locales/ja/messages"
+import { messages as koMessages } from "./locales/ko/messages"
+import { messages as zhMessages } from "./locales/zh/messages"
 import { mobileFlowMessages } from "./mobile-flows"
 import { mobileSurfaceMessages } from "./mobile-surfaces"
 import { webMessages } from "./web"
@@ -29,10 +35,23 @@ const listeners = new Set<() => void>()
 export const getLocale = (): AppLocale => currentLocale
 export const getIntlLocale = (locale: AppLocale = currentLocale): string => intlLocales[locale]
 
+// 다섯 언어 번역을 한 번에 싣는다(작아서 나눠 받을 이유가 없다). 매크로(t``, msg``)가 이 i18n으로 옮긴다
+i18n.load({ ko: koMessages, en: enMessages, zh: zhMessages, ja: jaMessages, es: esMessages })
+i18n.activate(DEFAULT_LOCALE)
+
 export function setLocale(locale: AppLocale): void {
   if (!SUPPORTED_LOCALES.includes(locale) || locale === currentLocale) return
   currentLocale = locale
+  i18n.activate(locale)
   listeners.forEach((listener) => listener())
+}
+
+/**
+ * 값마다 다른 표시 이름(라멘 종류, 맛 태그, 선택지 …)은 msg``로 만든 설명자를 여기에 넘긴다.
+ * 문자열을 받지 않는다: 런타임 문자열로 번역을 찾으면 추출되지 않아 번역이 빠진다
+ */
+export function translate(descriptor: MessageDescriptor): string {
+  return i18n._(descriptor)
 }
 
 export function subscribeLocale(listener: () => void): () => void {
@@ -70,3 +89,5 @@ export function formatDate(value: Date | string | number, options?: Intl.DateTim
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(getIntlLocale(), options).format(value)
 }
+
+export { labelOf } from "./labels"

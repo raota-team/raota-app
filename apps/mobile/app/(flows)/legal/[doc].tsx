@@ -1,4 +1,5 @@
-import { t, getLocale } from "@raota/shared"
+import { t } from "@lingui/core/macro";
+import { t as legacyT, getLocale } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { router, useLocalSearchParams } from "expo-router"
 import { Linking, ScrollView, StyleSheet, View } from "react-native"
@@ -26,8 +27,8 @@ export default function LegalDocumentScreen() {
   if (!isLegalDocumentKey(doc)) {
     return (
       <Screen style={styles.screen}>
-        <Header onBack={goBack} title={t("문서를 찾을 수 없어요")} />
-        <EmptyState actionLabel={t("돌아가기")} onAction={goBack} title={t("요청한 문서가 없어요")} />
+        <Header onBack={goBack} title={t`문서를 찾을 수 없어요`} />
+        <EmptyState actionLabel={t`돌아가기`} onAction={goBack} title={t`요청한 문서가 없어요`} />
       </Screen>
     )
   }
@@ -40,13 +41,13 @@ export default function LegalDocumentScreen() {
   )
   return (
     <Screen style={styles.screen}>
-      <Header onBack={goBack} title={t(document.title)} />
+      <Header onBack={goBack} title={legacyT(document.title)} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.x8 }]}>
         <AppText tone="muted" variant="meta">
-          {t("시행일 ")}{document.effectiveDate}
+          {t`시행일 `}{document.effectiveDate}
         </AppText>
         {getLocale() !== "ko" ? (
-          <AppText tone="sub" variant="secondary">{t("이 문서는 한국어 원문으로 제공됩니다.")}</AppText>
+          <AppText tone="sub" variant="secondary">{t`이 문서는 한국어 원문으로 제공됩니다.`}</AppText>
         ) : null}
         {document.sections.map((section) => (
           <View key={section.heading} style={styles.section}>
