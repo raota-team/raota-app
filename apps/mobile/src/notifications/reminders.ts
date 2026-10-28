@@ -1,4 +1,4 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import * as Notifications from "expo-notifications"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -59,7 +59,7 @@ const atHour = (base: Date, dayOffset: number) => {
   return date
 }
 
-const bowlsLabel = (count: number) => (count === 1 ? t("한 그릇") : t("{count}그릇", { count }))
+const bowlsLabel = (count: number) => (count === 1 ? t`한 그릇` : t`${count}그릇`)
 
 /** 예약할 알림 목록(순수 함수). 이미 지난 시각이나 채운 목표는 넣지 않는다 */
 export function planRecordReminders({ monthCount, lastRecordAt, now = new Date() }: ReminderContext): PlannedReminder[] {
@@ -76,8 +76,8 @@ export function planRecordReminders({ monthCount, lastRecordAt, now = new Date()
       plans.push({
         identifier: REMINDER_IDS.monthly,
         kind: "monthly",
-        title: t("이번 달 {bowls} 더 기록하면 월간 리포트가 나와요", { bowls: bowlsLabel(status.remaining) }),
-        body: t("{month}월 기록이 {target}그릇이 되면 {publishMonth}월 1일에 리포트가 나와요.", { month: status.month, target: MONTHLY_REPORT_TARGET, publishMonth: status.publishMonth }),
+        title: t`이번 달 ${ph({ bowls: bowlsLabel(status.remaining) })} 더 기록하면 월간 리포트가 나와요`,
+        body: t`${ph({ month: status.month })}월 기록이 ${ph({ target: MONTHLY_REPORT_TARGET })}그릇이 되면 ${ph({ publishMonth: status.publishMonth })}월 1일에 리포트가 나와요.`,
         url: REMINDER_DEEP_LINK,
         date,
       })
@@ -89,8 +89,8 @@ export function planRecordReminders({ monthCount, lastRecordAt, now = new Date()
     plans.push({
       identifier: REMINDER_IDS.inactive,
       kind: "inactive",
-      title: t("지난주에 먹은 라멘, 남겨볼까요?"),
-      body: t("가게를 고르면 바로 맛을 기록할 수 있어요."),
+      title: t`지난주에 먹은 라멘, 남겨볼까요?`,
+      body: t`가게를 고르면 바로 맛을 기록할 수 있어요.`,
       url: REMINDER_DEEP_LINK,
       date: inactiveDate,
     })

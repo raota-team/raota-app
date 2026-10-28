@@ -1,4 +1,4 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
 import { Image, type ImageProps } from "expo-image"
 import { ImageIcon } from "lucide-react-native"
@@ -86,7 +86,7 @@ export function ResilientUriImage({
 
   const unavailable = status === "empty" || status === "error"
   const stateLabel = unavailable
-    ? t("{label}. 이미지를 불러올 수 없습니다.", { label: accessibilityLabel ?? "" })
+    ? t`${ph({ label: accessibilityLabel ?? "" })}. 이미지를 불러올 수 없습니다.`
     : accessibilityLabel
 
   return (

@@ -1,3 +1,4 @@
+import { t } from "@lingui/core/macro";
 import { useLocale } from "../i18n"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
@@ -18,7 +19,6 @@ import {
   profileDelta,
   shopVisitsOf,
   tasteIdentity,
-  t,
   typeCountsWithLogs,
   type CurrentMonthReport,
   type DemoBowl,
@@ -67,7 +67,7 @@ function useQueryState(): Pick<Query<unknown>, "isLoading" | "error"> {
 type RemoteResult<T> = Query<T> & { key: string | null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : t("데이터를 불러오지 못했어요")
+  return error instanceof Error ? error.message : t`데이터를 불러오지 못했어요`
 }
 
 function useCacheVersion(): number {

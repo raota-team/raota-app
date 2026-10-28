@@ -1,5 +1,7 @@
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
 import {
-  t, formatDate, getLocale,
+  formatDate, getLocale, labelOf, translate,
   RAMEN_TYPES,
   REVISIT_SCORE,
   type ContentReport,
@@ -39,12 +41,12 @@ export function isValidLogComment(content: string): boolean {
   return length >= COMMENT_MIN_LENGTH && length <= COMMENT_MAX_LENGTH
 }
 
-export const REPORT_REASONS: Array<{ value: ContentReportReason; label: string }> = [
-  { value: "spam", label: "스팸·홍보" },
-  { value: "abuse", label: "욕설·혐오" },
-  { value: "sexual", label: "음란물" },
-  { value: "privacy", label: "개인정보 노출" },
-  { value: "other", label: "기타" },
+export const REPORT_REASONS: Array<{ value: ContentReportReason; label: MessageDescriptor }> = [
+  { value: "spam", label: msg`스팸·홍보` },
+  { value: "abuse", label: msg`욕설·혐오` },
+  { value: "sexual", label: msg`음란물` },
+  { value: "privacy", label: msg`개인정보 노출` },
+  { value: "other", label: msg`기타` },
 ]
 
 /** 내가 숨긴(차단한) 사람. 설정의 "숨긴 사용자"에 보여준다 */
@@ -110,25 +112,26 @@ export function selectVisibleComments(log: RamenLog, viewer: LoungeViewer): Rame
 }
 
 /** 기록 화면과 같은 한 마디. 좋고 나쁨(만족도·토핑)과 취향의 위치(육수·면)를 나눠 말한다 */
-const AXIS_WORDS: Record<Exclude<TasteAxisKey, "revisit">, readonly string[]> = {
-  satisfaction: ["아쉬웠어요", "그저 그랬어요", "괜찮았어요", "맛있었어요", "인생 라멘이에요"],
-  brothDensity: ["아주 맑음", "맑은 편", "중간", "진한 편", "아주 진함"],
-  noodleFirmness: ["아주 부드럽게", "부드러운 편", "중간", "단단한 편", "아주 단단하게"],
-  topping: ["아쉬움", "조금 아쉬움", "보통", "좋음", "훌륭함"],
+const AXIS_WORDS: Record<Exclude<TasteAxisKey, "revisit">, readonly MessageDescriptor[]> = {
+  satisfaction: [msg`아쉬웠어요`, msg`그저 그랬어요`, msg`괜찮았어요`, msg`맛있었어요`, msg`인생 라멘이에요`],
+  brothDensity: [msg`아주 맑음`, msg`맑은 편`, msg`중간`, msg`진한 편`, msg`아주 진함`],
+  noodleFirmness: [msg`아주 부드럽게`, msg`부드러운 편`, msg`중간`, msg`단단한 편`, msg`아주 단단하게`],
+  topping: [msg`아쉬움`, msg`조금 아쉬움`, msg`보통`, msg`좋음`, msg`훌륭함`],
 }
 
-const AXIS_LABELS: Record<TasteAxisKey, string> = {
-  satisfaction: "전체 만족도",
-  brothDensity: "육수 농도",
-  noodleFirmness: "면 삶기",
-  topping: "토핑",
-  revisit: "재방문 의사",
+const AXIS_LABELS: Record<TasteAxisKey, MessageDescriptor> = {
+  satisfaction: msg`전체 만족도`,
+  brothDensity: msg`육수 농도`,
+  noodleFirmness: msg`면 삶기`,
+  topping: msg`토핑`,
+  revisit: msg`재방문 의사`,
 }
 
 export interface TasteSummaryRow {
   key: TasteAxisKey
+  /** 번역된 축 이름 */
   label: string
-  /** "진한 편", "맛있었어요", "자주 감" */
+  /** 번역된 한 마디: "진한 편", "맛있었어요", "자주 감" */
   word: string
   /** 좋고 나쁨 항목(만족도·토핑)의 점수. 취향 위치 항목은 점수가 좋고 나쁨이 아니라서 없다 */
   score?: number
@@ -136,7 +139,7 @@ export interface TasteSummaryRow {
 
 function wordOf(key: Exclude<TasteAxisKey, "revisit">, score: number) {
   const index = Math.min(5, Math.max(1, Math.round(score))) - 1
-  return t(AXIS_WORDS[key][index])
+  return translate(AXIS_WORDS[key][index])
 }
 
 /** 맛 평가 다섯 줄. 점수가 없는 옛 기록이면 빈 배열 */
@@ -144,11 +147,11 @@ export function tasteSummaryOf(log: Pick<RamenLog, "scores" | "revisit">): Taste
   const scores = log.scores
   if (!scores) return []
   return [
-    { key: "satisfaction", label: AXIS_LABELS.satisfaction, word: wordOf("satisfaction", scores.satisfaction), score: scores.satisfaction },
-    { key: "brothDensity", label: AXIS_LABELS.brothDensity, word: wordOf("brothDensity", scores.brothDensity) },
-    { key: "noodleFirmness", label: AXIS_LABELS.noodleFirmness, word: wordOf("noodleFirmness", scores.noodleFirmness) },
-    { key: "topping", label: AXIS_LABELS.topping, word: wordOf("topping", scores.topping), score: scores.topping },
-    { key: "revisit", label: AXIS_LABELS.revisit, word: t(log.revisit), score: REVISIT_SCORE[log.revisit] },
+    { key: "satisfaction", label: translate(AXIS_LABELS.satisfaction), word: wordOf("satisfaction", scores.satisfaction), score: scores.satisfaction },
+    { key: "brothDensity", label: translate(AXIS_LABELS.brothDensity), word: wordOf("brothDensity", scores.brothDensity) },
+    { key: "noodleFirmness", label: translate(AXIS_LABELS.noodleFirmness), word: wordOf("noodleFirmness", scores.noodleFirmness) },
+    { key: "topping", label: translate(AXIS_LABELS.topping), word: wordOf("topping", scores.topping), score: scores.topping },
+    { key: "revisit", label: translate(AXIS_LABELS.revisit), word: labelOf(log.revisit), score: REVISIT_SCORE[log.revisit] },
   ]
 }
 
@@ -162,8 +165,8 @@ export function compactTasteSummary(log: Pick<RamenLog, "scores" | "revisit">): 
   const broth = wordOf("brothDensity", scores.brothDensity)
   const noodle = wordOf("noodleFirmness", scores.noodleFirmness)
   return {
-    text: t("만족 {score} · 육수 {broth} · 면 {noodle}", { score: Math.round(scores.satisfaction), broth, noodle }),
-    label: t("맛 평가: 전체 만족도 5점 중 {score}점, 육수 {broth}, 면 {noodle}", { score: Math.round(scores.satisfaction), broth, noodle }),
+    text: t`만족 ${ph({ score: Math.round(scores.satisfaction) })} · 육수 ${broth} · 면 ${noodle}`,
+    label: t`맛 평가: 전체 만족도 5점 중 ${ph({ score: Math.round(scores.satisfaction) })}점, 육수 ${broth}, 면 ${noodle}`,
   }
 }
 
@@ -203,13 +206,13 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   const time = Date.parse(iso)
   if (!Number.isFinite(time)) return iso
   const minutes = Math.floor((now.getTime() - time) / 60000)
-  if (minutes < 1) return t("방금 전")
-  if (minutes < 60) return t("{count}분 전", { count: minutes })
+  if (minutes < 1) return t`방금 전`
+  if (minutes < 60) return t`${ph({ count: minutes })}분 전`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return t("{count}시간 전", { count: hours })
+  if (hours < 24) return t`${ph({ count: hours })}시간 전`
   const days = Math.floor(hours / 24)
-  if (days === 1) return t("어제")
-  if (days < 7) return t("{days}일 전", { days })
+  if (days === 1) return t`어제`
+  if (days < 7) return t`${days}일 전`
   const date = new Date(time)
   if (getLocale() !== "ko") return formatDate(date, { month: "short", day: "numeric", ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" as const }) })
   const label = `${date.getMonth() + 1}월 ${date.getDate()}일`

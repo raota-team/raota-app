@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import { translate } from "@raota/shared"
 import { useEffect, useRef } from 'react'
 import useLoadingSequence from '../hooks/useLoadingSequence'
 import { ArrowRight, Check, ChevronLeft } from 'lucide-react'
@@ -24,10 +25,10 @@ const REVEAL_FRAMES = [
 ]
 
 const STATUS_MESSAGES = [
-  '라멘 기록을 모으고 있어요',
-  '국물과 면 취향을 살펴보고 있어요',
-  '나의 누적 취향을 정리하고 있어요',
-  '나의 라멘 취향이 정리됐어요',
+  msg`라멘 기록을 모으고 있어요`,
+  msg`국물과 면 취향을 살펴보고 있어요`,
+  msg`나의 누적 취향을 정리하고 있어요`,
+  msg`나의 라멘 취향이 정리됐어요`,
 ]
 
 export default function TasteReportLoading({ recordCount, metrics, duration, onBack, onComplete }: Props) {
@@ -56,20 +57,20 @@ export default function TasteReportLoading({ recordCount, metrics, duration, onB
   ] as const
 
   return (
-    <section className="taste-report-loading h-full min-h-0 overflow-y-auto bg-white text-ink flex flex-col" aria-label={t("누적 취향 분석 중")}>
+    <section className="taste-report-loading h-full min-h-0 overflow-y-auto bg-white text-ink flex flex-col" aria-label={t`누적 취향 분석 중`}>
       <header className="flex shrink-0 items-center justify-between px-4 py-2">
-        <button type="button" onClick={onBack} aria-label={t("뒤로가기")} className="taste-loading-action h-11 w-11 flex items-center justify-center rounded-full hover:bg-canvas-soft">
+        <button type="button" onClick={onBack} aria-label={t`뒤로가기`} className="taste-loading-action h-11 w-11 flex items-center justify-center rounded-full hover:bg-canvas-soft">
           <ChevronLeft size={22} aria-hidden="true" />
         </button>
-        <span className="text-sm font-black">{t("종합 취향 리포트")}</span>
+        <span className="text-sm font-black">{t`종합 취향 리포트`}</span>
         <span className="w-11" aria-hidden="true" />
       </header>
 
       <div className="flex flex-1 flex-col justify-center px-6 py-4 text-center">
         <h1 ref={titleRef} tabIndex={-1} className="text-[24px] leading-[1.4] font-bold tracking-tight outline-none">
-          {t("나의 라멘 취향을")}<br />{t("정리하고 있어요")}</h1>
+          {t`나의 라멘 취향을`}<br />{t`정리하고 있어요`}</h1>
         <p className="mt-3 text-sm leading-6 text-ink-sub">
-          {t("기록한 {count}그릇을 바탕으로 분석해요", {count: recordCount})}</p>
+          {t`기록한 ${ph({ count: recordCount })}그릇을 바탕으로 분석해요`}</p>
 
         <svg viewBox="0 0 320 286" className="taste-loading-radar mx-auto my-6 w-full max-w-[320px] shrink-0" aria-hidden="true">
           {[0.33, 0.66, 1].map(level => (
@@ -97,21 +98,21 @@ export default function TasteReportLoading({ recordCount, metrics, duration, onB
           </g>
           {metrics.map((metric, index) => {
             const active = !complete && index === [0, 1, 3][stage]
-            return <text key={metric.label} x={labels[index].x} y={labels[index].y} textAnchor={labels[index].anchor} className="taste-loading-axis" fill={active ? 'var(--color-brand)' : 'var(--color-ink-sub)'} fontSize="12" fontWeight={active ? '600' : '500'}>{t(metric.label)}</text>
+            return <text key={metric.label} x={labels[index].x} y={labels[index].y} textAnchor={labels[index].anchor} className="taste-loading-axis" fill={active ? 'var(--color-brand)' : 'var(--color-ink-sub)'} fontSize="12" fontWeight={active ? '600' : '500'}>{metric.label}</text>
           })}
         </svg>
 
         <p role="status" aria-live="polite" aria-atomic="true" className="min-h-6 text-sm leading-6 font-medium text-ink-sub">
           <span key={stage} className="taste-loading-status flex items-center justify-center gap-2">
             {complete ? <Check size={16} className="text-brand shrink-0" aria-hidden="true" /> : <span className="h-1 w-1 shrink-0 rounded-full bg-brand" aria-hidden="true" />}
-            {t(STATUS_MESSAGES[stage])}
+            {translate(STATUS_MESSAGES[stage])}
           </span>
         </p>
       </div>
 
       <footer className="shrink-0 px-6 pb-6 pt-2">
         <button type="button" onClick={onComplete} className="taste-loading-action mx-auto flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium text-ink-sub hover:bg-canvas-soft active:bg-canvas-soft">
-          {t("결과 바로 보기")} <ArrowRight size={16} aria-hidden="true" />
+          {t`결과 바로 보기`} <ArrowRight size={16} aria-hidden="true" />
         </button>
       </footer>
     </section>

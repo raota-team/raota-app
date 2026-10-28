@@ -1,4 +1,5 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { formatList, labelOf } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import { memo, useEffect, useMemo, useRef, useState } from "react"
 import * as Haptics from "expo-haptics"
@@ -114,15 +115,15 @@ function TasteReportCover({ identity, updatedLabel }: {
   return (
     <View style={styles.card}>
       <View style={styles.coverHead}>
-        <AppText capScale style={styles.coverBadge} variant="meta">{t("종합 리포트")}</AppText>
-        <AppText capScale numberOfLines={2} style={[styles.tabular, styles.coverDate]} tone="muted" variant="meta">{t(updatedLabel)}</AppText>
+        <AppText capScale style={styles.coverBadge} variant="meta">{t`종합 리포트`}</AppText>
+        <AppText capScale numberOfLines={2} style={[styles.tabular, styles.coverDate]} tone="muted" variant="meta">{updatedLabel}</AppText>
       </View>
-      <AppText accessibilityRole="header" style={styles.coverTitle} variant="headline">{t(identity.title)}</AppText>
+      <AppText accessibilityRole="header" style={styles.coverTitle} variant="headline">{identity.title}</AppText>
       <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
-        {identity.leader ? t("누적 {v1}그릇 중 {v2} {v3}그릇", { v1: identity.total, v2: identity.leader.name, v3: identity.leader.count }) : identity.description}
+        {identity.leader ? t`누적 ${ph({ v1: identity.total })}그릇 중 ${ph({ v2: labelOf(identity.leader.name) })} ${ph({ v3: identity.leader.count })}그릇` : identity.description}
       </AppText>
       {identity.tags.length > 0 ? (
-        <View accessibilityLabel={t("취향 특징: {v1}", { v1: identity.tags.join(", ") })} accessible style={styles.tagRow}>
+        <View accessibilityLabel={t`취향 특징: ${ph({ v1: identity.tags.join(", ") })}`} accessible style={styles.tagRow}>
           {identity.tags.map((tag) => (
             <AppText key={tag} style={styles.coverTag} variant="secondary">#{tag}</AppText>
           ))}
@@ -562,7 +563,11 @@ function TasteReportLoading({
   const winners = towers.filter((tower) => tower.count === topCount).map((tower) => tower.type)
   const tied = winners.length > 1
   const topPercent = Math.round((topCount / count) * 100)
-  const finalMessage = t("{v1}, {v2} {v3}{v4}그릇", { v1: identity.title, v2: winners.join(", "), v3: tied ? t("각 ") : "", v4: topCount })
+  const finalTitle = identity.title
+  const winnerList = formatList(winners.map(labelOf))
+  const finalMessage = tied
+    ? t`${ph({ title: finalTitle })}, ${ph({ winners: winnerList })} 각 ${ph({ count: topCount })}그릇`
+    : t`${ph({ title: finalTitle })}, ${ph({ winners: winnerList })} ${ph({ count: topCount })}그릇`
   const finalMessageRef = useRef(finalMessage)
   finalMessageRef.current = finalMessage
 
@@ -640,7 +645,7 @@ function TasteReportLoading({
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} style={styles.root}>
       <StatusBar style="auto" />
-      <Header align="center" onBack={onBack} title={t("종합 취향 리포트")} titleStyle={typography.sectionTitle} />
+      <Header align="center" onBack={onBack} title={t`종합 취향 리포트`} titleStyle={typography.sectionTitle} />
       <ScrollView
         contentContainerStyle={styles.loadingBody}
         onContentSizeChange={() => {
@@ -650,19 +655,19 @@ function TasteReportLoading({
         ref={loadingScrollRef}
         showsVerticalScrollIndicator={false}
       >
-        <View accessible accessibilityLabel={t("{v1}그릇을 정리하고 있어요", { v1: count })} accessibilityRole="header" ref={titleRef}>
+        <View accessible accessibilityLabel={t`${ph({ v1: count })}그릇을 정리하고 있어요`} accessibilityRole="header" ref={titleRef}>
           <AppText style={styles.center} variant="headline">{LOADING_TITLES[phase]}</AppText>
         </View>
         <AppText style={[styles.center, styles.loadingCounter]} testID="report-bowl-counter" variant="counter">
           {shownCount}
-          <AppText style={styles.tabular} variant="sectionTitle">{t("그릇")}</AppText>
+          <AppText style={styles.tabular} variant="sectionTitle">{t`그릇`}</AppText>
         </AppText>
         <AppText capScale style={[styles.center, styles.tabular, styles.loadingPeriod]} testID="report-bowl-period" tone="muted" variant="meta">
           {period}
         </AppText>
         <View style={styles.loadingSheet}>
           <View style={styles.loadingSheetHead}>
-            <AppText variant="cardTitle">{t("라멘 취향 감정서")}</AppText>
+            <AppText variant="cardTitle">{t`라멘 취향 감정서`}</AppText>
             <AppText capScale style={styles.tabular} tone="muted" variant="meta">
               No. {membershipNo.replace(/^#/, "")}
             </AppText>
@@ -671,8 +676,8 @@ function TasteReportLoading({
             accessible
             accessibilityLabel={
               highlighted
-                ? t("{v1}그릇을 종류별로 쌓았어요. {v2}", { v1: count, v2: towers.map((tower) => `${tower.type} ${tower.count}그릇`).join(", ") })
-                : t("기록 순서대로 {v1}개 그릇을 종류별로 쌓고 있어요", { v1: icons.length })
+                ? t`${ph({ v1: count })}그릇을 종류별로 쌓았어요. ${ph({ v2: towers.map((tower) => `${tower.type} ${tower.count}그릇`).join(", ") })}`
+                : t`기록 순서대로 ${ph({ v1: icons.length })}개 그릇을 종류별로 쌓고 있어요`
             }
             accessibilityRole="image"
             testID="report-bowl-stage"
@@ -709,15 +714,17 @@ function TasteReportLoading({
           </View>
           {sampleRatio ? (
             <AppText capScale style={styles.loadingScaleNote} tone="muted" variant="meta">
-              {t("그릇 1개 ≈ ")}{sampleRatio}{t("그릇 · 전체 ")}{count}{t("그릇 ")}</AppText>
+              {t`그릇 1개 ≈ `}{sampleRatio}{t`그릇 · 전체 `}{count}{t`그릇 `}</AppText>
           ) : null}
         </View>
         <View style={styles.loadingResultSlot}>
           {complete ? (
             <Animated.View style={[styles.loadingResult, resultStyle]} testID="report-bowl-result">
-              <AppText style={styles.center} variant="headline">{t(identity.title)}</AppText>
+              <AppText style={styles.center} variant="headline">{identity.title}</AppText>
               <AppText style={[styles.center, styles.tabular]} tone="muted" variant="secondary">
-                {count}{t("그릇 중 ")}{winners.join("·")} {tied ? t("각 ") : ""}{topCount}{t("그릇 · ")}{topPercent}%
+                {tied
+                  ? t`${ph({ count })}그릇 중 ${ph({ winners: winners.map(labelOf).join("·") })} 각 ${ph({ topCount })}그릇 · ${ph({ topPercent })}%`
+                  : t`${ph({ count })}그릇 중 ${ph({ winners: winners.map(labelOf).join("·") })} ${ph({ topCount })}그릇 · ${ph({ topPercent })}%`}
               </AppText>
             </Animated.View>
           ) : null}
@@ -729,7 +736,7 @@ function TasteReportLoading({
           rightIcon={<ArrowRight color={colors.inkSub} size={16} />}
           size="small"
           textStyle={styles.subText}
-          title={t("리포트 바로 보기")}
+          title={t`리포트 바로 보기`}
           variant="ghost"
         />
       </View>
@@ -790,7 +797,7 @@ export default function TasteReportScreen() {
 
   const shopByName = (name: string) => shops.find((shop) => shop.name === name)
   const favoriteShop = topShops[0] ? shopByName(topShops[0].name) : undefined
-  const updatedLabel = generatedAt ? t("{v1} {v2}에 다시 정리함", { v1: seoulToday().replace(/-/g, "."), v2: generatedAt }) : t("{v1} 기준", { v1: seoulToday().replace(/-/g, ".") })
+  const updatedLabel = generatedAt ? t`${ph({ v1: seoulToday().replace(/-/g, ".") })} ${ph({ v2: generatedAt })}에 다시 정리함` : t`${ph({ v1: seoulToday().replace(/-/g, ".") })} 기준`
 
   // 다음 한 그릇: 가장 적게 먹은 종류(기타 제외)를 파는 원장 매장. 안 가 본 곳을 먼저 고른다
   const suggestion = useMemo(() => {
@@ -812,7 +819,7 @@ export default function TasteReportScreen() {
   const finishGeneration = () => {
     setGenerating(false)
     setGeneratedAt(seoulTime())
-    setToast(t("전체 {v1}그릇으로 취향을 다시 정리했어요", { v1: bowls.length }))
+    setToast(t`전체 ${ph({ v1: bowls.length })}그릇으로 취향을 다시 정리했어요`)
     scrollRef.current?.scrollTo({ y: 0, animated: false })
   }
 
@@ -834,7 +841,7 @@ export default function TasteReportScreen() {
   const handleShare = async () => {
     try {
       // iOS 공유 시트. 취소(dismissedAction)면 조용히 닫고, 공유 여부는 앱이 확인할 수 없으니 성공 표시도 하지 않는다
-      await Share.share({ title: t("라오타 취향 리포트"), message: shareText })
+      await Share.share({ title: t`라오타 취향 리포트`, message: shareText })
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return
       setShareFallback(true)
@@ -854,17 +861,17 @@ export default function TasteReportScreen() {
         right={
           recordCount > 0 ? (
             <IconButton
-              accessibilityLabel={t("취향 리포트 공유")}
+              accessibilityLabel={t`취향 리포트 공유`}
               icon={<Share2 color={colors.ink} size={20} />}
               onPress={handleShare}
             />
           ) : undefined
         }
-        title={t("취향 종합 리포트")}
+        title={t`취향 종합 리포트`}
         titleStyle={typography.sectionTitle}
       />
       {isLoading ? (
-        <LoadingState fullScreen label={t("취향을 불러오는 중…")} />
+        <LoadingState fullScreen label={t`취향을 불러오는 중…`} />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll} ref={scrollRef} showsVerticalScrollIndicator={false}>
           {recordCount === 0 ? (
@@ -883,21 +890,22 @@ export default function TasteReportScreen() {
                 typeCounts={typeCounts}
                 visits={visits}
               />
-              <AppText capScale style={[styles.center, styles.tabular, styles.gapTop2]} tone="muted" variant="meta">{t(updatedLabel)}</AppText>
+              <AppText capScale style={[styles.center, styles.tabular, styles.gapTop2]} tone="muted" variant="meta">{updatedLabel}</AppText>
             </View>
           )}
 
           {recordCount === 0 ? (
             <View style={[styles.block, styles.emptySection]}>
               <AppText accessibilityRole="header" style={styles.center} variant="screenTitle">
-                {t("아직 보여드릴 취향이 없어요 ")}</AppText>
+                {t`아직 보여드릴 취향이 없어요 `}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.sectionContent]} tone="sub" variant="body">
-                {t("첫 그릇을 기록하면\n취향과 종류별 분포가 여기에 쌓여요.")}
+                {t`첫 그릇을 기록하면
+취향과 종류별 분포가 여기에 쌓여요.`}
               </AppText>
               <Button
                 onPress={() => router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })}
                 style={styles.gapTop3}
-                title={t("첫 그릇 기록하기")}
+                title={t`첫 그릇 기록하기`}
               />
             </View>
           ) : (
@@ -905,16 +913,16 @@ export default function TasteReportScreen() {
               <View style={styles.section}>
                 <View style={styles.rowBetween}>
                   <AppText accessibilityRole="header" variant="sectionTitle">
-                    {t("종류별로 먹은 라멘 ")}</AppText>
+                    {t`종류별로 먹은 라멘 `}</AppText>
                   <AppText capScale style={styles.tabular} tone="muted" variant="secondary">
-                    {t("전체 ")}{typeTotal}{t("그릇 ")}</AppText>
+                    {t`전체 `}{typeTotal}{t`그릇 `}</AppText>
                 </View>
                 <View style={styles.typeList}>
                   {MENU_CATEGORY_NAMES.map((name) => {
                     const count = typeCounts[name]
                     const pct = typeTotal ? Math.round((count / typeTotal) * 100) : 0
                     return (
-                      <View accessibilityLabel={t("{v1} {v2}그릇, {v3}%", { v1: name, v2: count, v3: pct })} accessible key={name} style={styles.typeRow}>
+                      <View accessibilityLabel={t`${ph({ v1: name })} ${ph({ v2: count })}그릇, ${ph({ v3: pct })}%`} accessible key={name} style={styles.typeRow}>
                         <View style={styles.typeName}>
                           <AppText capScale variant="bodyStrong">{name}</AppText>
                         </View>
@@ -923,7 +931,7 @@ export default function TasteReportScreen() {
                         </View>
                         <AppText capScale style={[styles.typeValue, styles.tabular]} tone="sub" variant="secondary">
                           <AppText capScale variant="secondary" style={styles.heavy}>
-                            {count}{t("그릇 ")}</AppText>
+                            {count}{t`그릇 `}</AppText>
                           {` · ${pct}%`}
                         </AppText>
                       </View>
@@ -935,15 +943,15 @@ export default function TasteReportScreen() {
               {topShops.length > 0 ? (
                 <View style={styles.section}>
                   <View style={styles.rowBetween}>
-                    <AppText accessibilityRole="header" variant="sectionTitle">{t("자주 간 라멘집")}</AppText>
-                    <AppText capScale tone="muted" variant="meta">{t("가장 많이 기록한 세 곳")}</AppText>
+                    <AppText accessibilityRole="header" variant="sectionTitle">{t`자주 간 라멘집`}</AppText>
+                    <AppText capScale tone="muted" variant="meta">{t`가장 많이 기록한 세 곳`}</AppText>
                   </View>
                   <View style={styles.sectionContent}>
                     {topShops.map((visit, index) => {
                       const shop = shopByName(visit.name)
                       return (
                         <Pressable
-                          accessibilityLabel={t("{v1}위 {v2}{v3}, {v4}, {v5}그릇", { v1: index + 1, v2: visit.name, v3: visit.branch ? ` ${visit.branch}` : "", v4: visit.topMenu, v5: visit.visitCount })}
+                          accessibilityLabel={t`${ph({ v1: index + 1 })}위 ${ph({ v2: visit.name })}${ph({ v3: visit.branch ? ` ${visit.branch}` : "" })}, ${ph({ v4: visit.topMenu })}, ${ph({ v5: visit.visitCount })}그릇`}
                           accessibilityRole={shop ? "button" : "text"}
                           disabled={!shop}
                           key={visit.name}
@@ -968,11 +976,11 @@ export default function TasteReportScreen() {
                               {visit.branch ? <AppText tone="sub" variant="secondary">{` ${visit.branch}`}</AppText> : null}
                             </AppText>
                             <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.gapTop1} tone="sub" variant="secondary">
-                              {visit.topMenu} {t(" · 마지막 ")}{visit.lastVisited.slice(5).replace("-", ".")}
+                              {visit.topMenu} {t` · 마지막 `}{visit.lastVisited.slice(5).replace("-", ".")}
                             </AppText>
                           </View>
                           <AppText style={styles.tabular} variant="bodyStrong">
-                            {visit.visitCount}{t("그릇 ")}</AppText>
+                            {visit.visitCount}{t`그릇 `}</AppText>
                         </Pressable>
                       )
                     })}
@@ -983,15 +991,15 @@ export default function TasteReportScreen() {
               {suggestion ? (
                 <View style={styles.section}>
                   <AppText accessibilityRole="header" variant="sectionTitle">
-                    {t("다음에 맛볼 한 그릇 ")}</AppText>
+                    {t`다음에 맛볼 한 그릇 `}</AppText>
                   <AppText lineBreakStrategyIOS="hangul-word" style={styles.gapTop1} tone="sub" variant="secondary">
                     {suggestion.count === 0
-                      ? t("{v1}는 아직 기록이 없어요.", { v1: suggestion.category })
-                      : t("{v1}는 {v2}그릇으로 가장 적었어요.", { v1: suggestion.category, v2: suggestion.count })}{" "}
-                    {t("이 종류로 폭을 넓혀보세요. ")}</AppText>
+                      ? t`${ph({ v1: suggestion.category })}는 아직 기록이 없어요.`
+                      : t`${ph({ v1: suggestion.category })}는 ${ph({ v2: suggestion.count })}그릇으로 가장 적었어요.`}{" "}
+                    {t`이 종류로 폭을 넓혀보세요. `}</AppText>
                   <View style={styles.pinRow}>
                     <Pressable
-                      accessibilityLabel={t("{v1}{v2} 매장 보기", { v1: suggestion.shop.name, v2: suggestion.shop.branch ? ` ${suggestion.shop.branch}` : "" })}
+                      accessibilityLabel={t`${ph({ v1: suggestion.shop.name })}${ph({ v2: suggestion.shop.branch ? ` ${suggestion.shop.branch}` : "" })} 매장 보기`}
                       accessibilityRole="button"
                       onPress={() => openShop(suggestion.shop)}
                       style={({ pressed }) => [styles.pin, pressed && styles.pinPressed]}
@@ -1015,7 +1023,7 @@ export default function TasteReportScreen() {
                     </Pressable>
                     {suggestedReview ? (
                       <Pressable
-                        accessibilityLabel={t("{v1}의 {v2} 후기, 매장 보기", { v1: suggestedReview.author, v2: suggestion.shop.name })}
+                        accessibilityLabel={t`${ph({ v1: suggestedReview.author })}의 ${ph({ v2: suggestion.shop.name })} 후기, 매장 보기`}
                         accessibilityRole="button"
                         onPress={() => openShop(suggestion.shop)}
                         style={({ pressed }) => [styles.pin, pressed && styles.pinPressed]}
@@ -1027,7 +1035,7 @@ export default function TasteReportScreen() {
                             <AppText style={styles.pinFallback} variant="cardTitle">{suggestion.shop.name.slice(0, 1)}</AppText>
                           )}
                           <View style={styles.pinRating}>
-                            <AppText capScale style={styles.pinOnImageText} variant="meta">{t("별점 ")}{suggestedReview.rating}</AppText>
+                            <AppText capScale style={styles.pinOnImageText} variant="meta">{t`별점 `}{suggestedReview.rating}</AppText>
                           </View>
                         </View>
                         <AppText numberOfLines={2} style={styles.pinTitle} variant="cardTitle">{suggestedReview.text}</AppText>
@@ -1053,7 +1061,7 @@ export default function TasteReportScreen() {
                   fullWidth
                   leftIcon={<RotateCw color={colors.ink} size={16} />}
                   onPress={restart}
-                  title={t("리포트 다시 뽑기")}
+                  title={t`리포트 다시 뽑기`}
                   variant="secondary"
                 />
               </View>
@@ -1065,10 +1073,10 @@ export default function TasteReportScreen() {
       <Toast message={toast ?? ""} onDismiss={() => setToast(null)} visible={Boolean(toast)} />
 
       <BottomSheet
-        description={t("아래 내용을 길게 눌러 복사해 주세요.")}
-        footer={<Button onPress={() => setShareFallback(false)} title={t("닫기")} variant="secondary" />}
+        description={t`아래 내용을 길게 눌러 복사해 주세요.`}
+        footer={<Button onPress={() => setShareFallback(false)} title={t`닫기`} variant="secondary" />}
         onClose={() => setShareFallback(false)}
-        title={t("공유하지 못했어요")}
+        title={t`공유하지 못했어요`}
         visible={shareFallback}
       >
         <ScrollView contentContainerStyle={styles.fallbackContent} style={[styles.fallbackBox, { maxHeight: windowHeight * 0.34 }]}>
@@ -1077,7 +1085,7 @@ export default function TasteReportScreen() {
           </AppText>
         </ScrollView>
         <AppText capScale style={styles.gapTop2} tone="muted" variant="meta">
-          {currentUser?.nickname ?? t("라오타 회원")} · Lv.{level.number} {t(level.title)}
+          {currentUser?.nickname ?? t`라오타 회원`} · Lv.{level.number} {labelOf(level.title)}
         </AppText>
       </BottomSheet>
       {/* 이야기 카드가 왼쪽 끝까지 가로로 넘어가서, 헤더 아래 가장자리는 뒤로 쓸기에 양보한다 */}

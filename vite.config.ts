@@ -1,5 +1,6 @@
 import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { lingui } from '@lingui/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'node:path'
 
@@ -17,6 +18,8 @@ export default defineConfig(({ mode }) => {
       minify: !emitSourcemaps,
     },
     plugins: [
+      // Lingui 매크로(t``, msg``)를 빌드 때 변환한다. 번역은 컴파일한 messages.ts를 그대로 import한다
+      lingui({ macroTransform: true }),
       react(),
       tailwindcss(),
       figmaSiteConfiguration(siteConfiguration),

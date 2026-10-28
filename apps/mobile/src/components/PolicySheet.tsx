@@ -1,5 +1,6 @@
+import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { getLocale, t } from "@raota/shared"
+import { getLocale } from "@raota/shared"
 import { useRef, type ReactNode } from "react"
 import { ScrollView, StyleSheet, View, useWindowDimensions } from "react-native"
 
@@ -33,12 +34,13 @@ export default function PolicySheet({ type, onClose, title, footer }: PolicyShee
   if (type) lastType.current = type
   const shownType = type ?? lastType.current
   const policy = shownType ? POLICIES[shownType] : null
-  const sheetTitle = title ?? (policy?.title ? t(policy.title) : "")
+  // 문서 원문은 한국어로만 두고, 제목만 문서 종류에 맞춰 번역한다
+  const sheetTitle = title ?? (shownType === "terms" ? t`이용약관` : shownType === "privacy" ? t`개인정보처리방침` : "")
 
   return (
     <BottomSheet
-      closeLabel={t("{p0} 닫기", { p0: sheetTitle })}
-      footer={footer ?? <Button fullWidth onPress={onClose} title={t("닫기")} variant="secondary" />}
+      closeLabel={t`${ph({ p0: sheetTitle })} 닫기`}
+      footer={footer ?? <Button fullWidth onPress={onClose} title={t`닫기`} variant="secondary" />}
       onClose={onClose}
       title={sheetTitle}
       visible={type !== null}
@@ -50,9 +52,9 @@ export default function PolicySheet({ type, onClose, title, footer }: PolicyShee
           // 시트 최대 높이(85%) 안에서 머리·버튼을 뺀 만큼만 본문이 스크롤된다
           style={{ maxHeight: Math.round(height * 0.5) }}
         >
-          {getLocale() !== "ko" ? <AppText tone="sub" variant="secondary">{t("이 문서는 한국어 원문으로 제공됩니다.")}</AppText> : null}
+          {getLocale() !== "ko" ? <AppText tone="sub" variant="secondary">{t`이 문서는 한국어 원문으로 제공됩니다.`}</AppText> : null}
           <AppText tone="muted" variant="meta">
-            {t("시행일 {date}", { date: policy.effectiveDate })}
+            {t`시행일 ${ph({ date: policy.effectiveDate })}`}
           </AppText>
           {policy.sections.map((section, index) => (
             <View key={section.heading} style={[styles.section, index > 0 && styles.sectionDivider]}>

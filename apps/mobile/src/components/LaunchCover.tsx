@@ -1,5 +1,5 @@
+import { t } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
 import { useSegments } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { useEffect, useRef, useState } from "react"
@@ -84,7 +84,7 @@ export default function LaunchCover() {
   if (gone) return null
   return (
     <Animated.View
-      accessibilityLabel={t("RAOTA 불러오는 중")}
+      accessibilityLabel={t`RAOTA 불러오는 중`}
       accessible
       pointerEvents={reveal ? "none" : "auto"}
       style={[styles.cover, { opacity }]}

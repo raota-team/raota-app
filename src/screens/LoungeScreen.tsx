@@ -1,4 +1,6 @@
-import { t } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { labelOf, translate } from "@raota/shared"
 import { useState, useMemo, useRef, useEffect, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import {
   HelpCircle,
@@ -44,7 +46,6 @@ type PostCategory = 'REVIEW' | 'TIP' | 'QUESTION' | 'FREE' | 'POPULAR'
 export interface CommunityPost {
   postId: string
   category: PostCategory
-  categoryLabel: string
   title: string
   content: string
   detailedContent?: string[]
@@ -144,7 +145,6 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: '1',
     category: 'REVIEW',
-    categoryLabel: '맛집후기',
     title: '망원·합정 일대 인생 쇼유 라멘 3곳 추천합니다',
     content: '자가제면과 동물계 육수의 밸런스가 완벽한 곳들만 엄선했습니다. 1위는 역시 멘야준, 2위는 세상끝의라멘, 3위는 묘코입니다.',
     detailedContent: [
@@ -200,7 +200,6 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: '2',
     category: 'QUESTION',
-    categoryLabel: 'Q&A',
     title: '돈코츠 농도 높은 곳 처음 가보는데 어디가 입문용으로 좋을까요?',
     content: '하쿠텐이나 부탄츄 가보려고 하는데 극강의 꼬릿함에 적응할 수 있을지 걱정입니다. 추천 부탁드려요!',
     detailedContent: [
@@ -242,7 +241,6 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: '3',
     category: 'TIP',
-    categoryLabel: '꿀팁',
     title: '라멘 먹을 때 염도 조절 실패하지 않는 완식 주문 꿀팁',
     content: '초심자분들이 자주 실수하는 간 조절법과 무료 와리스프(육수 추가) 요청 타이밍 총정리입니다.',
     detailedContent: [
@@ -274,7 +272,6 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   {
     postId: '4',
     category: 'FREE',
-    categoryLabel: '자유',
     title: '올해 100그릇 달성했습니다! 취향 리포트 인증합니다',
     content: '상반기 동안 서울 시내 라멘집 60곳 돌면서 심어둔 잔디가 꽉 찼네요. 다들 이번 주도 즐거운 완식하세요.',
     detailedContent: [
@@ -304,21 +301,18 @@ const INITIAL_COMMUNITY_POSTS: CommunityPost[] = [
   },
 ]
 
-const COMMUNITY_CATEGORIES = [
-  { id: 'all', label: '전체' },
-  { id: 'POPULAR', label: '인기' },
-  { id: 'REVIEW', label: '맛집후기' },
-  { id: 'TIP', label: '꿀팁' },
-  { id: 'QUESTION', label: 'Q&A' },
-  { id: 'FREE', label: '자유' },
+const COMMUNITY_CATEGORIES: { id: PostCategory | 'all'; label: MessageDescriptor }[] = [
+  { id: 'all', label: msg`전체` },
+  { id: 'POPULAR', label: msg`인기` },
+  { id: 'REVIEW', label: msg`맛집후기` },
+  { id: 'TIP', label: msg`꿀팁` },
+  { id: 'QUESTION', label: msg`Q&A` },
+  { id: 'FREE', label: msg`자유` },
 ]
 
-const WRITE_CATEGORIES: { id: Exclude<PostCategory, 'POPULAR'>; name: string }[] = [
-  { id: 'REVIEW', name: '맛집후기' },
-  { id: 'TIP', name: '꿀팁' },
-  { id: 'QUESTION', name: 'Q&A' },
-  { id: 'FREE', name: '자유' },
-]
+const WRITE_CATEGORIES = COMMUNITY_CATEGORIES.filter(
+  (category): category is { id: Exclude<PostCategory, 'POPULAR'>; label: MessageDescriptor } => category.id !== 'all' && category.id !== 'POPULAR',
+)
 
 const WRITE_SHOP_OPTIONS = [
   { name: '멘야준', location: '망원 본점' },
@@ -342,20 +336,21 @@ const SAMPLE_IMAGE_PRESETS = [
 const POPULAR_THRESHOLD = 30
 
 /** 카테고리 뱃지: 색은 하나만 쓰고 글자로 구분한다 */
-function CategoryBadge({ label }: { label: string }) {
-  return <span className="shrink-0 rounded-[4px] bg-[#F2F2F2] px-1.5 py-0.5 text-[12px] font-bold text-[#4A4D52]">{t(label)}</span>
+function CategoryBadge({ category }: { category: PostCategory }) {
+  const label = COMMUNITY_CATEGORIES.find(item => item.id === category)?.label
+  return <span className="shrink-0 rounded-[4px] bg-[#F2F2F2] px-1.5 py-0.5 text-[12px] font-bold text-[#4A4D52]">{label && translate(label)}</span>
 }
 
 function PopularBadge() {
   return (
     <span className="inline-flex shrink-0 items-center gap-0.5 rounded-[4px] bg-[#FFF0F0] px-1.5 py-0.5 text-[12px] font-bold text-[#E60000]">
       <Flame className="h-3 w-3" aria-hidden="true" />
-      {t("인기")}</span>
+      {t`인기`}</span>
   )
 }
 
 function LevelTag({ level }: { level?: string }) {
-  return <span className="shrink-0 text-[12px] font-medium text-[#6B6E73]">{t(cleanGradeTitle(level))}</span>
+  return <span className="shrink-0 text-[12px] font-medium text-[#6B6E73]">{labelOf(cleanGradeTitle(level))}</span>
 }
 
 /** 이니셜 또는 사진 아바타 */
@@ -414,9 +409,9 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
   const [showAllLogCommentsId, setShowAllLogCommentsId] = useState<string | null>(null)
   const [newCommentText, setNewCommentText] = useState('')
   const [newLogCommentText, setNewLogCommentText] = useState('')
-  const [logCommentError, setLogCommentError] = useState<string | null>(null)
+  const [logCommentError, setLogCommentError] = useState<MessageDescriptor | null>(null)
   const [replyToAuthor, setReplyToAuthor] = useState<string | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toastMessage, setToastMessage] = useState<MessageDescriptor | null>(null)
   const logCommentInputRef = useRef<HTMLInputElement>(null)
 
   // 커뮤니티 새 글 작성 상태
@@ -511,7 +506,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     if (!requireUser()) return
     const content = newLogCommentText.trim()
     if (content.length < 2) {
-      setLogCommentError('댓글은 2자 이상 적어 주세요.')
+      setLogCommentError(msg`댓글은 2자 이상 적어 주세요.`)
       return
     }
     onAddComment?.(logId, content)
@@ -575,11 +570,9 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     const author = requireUser()
     if (!author) return
     if (!writeTitle.trim() || !writeContent.trim()) return
-    const categoryObj = WRITE_CATEGORIES.find(c => c.id === writeCategory)
     const newPost: CommunityPost = {
       postId: nextDemoEntityId(),
       category: writeCategory,
-      categoryLabel: categoryObj?.name ?? '자유',
       title: writeTitle.trim(),
       content: writeContent.trim(),
       detailedContent: [writeContent.trim()],
@@ -599,7 +592,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
     closeWrite()
     setCommunityCategory('all')
     setLoungeTab('community')
-    setToastMessage('커뮤니티에 글을 올렸습니다.')
+    setToastMessage(msg`커뮤니티에 글을 올렸습니다.`)
   }
 
   const handleScrollPhoto = (logId: string, direction: 'prev' | 'next', total: number) => {
@@ -658,11 +651,11 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
             className="flex min-h-11 items-center gap-1 rounded-[6px] px-2 text-[14px] font-bold text-[#4A4D52] transition-colors hover:text-[#25282B]"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-            <span>{t("취소")}</span>
+            <span>{t`취소`}</span>
           </button>
 
           <h1 id="lounge-write-title" className="text-[17px] font-black tracking-tight text-[#25282B]">
-            {t("새 글 작성")}</h1>
+            {t`새 글 작성`}</h1>
 
           <button
             type="button"
@@ -670,12 +663,12 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
             onClick={handleCreateCommunityPost}
             className="min-h-11 rounded-[6px] px-3 text-[14px] font-black text-[#E60000] transition-opacity disabled:opacity-40"
           >
-            {t("등록")}</button>
+            {t`등록`}</button>
         </header>
 
         <form onSubmit={handleCreateCommunityPost} className="no-scrollbar flex-1 space-y-4 overflow-y-auto bg-white px-4 pb-12 pt-2">
           {/* 카테고리 */}
-          <div role="group" aria-label={t("글 종류")} className="no-scrollbar flex items-center gap-1.5 overflow-x-auto">
+          <div role="group" aria-label={t`글 종류`} className="no-scrollbar flex items-center gap-1.5 overflow-x-auto">
             {WRITE_CATEGORIES.map(category => {
               const isSelected = writeCategory === category.id
               return (
@@ -684,7 +677,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                   {category.id === 'TIP' && <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />}
                   {category.id === 'QUESTION' && <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />}
                   {category.id === 'FREE' && <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
-                  <span>{t(category.name)}</span>
+                  <span>{translate(category.label)}</span>
                 </Chip>
               )
             })}
@@ -704,7 +697,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               <span className="flex min-w-0 items-center gap-1.5">
                 <Store className="h-4 w-4 shrink-0" aria-hidden="true" />
                 <span className="truncate">
-                  {writeSelectedShop ? `${writeSelectedShop.name} (${writeSelectedShop.location})` : t("연관 라멘집 태그 (선택)")}
+                  {writeSelectedShop ? `${writeSelectedShop.name} (${writeSelectedShop.location})` : t`연관 라멘집 태그 (선택)`}
                 </span>
               </span>
               <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isWriteShopDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -717,8 +710,8 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B6E73]" aria-hidden="true" />
                     <input
                       type="text"
-                      placeholder={t("라멘집 검색")}
-                      aria-label={t("라멘집 검색")}
+                      placeholder={t`라멘집 검색`}
+                      aria-label={t`라멘집 검색`}
                       value={writeShopSearchQuery}
                       onChange={e => setWriteShopSearchQuery(e.target.value)}
                       className="h-11 w-full rounded-[6px] border border-[#E2E2E2] bg-white pl-9 pr-3 text-[14px] text-[#25282B] outline-none placeholder:text-[#6B6E73] focus:border-[#E60000]"
@@ -726,7 +719,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                     />
                   </div>
                 </div>
-                <div role="listbox" aria-label={t("연관 라멘집")} className="no-scrollbar max-h-56 divide-y divide-[#F2F2F2] overflow-y-auto">
+                <div role="listbox" aria-label={t`연관 라멘집`} className="no-scrollbar max-h-56 divide-y divide-[#F2F2F2] overflow-y-auto">
                   <button
                     type="button"
                     role="option"
@@ -739,7 +732,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                       !writeSelectedShop ? 'bg-[#FFF0F0] font-bold text-[#E60000]' : 'text-[#25282B]'
                     }`}
                   >
-                    {t("선택 안 함")}</button>
+                    {t`선택 안 함`}</button>
                   {WRITE_SHOP_OPTIONS.filter(s => !writeShopSearchQuery.trim() || s.name.toLowerCase().includes(writeShopSearchQuery.toLowerCase())).map(s => {
                     const isSelected = writeSelectedShop?.name === s.name
                     return (
@@ -769,27 +762,27 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
 
           {/* 제목 & 본문 */}
           <div className="border-b border-[#F2F2F2] pb-3 pt-1">
-            <label htmlFor="lounge-write-title-input" className="sr-only">{t("제목")}</label>
+            <label htmlFor="lounge-write-title-input" className="sr-only">{t`제목`}</label>
             <input
               id="lounge-write-title-input"
               ref={writeTitleRef}
               type="text"
               value={writeTitle}
               onChange={e => setWriteTitle(e.target.value)}
-              placeholder={t("제목을 입력하세요")}
+              placeholder={t`제목을 입력하세요`}
               maxLength={100}
               className="h-11 w-full bg-transparent text-[17px] font-black text-[#25282B] outline-none placeholder:text-[#6B6E73]"
             />
           </div>
 
           <div className="min-h-[160px]">
-            <label htmlFor="lounge-write-content" className="sr-only">{t("본문")}</label>
+            <label htmlFor="lounge-write-content" className="sr-only">{t`본문`}</label>
             <textarea
               id="lounge-write-content"
               rows={8}
               value={writeContent}
               onChange={e => setWriteContent(e.target.value)}
-              placeholder={t("라멘에 대한 생생한 이야기를 들려주세요 (육수 농도, 면 삶기, 웨이팅 팁 등)")}
+              placeholder={t`라멘에 대한 생생한 이야기를 들려주세요 (육수 농도, 면 삶기, 웨이팅 팁 등)`}
               className="w-full resize-none bg-transparent text-[14px] leading-relaxed text-[#25282B] outline-none placeholder:text-[#6B6E73]"
             />
           </div>
@@ -797,25 +790,25 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
           {/* 사진 첨부 */}
           <div className="space-y-2 border-t border-[#F2F2F2] pt-3">
             <div className="flex min-h-11 items-center justify-between">
-              <span className="text-[13px] font-bold text-[#6B6E73]">{t("사진 첨부 (선택)")}</span>
+              <span className="text-[13px] font-bold text-[#6B6E73]">{t`사진 첨부 (선택)`}</span>
               {writeImagePreview && (
                 <button
                   type="button"
                   onClick={() => setWriteImagePreview(null)}
                   className="min-h-11 px-2 text-[13px] font-bold text-[#E60000]"
                 >
-                  {t("사진 삭제")}</button>
+                  {t`사진 삭제`}</button>
               )}
             </div>
 
             {writeImagePreview ? (
               <div className="relative max-h-52 w-full overflow-hidden rounded-[6px] bg-[#F2F2F2]">
-                <img src={writeImagePreview} alt={t("첨부한 사진 미리보기")} className="max-h-52 w-full object-cover" />
+                <img src={writeImagePreview} alt={t`첨부한 사진 미리보기`} className="max-h-52 w-full object-cover" />
                 <button
                   type="button"
                   onClick={() => setWriteImagePreview(null)}
                   className="absolute right-1 top-1 flex h-11 w-11 items-center justify-center"
-                  aria-label={t("사진 제거")}
+                  aria-label={t`사진 제거`}
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white">
                     <X className="h-4 w-4" aria-hidden="true" />
@@ -826,7 +819,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               <div className="space-y-2">
                 <label className="flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-[6px] bg-[#F2F2F2] px-3.5 text-[14px] font-bold text-[#25282B] transition-colors hover:bg-[#EAEAEA]">
                   <ImageIcon className="h-4 w-4 text-[#4A4D52]" aria-hidden="true" />
-                  <span>{t("기기에서 사진 선택")}</span>
+                  <span>{t`기기에서 사진 선택`}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -843,7 +836,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                 </label>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="shrink-0 text-[13px] font-medium text-[#6B6E73]">{t("샘플")}</span>
+                  <span className="shrink-0 text-[13px] font-medium text-[#6B6E73]">{t`샘플`}</span>
                   <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
                     {SAMPLE_IMAGE_PRESETS.map(preset => (
                       <Chip key={preset.url} active={false} ariaPressed={false} onClick={() => setWriteImagePreview(preset.url)}>
@@ -863,7 +856,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               className="flex h-12 w-full items-center justify-center gap-2 rounded-[60px] bg-[#E60000] text-[15px] font-bold text-white transition-opacity active:opacity-90 disabled:opacity-40"
             >
               <PenSquare className="h-4 w-4" aria-hidden="true" />
-              <span>{t("글 올리기")}</span>
+              <span>{t`글 올리기`}</span>
             </button>
           </div>
         </form>
@@ -887,11 +880,11 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
             className="flex min-h-11 items-center gap-1 rounded-[6px] px-2 text-[14px] font-bold text-[#4A4D52] transition-colors hover:text-[#25282B]"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-            <span>{t("목록으로")}</span>
+            <span>{t`목록으로`}</span>
           </button>
 
           <div className="flex items-center gap-1.5 pr-2">
-            <CategoryBadge label={selectedPost.categoryLabel} />
+            <CategoryBadge category={selectedPost.category} />
             {selectedPost.likeCount >= POPULAR_THRESHOLD && <PopularBadge />}
           </div>
         </header>
@@ -959,34 +952,34 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                 }`}
               >
                 <Heart className={`h-4 w-4 ${selectedPost.isLiked ? 'fill-[#E60000] text-[#E60000]' : ''}`} aria-hidden="true" />
-                <span>{t("좋아요")} {selectedPost.likeCount}</span>
+                <span>{t`좋아요`} {selectedPost.likeCount}</span>
               </button>
 
               <div className="flex items-center gap-3 text-[13px] font-bold text-[#6B6E73]">
                 <span className="flex items-center gap-1">
                   <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                  <span className="sr-only">{t("댓글")}</span>
+                  <span className="sr-only">{t`댓글`}</span>
                   {selectedPost.commentCount}
                 </span>
                 <span className="flex items-center gap-1">
                   <Eye className="h-4 w-4" aria-hidden="true" />
-                  <span className="sr-only">{t("조회")}</span>
+                  <span className="sr-only">{t`조회`}</span>
                   {selectedPost.viewCount}
                 </span>
               </div>
             </div>
           </article>
 
-          <section aria-label={t("댓글")} className="px-5 py-4">
+          <section aria-label={t`댓글`} className="px-5 py-4">
             <div className="flex items-center justify-between border-b border-[#F2F2F2] pb-3">
               <h2 className="text-[15px] font-black text-[#25282B]">
-                {t("댓글")} <span className="text-[#E60000]">{selectedPost.comments.length}</span>
+                {t`댓글`} <span className="text-[#E60000]">{selectedPost.comments.length}</span>
               </h2>
-              <span className="text-[12px] text-[#6B6E73]">{t("등록순")}</span>
+              <span className="text-[12px] text-[#6B6E73]">{t`등록순`}</span>
             </div>
 
             {selectedPost.comments.length === 0 && (
-              <p className="py-8 text-center text-[13px] text-[#6B6E73]">{t("첫 댓글을 남겨 대화를 시작해 보세요.")}</p>
+              <p className="py-8 text-center text-[13px] text-[#6B6E73]">{t`첫 댓글을 남겨 대화를 시작해 보세요.`}</p>
             )}
 
             <div className="divide-y divide-[#F2F2F2]">
@@ -1008,7 +1001,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                             onClick={() => setReplyToAuthor(comment.authorNickname)}
                             className="-my-2 min-h-11 min-w-11 shrink-0 px-2 text-[13px] font-bold text-[#6B6E73] transition-colors hover:text-[#E60000]"
                           >
-                            {t("답글")}</button>
+                            {t`답글`}</button>
                         )}
                       </div>
                       <p className="mt-0.5 text-[14px] leading-relaxed text-[#25282B]">
@@ -1034,12 +1027,12 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               {replyToAuthor && (
                 <div className="mb-2 flex items-center justify-between rounded-[6px] bg-[#F2F2F2] py-1 pl-3 pr-1 text-[13px] text-[#4A4D52]">
                   <span>
-                    <strong>@{replyToAuthor}</strong>{t("님에게 답글 작성 중")}</span>
+                    <strong>@{replyToAuthor}</strong>{t`님에게 답글 작성 중`}</span>
                   <button
                     type="button"
                     onClick={() => setReplyToAuthor(null)}
                     className="flex h-9 w-11 items-center justify-center text-[#6B6E73]"
-                    aria-label={t("답글 취소")}
+                    aria-label={t`답글 취소`}
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </button>
@@ -1047,7 +1040,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               )}
               <div className="flex items-center gap-2">
                 <Avatar name={user.nickname} src={user.avatar} size={32} dark />
-                <label htmlFor="post-comment-input" className="sr-only">{t("댓글 입력")}</label>
+                <label htmlFor="post-comment-input" className="sr-only">{t`댓글 입력`}</label>
                 <input
                   id="post-comment-input"
                   type="text"
@@ -1056,7 +1049,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                   onKeyDown={(e: ReactKeyboardEvent<HTMLInputElement>) => {
                     if (e.key === 'Enter') handleAddComment(selectedPost.postId)
                   }}
-                  placeholder={replyToAuthor ? t("@{v0}님에게 답글 남기기", { v0: replyToAuthor }) : t("댓글을 입력하세요")}
+                  placeholder={replyToAuthor ? t`@${ph({ v0: replyToAuthor })}님에게 답글 남기기` : t`댓글을 입력하세요`}
                   className="h-11 min-w-0 flex-1 rounded-[6px] border border-[#E2E2E2] bg-white px-3.5 text-[14px] text-[#25282B] outline-none transition-colors placeholder:text-[#6B6E73] focus:border-[#E60000]"
                 />
                 <button
@@ -1066,7 +1059,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                   className="flex h-11 items-center gap-1.5 rounded-[6px] bg-[#25282B] px-4 text-[14px] font-bold text-white transition-opacity active:opacity-90 disabled:opacity-40"
                 >
                   <Send className="h-4 w-4" aria-hidden="true" />
-                  <span>{t("등록")}</span>
+                  <span>{t`등록`}</span>
                 </button>
               </div>
             </>
@@ -1077,7 +1070,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               className="flex h-11 w-full items-center justify-center gap-2 rounded-[6px] bg-[#F2F2F2] text-[14px] font-bold text-[#25282B]"
             >
               <LogIn className="h-4 w-4" aria-hidden="true" />
-              {t("로그인하고 댓글 남기기")}</button>
+              {t`로그인하고 댓글 남기기`}</button>
           )}
         </div>
       </div>
@@ -1094,12 +1087,12 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
           <div className="mb-3 flex items-center gap-2.5">
             <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
             <div>
-              <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">{t("라오타 라운지")}</h1>
-              <p className="text-[13px] text-[#6B6E73]">{t("라멘러들의 기록과 이야기")}</p>
+              <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">{t`라오타 라운지`}</h1>
+              <p className="text-[13px] text-[#6B6E73]">{t`라멘러들의 기록과 이야기`}</p>
             </div>
           </div>
 
-          <div role="tablist" aria-label={t("라운지 구분")} className="flex rounded-[6px] bg-[#F2F2F2] p-1">
+          <div role="tablist" aria-label={t`라운지 구분`} className="flex rounded-[6px] bg-[#F2F2F2] p-1">
             <button
               type="button"
               role="tab"
@@ -1109,7 +1102,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                 loungeTab === 'logs' ? 'bg-white text-[#25282B]' : 'text-[#6B6E73]'
               }`}
             >
-              {t("라멘로그")} {logs.length}
+              {t`라멘로그`} {logs.length}
             </button>
             <button
               type="button"
@@ -1120,7 +1113,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                 loungeTab === 'community' ? 'bg-white text-[#25282B]' : 'text-[#6B6E73]'
               }`}
             >
-              {t("커뮤니티")} {posts.length}
+              {t`커뮤니티`} {posts.length}
             </button>
           </div>
         </header>
@@ -1141,7 +1134,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               >
                 <span className="flex min-w-0 items-center gap-1.5">
                   <Store className="h-4 w-4 shrink-0 text-[#E60000]" aria-hidden="true" />
-                  <span className="truncate">{shopFilter === 'ALL' ? t("전체 매장") : shopFilter}</span>
+                  <span className="truncate">{shopFilter === 'ALL' ? t`전체 매장` : shopFilter}</span>
                 </span>
                 <ChevronDown className={`h-4 w-4 shrink-0 text-[#6B6E73] transition-transform ${isShopDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
               </button>
@@ -1153,8 +1146,8 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B6E73]" aria-hidden="true" />
                       <input
                         type="text"
-                        placeholder={t("라멘집 검색")}
-                        aria-label={t("라멘집 검색")}
+                        placeholder={t`라멘집 검색`}
+                        aria-label={t`라멘집 검색`}
                         value={shopSearchQuery}
                         onChange={e => setShopSearchQuery(e.target.value)}
                         className="h-11 w-full rounded-[6px] border border-[#E2E2E2] bg-white pl-9 pr-3 text-[14px] text-[#25282B] outline-none placeholder:text-[#6B6E73] focus:border-[#E60000]"
@@ -1163,7 +1156,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                     </div>
                   </div>
 
-                  <div role="listbox" aria-label={t("매장 선택")} className="no-scrollbar max-h-60 divide-y divide-[#F2F2F2] overflow-y-auto">
+                  <div role="listbox" aria-label={t`매장 선택`} className="no-scrollbar max-h-60 divide-y divide-[#F2F2F2] overflow-y-auto">
                     <button
                       type="button"
                       role="option"
@@ -1177,8 +1170,8 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                         shopFilter === 'ALL' ? 'bg-[#FFF0F0] font-black text-[#E60000]' : 'text-[#25282B]'
                       }`}
                     >
-                      <span>{t("전체 매장")}</span>
-                      <span className="text-[13px] text-[#6B6E73]">{logs.length}{t("건")}</span>
+                      <span>{t`전체 매장`}</span>
+                      <span className="text-[13px] text-[#6B6E73]">{logs.length}{t`건`}</span>
                     </button>
                     {shopList
                       .filter(s => !shopSearchQuery.trim() || s.name.toLowerCase().includes(shopSearchQuery.toLowerCase()))
@@ -1200,7 +1193,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                             }`}
                           >
                             <span className="truncate font-medium">{s.name}</span>
-                            <span className="ml-2 shrink-0 text-[13px] text-[#6B6E73]">{s.count}{t("건")}</span>
+                            <span className="ml-2 shrink-0 text-[13px] text-[#6B6E73]">{s.count}{t`건`}</span>
                           </button>
                         )
                       })}
@@ -1220,12 +1213,12 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                 aria-haspopup="listbox"
                 className="flex h-11 items-center gap-1.5 rounded-[6px] bg-[#F2F2F2] px-3 text-[13px] font-bold text-[#25282B]"
               >
-                <span>{sortBy === 'LATEST' ? t("최신순") : t("좋아요순")}</span>
+                <span>{sortBy === 'LATEST' ? t`최신순` : t`좋아요순`}</span>
                 <ChevronDown className={`h-4 w-4 shrink-0 text-[#6B6E73] transition-transform ${isSortDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
               </button>
 
               {isSortDropdownOpen && (
-                <div role="listbox" aria-label={t("정렬")} className="anim-fade-in-up absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[6px] border border-[#E2E2E2] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+                <div role="listbox" aria-label={t`정렬`} className="anim-fade-in-up absolute right-0 top-full z-50 mt-1.5 w-36 overflow-hidden rounded-[6px] border border-[#E2E2E2] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
                   {(['LATEST', 'LIKES'] as const).map(option => {
                     const active = sortBy === option
                     return (
@@ -1242,7 +1235,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                           active ? 'bg-[#FFF0F0] font-black text-[#E60000]' : 'text-[#25282B]'
                         }`}
                       >
-                        <span>{option === 'LATEST' ? t("최신순") : t("좋아요순")}</span>
+                        <span>{option === 'LATEST' ? t`최신순` : t`좋아요순`}</span>
                         {active && <Check className="h-4 w-4" aria-hidden="true" />}
                       </button>
                     )
@@ -1252,10 +1245,10 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
             </div>
           </div>
         ) : (
-          <div role="group" aria-label={t("게시판 분류")} className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-b border-[#E2E2E2] bg-white px-5">
+          <div role="group" aria-label={t`게시판 분류`} className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-b border-[#E2E2E2] bg-white px-5">
             {COMMUNITY_CATEGORIES.map(cat => (
               <Chip key={cat.id} active={communityCategory === cat.id} onClick={() => setCommunityCategory(cat.id)}>
-                {t(cat.label)}
+                {translate(cat.label)}
               </Chip>
             ))}
           </div>
@@ -1270,14 +1263,14 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                   <span className="flex min-w-0 items-center gap-2">
                     <Store className="h-4 w-4 shrink-0 text-[#E60000]" aria-hidden="true" />
                     <span className="truncate text-[14px] font-black text-[#25282B]">
-                      {shopFilter}  {t("라멘로그")} {filteredLogs.length}{t("건")}</span>
+                      {shopFilter}  {t`라멘로그`} {filteredLogs.length}{t`건`}</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => onShopClick?.(shopFilter)}
                     className="flex min-h-11 shrink-0 items-center gap-0.5 px-2 text-[13px] font-bold text-[#E60000]"
                   >
-                    {t("매장 정보")}<ChevronRight className="h-4 w-4" aria-hidden="true" />
+                    {t`매장 정보`}<ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               )}
@@ -1285,8 +1278,8 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               {filteredLogs.length === 0 && (
                 <div className="px-6 py-16 text-center">
                   <RamenIcon className="mx-auto mb-3 h-8 w-8 text-[#BEBEBE]" aria-hidden="true" />
-                  <p className="text-[15px] font-bold text-[#25282B]">{t("아직 라멘로그가 없어요")}</p>
-                  <p className="mt-1 text-[13px] text-[#6B6E73]">{t("오늘 먹은 한 그릇을 첫 기록으로 남겨보세요.")}</p>
+                  <p className="text-[15px] font-bold text-[#25282B]">{t`아직 라멘로그가 없어요`}</p>
+                  <p className="mt-1 text-[13px] text-[#6B6E73]">{t`오늘 먹은 한 그릇을 첫 기록으로 남겨보세요.`}</p>
                 </div>
               )}
 
@@ -1300,7 +1293,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                 const visibleComments = showAllComments ? comments : comments.slice(0, 1)
 
                 return (
-                  <article key={log.id} aria-label={t("{v0}의 {v1} 기록", { v0: log.author.name, v1: log.menuName })} className="border-b-8 border-[#F2F2F2] bg-white last:border-b-0">
+                  <article key={log.id} aria-label={t`${ph({ v0: log.author.name })}의 ${ph({ v1: log.menuName })} 기록`} className="border-b-8 border-[#F2F2F2] bg-white last:border-b-0">
                     {/* 작성자 */}
                     <div className="flex items-center justify-between gap-2 px-4 py-3">
                       <div className="flex min-w-0 items-center gap-2.5">
@@ -1310,10 +1303,10 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                             <span className="text-[14px] font-black text-[#25282B]">{log.author.name}</span>
                             <LevelTag level={log.author.level} />
                           </div>
-                          <p className="text-[12px] text-[#6B6E73]">{log.visitedAt}  {t("방문")}</p>
+                          <p className="text-[12px] text-[#6B6E73]">{log.visitedAt}  {t`방문`}</p>
                         </div>
                       </div>
-                      <span className="shrink-0 rounded-[32px] bg-[#F2F2F2] px-2.5 py-1 text-[12px] font-bold text-[#25282B]">{t(log.revisit)}</span>
+                      <span className="shrink-0 rounded-[32px] bg-[#F2F2F2] px-2.5 py-1 text-[12px] font-bold text-[#25282B]">{labelOf(log.revisit)}</span>
                     </div>
 
                     {/* 사진 캐러셀 */}
@@ -1330,13 +1323,13 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                         >
                           {photos.map((img, i) => (
                             <div key={i} className="relative h-full w-full flex-shrink-0 snap-start">
-                              <img src={img} alt={t("{v0} 사진 {v1}", { v0: log.menuName, v1: i + 1 })} className="h-full w-full object-cover" />
+                              <img src={img} alt={t`${ph({ v0: log.menuName })} 사진 ${ph({ v1: i + 1 })}`} className="h-full w-full object-cover" />
                             </div>
                           ))}
                         </div>
 
                         <span className="pointer-events-none absolute left-2.5 top-2.5 rounded-[32px] bg-black/70 px-2.5 py-0.5 text-[12px] font-bold text-white">
-                          {t(log.ramenType)}
+                          {labelOf(log.ramenType)}
                         </span>
 
                         {photos.length > 1 && (
@@ -1350,7 +1343,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                             type="button"
                             onClick={() => handleScrollPhoto(log.id, 'prev', photos.length)}
                             className="absolute left-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center"
-                            aria-label={t("이전 사진")}
+                            aria-label={t`이전 사진`}
                           >
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white">
                               <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -1362,7 +1355,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                             type="button"
                             onClick={() => handleScrollPhoto(log.id, 'next', photos.length)}
                             className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center"
-                            aria-label={t("다음 사진")}
+                            aria-label={t`다음 사진`}
                           >
                             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white">
                               <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -1397,10 +1390,10 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                       <p className="border-l border-[#25282B] pl-3 text-[14px] leading-relaxed text-[#25282B]">{log.note}</p>
 
                       {allTags.length > 0 && (
-                        <ul aria-label={t("맛 태그")} className="flex flex-wrap gap-1">
+                        <ul aria-label={t`맛 태그`} className="flex flex-wrap gap-1">
                           {allTags.map((tag, idx) => (
                             <li key={idx} className="rounded-[4px] bg-[#F2F2F2] px-2 py-0.5 text-[12px] font-bold text-[#4A4D52]">
-                              #{t(tag)}
+                              #{labelOf(tag)}
                             </li>
                           ))}
                         </ul>
@@ -1411,7 +1404,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            aria-label={t("{v0}{v1}", { v0: commentsOpen ? '댓글 입력 닫기' : '댓글 작성', v1: comments.length ? `, 댓글 ${comments.length}개` : '' })}
+                            aria-label={t`${ph({ v0: commentsOpen ? '댓글 입력 닫기' : '댓글 작성' })}${ph({ v1: comments.length ? `, 댓글 ${comments.length}개` : '' })}`}
                             aria-expanded={commentsOpen}
                             aria-controls={`log-comments-${log.id}`}
                             onClick={() => handleToggleLogComments(log.id)}
@@ -1424,7 +1417,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                           </button>
                           <button
                             type="button"
-                            aria-label={log.isLiked ? t("공감 취소, 공감 {v0}개", { v0: log.likes }) : t("공감하기, 공감 {v0}개", { v0: log.likes })}
+                            aria-label={log.isLiked ? t`공감 취소, 공감 ${ph({ v0: log.likes })}개` : t`공감하기, 공감 ${ph({ v0: log.likes })}개`}
                             aria-pressed={log.isLiked}
                             onClick={() => handleToggleLogLike(log.id)}
                             className={`flex min-h-11 items-center gap-1.5 rounded-[32px] border px-3.5 text-[13px] font-bold transition-colors ${
@@ -1441,15 +1434,15 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                     {/* 댓글 */}
                     <section
                       id={`log-comments-${log.id}`}
-                      aria-label={t("{v0} 댓글", { v0: log.menuName })}
+                      aria-label={t`${ph({ v0: log.menuName })} 댓글`}
                       className={`border-t border-[#F2F2F2] px-4 ${commentsOpen ? 'bg-[#FAFAFA] py-3.5' : 'bg-white py-2.5'}`}
                     >
                       {comments.length > 0 && (
                         <div className="flex items-center justify-between border-b border-[#F2F2F2] pb-2.5">
                           <span className="text-[14px] font-black text-[#25282B]">
-                            {t("댓글")} <span className="text-[#E60000]">{comments.length}</span>
+                            {t`댓글`} <span className="text-[#E60000]">{comments.length}</span>
                           </span>
-                          <span className="text-[12px] text-[#6B6E73]">{t("등록순")}</span>
+                          <span className="text-[12px] text-[#6B6E73]">{t`등록순`}</span>
                         </div>
                       )}
 
@@ -1479,13 +1472,13 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                               onClick={() => setShowAllLogCommentsId(showAllComments ? null : log.id)}
                               className="flex min-h-11 w-full items-center justify-center gap-1 text-[13px] font-bold text-[#4A4D52] transition-colors hover:text-[#25282B]"
                             >
-                              <span>{showAllComments ? t("댓글 접기") : t("댓글 {v0}개 더 보기", { v0: comments.length - 1 })}</span>
+                              <span>{showAllComments ? t`댓글 접기` : t`댓글 ${ph({ v0: comments.length - 1 })}개 더 보기`}</span>
                               <ChevronDown className={`h-4 w-4 transition-transform ${showAllComments ? 'rotate-180' : ''}`} aria-hidden="true" />
                             </button>
                           )}
                         </div>
                       ) : commentsOpen ? (
-                        <p className="py-4 text-center text-[13px] text-[#6B6E73]">{t("첫 댓글을 남겨 대화를 시작해 보세요.")}</p>
+                        <p className="py-4 text-center text-[13px] text-[#6B6E73]">{t`첫 댓글을 남겨 대화를 시작해 보세요.`}</p>
                       ) : null}
 
                       {!user ? (
@@ -1495,16 +1488,16 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                           className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-[6px] bg-[#F2F2F2] text-[14px] font-bold text-[#25282B]"
                         >
                           <LogIn className="h-4 w-4" aria-hidden="true" />
-                          {t("로그인하고 댓글 남기기")}</button>
+                          {t`로그인하고 댓글 남기기`}</button>
                       ) : !commentsOpen ? (
                         <button
                           type="button"
-                          aria-label={t("댓글 입력창 열기")}
+                          aria-label={t`댓글 입력창 열기`}
                           onClick={() => handleToggleLogComments(log.id)}
                           className="mt-2 flex min-h-11 w-full items-center gap-2 rounded-[6px] border border-[#E2E2E2] bg-white px-3 text-left transition-colors hover:border-[#BEBEBE]"
                         >
                           <Avatar name={user.nickname} src={user.avatar} size={24} dark />
-                          <span className="min-w-0 flex-1 text-[14px] text-[#6B6E73]">{t("이 기록에 댓글을 남겨보세요")}</span>
+                          <span className="min-w-0 flex-1 text-[14px] text-[#6B6E73]">{t`이 기록에 댓글을 남겨보세요`}</span>
                           <MessageCircle className="h-4 w-4 shrink-0 text-[#6B6E73]" aria-hidden="true" />
                         </button>
                       ) : (
@@ -1526,8 +1519,8 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                                   handleAddLogComment(log.id)
                                 }
                               }}
-                              placeholder={t("이 기록에 댓글을 남겨보세요")}
-                              aria-label={t("{v0} 댓글 입력", { v0: log.menuName })}
+                              placeholder={t`이 기록에 댓글을 남겨보세요`}
+                              aria-label={t`${ph({ v0: log.menuName })} 댓글 입력`}
                               aria-invalid={Boolean(logCommentError)}
                               aria-describedby={logCommentError ? `log-comment-error-${log.id}` : undefined}
                               className="h-11 min-w-0 flex-1 rounded-[6px] border border-[#E2E2E2] bg-white px-3 text-[14px] text-[#25282B] outline-none placeholder:text-[#6B6E73] focus:border-[#E60000]"
@@ -1536,7 +1529,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                               type="button"
                               onClick={() => handleAddLogComment(log.id)}
                               disabled={!newLogCommentText.trim()}
-                              aria-label={t("댓글 등록")}
+                              aria-label={t`댓글 등록`}
                               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-[#25282B] text-white transition-opacity active:opacity-90 disabled:opacity-40"
                             >
                               <Send className="h-4 w-4" aria-hidden="true" />
@@ -1544,7 +1537,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                           </div>
                           {logCommentError && (
                             <p id={`log-comment-error-${log.id}`} role="alert" className="mt-1.5 text-[13px] font-bold text-[#E60000]">
-                              {logCommentError && t(logCommentError)}
+                              {logCommentError && translate(logCommentError)}
                             </p>
                           )}
                         </>
@@ -1555,7 +1548,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               })}
 
               {filteredLogs.length > 0 && (
-                <p className="px-6 pb-3 pt-8 text-center text-[13px] text-[#6B6E73]">{t("오늘 방문한 라멘집이 있다면 아래 버튼으로 라멘로그를 남겨보세요")}</p>
+                <p className="px-6 pb-3 pt-8 text-center text-[13px] text-[#6B6E73]">{t`오늘 방문한 라멘집이 있다면 아래 버튼으로 라멘로그를 남겨보세요`}</p>
               )}
             </div>
           )}
@@ -1565,8 +1558,8 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
               {filteredPosts.length === 0 && (
                 <div className="px-6 py-16 text-center">
                   <MessageCircle className="mx-auto mb-3 h-8 w-8 text-[#BEBEBE]" aria-hidden="true" />
-                  <p className="text-[15px] font-bold text-[#25282B]">{t("아직 글이 없어요")}</p>
-                  <p className="mt-1 text-[13px] text-[#6B6E73]">{t("첫 글을 올려 라멘러들과 이야기를 시작해 보세요.")}</p>
+                  <p className="text-[15px] font-bold text-[#25282B]">{t`아직 글이 없어요`}</p>
+                  <p className="mt-1 text-[13px] text-[#6B6E73]">{t`첫 글을 올려 라멘러들과 이야기를 시작해 보세요.`}</p>
                 </div>
               )}
               <div className="bg-white">
@@ -1578,7 +1571,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                       className="block w-full text-left"
                     >
                       <div className="mb-1.5 flex items-center gap-1.5 pt-1">
-                        <CategoryBadge label={post.categoryLabel} />
+                        <CategoryBadge category={post.category} />
                         {post.likeCount >= POPULAR_THRESHOLD && <PopularBadge />}
                       </div>
                       <div className="flex items-center justify-between gap-3">
@@ -1607,7 +1600,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                           type="button"
                           onClick={() => handleTogglePostLike(post.postId)}
                           aria-pressed={post.isLiked}
-                          aria-label={post.isLiked ? t("좋아요 취소, {v0}개", { v0: post.likeCount }) : t("좋아요, {v0}개", { v0: post.likeCount })}
+                          aria-label={post.isLiked ? t`좋아요 취소, ${ph({ v0: post.likeCount })}개` : t`좋아요, ${ph({ v0: post.likeCount })}개`}
                           className={`flex min-h-11 min-w-11 items-center justify-center gap-1 px-1 transition-colors ${post.isLiked ? 'text-[#E60000]' : 'hover:text-[#E60000]'}`}
                         >
                           <Heart className={`h-3.5 w-3.5 ${post.isLiked ? 'fill-[#E60000] text-[#E60000]' : ''}`} aria-hidden="true" />
@@ -1615,7 +1608,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                         </button>
                         <span className="flex items-center gap-1 px-1">
                           <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                          <span className="sr-only">{t("댓글")}</span>
+                          <span className="sr-only">{t`댓글`}</span>
                           <span>{post.commentCount}</span>
                         </span>
                       </div>
@@ -1624,7 +1617,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
                 ))}
               </div>
 
-              {filteredPosts.length > 0 && <p className="py-6 text-center text-[13px] font-medium text-[#6B6E73]">{t("모든 글을 확인했습니다")}</p>}
+              {filteredPosts.length > 0 && <p className="py-6 text-center text-[13px] font-medium text-[#6B6E73]">{t`모든 글을 확인했습니다`}</p>}
             </div>
           )}
         </div>
@@ -1636,7 +1629,7 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
           className="anim-fade-in-up pointer-events-none absolute left-1/2 top-20 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[32px] bg-[#25282B] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <Check className="h-4 w-4 text-[#E60000]" aria-hidden="true" />
-          <span>{t(toastMessage)}</span>
+          <span>{translate(toastMessage)}</span>
         </div>
       )}
 
@@ -1649,12 +1642,12 @@ export default function LoungeScreen({ logs, user, onToggleLike, onAddComment, o
         {loungeTab === 'logs' ? (
           <>
             <Plus className="h-4 w-4 stroke-[2.5]" aria-hidden="true" />
-            <span>{t("기록하기")}</span>
+            <span>{t`기록하기`}</span>
           </>
         ) : (
           <>
             <PenSquare className="h-4 w-4" aria-hidden="true" />
-            <span>{t("글쓰기")}</span>
+            <span>{t`글쓰기`}</span>
           </>
         )}
       </button>

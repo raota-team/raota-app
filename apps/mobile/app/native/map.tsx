@@ -1,5 +1,6 @@
+import { t } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { getLocale, t } from "@raota/shared"
+import { getLocale } from "@raota/shared"
 import { NaverMapMarkerOverlay, NaverMapView, type NaverMapViewRef } from "@mj-studio/react-native-naver-map"
 import * as Haptics from "expo-haptics"
 import { useIsFocused, useLocalSearchParams } from "expo-router"
@@ -300,7 +301,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
 
   const deniedNotice =
     locationStatus === "denied" ? (
-      <MapNotice actionLabel={t("설정 열기")} icon={<MapPin color={colors.inkSub} size={16} />} message={t("위치 권한이 없어 망원·합정 일대를 보여드려요.")} onAction={() => void Linking.openSettings()} />
+      <MapNotice actionLabel={t`설정 열기`} icon={<MapPin color={colors.inkSub} size={16} />} message={t`위치 권한이 없어 망원·합정 일대를 보여드려요.`} onAction={() => void Linking.openSettings()} />
     ) : null
 
   // 고른 가게 카드(또는 "없어요" 카드)가 떠 있는지. 네이버 로고는 가리면 안 되므로 카드 위로 올린다
@@ -319,7 +320,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
         >
             {startResolved ? (
             <NaverMapView
-              accessibilityLabel={t("라멘집 지도")}
+              accessibilityLabel={t`라멘집 지도`}
               customStyleId={RAOTA_STYLE_ID}
               // 목록에서 돌아와 다시 그려질 때 보던 자리(내 위치 포함)를 그대로 잇는다
               initialRegion={toNaverRegion(region)}
@@ -441,15 +442,15 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
                 <View style={styles.noticeWrap}>
                   <MapNotice
                     // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
-                    actionLabel={filters.remote ? t("다시 불러오기") : undefined}
-                    message={filters.remote ? t("라멘집을 불러오지 못했어요.") : t("라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요.")}
+                    actionLabel={filters.remote ? t`다시 불러오기` : undefined}
+                    message={filters.remote ? t`라멘집을 불러오지 못했어요.` : t`라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요.`}
                     onAction={onRetry}
                   />
                 </View>
               ) : null}
               {locationStatus !== "loading" ? (
                 <View style={styles.controls}>
-                  <ControlButton label={locationStatus === "granted" ? t("내 위치로 이동") : t("기본 지역으로 이동")} onPress={goToUser}>
+                  <ControlButton label={locationStatus === "granted" ? t`내 위치로 이동` : t`기본 지역으로 이동`} onPress={goToUser}>
                     <Navigation color={colors.ink} size={20} />
                   </ControlButton>
                 </View>

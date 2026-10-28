@@ -1,4 +1,5 @@
-import { t, getLocale, formatDate as formatLocaleDate } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { getLocale, formatDate as formatLocaleDate, labelOf } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
 import { useEffect, useMemo } from "react"
@@ -62,8 +63,8 @@ function formatVisitDate(value: string): string {
 function bowlComment(log: RamenLog, scores: TasteScores | null, before: TasteProfile | null): string {
   const note = log.note.trim()
   if (note) return note
-  if (!scores || !before) return t("이 그릇도 기록으로 남겼어요.")
-  if (before.count === 0) return t("첫 기록이에요.")
+  if (!scores || !before) return t`이 그릇도 기록으로 남겼어요.`
+  if (before.count === 0) return t`첫 기록이에요.`
 
   const average = before.exact ?? before.scores
   let largestAxis: TasteAxisKey = "satisfaction"
@@ -75,20 +76,20 @@ function bowlComment(log: RamenLog, scores: TasteScores | null, before: TastePro
       largestDifference = difference
     }
   }
-  if (largestDifference === 0) return t("평소와 비슷한 점수로 남긴 그릇이에요.")
+  if (largestDifference === 0) return t`평소와 비슷한 점수로 남긴 그릇이에요.`
 
   const higher = scores[largestAxis] > average[largestAxis]
   switch (largestAxis) {
     case "satisfaction":
-      return t("평소보다 전체 만족도를 {v1} 남긴 그릇이에요.", { v1: higher ? t("높게") : t("낮게") })
+      return t`평소보다 전체 만족도를 ${ph({ v1: higher ? t`높게` : t`낮게` })} 남긴 그릇이에요.`
     case "brothDensity":
-      return t("평소보다 육수를 {v1} 느낀 그릇이에요.", { v1: higher ? t("진하게") : t("맑게") })
+      return t`평소보다 육수를 ${ph({ v1: higher ? t`진하게` : t`맑게` })} 느낀 그릇이에요.`
     case "noodleFirmness":
-      return higher ? t("평소보다 면을 단단하게 느낀 그릇이에요.") : t("평소보다 면을 부드럽게 느낀 그릇이에요.")
+      return higher ? t`평소보다 면을 단단하게 느낀 그릇이에요.` : t`평소보다 면을 부드럽게 느낀 그릇이에요.`
     case "topping":
-      return t("평소보다 토핑 점수를 {v1} 남긴 그릇이에요.", { v1: higher ? t("높게") : t("낮게") })
+      return t`평소보다 토핑 점수를 ${ph({ v1: higher ? t`높게` : t`낮게` })} 남긴 그릇이에요.`
     case "revisit":
-      return t("평소보다 재방문 의사를 {v1} 남긴 그릇이에요.", { v1: higher ? t("높게") : t("낮게") })
+      return t`평소보다 재방문 의사를 ${ph({ v1: higher ? t`높게` : t`낮게` })} 남긴 그릇이에요.`
   }
 }
 
@@ -125,7 +126,7 @@ function PenCircle({ order, reduceMotion }: { order: number; reduceMotion: boole
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
-      <AppText capScale style={styles.infoLabel} tone="muted" variant="meta">{t(label)}</AppText>
+      <AppText capScale style={styles.infoLabel} tone="muted" variant="meta">{label}</AppText>
       <AppText lineBreakStrategyIOS="hangul-word" style={styles.infoValue} variant="secondary">{value}</AppText>
     </View>
   )
@@ -169,14 +170,14 @@ export default function RecordCompleteScreen() {
         <StatusBar style="auto" />
         <View style={[styles.stateArea, { paddingTop: insets.top }]}>
           {isLoading ? (
-            <LoadingState label={t("기록을 불러오는 중…")} />
+            <LoadingState label={t`기록을 불러오는 중…`} />
           ) : (
             <EmptyState
-              actionLabel={t("홈으로")}
-              description={t("저장된 기록을 다시 찾지 못했어요. 홈에서 라멘로그를 확인해 주세요.")}
+              actionLabel={t`홈으로`}
+              description={t`저장된 기록을 다시 찾지 못했어요. 홈에서 라멘로그를 확인해 주세요.`}
               icon={<SearchX color={colors.textMuted} size={32} />}
               onAction={goHome}
-              title={t("기록을 찾을 수 없어요")}
+              title={t`기록을 찾을 수 없어요`}
             />
           )}
         </View>
@@ -195,53 +196,53 @@ export default function RecordCompleteScreen() {
         style={styles.flex}
       >
         <View style={[styles.intro, { paddingTop: insets.top + spacing.x6 }]}>
-          <AppText tone="sub" variant="bodyStrong">{t("기록이 저장됐어요")}</AppText>
-          <AppText accessibilityLabel={t("{v1}번째 그릇", { v1: bowlCount })} accessibilityRole="header" style={styles.counter} variant="counter">
-            {t("{v1}번째 그릇", { v1: bowlCount })}</AppText>
+          <AppText tone="sub" variant="bodyStrong">{t`기록이 저장됐어요`}</AppText>
+          <AppText accessibilityLabel={t`${ph({ v1: bowlCount })}번째 그릇`} accessibilityRole="header" style={styles.counter} variant="counter">
+            {t`${ph({ v1: bowlCount })}번째 그릇`}</AppText>
         </View>
 
         <View style={styles.body}>
           <View style={styles.sheet} testID="record-complete-sheet">
             <View style={[styles.sheetHead, styles.rule]}>
-              <AppText variant="bodyStrong">{t("취향 기록지")}</AppText>
+              <AppText variant="bodyStrong">{t`취향 기록지`}</AppText>
               <AppText capScale style={styles.tabular} tone="muted" variant="meta">{`No.${String(bowlCount).padStart(4, "0")}`}</AppText>
             </View>
 
             <View style={[styles.info, styles.rule]}>
               <View style={styles.infoRows}>
-                <InfoRow label={t("가게")} value={[log.shop.name, log.shop.branch].filter(Boolean).join(" ")} />
-                <InfoRow label={t("메뉴")} value={`${log.menuName} (${log.ramenType})`} />
-                <InfoRow label={t("날짜")} value={formatVisitDate(log.visitedAt)} />
+                <InfoRow label={t`가게`} value={[log.shop.name, log.shop.branch].filter(Boolean).join(" ")} />
+                <InfoRow label={t`메뉴`} value={`${log.menuName} (${labelOf(log.ramenType)})`} />
+                <InfoRow label={t`날짜`} value={formatVisitDate(log.visitedAt)} />
               </View>
               {photo ? (
-                <Image accessibilityLabel={t("{v1} 사진", { v1: log.menuName })} contentFit="cover" source={{ uri: sizedImageUri(photo, PHOTO_SIZE * 3) }} style={styles.photo} />
+                <Image accessibilityLabel={t`${ph({ v1: log.menuName })} 사진`} contentFit="cover" source={{ uri: sizedImageUri(photo, PHOTO_SIZE * 3) }} style={styles.photo} />
               ) : null}
             </View>
 
             {scores
               ? SCALE_AXES.map((axis, index) => (
-                  <View accessibilityLabel={t("{v1} {v2}점", { v1: axis.label, v2: scores[axis.key] })} accessible key={axis.key} style={[styles.axisRow, styles.rule]}>
-                    <AppText variant="button">{t(axis.label)}</AppText>
+                  <View accessibilityLabel={t`${ph({ v1: labelOf(axis.label) })} ${ph({ v2: scores[axis.key] })}점`} accessible key={axis.key} style={[styles.axisRow, styles.rule]}>
+                    <AppText variant="button">{labelOf(axis.label)}</AppText>
                     <View style={styles.scale}>
-                      <AppText capScale style={styles.scaleEnd} tone="muted" variant="meta">{axis.low}</AppText>
+                      <AppText capScale style={styles.scaleEnd} tone="muted" variant="meta">{labelOf(axis.low)}</AppText>
                       {SCALE.map((value) => (
                         <View key={value} style={styles.scaleCell}>
                           <AppText style={styles.scaleNumber} variant="bodyStrong">{value}</AppText>
                           {scores[axis.key] === value ? <PenCircle order={index} reduceMotion={reduceMotion} /> : null}
                         </View>
                       ))}
-                      <AppText capScale style={[styles.scaleEnd, styles.scaleEndHigh]} tone="muted" variant="meta">{axis.high}</AppText>
+                      <AppText capScale style={[styles.scaleEnd, styles.scaleEndHigh]} tone="muted" variant="meta">{labelOf(axis.high)}</AppText>
                     </View>
                   </View>
                 ))
               : null}
 
-            <View accessibilityLabel={t("재방문 {v1}", { v1: log.revisit })} accessible style={styles.axisRow}>
-              <AppText variant="button">{t("재방문 의사")}</AppText>
+            <View accessibilityLabel={t`재방문 ${ph({ v1: labelOf(log.revisit) })}`} accessible style={styles.axisRow}>
+              <AppText variant="button">{t`재방문 의사`}</AppText>
               <View style={styles.revisit}>
                 {REVISIT_ROW.map((option) => (
                   <View key={option} style={styles.revisitCell}>
-                    <AppText capScale style={styles.center} variant="button">{t(option)}</AppText>
+                    <AppText capScale style={styles.center} variant="button">{labelOf(option)}</AppText>
                     {log.revisit === option ? <PenCircle order={revisitOrder} reduceMotion={reduceMotion} /> : null}
                   </View>
                 ))}
@@ -250,7 +251,7 @@ export default function RecordCompleteScreen() {
           </View>
 
           <AppText
-            accessibilityLabel={t("이번 그릇 정리. {v1}", { v1: comment ?? "" })}
+            accessibilityLabel={t`이번 그릇 정리. ${ph({ v1: comment ?? "" })}`}
             accessibilityRole="summary"
             lineBreakStrategyIOS="hangul-word"
             style={styles.comment}
@@ -266,17 +267,17 @@ export default function RecordCompleteScreen() {
       <View pointerEvents="none" style={[styles.statusCap, { height: insets.top }]} />
 
       <ConfirmDialog
-        cancelLabel={t("괜찮아요")}
-        confirmLabel={t("알림 받기")}
+        cancelLabel={t`괜찮아요`}
+        confirmLabel={t`알림 받기`}
         loading={reminder.busy}
         message={
           TASTE_REPORT_ENABLED
-            ? t("이번 달 기록이 {v1}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요.", { v1: MONTHLY_REPORT_TARGET })
-            : t("기록이 일주일 뜸할 때만 알려드릴게요.")
+            ? t`이번 달 기록이 ${ph({ v1: MONTHLY_REPORT_TARGET })}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요.`
+            : t`기록이 일주일 뜸할 때만 알려드릴게요.`
         }
         onCancel={reminder.decline}
         onConfirm={() => void reminder.accept()}
-        title={TASTE_REPORT_ENABLED ? t("다음 달 리포트가 나올 즈음 알려드릴까요?") : t("다음 라멘을 잊지 않게 알려드릴까요?")}
+        title={TASTE_REPORT_ENABLED ? t`다음 달 리포트가 나올 즈음 알려드릴까요?` : t`다음 라멘을 잊지 않게 알려드릴까요?`}
         visible={reminder.visible}
       />
 
@@ -285,9 +286,9 @@ export default function RecordCompleteScreen() {
         <View style={styles.actions}>
           {/* 취향 리포트를 숨긴 빌드에서는 홈으로가 하나뿐인 주요 행동이다 */}
           {TASTE_REPORT_ENABLED ? (
-            <Button onPress={goTaste} size="large" textStyle={styles.actionText} title={t("취향 리포트 보기")} variant="primary" />
+            <Button onPress={goTaste} size="large" textStyle={styles.actionText} title={t`취향 리포트 보기`} variant="primary" />
           ) : null}
-          <Button onPress={goHome} size="large" textStyle={styles.actionText} title={t("홈으로")} variant={TASTE_REPORT_ENABLED ? "ghost" : "primary"} />
+          <Button onPress={goHome} size="large" textStyle={styles.actionText} title={t`홈으로`} variant={TASTE_REPORT_ENABLED ? "ghost" : "primary"} />
         </View>
       </StickyActionBar>
     </View>

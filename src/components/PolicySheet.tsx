@@ -1,13 +1,15 @@
-import { getLocale, t } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { getLocale, translate } from "@raota/shared"
 import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 export type PolicyType = 'terms' | 'privacy'
 
 /** 홈 푸터와 회원가입이 함께 쓰는 약관 본문. 출시 전 법무 검토를 거친 전문으로 교체한다. */
-export const POLICIES: Record<PolicyType, { title: string; sections: Array<{ heading: string; body: string }> }> = {
+export const POLICIES: Record<PolicyType, { title: MessageDescriptor; sections: Array<{ heading: string; body: string }> }> = {
   terms: {
-    title: '서비스 이용약관',
+    title: msg`서비스 이용약관`,
     sections: [
       { heading: '제1조 (목적)', body: '본 약관은 RAOTA(라오타) 서비스의 이용과 관련하여 회사와 회원 간의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.' },
       { heading: '제2조 (회원의 의무)', body: '회원은 라멘 방문 기록 및 리뷰 작성 시 타인의 권리를 침해하거나 허위 사실을 유포하지 않아야 합니다.' },
@@ -15,7 +17,7 @@ export const POLICIES: Record<PolicyType, { title: string; sections: Array<{ hea
     ],
   },
   privacy: {
-    title: '개인정보처리방침',
+    title: msg`개인정보처리방침`,
     sections: [
       { heading: '1. 수집하는 개인정보 항목', body: '닉네임, 프로필 이미지, 선호 라멘 스타일, 라멘로그 데이터' },
       { heading: '2. 수집 및 이용 목적', body: '회원 식별, 라멘로그 캘린더 동기화, 맞춤형 라멘 큐레이션 및 등급 산정' },
@@ -55,7 +57,7 @@ export default function PolicySheet({ type, title, onClose, footer }: Props) {
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col justify-end">
-      <button type="button" className="anim-fade-in absolute inset-0 bg-black/50" onClick={onClose} aria-label={t("{v0} 닫기", { v0: t(policy.title) })} tabIndex={-1} />
+      <button type="button" className="anim-fade-in absolute inset-0 bg-black/50" onClick={onClose} aria-label={t`${ph({ v0: translate(policy.title) })} 닫기`} tabIndex={-1} />
       <section
         role="dialog"
         aria-modal="true"
@@ -67,20 +69,20 @@ export default function PolicySheet({ type, title, onClose, footer }: Props) {
         </div>
         <div className="flex items-center justify-between border-b border-[#F2F2F2] py-1 pl-5 pr-2">
           <h2 id={titleId} className="text-[17px] font-black text-[#25282B]">
-            {t(title ?? policy.title)}
+            {title ?? translate(policy.title)}
           </h2>
           <button
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label={t("닫기")}
+            aria-label={t`닫기`}
             className="flex h-11 w-11 items-center justify-center rounded-full text-[#6B6E73] hover:bg-[#F2F2F2] hover:text-[#25282B]"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
         <div className="space-y-3 overflow-y-auto p-5 text-[14px] leading-relaxed text-[#4A4D52]">
-          {getLocale() !== "ko" && <p role="note" className="text-[13px] text-[#6B6E73]">{t("이 문서는 한국어 원문으로 제공됩니다.")}</p>}
+          {getLocale() !== "ko" && <p role="note" className="text-[13px] text-[#6B6E73]">{t`이 문서는 한국어 원문으로 제공됩니다.`}</p>}
           {policy.sections.map(section => (
             <p key={section.heading}>
               <strong className="text-[#25282B]">{section.heading}</strong>
@@ -96,7 +98,7 @@ export default function PolicySheet({ type, title, onClose, footer }: Props) {
               onClick={onClose}
               className="h-12 w-full rounded-[60px] bg-[#25282B] text-[15px] font-bold text-white transition-opacity active:opacity-90"
             >
-              {t("닫기")}</button>
+              {t`닫기`}</button>
           )}
         </div>
       </section>

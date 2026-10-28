@@ -11,9 +11,12 @@
     "mobile": "pnpm --filter @raota/mobile start",
     "mobile:ios": "pnpm --filter @raota/mobile ios",
     "mobile:android": "pnpm --filter @raota/mobile android",
-    "mobile:web": "pnpm --filter @raota/mobile web"
+    "mobile:web": "pnpm --filter @raota/mobile web",
+    "i18n:extract": "lingui extract --clean",
+    "i18n:compile": "lingui compile --typescript"
   },
   "dependencies": {
+    "@lingui/core": "6.10.1",
     "@raota/shared": "workspace:*",
     "@seed-design/css": "^2.6.1",
     "@seed-design/react": "^2.4.1",
@@ -25,6 +28,8 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@lingui/cli": "6.10.1",
+    "@lingui/vite-plugin": "6.10.1",
     "@tailwindcss/vite": "^4.0.0",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^22.0.0",

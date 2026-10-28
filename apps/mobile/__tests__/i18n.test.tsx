@@ -1,5 +1,9 @@
+/// <reference types="node" />
 import { act, renderHook } from "@testing-library/react-native"
+import { ph, t } from "@lingui/core/macro"
 import { getLocales, useLocales } from "expo-localization"
+import { readFileSync } from "node:fs"
+import path from "node:path"
 import {
   DEFAULT_LOCALE,
   EMPTY_PROFILE,
@@ -8,17 +12,48 @@ import {
   getIntlLocale,
   getLocale,
   getRamenActivityLevel,
+  labelOf,
   resolveLocale,
   setLocale,
   subscribeLocale,
-  t,
   tasteIdentity,
-  translationCatalog,
 } from "@raota/shared"
 import { ApiClient, ApiError } from "@/src/api/client"
 import { createMemoryTokenStore } from "@/src/api/tokens"
 import { useDeviceLocale, useLocale } from "@/src/i18n"
 import { validateNickname } from "@/src/domain/nickname"
+
+/** PO 파일을 msgid → msgstr로 읽는다(여러 줄로 이어진 문자열 포함) */
+function readCatalog(locale: string): Map<string, string> {
+  const file = path.resolve(__dirname, `../../../packages/shared/src/i18n/locales/${locale}/messages.po`)
+  const entries = new Map<string, string>()
+  let field: "msgid" | "msgstr" | null = null
+  let id = ""
+  let str = ""
+  const flush = () => {
+    if (id) entries.set(id, str)
+    id = ""
+    str = ""
+  }
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    const start = line.match(/^(msgid|msgstr) (".*")$/)
+    if (start) {
+      if (start[1] === "msgid") flush()
+      field = start[1] as "msgid" | "msgstr"
+      const value = JSON.parse(start[2]) as string
+      if (field === "msgid") id = value
+      else str = value
+    } else if (line.startsWith("\"") && field) {
+      const value = JSON.parse(line) as string
+      if (field === "msgid") id += value
+      else str += value
+    } else if (!line.trim()) {
+      field = null
+    }
+  }
+  flush()
+  return entries
+}
 
 afterEach(() => {
   setLocale(DEFAULT_LOCALE)
@@ -66,31 +101,39 @@ describe("language preferences", () => {
 describe("app copy", () => {
   test.each(["en", "zh", "ja", "es"] as const)("translates navigation and interpolated copy in %s", (locale) => {
     setLocale(locale)
-    expect(t("홈")).not.toBe("홈")
-    expect(t("{scope} 0그릇", { scope: "TEST" })).toContain("TEST")
-    expect(t("{scope} 0그릇", { scope: "TEST" })).not.toContain("{scope}")
-    expect(t(getRamenActivityLevel(10).title)).not.toMatch(/[가-힣]/)
+    expect(t`홈`).not.toBe("홈")
+    expect(t`${ph({ scope: "TEST" })} 0그릇`).toContain("TEST")
+    expect(t`${ph({ scope: "TEST" })} 0그릇`).not.toContain("{scope}")
+    expect(labelOf(getRamenActivityLevel(10).title)).not.toMatch(/[가-힣]/)
+    expect(labelOf("탄탄멘")).not.toMatch(/[가-힣]/)
     expect(tasteIdentity({}, EMPTY_PROFILE).description).not.toMatch(/[가-힣]/)
     expect(validateNickname("!").error).not.toMatch(/[가-힣]/)
   })
 
-  it("keeps Korean copy and unknown source content intact", () => {
-    expect(t("{count}그릇", { count: 3 })).toBe("3그릇")
+  it("keeps Korean copy and leaves unknown stored values as written", () => {
+    const count = 3
+    expect(t`${count}그릇`).toBe("3그릇")
     setLocale("en")
-    expect(t("손님이 쓴 가게 후기")).toBe("손님이 쓴 가게 후기")
-    expect(t("아직 없는 번역 {name}", { name: "$&" })).toBe("아직 없는 번역 $&")
+    expect(labelOf("손님이 쓴 가게 후기")).toBe("손님이 쓴 가게 후기")
   })
 
-  it("keeps all catalog translations complete and preserves interpolation parameters", () => {
-    const placeholders = (value: string) => [...new Set(value.match(/\{\w+\}/g) ?? [])].sort()
+  it("has a translation for every extracted message, keeping the same placeholders", () => {
+    // {이름} 또는 {이름, plural|select …}의 이름만 센다(갈래 안의 글자는 세지 않는다)
+    const placeholders = (value: string) => [...new Set([...value.matchAll(/\{\s*(\w+)\s*[,}]/g)].map((match) => match[1]))].sort()
+    // ICU에서 ' 바로 뒤의 {는 글자로 읽혀 값이 들어가지 않는다. 따옴표를 보이려면 ''로 써야 한다
+    const quotedPlaceholder = /(^|[^'])'\{/
+    const source = readCatalog("ko")
     const invalid: string[] = []
-    for (const [source, translations] of Object.entries(translationCatalog)) {
-      if (translations.length !== 4) invalid.push(`${source}: missing language`)
-      translations.forEach((value, index) => {
-        if (!value.trim() || JSON.stringify(placeholders(value)) !== JSON.stringify(placeholders(source))) {
-          invalid.push(`${source} [${index}]: ${value}`)
-        }
-      })
+    for (const message of source.keys()) if (quotedPlaceholder.test(message)) invalid.push(`ko: ${message}`)
+    for (const locale of ["en", "zh", "ja", "es"]) {
+      const catalog = readCatalog(locale)
+      for (const message of source.keys()) {
+        const translation = catalog.get(message)
+        if (!translation?.trim()) invalid.push(`${locale}: missing ${message}`)
+        // 한국어에만 있는 조사 선택(select)은 다른 언어에서 뺄 수 있다. 그 밖의 자리표시자는 같아야 한다
+        else if (placeholders(translation).some((name) => !placeholders(message).includes(name))) invalid.push(`${locale}: ${message} → ${translation}`)
+        else if (quotedPlaceholder.test(translation)) invalid.push(`${locale}: ${translation}`)
+      }
     }
     expect(invalid).toEqual([])
   })
@@ -148,5 +191,5 @@ it("translates an app-authored offline error without changing server messages", 
     baseUrl: "https://api.test/api/v2", tokens: createMemoryTokenStore(),
     fetch: jest.fn(async () => { throw new TypeError("Network request failed") }) as never,
   })
-  await expect(client.get("/shops", { auth: "none" })).rejects.toMatchObject({ message: t("네트워크 연결을 확인해 주세요.") })
+  await expect(client.get("/shops", { auth: "none" })).rejects.toMatchObject({ message: t`네트워크 연결을 확인해 주세요.` })
 })

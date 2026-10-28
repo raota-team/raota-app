@@ -1,5 +1,7 @@
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
+import { translate } from "@raota/shared"
 import { router } from "expo-router"
 import { Bookmark, Crosshair, Plus, Search, X, type LucideIcon } from "lucide-react-native"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -14,10 +16,10 @@ import { AppText, IconButton } from "./ui"
 
 type RecordMode = "nearby" | "saved" | "search"
 
-const MENU_ITEMS: Array<{ mode: RecordMode; label: string; Icon: LucideIcon }> = [
-  { mode: "nearby", label: "주변 라멘집 기록하기", Icon: Crosshair },
-  { mode: "saved", label: "찜한 가게에서 기록하기", Icon: Bookmark },
-  { mode: "search", label: "직접 검색해서 기록하기", Icon: Search },
+const MENU_ITEMS: Array<{ mode: RecordMode; label: MessageDescriptor; Icon: LucideIcon }> = [
+  { mode: "nearby", label: msg`주변 라멘집 기록하기`, Icon: Crosshair },
+  { mode: "saved", label: msg`찜한 가게에서 기록하기`, Icon: Bookmark },
+  { mode: "search", label: msg`직접 검색해서 기록하기`, Icon: Search },
 ]
 
 const TEST_SECONDS = 5
@@ -43,26 +45,26 @@ export function openReminderTestMenu(monthCount: number) {
   const run = async (kind: PlannedReminder["kind"]) => {
     const result = await scheduleTestReminder(TEST_SECONDS, kind, monthCount)
     if (result === "scheduled") {
-      Alert.alert(t("테스트 알림을 예약했어요"), t("{p0}초 뒤에 와요. 알림을 누르면 기록할 가게 고르기가 열려요.", { p0: TEST_SECONDS }))
+      Alert.alert(t`테스트 알림을 예약했어요`, t`${ph({ p0: TEST_SECONDS })}초 뒤에 와요. 알림을 누르면 기록할 가게 고르기가 열려요.`)
     } else if (result === "denied") {
-      Alert.alert(t("알림 권한이 꺼져 있어요"), t("설정에서 RAOTA 알림을 허용한 뒤 다시 시도해 주세요."), [
-        { text: t("닫기"), style: "cancel" },
-        { text: t("설정 열기"), onPress: () => void Linking.openSettings() },
+      Alert.alert(t`알림 권한이 꺼져 있어요`, t`설정에서 RAOTA 알림을 허용한 뒤 다시 시도해 주세요.`, [
+        { text: t`닫기`, style: "cancel" },
+        { text: t`설정 열기`, onPress: () => void Linking.openSettings() },
       ])
     } else {
-      Alert.alert(t("이 환경에서는 알림을 보낼 수 없어요"), t("iOS 기기나 시뮬레이터의 Expo Go에서 확인해 주세요."))
+      Alert.alert(t`이 환경에서는 알림을 보낼 수 없어요`, t`iOS 기기나 시뮬레이터의 Expo Go에서 확인해 주세요.`)
     }
   }
-  const options = [t("{seconds}초 뒤 테스트 알림: 월간 리포트", { seconds: TEST_SECONDS }), t("{seconds}초 뒤 테스트 알림: 7일 미기록", { seconds: TEST_SECONDS }), t("취소")]
+  const options = [t`${ph({ seconds: TEST_SECONDS })}초 뒤 테스트 알림: 월간 리포트`, t`${ph({ seconds: TEST_SECONDS })}초 뒤 테스트 알림: 7일 미기록`, t`취소`]
   const pick = (index: number) => {
     if (index === 0) void run("monthly")
     if (index === 1) void run("inactive")
   }
   if (Platform.OS === "ios") {
-    ActionSheetIOS.showActionSheetWithOptions({ title: t("개발용 리마인더 테스트"), options, cancelButtonIndex: 2 }, pick)
+    ActionSheetIOS.showActionSheetWithOptions({ title: t`개발용 리마인더 테스트`, options, cancelButtonIndex: 2 }, pick)
     return
   }
-  Alert.alert(t("개발용 리마인더 테스트"), undefined, [
+  Alert.alert(t`개발용 리마인더 테스트`, undefined, [
     { text: options[0], onPress: () => pick(0) },
     { text: options[1], onPress: () => pick(1) },
     { text: options[2], style: "cancel" },
@@ -163,7 +165,7 @@ export function RecordMenu({ visible, onClose }: RecordMenuProps) {
     >
       <View accessibilityViewIsModal style={styles.modalRoot}>
         <Animated.View style={[styles.backdrop, backdropStyle]}>
-          <Pressable accessibilityLabel={t("기록 방법 선택 닫기")} accessibilityRole="button" onPress={onClose} style={styles.fill} />
+          <Pressable accessibilityLabel={t`기록 방법 선택 닫기`} accessibilityRole="button" onPress={onClose} style={styles.fill} />
         </Animated.View>
         <Animated.View
           onLayout={(event) => {
@@ -178,8 +180,8 @@ export function RecordMenu({ visible, onClose }: RecordMenuProps) {
           <SafeAreaView edges={["bottom"]} style={styles.sheet}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
-              <AppText accessibilityRole="header" style={styles.headerTitle} variant="sectionTitle">{t("기록 방법 선택")}</AppText>
-              <IconButton accessibilityLabel={t("닫기")} icon={<X color={colors.ink} size={22} />} onPress={onClose} />
+              <AppText accessibilityRole="header" style={styles.headerTitle} variant="sectionTitle">{t`기록 방법 선택`}</AppText>
+              <IconButton accessibilityLabel={t`닫기`} icon={<X color={colors.ink} size={22} />} onPress={onClose} />
             </View>
             <View style={styles.sheetContent}>
               <View style={styles.choices}>
@@ -191,7 +193,7 @@ export function RecordMenu({ visible, onClose }: RecordMenuProps) {
           </SafeAreaView>
         </Animated.View>
         <Pressable
-          accessibilityLabel={t("기록 메뉴 닫기")}
+          accessibilityLabel={t`기록 메뉴 닫기`}
           accessibilityRole="button"
           hitSlop={4}
           onPress={onClose}
@@ -233,7 +235,7 @@ function RecordChoice({
   return (
     <Animated.View style={rowStyle}>
       <Pressable
-        accessibilityLabel={t(label)}
+        accessibilityLabel={translate(label)}
         accessibilityRole="button"
         onPress={() => onChoose(mode)}
         style={({ pressed }) => [styles.choice, pressed && styles.choicePressed]}
@@ -241,7 +243,7 @@ function RecordChoice({
         <View style={styles.choiceIcon}>
           <Icon color={colors.ink} size={20} strokeWidth={2.1} />
         </View>
-        <AppText style={styles.choiceLabel} variant="bodyStrong">{t(label)}</AppText>
+        <AppText style={styles.choiceLabel} variant="bodyStrong">{translate(label)}</AppText>
       </Pressable>
     </Animated.View>
   )

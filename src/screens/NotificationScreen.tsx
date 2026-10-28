@@ -1,4 +1,6 @@
-import { t } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { translate } from "@raota/shared"
 import { useEffect, useRef, useState } from 'react'
 import { Bell, Heart, MessageSquare, Megaphone, Trophy, Settings, ChevronLeft, Check, CheckCheck, X } from 'lucide-react'
 import RamenIcon from '../components/icons/RamenIcon'
@@ -53,12 +55,12 @@ function ToggleSwitch({
   )
 }
 
-const TYPE_LABEL: Record<AppNotification['type'], string> = {
-  like: '공감',
-  comment: '댓글',
-  shop: '라멘집',
-  level: '승급',
-  notice: '공지',
+const TYPE_LABEL: Record<AppNotification['type'], MessageDescriptor> = {
+  like: msg`공감`,
+  comment: msg`댓글`,
+  shop: msg`라멘집`,
+  level: msg`승급`,
+  notice: msg`공지`,
 }
 
 function TypeIcon({ type }: { type: AppNotification['type'] }) {
@@ -88,13 +90,13 @@ function NotificationItem({ item, onClick }: { item: AppNotification; onClick: (
       <button
         type="button"
         onClick={onClick}
-        aria-label={t("{v0}{v1}: {v2}", { v0: item.isRead ? '' : t("읽지 않음, "), v1: t(TYPE_LABEL[item.type]), v2: item.title })}
+        aria-label={item.isRead ? t`${ph({ type: translate(TYPE_LABEL[item.type]) })}: ${ph({ title: item.title })}` : t`읽지 않음, ${ph({ type: translate(TYPE_LABEL[item.type]) })}: ${ph({ title: item.title })}`}
         className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors ${item.isRead ? 'bg-white' : 'bg-[#FFF7F7]'}`}
       >
         <TypeIcon type={item.type} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="shrink-0 rounded-[4px] bg-[#F2F2F2] px-1.5 py-0.5 text-[12px] font-bold text-[#4A4D52]">{t(TYPE_LABEL[item.type])}</span>
+            <span className="shrink-0 rounded-[4px] bg-[#F2F2F2] px-1.5 py-0.5 text-[12px] font-bold text-[#4A4D52]">{translate(TYPE_LABEL[item.type])}</span>
             <p className={`truncate text-[14px] ${item.isRead ? 'font-semibold text-[#4A4D52]' : 'font-black text-[#25282B]'}`}>{item.title}</p>
           </div>
           <p className={`mt-0.5 line-clamp-2 break-keep text-[13px] leading-snug ${item.isRead ? 'text-[#6B6E73]' : 'text-[#25282B]'}`}>{item.content}</p>
@@ -108,11 +110,11 @@ function NotificationItem({ item, onClick }: { item: AppNotification; onClick: (
   )
 }
 
-const SETTING_ROWS: { key: Exclude<keyof NotificationSettings, 'pushEnabled'>; title: string; desc: string }[] = [
-  { key: 'likesEnabled', title: '라멘로그 공감', desc: '내 라멘로그에 다른 라멘러가 공감했을 때' },
-  { key: 'commentsEnabled', title: '게시글 및 라멘로그 댓글', desc: '내 글이나 기록에 새 댓글이 달렸을 때' },
-  { key: 'levelUpEnabled', title: '등급 승급과 기록 리마인더', desc: '활동 등급 승급, 라멘로그 캘린더 리마인드' },
-  { key: 'shopNewsEnabled', title: '관심 라멘집 소식', desc: '찜한 라멘집의 한정 메뉴, 휴무 소식' },
+const SETTING_ROWS: { key: Exclude<keyof NotificationSettings, 'pushEnabled'>; title: MessageDescriptor; desc: MessageDescriptor }[] = [
+  { key: 'likesEnabled', title: msg`라멘로그 공감`, desc: msg`내 라멘로그에 다른 라멘러가 공감했을 때` },
+  { key: 'commentsEnabled', title: msg`게시글 및 라멘로그 댓글`, desc: msg`내 글이나 기록에 새 댓글이 달렸을 때` },
+  { key: 'levelUpEnabled', title: msg`등급 승급과 기록 리마인더`, desc: msg`활동 등급 승급, 라멘로그 캘린더 리마인드` },
+  { key: 'shopNewsEnabled', title: msg`관심 라멘집 소식`, desc: msg`찜한 라멘집의 한정 메뉴, 휴무 소식` },
 ]
 
 export default function NotificationScreen({
@@ -128,7 +130,7 @@ export default function NotificationScreen({
 }: Props) {
   const [tab, setTab] = useState<TabFilter>('all')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const [toastMsg, setToastMsg] = useState<MessageDescriptor | null>(null)
   const settingsCloseRef = useRef<HTMLButtonElement>(null)
   const settingsTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -164,10 +166,10 @@ export default function NotificationScreen({
   const filteredNotifications = notifications.filter(item => matchesTab(item, tab))
 
   const TABS: { key: TabFilter; label: string }[] = [
-    { key: 'all', label: '전체' },
-    { key: 'activity', label: '활동' },
-    { key: 'shop', label: '관심 라멘집' },
-    { key: 'system', label: '승급·공지' },
+    { key: 'all', label: t`전체` },
+    { key: 'activity', label: t`활동` },
+    { key: 'shop', label: t`관심 라멘집` },
+    { key: 'system', label: t`승급·공지` },
   ]
 
   const handleNotificationClick = (item: AppNotification) => {
@@ -179,17 +181,17 @@ export default function NotificationScreen({
 
   const handleToggleSetting = (key: keyof NotificationSettings) => {
     onUpdateSettings({ ...settings, [key]: !settings[key] })
-    setToastMsg('알림 설정을 저장했습니다.')
+    setToastMsg(msg`알림 설정을 저장했습니다.`)
   }
 
   const emptyMessage =
     tab === 'activity'
-      ? { title: '활동 알림이 없습니다', desc: '라멘로그를 남기고 라멘러들과 소통하면 알림이 도착합니다.' }
+      ? { title: t`활동 알림이 없습니다`, desc: t`라멘로그를 남기고 라멘러들과 소통하면 알림이 도착합니다.` }
       : tab === 'shop'
-        ? { title: '관심 라멘집 소식이 없습니다', desc: '자주 가는 라멘집을 찜하면 한정 메뉴와 휴무 소식을 받아볼 수 있습니다.' }
+        ? { title: t`관심 라멘집 소식이 없습니다`, desc: t`자주 가는 라멘집을 찜하면 한정 메뉴와 휴무 소식을 받아볼 수 있습니다.` }
         : tab === 'system'
-          ? { title: '승급·공지 알림이 없습니다', desc: '활동 등급 승급과 서비스 업데이트 소식이 여기에 표시됩니다.' }
-          : { title: '도착한 알림이 없습니다', desc: '라멘로그에 반응이 오거나 관심 라멘집에 소식이 생기면 알려드릴게요.' }
+          ? { title: t`승급·공지 알림이 없습니다`, desc: t`활동 등급 승급과 서비스 업데이트 소식이 여기에 표시됩니다.` }
+          : { title: t`도착한 알림이 없습니다`, desc: t`라멘로그에 반응이 오거나 관심 라멘집에 소식이 생기면 알려드릴게요.` }
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-white text-[#25282B]">
@@ -199,16 +201,16 @@ export default function NotificationScreen({
             type="button"
             onClick={onBack}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#25282B] transition-colors hover:bg-[#F2F2F2]"
-            aria-label={t("뒤로가기")}
+            aria-label={t`뒤로가기`}
           >
             <ChevronLeft className="h-6 w-6" aria-hidden="true" />
           </button>
           <div className="flex items-center gap-1.5">
-            <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">{t("알림")}</h1>
+            <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">{t`알림`}</h1>
             {unreadCount > 0 && (
               <span className="min-w-[20px] rounded-full bg-[#E60000] px-1.5 py-0.5 text-center text-[12px] font-black leading-none text-white">
                 {unreadCount}
-                <span className="sr-only">{t("개 읽지 않음")}</span>
+                <span className="sr-only">{t`개 읽지 않음`}</span>
               </span>
             )}
           </div>
@@ -222,7 +224,7 @@ export default function NotificationScreen({
               className="flex min-h-11 items-center gap-1 rounded-[6px] px-2.5 text-[13px] font-bold text-[#4A4D52] transition-colors hover:text-[#E60000]"
             >
               <CheckCheck className="h-4 w-4" aria-hidden="true" />
-              <span>{t("모두 읽음")}</span>
+              <span>{t`모두 읽음`}</span>
             </button>
           )}
           <button
@@ -230,7 +232,7 @@ export default function NotificationScreen({
             type="button"
             onClick={() => setIsSettingsOpen(true)}
             className="flex h-11 w-11 items-center justify-center rounded-full text-[#25282B] transition-colors hover:bg-[#F2F2F2]"
-            aria-label={t("알림 설정")}
+            aria-label={t`알림 설정`}
             aria-haspopup="dialog"
           >
             <Settings className="h-5 w-5" aria-hidden="true" />
@@ -238,7 +240,7 @@ export default function NotificationScreen({
         </div>
       </header>
 
-      <div role="group" aria-label={t("알림 종류")} className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-[#E2E2E2] bg-white px-4">
+      <div role="group" aria-label={t`알림 종류`} className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-[#E2E2E2] bg-white px-4">
         {TABS.map(tabItem => {
           const isActive = tab === tabItem.key
           const unreadInTab = notifications.filter(n => !n.isRead && matchesTab(n, tabItem.key)).length
@@ -249,11 +251,11 @@ export default function NotificationScreen({
                   isActive ? 'bg-[#25282B] text-white' : 'bg-[#F2F2F2] text-[#4A4D52]'
                 }`}
               >
-                {t(tabItem.label)}
+                {tabItem.label}
                 {unreadInTab > 0 && (
                   <span className={`text-[12px] ${isActive ? 'text-white/80' : 'text-[#E60000]'}`}>
                     {unreadInTab}
-                    <span className="sr-only">{t("개 읽지 않음")}</span>
+                    <span className="sr-only">{t`개 읽지 않음`}</span>
                   </span>
                 )}
               </span>
@@ -268,11 +270,11 @@ export default function NotificationScreen({
             <span aria-hidden="true" className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#F2F2F2] text-[#6B6E73]">
               <Bell className="h-6 w-6 stroke-[1.5]" />
             </span>
-            <p className="text-[15px] font-black text-[#25282B]">{t(emptyMessage.title)}</p>
-            <p className="mx-auto mt-1 max-w-xs text-[13px] leading-snug text-[#6B6E73]">{t(emptyMessage.desc)}</p>
+            <p className="text-[15px] font-black text-[#25282B]">{emptyMessage.title}</p>
+            <p className="mx-auto mt-1 max-w-xs text-[13px] leading-snug text-[#6B6E73]">{emptyMessage.desc}</p>
           </div>
         ) : (
-          <ul aria-label={t("알림 목록")}>
+          <ul aria-label={t`알림 목록`}>
             {filteredNotifications.map(item => (
               <NotificationItem key={item.id} item={item} onClick={() => handleNotificationClick(item)} />
             ))}
@@ -286,7 +288,7 @@ export default function NotificationScreen({
             type="button"
             className="anim-fade-in absolute inset-0 bg-black/50"
             onClick={() => setIsSettingsOpen(false)}
-            aria-label={t("알림 설정 닫기")}
+            aria-label={t`알림 설정 닫기`}
             tabIndex={-1}
           />
           <section
@@ -302,27 +304,27 @@ export default function NotificationScreen({
             <div className="flex shrink-0 items-center justify-between border-b border-[#F2F2F2] py-1 pl-5 pr-2">
               <h2 id="notification-settings-title" className="flex items-center gap-1.5 text-[17px] font-black text-[#25282B]">
                 <Bell className="h-4 w-4 text-[#E60000]" aria-hidden="true" />
-                <span>{t("알림 수신 설정")}</span>
+                <span>{t`알림 수신 설정`}</span>
               </h2>
               <button
                 ref={settingsCloseRef}
                 type="button"
                 onClick={() => setIsSettingsOpen(false)}
                 className="flex h-11 w-11 items-center justify-center rounded-full text-[#6B6E73] transition-colors hover:bg-[#F2F2F2] hover:text-[#25282B]"
-                aria-label={t("닫기")}
+                aria-label={t`닫기`}
               >
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
 
             <div className="no-scrollbar overflow-y-auto px-5 py-2">
-              <p className="py-2 text-[13px] leading-snug text-[#6B6E73]">{t("받고 싶은 푸시 알림만 골라 켜 두세요.")}</p>
+              <p className="py-2 text-[13px] leading-snug text-[#6B6E73]">{t`받고 싶은 푸시 알림만 골라 켜 두세요.`}</p>
 
               <div className="flex items-center justify-between gap-3 border-b border-[#E2E2E2] py-2">
                 <div className="min-w-0">
                   <p id="setting-push-title" className="text-[15px] font-black text-[#25282B]">
-                    {t("앱 푸시 알림 받기")}</p>
-                  <p className="mt-0.5 text-[13px] text-[#6B6E73]">{t("끄면 아래 항목도 모두 받지 않습니다.")}</p>
+                    {t`앱 푸시 알림 받기`}</p>
+                  <p className="mt-0.5 text-[13px] text-[#6B6E73]">{t`끄면 아래 항목도 모두 받지 않습니다.`}</p>
                 </div>
                 <ToggleSwitch checked={settings.pushEnabled} labelledBy="setting-push-title" onChange={() => handleToggleSetting('pushEnabled')} />
               </div>
@@ -332,9 +334,9 @@ export default function NotificationScreen({
                   <li key={row.key} className="flex items-center justify-between gap-3 py-2">
                     <div className="min-w-0">
                       <p id={`setting-${row.key}-title`} className={`text-[14px] font-bold ${settings.pushEnabled ? 'text-[#25282B]' : 'text-[#6B6E73]'}`}>
-                        {t(row.title)}
+                        {translate(row.title)}
                       </p>
-                      <p className="mt-0.5 text-[13px] text-[#6B6E73]">{t(row.desc)}</p>
+                      <p className="mt-0.5 text-[13px] text-[#6B6E73]">{translate(row.desc)}</p>
                     </div>
                     <ToggleSwitch
                       disabled={!settings.pushEnabled}
@@ -353,7 +355,7 @@ export default function NotificationScreen({
                 onClick={() => setIsSettingsOpen(false)}
                 className="h-12 w-full rounded-[60px] bg-[#25282B] text-[15px] font-bold text-white transition-opacity active:opacity-90"
               >
-                {t("설정 완료")}</button>
+                {t`설정 완료`}</button>
             </div>
           </section>
         </div>
@@ -365,7 +367,7 @@ export default function NotificationScreen({
           className="anim-fade-in-up pointer-events-none absolute bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-[32px] bg-[#25282B] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
         >
           <Check className="h-4 w-4 text-[#E60000]" aria-hidden="true" />
-          <span>{t(toastMsg)}</span>
+          <span>{translate(toastMsg)}</span>
         </div>
       )}
     </div>

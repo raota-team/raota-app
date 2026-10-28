@@ -1,4 +1,6 @@
-import { t } from "@raota/shared"
+import { t, ph, msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core"
+import { formatList, labelOf, translate } from "@raota/shared"
 import { useState, useEffect, useRef } from 'react'
 import type { UserProfile } from '../types'
 import { RotateCcw, ChevronLeft, ChevronRight, Check, Minus, Sparkles, PenLine } from 'lucide-react'
@@ -17,33 +19,49 @@ type Step = 1 | 2 | 3 | 4 | 'loading' | 'result'
 
 interface SoupOption {
   id: string
+  /** 원장 style과 대조하는 라멘 종류 값. 화면에는 labelOf로 보여준다 */
   label: string
-  sub: string
+  sub: MessageDescriptor
   /** 원장 style/tags에서 찾을 키워드 */
   keys: string[]
 }
 
 const SOUP_OPTIONS: SoupOption[] = [
-  { id: 'shoyu', label: '쇼유', sub: '간장 타레', keys: ['쇼유'] },
-  { id: 'tonkotsu', label: '돈코츠', sub: '돼지뼈 육수', keys: ['돈코츠'] },
-  { id: 'ieke', label: '이에케', sub: '돈코츠쇼유', keys: ['이에케'] },
-  { id: 'shio', label: '시오', sub: '소금 타레', keys: ['시오'] },
-  { id: 'miso', label: '미소', sub: '된장 타레', keys: ['미소'] },
-  { id: 'tsukemen', label: '츠케멘', sub: '찍어 먹는 면', keys: ['츠케멘'] },
-  { id: 'tori', label: '토리파이탄', sub: '닭백탕', keys: ['토리파이탄', '닭백탕'] },
+  { id: 'shoyu', label: '쇼유', sub: msg`간장 타레`, keys: ['쇼유'] },
+  { id: 'tonkotsu', label: '돈코츠', sub: msg`돼지뼈 육수`, keys: ['돈코츠'] },
+  { id: 'ieke', label: '이에케', sub: msg`돈코츠쇼유`, keys: ['이에케'] },
+  { id: 'shio', label: '시오', sub: msg`소금 타레`, keys: ['시오'] },
+  { id: 'miso', label: '미소', sub: msg`된장 타레`, keys: ['미소'] },
+  { id: 'tsukemen', label: '츠케멘', sub: msg`찍어 먹는 면`, keys: ['츠케멘'] },
+  { id: 'tori', label: '토리파이탄', sub: msg`닭백탕`, keys: ['토리파이탄', '닭백탕'] },
 ]
 
 const MOOD_OPTIONS = ['혼밥하기 좋은 곳', '데이트/아늑한 분위기', '웨이팅 감수 맛집', '빠르고 든든한 한 끼'] as const
 type Mood = (typeof MOOD_OPTIONS)[number]
 
-const PRIORITY_OPTIONS: Array<{ label: string; keys: string[] }> = [
-  { label: '진하고 묵직한 국물', keys: ['진한', '농후', '백탕', '이에케', '돈코츠', '적된장'] },
-  { label: '탱글탱글 자가제면', keys: ['자가제면', '치지레멘'] },
-  { label: '두툼하고 부드러운 차슈', keys: ['차슈'] },
-  { label: '깔끔하고 깊은 감칠맛', keys: ['깔끔', '맑은', '청탕', '감칠맛', '시오'] },
+const MOOD_LABELS: Record<Mood, MessageDescriptor> = {
+  '혼밥하기 좋은 곳': msg`혼밥하기 좋은 곳`,
+  '데이트/아늑한 분위기': msg`데이트/아늑한 분위기`,
+  '웨이팅 감수 맛집': msg`웨이팅 감수 맛집`,
+  '빠르고 든든한 한 끼': msg`빠르고 든든한 한 끼`,
+}
+
+const PRIORITY_OPTIONS: Array<{ value: string; label: MessageDescriptor; keys: string[] }> = [
+  { value: '진하고 묵직한 국물', label: msg`진하고 묵직한 국물`, keys: ['진한', '농후', '백탕', '이에케', '돈코츠', '적된장'] },
+  { value: '탱글탱글 자가제면', label: msg`탱글탱글 자가제면`, keys: ['자가제면', '치지레멘'] },
+  { value: '두툼하고 부드러운 차슈', label: msg`두툼하고 부드러운 차슈`, keys: ['차슈'] },
+  { value: '깔끔하고 깊은 감칠맛', label: msg`깔끔하고 깊은 감칠맛`, keys: ['깔끔', '맑은', '청탕', '감칠맛', '시오'] },
 ]
 
-const QUICK_PROMPTS = ['국물이 덜 짠 곳', '차슈가 푸짐한 곳', '주차 가능한 곳', '웨이팅 적은 곳', '매운맛 조절 가능한 곳', '밥 무료 제공']
+/** value는 입력란에 그대로 넣는 한국어 문구다(자유 입력 대조가 한국어 키워드로 이뤄진다) */
+const QUICK_PROMPTS: Array<{ value: string; label: MessageDescriptor }> = [
+  { value: '국물이 덜 짠 곳', label: msg`국물이 덜 짠 곳` },
+  { value: '차슈가 푸짐한 곳', label: msg`차슈가 푸짐한 곳` },
+  { value: '주차 가능한 곳', label: msg`주차 가능한 곳` },
+  { value: '웨이팅 적은 곳', label: msg`웨이팅 적은 곳` },
+  { value: '매운맛 조절 가능한 곳', label: msg`매운맛 조절 가능한 곳` },
+  { value: '밥 무료 제공', label: msg`밥 무료 제공` },
+]
 
 interface Inputs {
   soupId: string
@@ -52,26 +70,14 @@ interface Inputs {
   prompt: string
 }
 
+/** 문구는 화면에 그릴 때 만든다(언어를 바꿔도 결과 화면이 따라가도록) */
 interface Condition {
-  label: string
+  id: 'soup' | 'mood' | 'priority' | 'prompt'
   applied: boolean
-  note: string
-  labelParams?: Record<string, string | number>
-  noteParams?: Record<string, string | number>
-  matchedLabels?: string[]
-}
-
-function conditionLabel(condition: Condition) {
-  const params = {...condition.labelParams}
-  if (typeof params.style === 'string') params.style = t(params.style)
-  return t(condition.label, params)
-}
-
-function conditionNote(condition: Condition) {
-  const params = {...condition.noteParams}
-  if (typeof params.style === 'string') params.style = t(params.style)
-  if (condition.matchedLabels) params.matches = condition.matchedLabels.map(label => t(label)).join(', ')
-  return t(condition.note, params)
+  label: () => string
+  note: () => string
+  /** 자유 입력 원문. 준비 화면에는 라벨 대신 이 문구를 보여준다 */
+  prompt?: string
 }
 
 interface Curation {
@@ -100,54 +106,60 @@ function curate(inputs: Inputs): Curation {
 
   // 1. 국물
   const soup = SOUP_OPTIONS.find(option => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
+  const soupLabel = () => t`${ph({ style: labelOf(soup.label) })} 계보`
   if (narrow(shop => {
     if ((soup.label === '돈코츠' || soup.label === '이에케') && (shop.style.startsWith('돈코츠') || shop.style.startsWith('이에케'))) {
       return shop.style.startsWith(soup.label)
     }
     return hasAnyKey(shop, soup.keys)
   })) {
-    conditions.push({ label: "{style} 계보", labelParams: {style: soup.label}, applied: true, note: "{style} 계보 {count}곳 중에서 골랐어요", noteParams: {style: soup.label, count: pool.length} })
+    const count = pool.length
+    conditions.push({ id: 'soup', label: soupLabel, applied: true, note: () => t`${ph({ style: labelOf(soup.label) })} 계보 ${ph({ count })}곳 중에서 골랐어요` })
   } else {
-    conditions.push({ label: "{style} 계보", labelParams: {style: soup.label}, applied: false, note: "{style} 전문점이 아직 없어 전체 라멘집에서 골랐어요", noteParams: {style: soup.label} })
+    conditions.push({ id: 'soup', label: soupLabel, applied: false, note: () => t`${ph({ style: labelOf(soup.label) })} 전문점이 아직 없어 전체 라멘집에서 골랐어요` })
   }
 
   // 2. 분위기와 상황
-  if (inputs.mood === '빠르고 든든한 한 끼') {
+  const mood = inputs.mood
+  const moodLabel = () => translate(MOOD_LABELS[mood])
+  if (mood === '빠르고 든든한 한 끼') {
     const opened = narrow(shop => shop.isOpen)
     sortByDistance = true
-    conditions.push({ label: inputs.mood, applied: true, note: opened ? '지금 영업 중이고 가까운 곳을 우선했어요' : '영업 중인 곳이 없어 가까운 곳을 우선했어요' })
-  } else if (inputs.mood === '웨이팅 감수 맛집') {
+    conditions.push({ id: 'mood', label: moodLabel, applied: true, note: () => (opened ? t`지금 영업 중이고 가까운 곳을 우선했어요` : t`영업 중인 곳이 없어 가까운 곳을 우선했어요`) })
+  } else if (mood === '웨이팅 감수 맛집') {
     if (narrow(shop => shop.reviewCount > 0 || shop.rating > 0)) {
-      conditions.push({ label: inputs.mood, applied: true, note: '라멘로그와 평점이 쌓인 곳을 우선했어요' })
+      conditions.push({ id: 'mood', label: moodLabel, applied: true, note: () => t`라멘로그와 평점이 쌓인 곳을 우선했어요` })
     } else {
-      conditions.push({ label: inputs.mood, applied: false, note: '라멘로그 수 정보가 아직 없어 참고만 했어요' })
+      conditions.push({ id: 'mood', label: moodLabel, applied: false, note: () => t`라멘로그 수 정보가 아직 없어 참고만 했어요` })
     }
   } else {
-    conditions.push({ label: inputs.mood, applied: false, note: '매장 분위기 정보는 아직 없어 참고만 했어요' })
+    conditions.push({ id: 'mood', label: moodLabel, applied: false, note: () => t`매장 분위기 정보는 아직 없어 참고만 했어요` })
   }
 
   // 3. 우선순위: 원장의 특징, 태그, 리뷰 요약과 대조
-  const priority = PRIORITY_OPTIONS.find(option => option.label === inputs.priority)
+  const priority = PRIORITY_OPTIONS.find(option => option.value === inputs.priority)
   if (priority) {
+    const priorityLabel = () => translate(priority.label)
     if (narrow(shop => hasAnyKey(shop, priority.keys))) {
-      conditions.push({ label: priority.label, applied: true, note: '가게 특징과 태그에 이 요소가 있는 곳을 우선했어요' })
+      conditions.push({ id: 'priority', label: priorityLabel, applied: true, note: () => t`가게 특징과 태그에 이 요소가 있는 곳을 우선했어요` })
     } else {
-      conditions.push({ label: priority.label, applied: false, note: '이 요소가 적힌 가게가 없어 참고만 했어요' })
+      conditions.push({ id: 'priority', label: priorityLabel, applied: false, note: () => t`이 요소가 적힌 가게가 없어 참고만 했어요` })
     }
   }
 
   // 4. 자유 입력: 대조 가능한 키워드만 반영
   const prompt = inputs.prompt.trim()
   if (prompt) {
-    const applied: string[] = []
-    if (prompt.includes('웨이팅') && narrow(shop => shop.isOpen)) applied.push('지금 영업 중')
-    if (prompt.includes('밥') && narrow(shop => Boolean(shop.servicePerks?.riceRefill))) applied.push('공깃밥 제공')
-    if (prompt.includes('차슈') && narrow(shop => hasAnyKey(shop, ['차슈']))) applied.push('차슈')
-    if (prompt.includes('면') && narrow(shop => hasAnyKey(shop, ['자가제면', '치지레멘', '면']))) applied.push('면')
+    const applied: MessageDescriptor[] = []
+    if (prompt.includes('웨이팅') && narrow(shop => shop.isOpen)) applied.push(msg`지금 영업 중`)
+    if (prompt.includes('밥') && narrow(shop => Boolean(shop.servicePerks?.riceRefill))) applied.push(msg`공깃밥 제공`)
+    if (prompt.includes('차슈') && narrow(shop => hasAnyKey(shop, ['차슈']))) applied.push(msg`차슈`)
+    if (prompt.includes('면') && narrow(shop => hasAnyKey(shop, ['자가제면', '치지레멘', '면']))) applied.push(msg`면`)
+    const promptLabel = () => t`직접 입력: ${ph({ prompt })}`
     if (applied.length > 0) {
-      conditions.push({ label: "직접 입력: {prompt}", labelParams: {prompt}, applied: true, note: "{matches} 조건을 매장 정보와 대조했어요", matchedLabels: applied })
+      conditions.push({ id: 'prompt', label: promptLabel, prompt, applied: true, note: () => t`${ph({ matches: formatList(applied.map(translate)) })} 조건을 매장 정보와 대조했어요` })
     } else {
-      conditions.push({ label: "직접 입력: {prompt}", labelParams: {prompt}, applied: false, note: '아직 매장 정보와 대조하지 못해 참고만 했어요' })
+      conditions.push({ id: 'prompt', label: promptLabel, prompt, applied: false, note: () => t`아직 매장 정보와 대조하지 못해 참고만 했어요` })
     }
   }
 
@@ -170,11 +182,11 @@ function restoreCuration(shopName?: string): Curation | null {
   return shop ? { shop, conditions: [] } : null
 }
 
-const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: string; help: string }> = {
-  1: { title: '오늘 어떤 국물이 당기나요?', help: '맑은 청탕부터 묵직한 백탕까지 골라보세요.' },
-  2: { title: '어떤 상황에서 드시나요?', help: '지금 갈 수 있는 곳과 여유 있는 방문을 구분해 추천해요.' },
-  3: { title: '한 그릇에서 가장 포기할 수 없는 것은?', help: '가게 특징과 태그에 이 요소가 있는 곳을 먼저 찾아요.' },
-  4: { title: '더 바라는 점이 있나요?', help: '선택 사항이에요. 웨이팅, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요.' },
+const STEP_TITLES: Record<1 | 2 | 3 | 4, { title: MessageDescriptor; help: MessageDescriptor }> = {
+  1: { title: msg`오늘 어떤 국물이 당기나요?`, help: msg`맑은 청탕부터 묵직한 백탕까지 골라보세요.` },
+  2: { title: msg`어떤 상황에서 드시나요?`, help: msg`지금 갈 수 있는 곳과 여유 있는 방문을 구분해 추천해요.` },
+  3: { title: msg`한 그릇에서 가장 포기할 수 없는 것은?`, help: msg`가게 특징과 태그에 이 요소가 있는 곳을 먼저 찾아요.` },
+  4: { title: msg`더 바라는 점이 있나요?`, help: msg`선택 사항이에요. 웨이팅, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요.` },
 }
 
 export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordShop, initialResultShopName }: Props) {
@@ -207,7 +219,7 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
   if (step === 'loading' && curation) {
     return (
       <AICurationLoading
-        conditions={curation.conditions.filter(condition => condition.applied).map(condition => condition.label === '직접 입력: {prompt}' ? String(condition.labelParams?.prompt ?? '') : conditionLabel(condition))}
+        conditions={curation.conditions.filter(condition => condition.applied).map(condition => condition.prompt ?? condition.label())}
         onBack={() => setStep(4)}
         onComplete={() => setStep('result')}
       />
@@ -224,13 +236,13 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
       {/* 상단 바 */}
       <header className="flex-shrink-0 bg-white px-3 py-2 border-b border-[#E2E2E2] flex items-center justify-between gap-2">
         <div className="flex items-center gap-1 min-w-0">
-          <button type="button" onClick={onBack} className="w-11 h-11 rounded-full flex items-center justify-center active:bg-[#F2F2F2] transition-colors" aria-label={t("뒤로가기")}>
+          <button type="button" onClick={onBack} className="w-11 h-11 rounded-full flex items-center justify-center active:bg-[#F2F2F2] transition-colors" aria-label={t`뒤로가기`}>
             <ChevronLeft className="w-5 h-5" aria-hidden="true" />
           </button>
-          <h1 className="text-[17px] font-extrabold tracking-tight truncate">{t("AI 라멘 큐레이터")}</h1>
+          <h1 className="text-[17px] font-extrabold tracking-tight truncate">{t`AI 라멘 큐레이터`}</h1>
         </div>
         {typeof step === 'number' && (
-          <span className="text-[12px] font-bold text-[#6B6E73] shrink-0 tabular-nums" aria-label={t("4단계 중 {v0}단계", { v0: step })}>
+          <span className="text-[12px] font-bold text-[#6B6E73] shrink-0 tabular-nums" aria-label={t`4단계 중 ${ph({ v0: step })}단계`}>
             {step} / 4
           </span>
         )}
@@ -244,19 +256,19 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
               <div className="h-full bg-[#E60000] rounded-full transition-[width] duration-200" style={{ width: `${(step / 4) * 100}%` }} />
             </div>
             <h2 ref={stepHeadingRef} tabIndex={-1} className="text-[20px] font-extrabold tracking-tight leading-snug break-keep outline-none">
-              {t(STEP_TITLES[step].title)}
+              {translate(STEP_TITLES[step].title)}
             </h2>
-            <p className="text-[13px] text-[#6B6E73] mt-1.5 break-keep">{t(STEP_TITLES[step].help)}</p>
+            <p className="text-[13px] text-[#6B6E73] mt-1.5 break-keep">{translate(STEP_TITLES[step].help)}</p>
 
             {step === 1 && (
-              <div role="radiogroup" aria-label={t("국물 베이스")} className="grid grid-cols-2 gap-2 mt-5">
+              <div role="radiogroup" aria-label={t`국물 베이스`} className="grid grid-cols-2 gap-2 mt-5">
                 {SOUP_OPTIONS.map(soup => {
                   const active = inputs.soupId === soup.id
                   return (
                     <button key={soup.id} type="button" role="radio" aria-checked={active} onClick={() => setInput('soupId', soup.id)} className={`${optionClass(active)} min-h-16 px-3.5 py-3 flex items-center justify-between gap-2`}>
                       <span className="min-w-0">
-                        <span className="block text-[15px] font-bold break-keep">{t(soup.label)}</span>
-                        <span className={`block text-[12px] mt-0.5 ${active ? 'text-white/70' : 'text-[#6B6E73]'}`}>{t(soup.sub)}</span>
+                        <span className="block text-[15px] font-bold break-keep">{labelOf(soup.label)}</span>
+                        <span className={`block text-[12px] mt-0.5 ${active ? 'text-white/70' : 'text-[#6B6E73]'}`}>{translate(soup.sub)}</span>
                       </span>
                       {active && <Check className="w-4 h-4 shrink-0" aria-hidden="true" />}
                     </button>
@@ -266,12 +278,12 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
             )}
 
             {step === 2 && (
-              <div role="radiogroup" aria-label={t("식사 상황")} className="space-y-2 mt-5">
+              <div role="radiogroup" aria-label={t`식사 상황`} className="space-y-2 mt-5">
                 {MOOD_OPTIONS.map(mood => {
                   const active = inputs.mood === mood
                   return (
                     <button key={mood} type="button" role="radio" aria-checked={active} onClick={() => setInput('mood', mood)} className={`${optionClass(active)} w-full min-h-14 px-4 py-3 flex items-center justify-between gap-3`}>
-                      <span className="text-[15px] font-bold break-keep">{t(mood)}</span>
+                      <span className="text-[15px] font-bold break-keep">{translate(MOOD_LABELS[mood])}</span>
                       {active ? <Check className="w-4 h-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="w-4 h-4 shrink-0 text-[#6B6E73]" aria-hidden="true" />}
                     </button>
                   )
@@ -280,12 +292,12 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
             )}
 
             {step === 3 && (
-              <div role="radiogroup" aria-label={t("가장 중요한 요소")} className="space-y-2 mt-5">
+              <div role="radiogroup" aria-label={t`가장 중요한 요소`} className="space-y-2 mt-5">
                 {PRIORITY_OPTIONS.map(option => {
-                  const active = inputs.priority === option.label
+                  const active = inputs.priority === option.value
                   return (
-                    <button key={option.label} type="button" role="radio" aria-checked={active} onClick={() => setInput('priority', option.label)} className={`${optionClass(active)} w-full min-h-14 px-4 py-3 flex items-center justify-between gap-3`}>
-                      <span className="text-[15px] font-bold break-keep">{t(option.label)}</span>
+                    <button key={option.value} type="button" role="radio" aria-checked={active} onClick={() => setInput('priority', option.value)} className={`${optionClass(active)} w-full min-h-14 px-4 py-3 flex items-center justify-between gap-3`}>
+                      <span className="text-[15px] font-bold break-keep">{translate(option.label)}</span>
                       {active ? <Check className="w-4 h-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="w-4 h-4 shrink-0 text-[#6B6E73]" aria-hidden="true" />}
                     </button>
                   )
@@ -295,17 +307,17 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
 
             {step === 4 && (
               <div className="mt-5">
-                <label htmlFor="ai-custom-prompt" className="sr-only">{t("더 바라는 점")}</label>
+                <label htmlFor="ai-custom-prompt" className="sr-only">{t`더 바라는 점`}</label>
                 <textarea
                   id="ai-custom-prompt"
                   value={inputs.prompt}
                   onChange={e => setInput('prompt', e.target.value)}
-                  placeholder={t("예: 차슈가 부드럽고 국물이 덜 짠 곳")}
+                  placeholder={t`예: 차슈가 부드럽고 국물이 덜 짠 곳`}
                   className="w-full h-24 p-3.5 bg-[#F2F2F2] border border-[#E2E2E2] rounded-[6px] text-[14px] text-[#25282B] placeholder-[#6B6E73] outline-none focus:border-[#25282B] resize-none"
                 />
-                <p className="text-[13px] font-bold text-[#6B6E73] mt-4 mb-2">{t("자주 찾는 조건")}</p>
+                <p className="text-[13px] font-bold text-[#6B6E73] mt-4 mb-2">{t`자주 찾는 조건`}</p>
                 <div className="flex flex-wrap gap-2">
-                  {QUICK_PROMPTS.map(promptText => {
+                  {QUICK_PROMPTS.map(({ value: promptText, label }) => {
                     const added = inputs.prompt.includes(promptText)
                     return (
                       <button
@@ -319,7 +331,7 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
                         className={`min-h-11 px-3.5 rounded-[60px] border text-[13px] font-bold transition-colors ${added ? 'border-[#25282B] bg-[#25282B] text-white' : 'border-[#E2E2E2] bg-white text-[#25282B] active:bg-[#F2F2F2]'}`}
                       >
                         {added ? '' : '+ '}
-                        {t(promptText)}
+                        {translate(label)}
                       </button>
                     )
                   })}
@@ -333,17 +345,17 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
           <div className="px-5 pt-5 pb-6 anim-fade-in">
             <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[#E60000] bg-[#FFF0F0] px-3 py-1 rounded-[60px]">
               <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-              {t("AI 취향 매칭 결과")}</span>
+              {t`AI 취향 매칭 결과`}</span>
             <h2 ref={resultHeadingRef} tabIndex={-1} className="text-[20px] font-extrabold tracking-tight mt-2 break-keep outline-none">
-              {nickname ? t("오늘 {v0}님을 위한 라멘집", { v0: nickname }) : t("오늘의 추천")}
+              {nickname ? t`오늘 ${ph({ v0: nickname })}님을 위한 라멘집` : t`오늘의 추천`}
             </h2>
 
             <article className="mt-4 bg-white rounded-[6px] border border-[#E2E2E2] overflow-hidden">
               <div className="relative aspect-[16/10] bg-[#E9E9E9]">
-                {result.shop.photos[0] && <img src={result.shop.photos[0]} alt={t("{v0} 대표 사진", { v0: result.shop.name })} className="w-full h-full object-cover" />}
+                {result.shop.photos[0] && <img src={result.shop.photos[0]} alt={t`${ph({ v0: result.shop.name })} 대표 사진`} className="w-full h-full object-cover" />}
                 {result.shop.matchScore > 0 && (
                   <span className="absolute top-3 right-3 bg-[#E60000] text-white text-[13px] font-extrabold px-2.5 py-1 rounded-[4px] tabular-nums">
-                    {t("취향 일치도")} {result.shop.matchScore}%
+                    {t`취향 일치도`} {result.shop.matchScore}%
                   </span>
                 )}
               </div>
@@ -358,9 +370,9 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
                   <p className="text-[14px] leading-relaxed text-[#25282B] mt-3 pl-3 border-l border-[#25282B] break-keep">{result.shop.description}</p>
                 )}
                 {result.shop.tags.length > 0 && (
-                  <ul className="flex gap-1.5 flex-wrap mt-3" aria-label={t("특징")}>
+                  <ul className="flex gap-1.5 flex-wrap mt-3" aria-label={t`특징`}>
                     {result.shop.tags.map(tag => (
-                      <li key={tag} className="bg-[#F2F2F2] text-[12px] font-bold px-2.5 py-1 rounded-[4px]">{t(tag)}</li>
+                      <li key={tag} className="bg-[#F2F2F2] text-[12px] font-bold px-2.5 py-1 rounded-[4px]">{tag}</li>
                     ))}
                   </ul>
                 )}
@@ -369,10 +381,10 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
 
             {result.conditions.length > 0 && (
               <section className="mt-5" aria-labelledby="ai-conditions-heading">
-                <h3 id="ai-conditions-heading" className="text-[15px] font-bold pb-2 border-b border-[#E2E2E2]">{t("추천에 쓴 조건")}</h3>
+                <h3 id="ai-conditions-heading" className="text-[15px] font-bold pb-2 border-b border-[#E2E2E2]">{t`추천에 쓴 조건`}</h3>
                 <ul className="divide-y divide-[#E2E2E2]">
                   {result.conditions.map(condition => (
-                    <li key={condition.label} className="py-3 flex items-start gap-3">
+                    <li key={condition.id} className="py-3 flex items-start gap-3">
                       <span
                         className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${condition.applied ? 'bg-[#25282B] text-white' : 'bg-[#F2F2F2] text-[#6B6E73]'}`}
                         aria-hidden="true"
@@ -381,10 +393,10 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
                       </span>
                       <div className="min-w-0">
                         <p className="text-[14px] font-bold break-keep">
-                          {conditionLabel(condition)}
-                          <span className={`ml-1.5 text-[12px] ${condition.applied ? 'text-[#25282B]' : 'text-[#6B6E73]'}`}>{condition.applied ? t("반영") : t("참고만")}</span>
+                          {condition.label()}
+                          <span className={`ml-1.5 text-[12px] ${condition.applied ? 'text-[#25282B]' : 'text-[#6B6E73]'}`}>{condition.applied ? t`반영` : t`참고만`}</span>
                         </p>
-                        <p className="text-[13px] text-[#6B6E73] mt-0.5 break-keep">{conditionNote(condition)}</p>
+                        <p className="text-[13px] text-[#6B6E73] mt-0.5 break-keep">{condition.note()}</p>
                       </div>
                     </li>
                   ))}
@@ -392,12 +404,12 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
               </section>
             )}
             {result.conditions.length === 0 && (
-              <p className="mt-4 text-[13px] text-[#6B6E73] break-keep">{t("이전에 받은 추천이에요. 조건을 바꾸려면 다시 추천받기를 눌러주세요.")}</p>
+              <p className="mt-4 text-[13px] text-[#6B6E73] break-keep">{t`이전에 받은 추천이에요. 조건을 바꾸려면 다시 추천받기를 눌러주세요.`}</p>
             )}
 
             <button type="button" onClick={restart} className="mt-3 min-h-11 inline-flex items-center gap-1.5 text-[14px] font-bold text-[#25282B]">
               <RotateCcw className="w-4 h-4" aria-hidden="true" />
-              {t("다시 추천받기")}</button>
+              {t`다시 추천받기`}</button>
           </div>
         )}
       </div>
@@ -412,7 +424,7 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
                 onClick={() => setStep((step - 1) as Step)}
                 className="flex-1 h-13 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2] transition-colors"
               >
-                {t("이전")}</button>
+                {t`이전`}</button>
             )}
             <button
               type="button"
@@ -422,11 +434,11 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
               {step === 4 ? (
                 <>
                   <Sparkles className="w-4 h-4" aria-hidden="true" />
-                  <span>{t("AI 맞춤 추천받기")}</span>
+                  <span>{t`AI 맞춤 추천받기`}</span>
                 </>
               ) : (
                 <>
-                  <span>{t("다음")}</span>
+                  <span>{t`다음`}</span>
                   <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </>
               )}
@@ -440,13 +452,13 @@ export default function AIRecommendScreen({ user, onBack, onShopClick, onRecordS
               className="flex-1 h-13 rounded-[60px] border border-[#E2E2E2] text-[14px] font-bold text-[#25282B] bg-white active:bg-[#F2F2F2] transition-colors flex items-center justify-center gap-1.5"
             >
               <PenLine className="w-4 h-4" aria-hidden="true" />
-              {t("이 가게 기록하기")}</button>
+              {t`이 가게 기록하기`}</button>
             <button
               type="button"
               onClick={() => onShopClick(result.shop.name)}
               className="flex-1 h-13 rounded-[60px] bg-[#E60000] text-white font-bold text-[14px] active:bg-[#CC0000] transition-colors flex items-center justify-center gap-1"
             >
-              {t("매장 상세 보기")}<ChevronRight className="w-4 h-4" aria-hidden="true" />
+              {t`매장 상세 보기`}<ChevronRight className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         ) : null}

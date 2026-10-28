@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react-native"
-import { setLocale, t } from "@raota/shared"
+import { labelOf, setLocale } from "@raota/shared"
 import { useActivityLevel, useTasteIdentity } from "@/src/data/hooks"
 
 const mockSnapshot = { currentUser: null, userLogs: [], isHydrated: true, storageError: null }
@@ -11,7 +11,7 @@ it("refreshes memoized taste and activity copy on a retained screen without chan
   const { result } = await renderHook(() => {
     const identity = useTasteIdentity()
     const level = useActivityLevel()
-    return { identity, level, levelTitle: t(level.data.title) }
+    return { identity, level, levelTitle: labelOf(level.data.title) }
   })
   const originalLogs = mockSnapshot.userLogs
   expect(result.current.identity.data.title).toBe("아직 취향을 모으는 중")

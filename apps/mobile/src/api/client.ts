@@ -1,7 +1,8 @@
+import { t } from "@lingui/core/macro";
 import { API_BASE_URL, API_TIMEOUT_MS } from "./config"
 import { tokenStore as defaultTokenStore, type TokenPair, type TokenStore } from "./tokens"
 import type { ApiFailureEnvelope, ApiSuccessEnvelope, ReissueResponse } from "./types"
-import { getIntlLocale, t } from "@raota/shared"
+import { getIntlLocale } from "@raota/shared"
 
 /**
  * 서버 v2와 이야기하는 유일한 통로. 화면과 데이터 계층은 이 클라이언트만 쓰고 fetch를 직접 부르지 않는다.
@@ -234,8 +235,6 @@ export interface ApiClientOptions {
 /** 토큰 재발급 경로. 이 요청만은 재시도하지 않는다 */
 export const TOKEN_REISSUE_PATH = "/auth/token/reissue"
 
-const OFFLINE_MESSAGE = "네트워크 연결을 확인해 주세요."
-
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -295,7 +294,7 @@ export async function readResponse<T>(response: ResponseLike): Promise<ApiRespon
     throw new ApiError({
       status,
       code: error?.code ?? "INVALID_RESPONSE",
-      message: error?.message ?? t("요청을 처리하지 못했어요."),
+      message: error?.message ?? t`요청을 처리하지 못했어요.`,
       fields: isFieldErrorList(error?.fields) ? error.fields : [],
       requestId,
       retryAfterMs,
@@ -308,7 +307,7 @@ export async function readResponse<T>(response: ResponseLike): Promise<ApiRespon
     throw new ApiError({
       status,
       code: "INVALID_RESPONSE",
-      message: t("서버 응답 형식이 올바르지 않아요."),
+      message: t`서버 응답 형식이 올바르지 않아요.`,
       requestId,
     })
   }
@@ -316,7 +315,7 @@ export async function readResponse<T>(response: ResponseLike): Promise<ApiRespon
   throw new ApiError({
     status,
     code: "HTTP_ERROR",
-    message: t("요청이 실패했어요. (HTTP {status})", { status }),
+    message: t`요청이 실패했어요. (HTTP ${status})`,
     requestId,
     retryAfterMs,
   })
@@ -324,12 +323,12 @@ export async function readResponse<T>(response: ResponseLike): Promise<ApiRespon
 
 function toOfflineError(error: unknown, timedOut: boolean, aborted: boolean): ApiError {
   if (timedOut) {
-    return new ApiError({ status: 0, code: "TIMEOUT", message: t("응답이 너무 늦어요. 잠시 후 다시 시도해 주세요."), cause: error })
+    return new ApiError({ status: 0, code: "TIMEOUT", message: t`응답이 너무 늦어요. 잠시 후 다시 시도해 주세요.`, cause: error })
   }
   if (aborted) {
-    return new ApiError({ status: 0, code: "ABORTED", message: t("요청을 취소했어요."), cause: error })
+    return new ApiError({ status: 0, code: "ABORTED", message: t`요청을 취소했어요.`, cause: error })
   }
-  return new ApiError({ status: 0, code: "NETWORK_ERROR", message: t(OFFLINE_MESSAGE), cause: error })
+  return new ApiError({ status: 0, code: "NETWORK_ERROR", message: t`네트워크 연결을 확인해 주세요.`, cause: error })
 }
 
 /**
@@ -434,7 +433,7 @@ export class ApiClient {
     const pair = await this.tokens.get()
     if (!pair) {
       if (auth === "required") {
-        throw new ApiError({ status: 401, code: "UNAUTHORIZED", message: t("로그인이 필요해요.") })
+        throw new ApiError({ status: 401, code: "UNAUTHORIZED", message: t`로그인이 필요해요.` })
       }
       return this.dispatch<T>(path, options, null)
     }
@@ -475,7 +474,7 @@ export class ApiClient {
   private async reissue(used: TokenPair): Promise<TokenPair> {
     const current = await this.tokens.get()
     if (!current) {
-      throw new ApiError({ status: 401, code: "UNAUTHORIZED", message: t("다시 로그인해 주세요.") })
+      throw new ApiError({ status: 401, code: "UNAUTHORIZED", message: t`다시 로그인해 주세요.` })
     }
     if (current.refreshToken !== used.refreshToken) return current
     if (!this.reissuing) {
@@ -505,7 +504,7 @@ export class ApiClient {
     }
 
     if (!issued?.accessToken || !issued?.refreshToken) {
-      throw new ApiError({ status: 0, code: "INVALID_RESPONSE", message: t("토큰을 다시 받지 못했어요.") })
+      throw new ApiError({ status: 0, code: "INVALID_RESPONSE", message: t`토큰을 다시 받지 못했어요.` })
     }
     const pair: TokenPair = { accessToken: issued.accessToken, refreshToken: issued.refreshToken }
     await this.tokens.set(pair)
@@ -532,7 +531,7 @@ export class ApiClient {
   /** 실제 fetch 한 번 */
   private async dispatch<T>(path: string, options: RequestOptions, accessToken: string | null): Promise<ApiResponse<T>> {
     if (!this.baseUrl) {
-      throw new ApiError({ status: 0, code: "NETWORK_ERROR", message: t("서버 주소가 설정되지 않았어요.") })
+      throw new ApiError({ status: 0, code: "NETWORK_ERROR", message: t`서버 주소가 설정되지 않았어요.` })
     }
     const url = `${this.baseUrl}${path}${buildQuery(options.query)}`
     const headers: Record<string, string> = { Accept: "application/json", "Accept-Language": getIntlLocale(), ...options.headers }

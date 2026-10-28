@@ -1,12 +1,19 @@
-import { t } from "@raota/shared"
+import { t, ph } from "@lingui/core/macro";
+import { formatDate } from "@raota/shared"
 /**
  * 매장 영업시간. 서버 영업시간(adapters의 toOpeningHours)과 데모 원장이 같은 "요일: 시간" 문자열을 쓰므로
  * 화면은 이 모듈 하나로 읽고, 묶고, 지금 상태를 정한다.
  * 시간은 분 단위다. 자정을 넘겨 닫으면 끝 시각이 1440(24:00)보다 크다.
  */
 
+/** 서버 영업시간 문자열의 요일 이름(읽기용 원문). 화면에는 weekdayName을 쓴다 */
 export const DAY_NAMES = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
 export const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"]
+
+/** 화면에 보여 줄 요일 이름(0=일). 2023-01-01이 일요일이라 그 주의 날짜로 지금 언어의 이름을 얻는다 */
+export function weekdayName(day: number, width: "long" | "short"): string {
+  return formatDate(new Date(Date.UTC(2023, 0, 1 + day)), { weekday: width, timeZone: "UTC" })
+}
 
 const MINUTES_PER_DAY = 24 * 60
 /** 한국 매장이라 기기 시간대와 상관없이 서울 시각으로 상태를 정한다 */
@@ -84,10 +91,10 @@ function sameSchedule(a: DayHours, b: DayHours): boolean {
 }
 
 function groupLabel(days: number[]): string {
-  if (days.length === 7) return t("매일")
-  if (days.length === 1) return t(DAY_NAMES[days[0]])
-  if (days.length === 2) return `${t(DAY_SHORT[days[0]])}·${t(DAY_SHORT[days[1]])}`
-  return `${t(DAY_SHORT[days[0]])}–${t(DAY_SHORT[days[days.length - 1]])}`
+  if (days.length === 7) return t`매일`
+  if (days.length === 1) return weekdayName(days[0], "long")
+  if (days.length === 2) return `${weekdayName(days[0], "short")}·${weekdayName(days[1], "short")}`
+  return `${weekdayName(days[0], "short")}–${weekdayName(days[days.length - 1], "short")}`
 }
 
 /** 월요일부터 이어진 요일 중 시간이 같은 날을 한 줄로 묶는다. 떨어진 요일은 시간이 같아도 따로 둔다 */
@@ -146,7 +153,7 @@ export function formatTime(minutes: number): string {
   const nextDay = minutes > MINUTES_PER_DAY
   const value = nextDay ? minutes - MINUTES_PER_DAY : minutes
   const text = `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`
-  return nextDay ? t("다음 날 {time}", { time: text }) : text
+  return nextDay ? t`다음 날 ${ph({ time: text })}` : text
 }
 
 /** 영업 구간 전체(첫 여는 시각 – 마지막 닫는 시각) */
@@ -164,16 +171,19 @@ export function statusText(status: HoursStatus): { label: string; detail: string
   switch (status.kind) {
     case "open":
       // 다음이 쉬는 시간이면 "닫아요"라고 하면 오늘 영업이 끝나는 것처럼 들린다
-      return { label: t("영업 중"), detail: status.breakNext ? t("{time}부터 쉬어요", { time: formatTime(status.closesAt) }) : t("{time}에 닫아요", { time: formatTime(status.closesAt) }) }
+      return { label: t`영업 중`, detail: status.breakNext ? t`${ph({ time: formatTime(status.closesAt) })}부터 쉬어요` : t`${ph({ time: formatTime(status.closesAt) })}에 닫아요` }
     case "break":
-      return { label: t("쉬는 시간"), detail: t("{time}에 다시 열어요", { time: formatTime(status.reopensAt) }) }
+      return { label: t`쉬는 시간`, detail: t`${ph({ time: formatTime(status.reopensAt) })}에 다시 열어요` }
     case "beforeOpen":
-      return { label: t("준비 중"), detail: t("{time}에 열어요", { time: formatTime(status.opensAt) }) }
+      return { label: t`준비 중`, detail: t`${ph({ time: formatTime(status.opensAt) })}에 열어요` }
     case "closed": {
-      const label = status.closedToday ? t("오늘 휴무") : t("영업 종료")
+      const label = status.closedToday ? t`오늘 휴무` : t`영업 종료`
       if (!status.next) return { label, detail: null }
-      const when = status.next.dayOffset === 1 ? t("내일") : t(DAY_NAMES[status.next.day])
-      return { label, detail: t("{when} {time}에 열어요", { when, time: formatTime(status.next.opensAt) }) }
+      const time = formatTime(status.next.opensAt)
+      return {
+        label,
+        detail: status.next.dayOffset === 1 ? t`내일 ${time}에 열어요` : t`${ph({ day: weekdayName(status.next.day, "long") })} ${time}에 열어요`,
+      }
     }
   }
 }

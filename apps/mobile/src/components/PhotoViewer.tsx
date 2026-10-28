@@ -1,5 +1,5 @@
+import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
 import { Image } from "expo-image"
 import { X } from "lucide-react-native"
 import { useEffect, useRef, useState } from "react"
@@ -195,7 +195,7 @@ export function PhotoViewer({ photos, index, label, onClose, onIndexChange, onFa
   return (
     <Modal animationType="none" onRequestClose={dismiss} statusBarTranslucent transparent visible={visible}>
       <StatusBar barStyle="light-content" />
-      <View accessibilityLabel={t("{p0} 크게 보기", { p0: label })} accessibilityViewIsModal style={styles.root}>
+      <View accessibilityLabel={t`${ph({ p0: label })} 크게 보기`} accessibilityViewIsModal style={styles.root}>
         <Animated.View pointerEvents="none" style={[styles.backdrop, backdropStyle]} />
         {visible && showPager ? (
           <Animated.View style={[styles.pager, pagerStyle]}>
@@ -243,7 +243,7 @@ export function PhotoViewer({ photos, index, label, onClose, onIndexChange, onFa
           </Animated.View>
         ) : null}
         <Animated.View pointerEvents={phase === "open" ? "box-none" : "none"} style={[styles.top, { paddingTop: insets.top + spacing.x2 }, controlsStyle]}>
-          <Pressable accessibilityLabel={t("닫기")} accessibilityRole="button" hitSlop={8} onPress={dismiss} style={styles.close}>
+          <Pressable accessibilityLabel={t`닫기`} accessibilityRole="button" hitSlop={8} onPress={dismiss} style={styles.close}>
             <X color={colors.white} size={22} />
           </Pressable>
           {photos.length > 1 ? (

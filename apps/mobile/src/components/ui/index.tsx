@@ -1,5 +1,6 @@
+import { t, ph } from "@lingui/core/macro";
 import { useLocale } from "@/src/i18n"
-import { t } from "@raota/shared"
+import { labelOf } from "@raota/shared"
 import Svg, { Line, Path } from "react-native-svg"
 import { ChevronLeft, X } from "lucide-react-native"
 import {
@@ -216,7 +217,7 @@ export function Header({
   title,
   subtitle,
   onBack,
-  backLabel = t("뒤로"),
+  backLabel = t`뒤로`,
   left,
   right,
   align = "left",
@@ -586,12 +587,12 @@ export function TicketCut({ orientation = "horizontal", startFill = colors.paper
 /** 원장 스타일과 기록 종류를 모두 종류 이름으로 보여 준다. */
 export function RamenTypeTag({ type, inList = false, onImage = false, style }: RamenTypeTagProps) {
   useLocale()
-  const label = t(type.replace(/\s*라멘$/, "").trim())
+  const label = labelOf(type.replace(/\s*라멘$/, "").trim())
   // 이름이 "라멘"뿐이면 종류 정보가 없어 표시하지 않는다.
   if (!label) return null
   return (
     <View
-      accessibilityLabel={t("라멘 종류 {p0}", { p0: label })}
+      accessibilityLabel={t`라멘 종류 ${ph({ p0: label })}`}
       accessible
       style={[inList ? styles.typeInList : styles.ramenTypeTag, onImage && styles.onImagePill, style]}
     >
@@ -698,9 +699,9 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
   ref,
 ) {
   useLocale()
-  const lean = (score: number) => (score <= 2 ? t("{side} 쪽", { side: t(low) }) : score >= 4 ? t("{side} 쪽", { side: t(high) }) : t("보통"))
-  const word = value !== null ? (options?.find((option) => option.value === value)?.label ?? words?.[value - 1] ?? t("{value}점", { value })) : null
-  const status = invalid && value === null ? t("골라주세요") : word ? t(word) : t("미선택")
+  const lean = (score: number) => (score <= 2 ? t`${ph({ side: labelOf(low) })} 쪽` : score >= 4 ? t`${ph({ side: labelOf(high) })} 쪽` : t`보통`)
+  const word = value !== null ? (options?.find((option) => option.value === value)?.label ?? words?.[value - 1] ?? null) : null
+  const status = invalid && value === null ? t`골라주세요` : word ? labelOf(word) : value !== null ? t`${value}점` : t`미선택`
   const choose = (score: number) => {
     if (Platform.OS !== "web" && score !== value) void Haptics.selectionAsync().catch(() => undefined)
     onChange(score)
@@ -711,7 +712,7 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
       <View style={styles.scoreHead}>
         <AppText variant={hero ? "cardTitle" : "bodyStrong"}>
           {index ? <AppText tone="sub" variant="bodyStrong">{`${index}  `}</AppText> : null}
-          {label}
+          {labelOf(label)}
         </AppText>
         <AppText
           capScale
@@ -724,7 +725,7 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
         </AppText>
       </View>
       <View
-        accessibilityLabel={label}
+        accessibilityLabel={labelOf(label)}
         accessibilityRole="radiogroup"
         ref={ref}
         style={styles.scoreCells}
@@ -734,10 +735,10 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
           return (
             <ScorePill
               accessibilityLabel={options
-                ? t("{p0} {p1}, {p2}점", { p0: t(label), p1: t(option.label), p2: option.value })
-                : t("{p0} {p1}점, {p2}", { p0: t(label), p1: option.value, p2: lean(option.value) })}
+                ? t`${ph({ p0: labelOf(label) })} ${ph({ p1: labelOf(option.label) })}, ${ph({ p2: option.value })}점`
+                : t`${ph({ p0: labelOf(label) })} ${ph({ p1: option.value })}점, ${ph({ p2: lean(option.value) })}`}
               key={option.value}
-              label={t(option.label)}
+              label={labelOf(option.label)}
               onPress={() => choose(option.value)}
               selected={selected}
               variant={options ? "button" : "cardTitle"}
@@ -747,8 +748,8 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
       </View>
       {!options ? (
         <View style={styles.scoreEnds}>
-          <AppText capScale tone="sub" variant="meta">{t(low)}</AppText>
-          <AppText capScale tone="sub" variant="meta">{t(high)}</AppText>
+          <AppText capScale tone="sub" variant="meta">{labelOf(low)}</AppText>
+          <AppText capScale tone="sub" variant="meta">{labelOf(high)}</AppText>
         </View>
       ) : null}
     </View>
@@ -836,7 +837,7 @@ export function Toast({
   // iOS는 alert 역할만으로 읽어 주지 않는다. 안드로이드는 live region이 읽으므로 두 번 읽지 않게 iOS·웹에서만 알린다.
   useEffect(() => {
     if (!visible || !message || Platform.OS === "android") return
-    AccessibilityInfo.announceForAccessibility(hasAction ? `${message}. ${t("{action} 버튼이 있어요", { action: actionLabel ?? "" })}` : message)
+    AccessibilityInfo.announceForAccessibility(hasAction ? `${message}. ${t`${ph({ action: actionLabel ?? "" })} 버튼이 있어요`}` : message)
   }, [actionLabel, hasAction, message, visible])
 
   if (!visible) return null
@@ -860,7 +861,7 @@ export function Toast({
         </Pressable>
       ) : null}
       {holdUntilClosed && onDismiss ? (
-        <Pressable accessibilityLabel={t("알림 닫기")} accessibilityRole="button" onPress={onDismiss} style={styles.toastAction}>
+        <Pressable accessibilityLabel={t`알림 닫기`} accessibilityRole="button" onPress={onDismiss} style={styles.toastAction}>
           <X color={colors.onDark} size={18} />
         </Pressable>
       ) : null}
@@ -926,7 +927,7 @@ export interface LoadingStateProps {
   style?: StyleProp<ViewStyle>
 }
 
-export function LoadingState({ label = t("불러오는 중…"), fullScreen = false, color = colors.ink, style }: LoadingStateProps) {
+export function LoadingState({ label = t`불러오는 중…`, fullScreen = false, color = colors.ink, style }: LoadingStateProps) {
   useLocale()
   return (
     <View
@@ -1018,7 +1019,7 @@ export function BottomSheet({
   onClose,
   title,
   description,
-  closeLabel = t("닫기"),
+  closeLabel = t`닫기`,
   maxHeight = "85%",
   dismissOnBackdropPress = true,
   footer,
@@ -1047,7 +1048,7 @@ export function BottomSheet({
         {/* 뒤판은 제자리에서 흐려진다. 시트와 함께 밀려 올라오면 화면 전체가 딸려 오는 것처럼 보인다 */}
         <Animated.View style={[styles.backdrop, { opacity: progress }]}>
           <Pressable
-            accessibilityLabel={t("{p0} 닫기", { p0: shownTitle ?? t("시트") })}
+            accessibilityLabel={t`${ph({ p0: shownTitle ?? t`시트` })} 닫기`}
             accessibilityRole="button"
             onPress={dismissOnBackdropPress ? onClose : undefined}
             style={styles.fill}
@@ -1213,8 +1214,8 @@ export function ConfirmDialog({
   visible,
   title,
   message,
-  confirmLabel = t("확인"),
-  cancelLabel = t("취소"),
+  confirmLabel = t`확인`,
+  cancelLabel = t`취소`,
   destructive = false,
   loading = false,
   onConfirm,
@@ -1230,7 +1231,7 @@ export function ConfirmDialog({
   return (
     <Modal animationType="fade" onRequestClose={onCancel} presentationStyle="overFullScreen" transparent visible={visible}>
       <View style={styles.dialogRoot}>
-        <Pressable accessibilityLabel={t("{p0} 닫기", { p0: title })} accessibilityRole="button" onPress={onCancel} style={styles.backdrop} />
+        <Pressable accessibilityLabel={t`${ph({ p0: title })} 닫기`} accessibilityRole="button" onPress={onCancel} style={styles.backdrop} />
         <View accessibilityRole="alert" accessibilityViewIsModal style={styles.dialog}>
           <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.textCenter} variant="sectionTitle">
             {title}
