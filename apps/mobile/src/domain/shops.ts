@@ -41,6 +41,24 @@ export function distanceBetweenCoordinates(
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(haversine))
 }
 
+/**
+ * 위치에서 가까운 순. 거리를 다시 재고, 좌표가 없는 매장(서버가 null로 보내 0으로 바뀐 매장)은 뺀다.
+ * 거리를 쟀으니 "거리 모름"(unknownFields의 distance) 표시도 지운다.
+ * 거리순은 전체 매장으로 재야 한다. 커서로 받은 첫 쪽(20곳)으로 재면 가까운 곳이 빠진다(2026.10.28 QA)
+ */
+export function nearestShops<T extends Shop>(shops: readonly T[], origin: { latitude: number; longitude: number }): T[] {
+  return shops
+    .filter((shop) => shop.lat && shop.lng)
+    .map((shop) => {
+      const distanceM = Math.round(distanceBetweenCoordinates(origin, { latitude: shop.lat, longitude: shop.lng }))
+      const unknown = (shop as { unknownFields?: unknown }).unknownFields
+      return Array.isArray(unknown)
+        ? { ...shop, distanceM, unknownFields: unknown.filter((field) => field !== "distance") }
+        : { ...shop, distanceM }
+    })
+    .sort((a, b) => a.distanceM - b.distanceM)
+}
+
 function searchableText(shop: Shop): string {
   return [shop.name, shop.branch, shop.address, shop.description, ...shop.tags]
     .filter((value): value is string => Boolean(value))

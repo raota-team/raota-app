@@ -515,6 +515,22 @@ export default function NewRecordScreen() {
   const shopRef = useRef<View>(null)
   const menuRef = useRef<TextInput>(null)
   const noteRef = useRef<TextInput>(null)
+  const scrollRef = useRef<ScrollView>(null)
+  // 메모는 마지막 장 아래쪽이라 키보드가 올라오면 아래 버튼 줄 뒤로 가려진다. 키보드가 다 뜬 뒤 끝까지 내려 보이게 한다(2026.10.28 QA)
+  const keyboardShown = useRef<{ remove(): void } | null>(null)
+  const revealNote = () => {
+    keyboardShown.current?.remove()
+    if (Keyboard.isVisible()) {
+      scrollRef.current?.scrollToEnd({ animated: true })
+      return
+    }
+    keyboardShown.current = Keyboard.addListener("keyboardDidShow", () => {
+      keyboardShown.current?.remove()
+      keyboardShown.current = null
+      scrollRef.current?.scrollToEnd({ animated: true })
+    })
+  }
+  useEffect(() => () => keyboardShown.current?.remove(), [])
   const questionRef = useRef<View>(null)
   // 질문에 들어선 뒤 옮길 포커스. 빠진 메뉴·메모로 데려갈 때만 입력칸에 둔다
   const focusOnEnter = useRef<"menu" | "note" | "question">("question")
@@ -1079,6 +1095,7 @@ export default function NewRecordScreen() {
           maxLength={RECORD_NOTE_MAX_LENGTH}
           multiline
           onChangeText={setNote}
+          onFocus={revealNote}
           placeholder={t("기억해둘 점 (예: 다음엔 면을 단단하게)")}
           placeholderTextColor={colors.textMuted}
           ref={noteRef}
@@ -1169,6 +1186,7 @@ export default function NewRecordScreen() {
           contentContainerStyle={styles.content}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
+          ref={scrollRef}
           showsVerticalScrollIndicator={false}
           style={styles.flex}
         >

@@ -1,7 +1,6 @@
 import { formatDate, getLocale, t } from "@raota/shared"
 import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
-import * as Location from "expo-location"
 import { router, useLocalSearchParams } from "expo-router"
 import { usePreventRemove } from "expo-router/react-navigation"
 import { ArrowRight, Check, ChevronRight, Sparkles, Ticket } from "lucide-react-native"
@@ -36,6 +35,7 @@ import { matchesSoupChoice, rankShopsForAIRecommendation, shopSoupLabel } from "
 import { curatorTasteReport } from "@/src/domain/curatorTaste"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, maxFontScale, radii, soupColorOf, spacing, ticketInk, ticketPaperOf, touchTarget, typography, usePalette } from "@/src/theme"
+import { useKnownLocation, type Coordinates } from "@/src/location"
 
 /** 식권 자판기 버튼이 눌려 들어가는 깊이 */
 const BUTTON_SINK = 2
@@ -557,33 +557,6 @@ function issuedDay(iso: string): { foot: string; day: string; today: boolean } {
     day: getLocale() === "ko" ? `${month}월 ${date}일` : formatDate(iso, { month: "short", day: "numeric", timeZone: "Asia/Seoul" }),
     today: at.getUTCFullYear() === now.getUTCFullYear() && month === now.getUTCMonth() + 1 && date === now.getUTCDate(),
   }
-}
-
-type Coordinates = { latitude: number; longitude: number }
-
-/** 위치 권한이 이미 있을 때만 위치를 읽는다(홈과 같은 규칙, 여기서 권한을 묻지 않는다) */
-function useKnownLocation() {
-  const [origin, setOrigin] = useState<Coordinates | null>(null)
-  useEffect(() => {
-    if (Platform.OS === "web") return
-    let mounted = true
-    ;(async () => {
-      try {
-        const permission = await Location.getForegroundPermissionsAsync()
-        if (permission.status !== "granted") return
-        const position =
-          (await Location.getLastKnownPositionAsync()) ??
-          (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
-        if (mounted && position) setOrigin({ latitude: position.coords.latitude, longitude: position.coords.longitude })
-      } catch {
-        // 위치를 못 읽으면 좌표 없이 추천받는다
-      }
-    })()
-    return () => {
-      mounted = false
-    }
-  }, [])
-  return origin
 }
 
 /** 스크린리더 포커스를 새 제목으로 옮긴다 */
