@@ -2,6 +2,7 @@
 const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 const crypto = require('crypto');
 const path = require('path');
+const fs = require('fs');
 
 const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, '../..');
@@ -10,6 +11,15 @@ const config = getSentryExpoConfig(projectRoot);
 
 // 1. Watch all files within the monorepo
 config.watchFolders = [monorepoRoot];
+// A worktree may reuse a symlinked pnpm dependency cache. Watch the actual
+// third-party store as well, while application/shared source stays in this worktree.
+const dependencyStore = path.join(monorepoRoot, 'node_modules', '.pnpm');
+if (fs.existsSync(dependencyStore)) {
+  const resolvedStore = fs.realpathSync(dependencyStore);
+  if (!resolvedStore.startsWith(`${monorepoRoot}${path.sep}`)) {
+    config.watchFolders.push(resolvedStore);
+  }
+}
 
 // 2. Let Metro know where to resolve packages and in what order
 config.resolver.nodeModulesPaths = [
