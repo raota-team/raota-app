@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import { Redirect, router } from "expo-router"
 import appConfig from "../../app.json"
 import * as Haptics from "expo-haptics"
@@ -36,6 +38,7 @@ function openLegal(doc: "terms" | "privacy") {
 }
 
 export default function SettingsScreen() {
+  useLocale()
   const { currentUser: user, actions } = useRaota()
   const insets = useSafeAreaInsets()
   const [sheet, setSheet] = useState<"style" | "email" | null>(null)
@@ -58,20 +61,20 @@ export default function SettingsScreen() {
   const toggleReminders = async (next: boolean) => {
     haptic()
     if (next && reminders.blocked) {
-      await Linking.openSettings().catch(() => setToast("설정 앱을 열지 못했어요"))
+      await Linking.openSettings().catch(() => setToast(t("설정 앱을 열지 못했어요")))
       return
     }
     await reminders.toggle(next)
-    setToast(next ? "기록할 때가 되면 알려드릴게요" : "알림을 껐어요. 언제든 다시 켤 수 있어요")
+    setToast(next ? t("기록할 때가 되면 알려드릴게요") : t("알림을 껐어요. 언제든 다시 켤 수 있어요"))
   }
 
   const saveStyle = async (style: string) => {
     haptic()
     try {
       await actions.updateProfile({ favoriteRamenType: style })
-      setToast(`선호 스타일을 '${style}'로 바꿨어요`)
+      setToast(t("선호 스타일을 '{v1}'로 바꿨어요", { v1: t(style) }))
     } catch {
-      setToast("선호 스타일을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.")
+      setToast(t("선호 스타일을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요."))
     } finally {
       setSheet(null)
     }
@@ -80,16 +83,16 @@ export default function SettingsScreen() {
   const saveEmail = async () => {
     const trimmed = newEmail.trim()
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setEmailError(EMAIL_FORMAT_ERROR)
+      setEmailError(t(EMAIL_FORMAT_ERROR))
       return
     }
     setBusy(true)
     try {
       await actions.updateProfile({ email: trimmed })
       setSheet(null)
-      setToast("이메일 주소를 바꿨어요")
+      setToast(t("이메일 주소를 바꿨어요"))
     } catch {
-      setEmailError("저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.")
+      setEmailError(t("저장하지 못했어요. 잠시 뒤 다시 시도해 주세요."))
     } finally {
       setBusy(false)
     }
@@ -101,7 +104,7 @@ export default function SettingsScreen() {
     try {
       await actions.withdraw()
     } catch {
-      setToast("탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요.")
+      setToast(t("탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요."))
     } finally {
       setBusy(false)
       setDialog(null)
@@ -110,27 +113,27 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <Header align="center" backLabel="뒤로가기" onBack={goBack} title="설정" titleStyle={typography.sectionTitle} />
+      <Header align="center" backLabel={t("뒤로가기")} onBack={goBack} title={t("설정")} titleStyle={typography.sectionTitle} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.section }]} style={styles.scroll}>
-        <Group title="계정">
+        <Group title={t("계정")}>
           <AccountRow
             first
-            label="이메일"
+            label={t("이메일")}
             onChange={() => {
               setNewEmail(user.email ?? "")
               setEmailError(null)
               setSheet("email")
             }}
-            value={user.email || "등록된 이메일 없음"}
+            value={user.email || t("등록된 이메일 없음")}
           />
-          <AccountRow label="선호 스타일" onChange={() => setSheet("style")} value={user.favoriteRamenType || "아직 안 정했어요"} />
-          <LinkRow label="숨긴 사용자" onPress={() => router.push("/hidden-authors")} />
+          <AccountRow label={t("선호 스타일")} onChange={() => setSheet("style")} value={user.favoriteRamenType ? t(user.favoriteRamenType) : t("아직 안 정했어요")} />
+          <LinkRow label={t("숨긴 사용자")} onPress={() => router.push("/hidden-authors")} />
         </Group>
         {reminders.supported ? (
-          <Group title="알림">
+          <Group title={t("알림")}>
             <View style={[styles.row, styles.switchRow]}>
               <View style={styles.shrink}>
-                <AppText variant="bodyStrong">기록 리마인더</AppText>
+                <AppText variant="bodyStrong">{t("기록 리마인더")}</AppText>
                 <View style={styles.descriptionSlot}>
                   <AppText
                     accessibilityElementsHidden
@@ -140,16 +143,16 @@ export default function SettingsScreen() {
                     tone="muted"
                     variant="secondary"
                   >
-                    {BLOCKED_REMINDER_DESCRIPTION}
+                    {t(BLOCKED_REMINDER_DESCRIPTION)}
                   </AppText>
                   <AppText lineBreakStrategyIOS="hangul-word" style={styles.overlaidText} tone="muted" variant="secondary">
-                    {reminders.blocked ? BLOCKED_REMINDER_DESCRIPTION : REMINDER_DESCRIPTION}
+                    {t(reminders.blocked ? BLOCKED_REMINDER_DESCRIPTION : REMINDER_DESCRIPTION)}
                   </AppText>
                 </View>
               </View>
               <Switch
-                accessibilityHint={reminders.blocked ? "iOS 설정 앱을 엽니다" : undefined}
-                accessibilityLabel="기록 리마인더"
+                accessibilityHint={reminders.blocked ? t("iOS 설정 앱을 엽니다") : undefined}
+                accessibilityLabel={t("기록 리마인더")}
                 disabled={reminders.busy}
                 // 꺼짐 트랙은 iOS 기본 회색에 맡긴다. 켜짐은 회색 계열(selected)이면 다크 모드에서 꺼짐과 구분되지 않아 영업 중 초록(open)을 쓴다
                 onValueChange={(next) => void toggleReminders(next)}
@@ -161,11 +164,11 @@ export default function SettingsScreen() {
           </Group>
         ) : null}
 
-        <Group title="약관 및 문의">
-          <LinkRow first label="이용약관" onPress={() => openLegal("terms")} />
-          <LinkRow label="개인정보처리방침" onPress={() => openLegal("privacy")} />
+        <Group title={t("약관 및 문의")}>
+          <LinkRow first label={t("이용약관")} onPress={() => openLegal("terms")} />
+          <LinkRow label={t("개인정보처리방침")} onPress={() => openLegal("privacy")} />
           <LinkRow
-            label="문의하기"
+            label={t("문의하기")}
             onPress={() => void Linking.openURL(`mailto:${LEGAL_CONTACT_EMAIL}`).catch(() => undefined)}
             value={LEGAL_CONTACT_EMAIL}
           />
@@ -173,43 +176,43 @@ export default function SettingsScreen() {
 
         <View style={styles.spacer} />
         <View style={styles.bottom}>
-          <Button fullWidth onPress={() => setDialog("logout")} title="로그아웃" variant="secondary" />
+          <Button fullWidth onPress={() => setDialog("logout")} title={t("로그아웃")} variant="secondary" />
           <View style={styles.withdrawRow}>
             <Button
               onPress={() => setDialog("withdraw")}
               style={styles.withdrawAction}
               size="small"
               textStyle={styles.withdrawText}
-              title="회원 탈퇴"
+              title={t("회원 탈퇴")}
               variant="ghost"
             />
           </View>
-          <AppText capScale style={styles.version} tone="muted" variant="meta">앱 버전 {appConfig.expo.version}</AppText>
+          <AppText capScale style={styles.version} tone="muted" variant="meta">{t("앱 버전 ")}{appConfig.expo.version}</AppText>
         </View>
       </ScrollView>
 
       <Toast message={toast ?? ""} onDismiss={() => setToast(null)} visible={Boolean(toast)} />
 
       <BottomSheet
-        description="가장 즐겨 먹는 종류를 골라 주세요. 프로필에 표시돼요."
+        description={t("가장 즐겨 먹는 종류를 골라 주세요. 프로필에 표시돼요.")}
         onClose={() => setSheet(null)}
-        title="선호 라멘 스타일"
+        title={t("선호 라멘 스타일")}
         visible={sheet === "style"}
       >
-        <View accessibilityLabel="라멘 스타일" accessibilityRole="radiogroup" style={styles.styleGrid}>
+        <View accessibilityLabel={t("라멘 스타일")} accessibilityRole="radiogroup" style={styles.styleGrid}>
           {RAMEN_TYPES.map((style) => {
             const selected = user.favoriteRamenType === style
             return (
               <Pressable
-                accessibilityLabel={style}
+                accessibilityLabel={t(style)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
-                key={style}
+                key={t(style)}
                 onPress={() => void saveStyle(style)}
                 style={({ pressed }) => [styles.styleOption, selected && styles.styleSelected, pressed && !selected && styles.pressedWash]}
               >
                 <AppText style={selected && styles.styleSelectedText} variant="bodyStrong">
-                  {style}
+                  {t(style)}
                 </AppText>
                 <AppText
                   accessibilityElementsHidden={!selected}
@@ -218,8 +221,7 @@ export default function SettingsScreen() {
                   style={[styles.styleSelectedText, !selected && styles.hiddenText]}
                   variant="meta"
                 >
-                  선택됨
-                </AppText>
+                  {t("선택됨 ")}</AppText>
               </Pressable>
             )
           })}
@@ -227,23 +229,22 @@ export default function SettingsScreen() {
       </BottomSheet>
 
       <BottomSheet
-        description="계정 안내를 받을 이메일 주소를 입력해 주세요."
+        description={t("계정 안내를 받을 이메일 주소를 입력해 주세요.")}
         dismissOnBackdropPress={!busy}
         footer={
           <View style={styles.sheetActions}>
-            <Button disabled={busy} fullWidth onPress={() => setSheet(null)} title="취소" variant="outline" />
-            <Button fullWidth loading={busy} onPress={() => void saveEmail()} title="저장" variant="secondary" />
+            <Button disabled={busy} fullWidth onPress={() => setSheet(null)} title={t("취소")} variant="outline" />
+            <Button fullWidth loading={busy} onPress={() => void saveEmail()} title={t("저장")} variant="secondary" />
           </View>
         }
         onClose={() => !busy && setSheet(null)}
-        title="이메일 변경"
+        title={t("이메일 변경")}
         visible={sheet === "email"}
       >
         <AppText nativeID="email-label" variant="bodyStrong">
-          새 이메일 주소
-        </AppText>
+          {t("새 이메일 주소 ")}</AppText>
         <TextInput
-          accessibilityLabel="새 이메일 주소"
+          accessibilityLabel={t("새 이메일 주소")}
           autoCapitalize="none"
           autoComplete="email"
           autoCorrect={false}
@@ -271,7 +272,7 @@ export default function SettingsScreen() {
             tone="sub"
             variant="secondary"
           >
-            {EMAIL_FORMAT_ERROR}
+            {t(EMAIL_FORMAT_ERROR)}
           </AppText>
           {emailError ? (
             <AppText accessibilityLiveRegion="polite" capScale lineBreakStrategyIOS="hangul-word" style={styles.overlaidText} tone="sub" variant="secondary">
@@ -282,8 +283,8 @@ export default function SettingsScreen() {
       </BottomSheet>
 
       <ConfirmDialog
-        confirmLabel="로그아웃"
-        message="기록과 취향 리포트는 계정에 그대로 남아 있어요."
+        confirmLabel={t("로그아웃")}
+        message={t("기록과 취향 리포트는 계정에 그대로 남아 있어요.")}
         onCancel={() => setDialog(null)}
         onConfirm={() => {
           setDialog(null)
@@ -291,22 +292,22 @@ export default function SettingsScreen() {
           actions.logout()
           router.replace("/auth/login")
         }}
-        title="로그아웃할까요?"
+        title={t("로그아웃할까요?")}
         visible={dialog === "logout"}
       />
       <ConfirmDialog
-        confirmLabel="탈퇴하기"
+        confirmLabel={t("탈퇴하기")}
         destructive
         loading={busy}
         message={[
-          "탈퇴하면 바로 로그아웃되고, 30일 뒤 같은 계정으로 다시 가입할 수 있어요.",
+          t("탈퇴하면 바로 로그아웃되고, 30일 뒤 같은 계정으로 다시 가입할 수 있어요."),
           "",
-          "30일 동안 같은 소셜 계정으로 재가입할 수 없어요.",
-          "30일이 지나면 라멘로그, 취향 리포트, 저장한 매장이 모두 지워져요.",
+          t("30일 동안 같은 소셜 계정으로 재가입할 수 없어요."),
+          t("30일이 지나면 라멘로그, 취향 리포트, 저장한 매장이 모두 지워져요."),
         ].join("\n")}
         onCancel={() => !busy && setDialog(null)}
         onConfirm={() => void withdraw()}
-        title="회원 탈퇴"
+        title={t("회원 탈퇴")}
         visible={dialog === "withdraw"}
       />
     </Screen>
@@ -317,7 +318,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   return (
     <View>
       <AppText accessibilityRole="header" style={styles.groupTitle} tone="sub" variant="secondary">
-        {title}
+        {t(title)}
       </AppText>
       <View>{children}</View>
     </View>
@@ -331,13 +332,13 @@ function AccountRow({ label, value, onChange, first = false }: { label: string; 
   return (
     <View style={[styles.row, stacked && styles.rowStacked, !first && styles.rowDivider]}>
       <AppText variant="bodyStrong">
-        {label}
+        {t(label)}
       </AppText>
       <View style={[styles.rowTrail, stacked && styles.rowTrailStacked]}>
         <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} tone="muted" variant="secondary">
           {value}
         </AppText>
-        <Button accessibilityLabel={`${label} 변경`} onPress={onChange} size="small" title="변경" variant="secondary" />
+        <Button accessibilityLabel={t("{v1} 변경", { v1: label })} onPress={onChange} size="small" title={t("변경")} variant="secondary" />
       </View>
     </View>
   )
@@ -352,7 +353,7 @@ function LinkRow({ label, onPress, value, first }: { label: string; onPress: () 
       style={({ pressed }) => [styles.row, !first && styles.rowDivider, pressed && styles.pressedWash]}
     >
       <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} variant="bodyStrong">
-        {label}
+        {t(label)}
       </AppText>
       <View style={styles.rowTrail}>
         {value ? (

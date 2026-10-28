@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Crosshair, Bookmark, Search, X, ChevronRight } from 'lucide-react'
 import { SHOP_CATALOG, type ShopCatalogItem } from '../data/shops'
@@ -85,7 +86,7 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
         <p className="text-[13px] text-[#6B6E73] truncate mt-0.5">{shop.spec || shop.style}</p>
         <div className="flex items-center gap-2 mt-1 text-[12px] font-bold">
           <span className="text-[#25282B]">{shop.distance}</span>
-          <span className={shop.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>{shop.isOpen ? '영업 중' : '준비 중'}</span>
+          <span className={shop.isOpen ? 'text-[#2E7D32]' : 'text-[#6B6E73]'}>{shop.isOpen ? t("영업 중") : t("준비 중")}</span>
           {shop.region && <span className="text-[#6B6E73] font-medium">{shop.region}</span>}
         </div>
       </div>
@@ -163,7 +164,7 @@ export default function RecordSheet({
         type="button"
         className="absolute inset-0 bg-black/50 anim-fade-in"
         onClick={onClose}
-        aria-label="닫기"
+        aria-label={t("닫기")}
         tabIndex={-1}
       />
 
@@ -179,19 +180,18 @@ export default function RecordSheet({
 
         <div className="pl-5 pr-2 pt-2 pb-1 flex items-center justify-between gap-2 shrink-0">
           <h2 id="record-sheet-title" ref={titleRef} tabIndex={-1} className="text-[20px] font-extrabold tracking-tight outline-none">
-            어느 가게를 기록할까요?
-          </h2>
+            {t("어느 가게를 기록할까요?")}</h2>
           <button
             type="button"
             onClick={onClose}
             className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center text-[#25282B] active:bg-[#F2F2F2]"
-            aria-label="닫기"
+            aria-label={t("닫기")}
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
-        <div role="tablist" aria-label="가게 찾는 방법" className="px-5 pt-2 pb-3 shrink-0 flex gap-2 border-b border-[#E2E2E2]">
+        <div role="tablist" aria-label={t("가게 찾는 방법")} className="px-5 pt-2 pb-3 shrink-0 flex gap-2 border-b border-[#E2E2E2]">
           {MODES.map(({ id, label, Icon }) => {
             const active = mode === id
             const count = id === 'saved' ? savedShops.length : id === 'nearby' ? ALL_SHOPS.length : null
@@ -210,7 +210,7 @@ export default function RecordSheet({
               >
                 <Icon className="w-4 h-4" aria-hidden="true" />
                 <span>
-                  {label}
+                  {t(label)}
                   {count !== null && <span className={active ? 'text-white/70' : 'text-[#6B6E73]'}> {count}</span>}
                 </span>
               </button>
@@ -228,23 +228,21 @@ export default function RecordSheet({
             <div className="anim-fade-in">
               <div className="flex items-center gap-2 pb-3 overflow-x-auto no-scrollbar -mx-5 px-5">
                 <button type="button" onClick={() => setNearbyFilter('all')} aria-pressed={nearbyFilter === 'all'} className={filterChip(nearbyFilter === 'all')}>
-                  전체 {ALL_SHOPS.length}
+                  {t("전체")} {ALL_SHOPS.length}
                 </button>
                 <button type="button" onClick={() => setNearbyFilter('500m')} aria-pressed={nearbyFilter === '500m'} className={filterChip(nearbyFilter === '500m')}>
-                  500m 이내
-                </button>
+                  {t("500m 이내")}</button>
                 <button type="button" onClick={() => setNearbyFilter('open')} aria-pressed={nearbyFilter === 'open'} className={filterChip(nearbyFilter === 'open')}>
-                  영업 중만
-                </button>
+                  {t("영업 중만")}</button>
               </div>
-              <p className="text-[12px] font-medium text-[#6B6E73] pb-1">가까운 순</p>
+              <p className="text-[12px] font-medium text-[#6B6E73] pb-1">{t("가까운 순")}</p>
               <div className="divide-y divide-[#F2F2F2]">
                 {nearbyList.map(shop => (
                   <ShopRow key={shop.id} shop={shop} onSelect={() => onSelectShop(shop.name)} />
                 ))}
               </div>
               {nearbyList.length === 0 && (
-                <p className="py-10 text-center text-[14px] text-[#6B6E73]">조건에 맞는 가게가 없어요.</p>
+                <p className="py-10 text-center text-[14px] text-[#6B6E73]">{t("조건에 맞는 가게가 없어요.")}</p>
               )}
             </div>
           )}
@@ -254,12 +252,12 @@ export default function RecordSheet({
               {savedShops.length === 0 ? (
                 <div className="py-12 text-center space-y-2">
                   <Bookmark className="w-8 h-8 mx-auto text-[#BEBEBE]" aria-hidden="true" />
-                  <p className="text-[15px] font-bold">찜한 가게가 없어요.</p>
-                  <p className="text-[13px] text-[#6B6E73]">가게 상세에서 찜해 두면 여기서 바로 기록할 수 있어요.</p>
+                  <p className="text-[15px] font-bold">{t("찜한 가게가 없어요.")}</p>
+                  <p className="text-[13px] text-[#6B6E73]">{t("가게 상세에서 찜해 두면 여기서 바로 기록할 수 있어요.")}</p>
                 </div>
               ) : (
                 <>
-                  <p className="text-[12px] font-medium text-[#6B6E73] pb-1">찜한 가게 {savedShops.length}곳</p>
+                  <p className="text-[12px] font-medium text-[#6B6E73] pb-1">{t("찜한 가게")} {savedShops.length}{t("곳")}</p>
                   <div className="divide-y divide-[#F2F2F2]">
                     {savedShops.map(shop => (
                       <ShopRow key={shop.id} shop={shop} onSelect={() => onSelectShop(shop.name)} />
@@ -273,14 +271,14 @@ export default function RecordSheet({
           {mode === 'search' && (
             <div className="anim-fade-in space-y-4">
               <div className="relative">
-                <label htmlFor="record-shop-search" className="sr-only">가게 검색</label>
+                <label htmlFor="record-shop-search" className="sr-only">{t("가게 검색")}</label>
                 <input
                   id="record-shop-search"
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="가게 이름, 지역, 스타일"
+                  placeholder={t("가게 이름, 지역, 스타일")}
                   className="w-full h-12 pl-10 pr-12 bg-[#F7F7F7] border border-[#E2E2E2] rounded-[6px] text-[14px] font-medium text-[#25282B] placeholder:text-[#6B6E73] outline-none focus:border-[#25282B] focus:bg-white transition-colors"
                 />
                 <Search className="w-4 h-4 text-[#6B6E73] absolute left-3.5 top-4 pointer-events-none" aria-hidden="true" />
@@ -288,7 +286,7 @@ export default function RecordSheet({
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    aria-label="검색어 지우기"
+                    aria-label={t("검색어 지우기")}
                     className="absolute right-0.5 top-0.5 w-11 h-11 flex items-center justify-center text-[#6B6E73]"
                   >
                     <X className="w-4 h-4" aria-hidden="true" />
@@ -298,7 +296,7 @@ export default function RecordSheet({
 
               {!searchQuery && (
                 <div>
-                  <p className="text-[12px] font-medium text-[#6B6E73] mb-2">빠른 검색어</p>
+                  <p className="text-[12px] font-medium text-[#6B6E73] mb-2">{t("빠른 검색어")}</p>
                   <div className="flex flex-wrap gap-2">
                     {QUICK_KEYWORDS.map(keyword => (
                       <button
@@ -307,7 +305,7 @@ export default function RecordSheet({
                         onClick={() => setSearchQuery(keyword)}
                         className="min-h-11 px-4 rounded-[60px] border border-[#E2E2E2] bg-white text-[13px] font-bold text-[#25282B] active:bg-[#F2F2F2]"
                       >
-                        {keyword}
+                        {t(keyword)}
                       </button>
                     ))}
                   </div>
@@ -317,8 +315,7 @@ export default function RecordSheet({
               {searchQuery && (
                 <div>
                   <p className="text-[12px] font-medium text-[#6B6E73] pb-1" aria-live="polite">
-                    검색 결과 {searchResults.length}건
-                  </p>
+                    {t("검색 결과")} {searchResults.length}{t("건")}</p>
                   {searchResults.length > 0 ? (
                     <div className="divide-y divide-[#F2F2F2]">
                       {searchResults.map(shop => (
@@ -328,15 +325,13 @@ export default function RecordSheet({
                   ) : (
                     <div className="py-6 text-center space-y-3">
                       <p className="text-[14px] text-[#6B6E73]">
-                        ‘{searchQuery.trim()}’ 가게가 아직 목록에 없어요.
-                      </p>
+                        ‘{searchQuery.trim()}{t("’ 가게가 아직 목록에 없어요.")}</p>
                       <button
                         type="button"
                         onClick={() => onSelectShop(searchQuery.trim())}
                         className="w-full min-h-12 rounded-[60px] bg-[#25282B] text-white text-[14px] font-bold active:bg-[#1A1C1E]"
                       >
-                        ‘{searchQuery.trim()}’(으)로 바로 기록하기
-                      </button>
+                        ‘{searchQuery.trim()}{t("’(으)로 바로 기록하기")}</button>
                     </div>
                   )}
                 </div>

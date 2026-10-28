@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 /**
  * 매장 영업시간. 서버 영업시간(adapters의 toOpeningHours)과 데모 원장이 같은 "요일: 시간" 문자열을 쓰므로
  * 화면은 이 모듈 하나로 읽고, 묶고, 지금 상태를 정한다.
@@ -83,10 +84,10 @@ function sameSchedule(a: DayHours, b: DayHours): boolean {
 }
 
 function groupLabel(days: number[]): string {
-  if (days.length === 7) return "매일"
-  if (days.length === 1) return DAY_NAMES[days[0]]
-  if (days.length === 2) return `${DAY_SHORT[days[0]]}·${DAY_SHORT[days[1]]}`
-  return `${DAY_SHORT[days[0]]}–${DAY_SHORT[days[days.length - 1]]}`
+  if (days.length === 7) return t("매일")
+  if (days.length === 1) return t(DAY_NAMES[days[0]])
+  if (days.length === 2) return `${t(DAY_SHORT[days[0]])}·${t(DAY_SHORT[days[1]])}`
+  return `${t(DAY_SHORT[days[0]])}–${t(DAY_SHORT[days[days.length - 1]])}`
 }
 
 /** 월요일부터 이어진 요일 중 시간이 같은 날을 한 줄로 묶는다. 떨어진 요일은 시간이 같아도 따로 둔다 */
@@ -145,7 +146,7 @@ export function formatTime(minutes: number): string {
   const nextDay = minutes > MINUTES_PER_DAY
   const value = nextDay ? minutes - MINUTES_PER_DAY : minutes
   const text = `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`
-  return nextDay ? `다음 날 ${text}` : text
+  return nextDay ? t("다음 날 {time}", { time: text }) : text
 }
 
 /** 영업 구간 전체(첫 여는 시각 – 마지막 닫는 시각) */
@@ -163,16 +164,16 @@ export function statusText(status: HoursStatus): { label: string; detail: string
   switch (status.kind) {
     case "open":
       // 다음이 쉬는 시간이면 "닫아요"라고 하면 오늘 영업이 끝나는 것처럼 들린다
-      return { label: "영업 중", detail: status.breakNext ? `${formatTime(status.closesAt)}부터 쉬어요` : `${formatTime(status.closesAt)}에 닫아요` }
+      return { label: t("영업 중"), detail: status.breakNext ? t("{time}부터 쉬어요", { time: formatTime(status.closesAt) }) : t("{time}에 닫아요", { time: formatTime(status.closesAt) }) }
     case "break":
-      return { label: "쉬는 시간", detail: `${formatTime(status.reopensAt)}에 다시 열어요` }
+      return { label: t("쉬는 시간"), detail: t("{time}에 다시 열어요", { time: formatTime(status.reopensAt) }) }
     case "beforeOpen":
-      return { label: "준비 중", detail: `${formatTime(status.opensAt)}에 열어요` }
+      return { label: t("준비 중"), detail: t("{time}에 열어요", { time: formatTime(status.opensAt) }) }
     case "closed": {
-      const label = status.closedToday ? "오늘 휴무" : "영업 종료"
+      const label = status.closedToday ? t("오늘 휴무") : t("영업 종료")
       if (!status.next) return { label, detail: null }
-      const when = status.next.dayOffset === 1 ? "내일" : DAY_NAMES[status.next.day]
-      return { label, detail: `${when} ${formatTime(status.next.opensAt)}에 열어요` }
+      const when = status.next.dayOffset === 1 ? t("내일") : t(DAY_NAMES[status.next.day])
+      return { label, detail: t("{when} {time}에 열어요", { when, time: formatTime(status.next.opensAt) }) }
     }
   }
 }

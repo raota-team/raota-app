@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { router, useLocalSearchParams } from "expo-router"
 import { StatusBar } from "expo-status-bar"
@@ -72,10 +74,10 @@ const toShopItem = (shop: Shop): ShopItem => {
     ramenType: catalogField(shop, "style"),
     spec: catalogField(shop, "spec"),
     distanceM: distanceUnknown ? Number.POSITIVE_INFINITY : shop.distanceM,
-    distance: distanceUnknown ? "거리 정보 없음" : formatDistance(shop.distanceM),
+    distance: distanceUnknown ? t("거리 정보 없음") : formatDistance(shop.distanceM),
     status: "unknownFields" in shop && Array.isArray(shop.unknownFields) && shop.unknownFields.includes("isOpen")
-      ? "영업 정보 확인 필요"
-      : shop.isOpen ? "영업 중" : "준비 중",
+      ? t("영업 정보 확인 필요")
+      : shop.isOpen ? t("영업 중") : t("준비 중"),
     isOpen: shop.isOpen,
     photo: shop.photos[0],
     tags: shop.tags,
@@ -95,8 +97,8 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
     .join(", ")
   return (
     <Pressable
-      accessibilityHint="이 가게로 기록을 시작해요"
-      accessibilityLabel={label}
+      accessibilityHint={t("이 가게로 기록을 시작해요")}
+      accessibilityLabel={t(label)}
       accessibilityRole="button"
       onPress={onSelect}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
@@ -122,7 +124,7 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
         </AppText>
         <View style={styles.rowMeta}>
           {shop.ramenType ? (
-            <AppText accessible accessibilityLabel={`라멘 종류 ${shop.ramenType.replace(/\s*라멘$/, "")}`} accessibilityRole="text" capScale tone="muted" variant="meta">{shop.ramenType.replace(/\s*라멘$/, "")}</AppText>
+            <AppText accessible accessibilityLabel={t("라멘 종류 {v1}", { v1: shop.ramenType.replace(/\s*라멘$/, "") })} accessibilityRole="text" capScale tone="muted" variant="meta">{shop.ramenType.replace(/\s*라멘$/, "")}</AppText>
           ) : null}
           <AppText capScale tone="muted" variant="meta">{`${shop.ramenType ? "· " : ""}${shop.distance} · ${status}`}</AppText>
         </View>
@@ -137,6 +139,7 @@ function ShopRow({ shop, onSelect }: { shop: ShopItem; onSelect: () => void }) {
  * 데이터 hook에 refetch가 생기면 이 key 대신 그것을 부른다. 고르던 탭과 검색어는 이어 간다.
  */
 export default function SelectShopScreen() {
+  useLocale()
   const [retry, setRetry] = useState<{ key: number; mode?: Mode; query?: string }>({ key: 0 })
   return (
     <SelectShopBody
@@ -153,6 +156,7 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
   restoredMode?: Mode
   restoredQuery?: string
 }) {
+  const locale = useLocale()
   const params = useLocalSearchParams<{ mode?: string; source?: string }>()
   const insets = useSafeAreaInsets()
   const { state, actions } = useRaota()
@@ -169,8 +173,8 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
   const remoteSearch = useShops({ query: searchQuery || undefined })
   const searchRef = useRef<TextInput>(null)
 
-  const allShops = useMemo(() => shopsQuery.data.map(toShopItem).sort(byDistance), [shopsQuery.data])
-  const savedShops = useMemo(() => bookmarked.data.map(toShopItem).sort(byDistance), [bookmarked.data])
+  const allShops = useMemo(() => shopsQuery.data.map(toShopItem).sort(byDistance), [shopsQuery.data, locale])
+  const savedShops = useMemo(() => bookmarked.data.map(toShopItem).sort(byDistance), [bookmarked.data, locale])
 
   // 빠른 검색어는 원장의 스타일과 동네에서만 만든다. 인기 검색어처럼 꾸미지 않는다.
   const quickKeywords = useMemo(
@@ -207,14 +211,14 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
   }, [allShops, remoteSearch.data, searchQuery, shopsQuery.remote, trimmedQuery])
 
   const chooseNearbyFilter = () => {
-    const options = ["전체", "500m 이내", "영업 중만", "취소"]
+    const options = ["전체", "500m 이내", "영업 중만", "취소"].map((option) => t(option))
     const select = (index: number) => {
       if (index < 3) setNearbyFilter((["all", "500m", "open"] as const)[index])
     }
     if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions({ title: "주변 가게", options, cancelButtonIndex: 3 }, select)
+      ActionSheetIOS.showActionSheetWithOptions({ title: t("주변 가게"), options, cancelButtonIndex: 3 }, select)
     } else {
-      Alert.alert("주변 가게", undefined, options.map((text, index) => ({
+      Alert.alert(t("주변 가게"), undefined, options.map((text, index) => ({
         text,
         onPress: () => select(index),
         style: index === 3 ? "cancel" as const : "default" as const,
@@ -250,24 +254,24 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
     <View style={styles.listHeader}>
       {mode === "nearby" ? (
         <Pressable
-          accessibilityHint="주변 가게의 거리와 영업 상태 조건을 고를 수 있어요"
-          accessibilityLabel={`가까운 순${allShops[0]?.region ? ` · ${allShops[0].region} 주변` : ""}, ${nearbyFilter === "all" ? "전체" : nearbyFilter === "500m" ? "500m 이내" : "영업 중만"}`}
+          accessibilityHint={t("주변 가게의 거리와 영업 상태 조건을 고를 수 있어요")}
+          accessibilityLabel={t("가까운 순{v1}, {v2}", { v1: allShops[0]?.region ? ` · ${allShops[0].region} 주변` : "", v2: nearbyFilter === "all" ? "전체" : nearbyFilter === "500m" ? "500m 이내" : "영업 중만" })}
           accessibilityRole="button"
           onPress={chooseNearbyFilter}
           style={styles.listCaptionButton}
         >
           <AppText capScale numberOfLines={1} style={styles.listCaption} tone="muted" variant="meta">
-            {`${nearbyFilter === "all" ? "가까운 순" : nearbyFilter === "500m" ? "500m 이내" : "영업 중만"}${allShops[0]?.region ? ` · ${allShops[0].region} 주변` : ""}`}
+            {t("{v1}{v2}", { v1: nearbyFilter === "all" ? t("가까운 순") : nearbyFilter === "500m" ? t("500m 이내") : t("영업 중만"), v2: allShops[0]?.region ? ` · ${allShops[0].region} 주변` : "" })}
           </AppText>
           <ChevronDown color={colors.textMuted} size={14} />
         </Pressable>
       ) : mode === "saved" && savedShops.length > 0 ? (
         <AppText capScale style={styles.listCaption} tone="muted" variant="meta">
-          {`찜한 가게 ${savedShops.length}곳`}
+          {t("찜한 가게 {v1}곳", { v1: savedShops.length })}
         </AppText>
       ) : mode === "search" ? (
         <AppText accessibilityLiveRegion="polite" capScale style={styles.listCaption} tone="muted" variant="meta">
-          {trimmedQuery ? `검색 결과 ${searchResults.length}건` : "빠른 검색어"}
+          {trimmedQuery ? t("검색 결과 {v1}건", { v1: searchResults.length }) : t("빠른 검색어")}
         </AppText>
       ) : null}
     </View>
@@ -277,38 +281,38 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
     activeQuery.error && mode !== "saved" ? (
       <EmptyState
         // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
-        actionLabel={shopsQuery.remote ? "다시 불러오기" : undefined}
-        description="잠시 후 다시 열어 주세요."
+        actionLabel={shopsQuery.remote ? t("다시 불러오기") : undefined}
+        description={t("잠시 후 다시 열어 주세요.")}
         onAction={() => onRetry(mode, query)}
-        title="가게 목록을 불러오지 못했어요"
+        title={t("가게 목록을 불러오지 못했어요")}
       />
     ) : mode === "nearby" ? (
       nearbyFilter === "all" ? (
-        <EmptyState description="검색에서 이름이나 동네로 찾아보세요." title="주변에 등록된 가게가 아직 없어요" />
+        <EmptyState description={t("검색에서 이름이나 동네로 찾아보세요.")} title={t("주변에 등록된 가게가 아직 없어요")} />
       ) : (
         <EmptyState
-          actionLabel="전체 보기"
-          description="필터를 풀면 더 많은 가게를 볼 수 있어요."
+          actionLabel={t("전체 보기")}
+          description={t("필터를 풀면 더 많은 가게를 볼 수 있어요.")}
           onAction={() => setNearbyFilter("all")}
-          title="조건에 맞는 가게가 없어요"
+          title={t("조건에 맞는 가게가 없어요")}
         />
       )
     ) : mode === "saved" ? (
       <EmptyState
-        description="가게 상세에서 찜해 두면 여기서 바로 기록할 수 있어요."
+        description={t("가게 상세에서 찜해 두면 여기서 바로 기록할 수 있어요.")}
         icon={<Bookmark color={colors.textFaint} size={32} />}
-        title="찜한 가게가 없어요"
+        title={t("찜한 가게가 없어요")}
       />
     ) : trimmedQuery ? (
       <EmptyState
-        description={`‘${trimmedQuery}’ 가게가 아직 목록에 없어요. 이름이나 동네를 다르게 입력해보세요.`}
+        description={t("‘{v1}’ 가게가 아직 목록에 없어요. 이름이나 동네를 다르게 입력해보세요.", { v1: trimmedQuery })}
         icon={<SearchX color={colors.textFaint} size={32} />}
-        title="검색 결과가 없어요"
+        title={t("검색 결과가 없어요")}
       />
     ) : (
       <View style={styles.quickKeywords}>
         {quickKeywords.map((keyword) => (
-          <Chip accessibilityHint="이 검색어로 찾아요" key={keyword} label={keyword} onPress={() => setQuery(keyword)} />
+          <Chip accessibilityHint={t("이 검색어로 찾아요")} key={keyword} label={keyword} onPress={() => setQuery(keyword)} />
         ))}
       </View>
     )
@@ -319,16 +323,16 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
       <View style={styles.handle} />
       <View style={styles.header}>
         <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.flex} variant="headline">
-          {"어느 가게를\n기록할까요?"}
+          {t("어느 가게를\n기록할까요?")}
         </AppText>
-        <IconButton accessibilityLabel="닫기" icon={<X color={colors.ink} size={24} />} onPress={close} />
+        <IconButton accessibilityLabel={t("닫기")} icon={<X color={colors.ink} size={24} />} onPress={close} />
       </View>
 
       <View style={styles.searchWrap}>
         <View style={styles.searchField}>
           <Search color={colors.textMuted} size={18} />
           <TextInput
-            accessibilityLabel="가게 검색"
+            accessibilityLabel={t("가게 검색")}
             autoCorrect={false}
             autoFocus={mode === "search"}
             maxFontSizeMultiplier={maxFontScale}
@@ -336,7 +340,7 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
               setQuery(text)
               if (text.trim()) setMode("search")
             }}
-            placeholder="가게·동네·스타일 검색"
+            placeholder={t("가게·동네·스타일 검색")}
             placeholderTextColor={colors.textMuted}
             ref={searchRef}
             returnKeyType="search"
@@ -346,7 +350,7 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
           <View style={styles.clearSlot}>
             {query ? (
               <IconButton
-                accessibilityLabel="검색어 지우기"
+                accessibilityLabel={t("검색어 지우기")}
                 icon={<X color={colors.textMuted} size={16} />}
                 onPress={() => setQuery("")}
               />
@@ -355,14 +359,14 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
         </View>
       </View>
 
-      <View accessibilityLabel="가게 찾는 방법" accessibilityRole="tablist" style={styles.tabs}>
+      <View accessibilityLabel={t("가게 찾는 방법")} accessibilityRole="tablist" style={styles.tabs}>
         {MODES.map(({ id, label }) => {
           const active = mode === id
           // 주변은 20곳씩 이어 불러오는 목록이라 전체 수를 모른다. 불러온 수를 세면 스크롤할 때 60곳, 80곳으로 늘었다
           const count = id === "saved" ? savedShops.length : null
           return (
             <Pressable
-              accessibilityLabel={count === null ? label : `${label} ${count}곳`}
+              accessibilityLabel={count === null ? label : t("{v1} {v2}곳", { v1: label, v2: count })}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               key={id}
@@ -374,10 +378,10 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
               style={({ pressed }) => [styles.tab, id === "saved" && styles.savedTab, id === "search" && styles.searchTab, active && styles.tabActive, pressed && !active && styles.tabPressed]}
             >
               <AppText capScale numberOfLines={1} style={[typography.button, active && styles.onSelectedText]} variant="secondary">
-                {label}
+                {t(label)}
                 {count !== null ? (
                   <AppText capScale style={active ? styles.selectedCount : undefined} tone={active ? "ink" : "muted"} variant="secondary">
-                    {` ${count}곳`}
+                    {t(" {v1}곳", { v1: count })}
                   </AppText>
                 ) : null}
               </AppText>
@@ -387,7 +391,7 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
       </View>
 
       {isLoading ? (
-        <LoadingState label="가게 목록을 불러오는 중…" />
+        <LoadingState label={t("가게 목록을 불러오는 중…")} />
       ) : (
         <FlatList
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -397,8 +401,8 @@ function SelectShopBody({ onRetry, restoredMode, restoredQuery = "" }: {
           contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.x8 }]}
           data={data}
           ListFooterComponent={mode !== "saved" && activeQuery.error && data.length ? (
-            <EmptyState actionLabel="다시 불러오기" onAction={activeQuery.loadMore} title="다음 가게를 불러오지 못했어요" />
-          ) : mode !== "saved" && activeQuery.isLoading && data.length ? <LoadingState label="더 불러오는 중…" /> : null}
+            <EmptyState actionLabel={t("다시 불러오기")} onAction={activeQuery.loadMore} title={t("다음 가게를 불러오지 못했어요")} />
+          ) : mode !== "saved" && activeQuery.isLoading && data.length ? <LoadingState label={t("더 불러오는 중…")} /> : null}
           keyExtractor={(item) => item.id}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"

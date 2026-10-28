@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 import { useMemo, useState } from 'react'
 import { Camera, Zap, ChevronRight, ExternalLink, Bell, BellRing, CalendarX } from 'lucide-react'
 import { findShopByName } from '../data/shops'
@@ -154,12 +155,12 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
         <div className="mb-2 flex items-center gap-2.5">
           <img src="/logo.png" alt="" className="h-8 w-8 object-contain" />
           <div>
-            <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">라멘속보</h1>
-            <p className="text-[13px] text-[#6B6E73]">라멘집 공식 인스타그램 소식 모아보기</p>
+            <h1 className="text-[20px] font-black tracking-tight text-[#25282B]">{t("라멘속보")}</h1>
+            <p className="text-[13px] text-[#6B6E73]">{t("라멘집 공식 인스타그램 소식 모아보기")}</p>
           </div>
         </div>
 
-        <div role="group" aria-label="소식 종류" className="no-scrollbar flex gap-1.5 overflow-x-auto">
+        <div role="group" aria-label={t("소식 종류")} className="no-scrollbar flex gap-1.5 overflow-x-auto">
           {FILTERS.map(f => {
             const active = activeFilter === f
             return (
@@ -169,7 +170,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
                     active ? 'bg-[#25282B] text-white' : 'bg-[#F2F2F2] text-[#25282B]'
                   }`}
                 >
-                  {f}
+                  {t(f)}
                 </span>
               </button>
             )
@@ -181,8 +182,8 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
         {filtered.length === 0 && (
           <div className="px-6 py-16 text-center">
             <Bell className="mx-auto mb-3 h-8 w-8 text-[#BEBEBE]" aria-hidden="true" />
-            <p className="text-[15px] font-bold text-[#25282B]">해당하는 소식이 없어요</p>
-            <p className="mt-1 text-[13px] text-[#6B6E73]">새 소식이 올라오면 이곳에 모아 드릴게요.</p>
+            <p className="text-[15px] font-bold text-[#25282B]">{t("해당하는 소식이 없어요")}</p>
+            <p className="mt-1 text-[13px] text-[#6B6E73]">{t("새 소식이 올라오면 이곳에 모아 드릴게요.")}</p>
           </div>
         )}
 
@@ -195,7 +196,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
           return (
             <article
               key={post.id}
-              aria-label={`${post.shop} ${post.type}${ended ? ', 종료' : ''}`}
+              aria-label={t("{v0} {v1}{v2}", { v0: post.shop, v1: post.type, v2: ended ? ', 종료' : '' })}
               className={`overflow-hidden rounded-[6px] border border-[#E2E2E2] bg-white ${ended ? 'opacity-70' : ''}`}
             >
               <div className="flex items-center justify-between gap-2 border-b border-[#E2E2E2] py-2 pl-3.5 pr-1.5">
@@ -225,7 +226,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
                   type="button"
                   onClick={() => toggleNotify(post.id)}
                   aria-pressed={notifying}
-                  aria-label={notifying ? `${post.shop} 알림 끄기` : `${post.shop} 알림 받기`}
+                  aria-label={notifying ? t("{v0} 알림 끄기", { v0: post.shop }) : t("{v0} 알림 받기", { v0: post.shop })}
                   className="flex min-h-11 shrink-0 items-center"
                 >
                   <span
@@ -234,7 +235,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
                     }`}
                   >
                     {notifying ? <BellRing className="h-3.5 w-3.5" aria-hidden="true" /> : <Bell className="h-3.5 w-3.5" aria-hidden="true" />}
-                    {notifying ? '알림 켜짐' : '알림 받기'}
+                    {notifying ? t("알림 켜짐") : t("알림 받기")}
                   </span>
                 </button>
               </div>
@@ -248,13 +249,13 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
               <div className="p-4">
                 <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
                   <span className={`rounded-[4px] px-1.5 py-0.5 text-[12px] font-bold ${ended ? 'bg-[#F2F2F2] text-[#6B6E73]' : 'bg-[#FFF0F0] text-[#E60000]'}`}>
-                    {post.type}
+                    {t(post.type)}
                   </span>
                   {period && (
                     <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#6B6E73]">
                       {ended && <CalendarX className="h-3.5 w-3.5" aria-hidden="true" />}
                       {period}
-                      {ended ? ' · 종료' : ''}
+                      {ended ? t(" · 종료") : ''}
                     </span>
                   )}
                 </div>
@@ -263,7 +264,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
                 <div className="border-t border-[#F2F2F2] pt-3">
                   <p className="mb-1.5 flex items-center gap-1 text-[13px] font-black text-[#25282B]">
                     <Zap className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>핵심 요약</span>
+                    <span>{t("핵심 요약")}</span>
                   </p>
                   <ul className="space-y-1">
                     {post.summary.map((line, idx) => (
@@ -281,7 +282,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
                     onClick={() => onShopClick?.(post.shop)}
                     className="flex h-11 flex-1 items-center justify-center gap-1 rounded-[6px] bg-[#F2F2F2] text-[13px] font-bold text-[#25282B] transition-colors hover:bg-[#EAEAEA]"
                   >
-                    <span>매장 정보</span>
+                    <span>{t("매장 정보")}</span>
                     <ChevronRight className="h-4 w-4 text-[#6B6E73]" aria-hidden="true" />
                   </button>
                   {instagramUrl && (
@@ -291,9 +292,9 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
                       rel="noreferrer"
                       className="flex h-11 flex-1 items-center justify-center gap-1 rounded-[6px] border border-[#E2E2E2] bg-white text-[13px] font-bold text-[#25282B] transition-colors hover:border-[#BEBEBE]"
                     >
-                      <span>인스타 원문</span>
+                      <span>{t("인스타 원문")}</span>
                       <ExternalLink className="h-3.5 w-3.5 text-[#6B6E73]" aria-hidden="true" />
-                      <span className="sr-only">(새 창)</span>
+                      <span className="sr-only">{t("(새 창)")}</span>
                     </a>
                   )}
                 </div>
@@ -303,7 +304,7 @@ export default function NewsFeedScreen({ onShopClick, user, onLoginRequest }: Pr
         })}
 
         {filtered.length > 0 && (
-          <p className="px-4 pb-3 pt-6 text-center text-[13px] text-[#6B6E73]">모든 라멘속보를 확인했습니다. 새 소식이 올라오면 알려드릴게요.</p>
+          <p className="px-4 pb-3 pt-6 text-center text-[13px] text-[#6B6E73]">{t("모든 라멘속보를 확인했습니다. 새 소식이 올라오면 알려드릴게요.")}</p>
         )}
         <div className="h-6" />
       </div>

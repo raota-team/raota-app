@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para mostrarte restaurantes de ramen cercanos y su distancia.",
+    "NSCameraUsageDescription": "El acceso a la cámara te permite añadir fotos a tus registros de ramen.",
+    "NSPhotoLibraryUsageDescription": "El acceso a tu fototeca te permite añadir fotos a tus registros de ramen y a tu perfil."
+  }
+}

@@ -1,3 +1,4 @@
+import { useLocale } from "../i18n"
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import {
   DEMO_BASE_PROFILE,
@@ -17,6 +18,7 @@ import {
   profileDelta,
   shopVisitsOf,
   tasteIdentity,
+  t,
   typeCountsWithLogs,
   type CurrentMonthReport,
   type DemoBowl,
@@ -65,7 +67,7 @@ function useQueryState(): Pick<Query<unknown>, "isLoading" | "error"> {
 type RemoteResult<T> = Query<T> & { key: string | null }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "데이터를 불러오지 못했어요"
+  return error instanceof Error ? error.message : t("데이터를 불러오지 못했어요")
 }
 
 function useCacheVersion(): number {
@@ -447,12 +449,13 @@ export function useLongestStreak(): Query<number> {
 
 /** 취향 정체성("진한 돈골파")과 판정 근거. 누적 종류 분포 + 육수 농도 평균으로 정한다 */
 export function useTasteIdentity(): Query<TasteIdentity> {
+  const locale = useLocale()
   const { currentUser, userLogs } = useRaota()
   const profile = useTasteProfile()
   const data = useMemo(() => {
     const base = currentUser?.id === DEMO_USER.id ? DEMO_TYPE_COUNTS : {}
     return tasteIdentity(typeCountsWithLogs(base, userLogs), profile.data.profile)
-  }, [currentUser?.id, profile.data.profile, userLogs])
+  }, [currentUser?.id, profile.data.profile, userLogs, locale])
   return { ...profile, data }
 }
 
@@ -468,6 +471,7 @@ export interface MonthlyReportsData {
  * 이번 달은 실제 기록에서 계산한다
  */
 export function useMonthlyReports(now = new Date()): Query<MonthlyReportsData> {
+  const locale = useLocale()
   const { currentUser, userLogs } = useRaota()
   const bowls = useMyBowls()
   const remote = isRemote("ramenLogs") && Boolean(currentUser)
@@ -481,14 +485,15 @@ export function useMonthlyReports(now = new Date()): Query<MonthlyReportsData> {
     }
     // now는 화면을 여는 시점 기준으로 충분하다
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bowls.data, currentUser?.id, remote, userLogs])
+  }, [bowls.data, currentUser?.id, remote, userLogs, locale])
   return { ...bowls, data }
 }
 
 /** 활동 등급(그릇 수 기준). 다음 등급까지 남은 그릇과 진행률 포함 */
 export function useActivityLevel(): Query<ReturnType<typeof getRamenActivityLevel>> {
+  const locale = useLocale()
   const count = useBowlCount()
-  const data = useMemo(() => getRamenActivityLevel(count.data), [count.data])
+  const data = useMemo(() => getRamenActivityLevel(count.data), [count.data, locale])
   return { ...count, data }
 }
 

@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "Your location is used to show nearby ramen shops and their distance.",
+    "NSCameraUsageDescription": "Camera access lets you add photos to your ramen logs.",
+    "NSPhotoLibraryUsageDescription": "Photo library access lets you add photos to your ramen logs and profile."
+  }
+}

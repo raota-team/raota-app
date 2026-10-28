@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.raota.app",
-      "buildNumber": "10",
+      "buildNumber": "11",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -28,7 +28,8 @@
               }
             ]
           }
-        }
+        },
+        "CFBundleDevelopmentRegion": "ko"
       }
     },
     "android": {
@@ -47,6 +48,29 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": {
+            "ios": [
+              "ko",
+              "en",
+              "zh-Hans",
+              "ja",
+              "es"
+            ],
+            "android": [
+              "ko",
+              "en",
+              "zh-Hans",
+              "ja",
+              "es"
+            ]
+          },
+          "supportsRTL": false,
+          "allowDynamicLocaleChangesAndroid": true
+        }
+      ],
       [
         "expo-location",
         {
@@ -98,10 +122,22 @@
               {
                 "fontFamily": "Pretendard",
                 "fontDefinitions": [
-                  { "path": "./assets/fonts/Pretendard-Regular.otf", "weight": 400 },
-                  { "path": "./assets/fonts/Pretendard-Medium.otf", "weight": 500 },
-                  { "path": "./assets/fonts/Pretendard-SemiBold.otf", "weight": 600 },
-                  { "path": "./assets/fonts/Pretendard-Bold.otf", "weight": 700 }
+                  {
+                    "path": "./assets/fonts/Pretendard-Regular.otf",
+                    "weight": 400
+                  },
+                  {
+                    "path": "./assets/fonts/Pretendard-Medium.otf",
+                    "weight": 500
+                  },
+                  {
+                    "path": "./assets/fonts/Pretendard-SemiBold.otf",
+                    "weight": 600
+                  },
+                  {
+                    "path": "./assets/fonts/Pretendard-Bold.otf",
+                    "weight": 700
+                  }
                 ]
               }
             ]
@@ -121,13 +157,23 @@
         "expo-build-properties",
         {
           "android": {
-            "extraMavenRepos": ["https://repository.map.naver.com/archive/maven", "https://devrepo.kakao.com/nexus/content/groups/public/"]
+            "extraMavenRepos": [
+              "https://repository.map.naver.com/archive/maven",
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
+            ]
           }
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "locales": {
+      "ko": "./locales/ko.json",
+      "en": "./locales/en.json",
+      "zh-Hans": "./locales/zh-Hans.json",
+      "ja": "./locales/ja.json",
+      "es": "./locales/es.json"
     }
   }
 }

@@ -1,3 +1,5 @@
+import { useLocale } from "@/src/i18n"
+import { formatDate, formatNumber, getLocale, t } from "@raota/shared"
 import * as Location from "expo-location"
 import { router, useFocusEffect } from "expo-router"
 import { ChevronRight, Sparkles, Ticket } from "lucide-react-native"
@@ -38,10 +40,10 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 /** 인사 문구는 서울 시각의 끼니를 따른다. */
 function mealOfNow(now = new Date()) {
   const hour = (now.getUTCHours() + 9) % 24
-  if (hour >= 5 && hour < 11) return "아침"
-  if (hour >= 11 && hour < 16) return "점심"
-  if (hour >= 16 && hour < 22) return "저녁"
-  return "야식"
+  if (hour >= 5 && hour < 11) return t("아침")
+  if (hour >= 11 && hour < 16) return t("점심")
+  if (hour >= 16 && hour < 22) return t("저녁")
+  return t("야식")
 }
 
 /** 그릇에 기록된 서울 날짜와 오늘 사이의 일수. */
@@ -65,7 +67,7 @@ const RECOMMEND_CARD = 154
 function formatPickDate(isoDate: string) {
   const [year, month, day] = isoDate.split("-").map(Number)
   const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()]
-  return `${month}월 ${day}일 (${weekday})`
+  return getLocale() === "ko" ? `${month}월 ${day}일 (${weekday})` : formatDate(new Date(Date.UTC(year, month - 1, day)), { month: "short", day: "numeric", weekday: "short", timeZone: "UTC" })
 }
 
 function openShop(shopId: string) {
@@ -106,11 +108,11 @@ function fallbackRecommendations(shops: Shop[]): Recommendation[] {
 
 function plainReason(shop: Shop) {
   if (shop.reviewCount > 0) {
-    return [`라멘로그 ${shop.reviewCount.toLocaleString()}개`, shop.rating > 0 ? `★ ${shop.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")
+    return [t("라멘로그 {count}개", { count: formatNumber(shop.reviewCount) }), shop.rating > 0 ? `★ ${shop.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")
   }
-  if (shop.distanceM <= 0 && "unknownFields" in shop) return shop.tags[0] ?? "새로운 라멘집"
+  if (shop.distanceM <= 0 && "unknownFields" in shop) return shop.tags[0] ?? t("새로운 라멘집")
   const open = statusOf(shop).open
-  return open ? `가까운 영업 중 매장 · ${formatDistance(shop.distanceM)}` : `${formatDistance(shop.distanceM)} 거리`
+  return open ? t("가까운 영업 중 매장 · {distance}", { distance: formatDistance(shop.distanceM) }) : t("{distance} 거리", { distance: formatDistance(shop.distanceM) })
 }
 
 /**
@@ -134,10 +136,10 @@ function personalRecommendations(shops: Shop[], identity: TasteIdentity, profile
         const matchesLeader = leader === "돈코츠" || leader === "이에케"
           ? matchesShopRamenType(shop, leader)
           : hasAny(text, SOUP_KEYS[leader] ?? [leader])
-        if (matchesLeader) reasons.push(`${leader}를 가장 자주 드셔서`)
+        if (matchesLeader) reasons.push(t("{type}를 가장 자주 드셔서", { type: t(leader) }))
       }
-      if (dense && hasAny(text, DENSE_KEYS)) reasons.push("진한 육수 취향")
-      if (!dense && hasAny(text, CLEAN_KEYS)) reasons.push("맑은 육수 취향")
+      if (dense && hasAny(text, DENSE_KEYS)) reasons.push(t("진한 육수 취향"))
+      if (!dense && hasAny(text, CLEAN_KEYS)) reasons.push(t("맑은 육수 취향"))
       return { shop, reason: reasons.length ? reasons.join(" · ") : plainReason(shop) }
     })
   } catch {
@@ -174,6 +176,7 @@ function useKnownLocation() {
 }
 
 function SectionHead({ title, right }: { title: string; right?: React.ReactNode }) {
+  useLocale()
   return (
     <View style={styles.sectionHead}>
       <AppText accessibilityLabel={title} accessibilityRole="header" numberOfLines={1} style={styles.sectionTitle} variant="sectionTitle">
@@ -186,14 +189,16 @@ function SectionHead({ title, right }: { title: string; right?: React.ReactNode 
 
 /** 목록 사진과 라멘 종류는 사진 바깥의 별도 장식 테두리 없이 보여 준다. */
 function Thumb({ uri, size }: { uri?: string; size: number }) {
+  useLocale()
   return <ResilientUriImage accessibilityLabel="" style={[styles.thumb, { width: size, height: size }]} uri={uri} />
 }
 
 function PhotoTypePill({ type }: { type: string }) {
+  useLocale()
   return (
     <View style={styles.photoTypePill}>
       <AppText capScale style={styles.onPhotoText} variant="meta">
-        {type}
+        {t(type)}
       </AppText>
     </View>
   )
@@ -204,11 +209,13 @@ function PhotoTypePill({ type }: { type: string }) {
  * 데이터 hook에 refetch가 생기면 이 key 대신 그것을 부른다.
  */
 export default function HomeScreen() {
+  useLocale()
   const [retryKey, setRetryKey] = useState(0)
   return <HomeBody key={retryKey} onRetry={() => setRetryKey((key) => key + 1)} />
 }
 
 function HomeBody({ onRetry }: { onRetry: () => void }) {
+  useLocale()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const { currentUser } = useRaota()
@@ -250,14 +257,14 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
         ? { ...shop, distanceM: Math.round(distanceBetweenCoordinates(origin, { latitude: shop.lat, longitude: shop.lng })) }
         : shop,
     )
-  }, [origin, shopsQuery.data])
+  }, [origin, shopsQuery.data, getLocale()])
 
   /** mock에서는 원장 에디터 픽, remote에서는 발행된 오늘의 큐레이션만 보여준다. */
   const todayPick = useMemo(
     () => curation.remote
       ? curation.data?.shop ?? null
       : shops.find((shop) => (shop.aiSummary || shop.description) && shop.photos[0]) ?? shops[0] ?? null,
-    [curation.data?.shop, curation.remote, shops],
+    [curation.data?.shop, curation.remote, shops, getLocale()],
   )
   /** 추천: 기록이 있는 로그인 사용자는 취향 기반 랭킹, 그 외에는 라멘로그·거리 기준 */
   const personal = !shopsQuery.remote && loggedIn && tasteProfile.data.profile.count > 0 && Boolean(tasteIdentity.data.leader)
@@ -265,7 +272,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   const recommendations = useMemo(() => {
     const pool = shops.filter((shop) => shop.id !== todayPick?.id)
     return personal ? personalRecommendations(pool, tasteIdentity.data, tasteProfile.data.profile) : fallbackRecommendations(pool)
-  }, [personal, shops, tasteIdentity.data, tasteProfile.data.profile, todayPick?.id])
+  }, [personal, shops, tasteIdentity.data, tasteProfile.data.profile, todayPick?.id, getLocale()])
   /*
    * 가까운 순. 오늘의 픽과 추천에 이미 나온 매장은 뺀다.
    * 비회원은 라멘로그·평점이 모두 0이라 추천 정렬이 거리순으로 무너지는데,
@@ -277,25 +284,25 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
       .filter((shop) => shop.id !== todayPick?.id && !shown.has(shop.id))
       .sort((a, b) => a.distanceM - b.distanceM)
       .slice(0, 5)
-  }, [recommendations, shops, todayPick?.id])
+  }, [recommendations, shops, todayPick?.id, getLocale()])
   const [topRecommendation, ...otherRecommendations] = recommendations
-  const recommendTitle = personal && currentUser ? `${currentUser.nickname}님이 좋아할 라멘집` : "처음이라면 여기부터"
-  const recommendMeta = personal ? `${tasteIdentity.data.total}그릇 취향 기준` : null
+  const recommendTitle = personal && currentUser ? t("{name}님이 좋아할 라멘집", { name: currentUser.nickname }) : t("처음이라면 여기부터")
+  const recommendMeta = personal ? t("{count}그릇 취향 기준", { count: tasteIdentity.data.total }) : null
   const today = seoulToday()
   const lastBowl = bowls.data[0]
   const monthKey = seoulMonthKey()
   const monthCount = loggedIn ? bowls.data.filter((bowl) => monthKeyOfDate(bowl.date) === monthKey).length : 0
   const lastRecorded = lastBowl ? daysSince(lastBowl.date, today) : null
   const statusLine = lastBowl
-    ? `이번 달 ${monthCount}그릇 · 마지막 기록 ${lastRecorded === 0 ? "오늘" : `${lastRecorded}일 전`}`
-    : "아직 기록이 없어요 · 첫 그릇을 남겨 보세요"
+    ? t("이번 달 {count}그릇 · 마지막 기록 {when}", { count: monthCount, when: lastRecorded === 0 ? t("오늘") : t("{days}일 전", { days: lastRecorded ?? 0 }) })
+    : t("아직 기록이 없어요 · 첫 그릇을 남겨 보세요")
 
 
   /** 라운지 미리보기: 최신 공개 기록 중 사진이 있는 것. 오늘의 픽 매장은 반복하지 않는다 */
   const loungeFeed = useLoungeLogs({ type: "전체", sort: "latest", pageSize: 12 })
   const loungePreview = useMemo(
     () => loungeFeed.data.filter((log) => logPhoto(log) && log.shop.id !== todayPick?.id).slice(0, 5),
-    [loungeFeed.data, todayPick?.id],
+    [loungeFeed.data, todayPick?.id, getLocale()],
   )
 
   // 홈이 부르는 것(매장·오늘의 큐레이션·내 기록·라운지 미리보기·오늘 식권)을 다 받으면 앱을 켤 때 덮어 둔 화면을 걷는다.
@@ -341,40 +348,39 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
                 RAOTA<AppText style={styles.wordmark} tone="brand" variant="screenTitle">.</AppText>
               </AppText>
               <AppText capScale numberOfLines={1} style={styles.bold} tone="sub" variant="meta">
-                나의 라멘 취향을 찾는 곳
-              </AppText>
+                {t("나의 라멘 취향을 찾는 곳")}</AppText>
             </View>
           </View>
           {loggedIn && currentUser ? (
             <Pressable
-              accessibilityHint="마이 탭으로 가요"
-              accessibilityLabel={`${currentUser.nickname}님, 내 정보`}
+              accessibilityHint={t("마이 탭으로 가요")}
+              accessibilityLabel={t("{p0}님, 내 정보", { p0: currentUser.nickname })}
               accessibilityRole="button"
               onPress={() => router.navigate("/native/my")}
               style={({ pressed }) => [styles.account, pressed && styles.pressedWash]}
             >
               <AppText capScale numberOfLines={1} style={[styles.bold, styles.flexShrink]} variant="secondary">
-                {currentUser.nickname}<AppText style={styles.accountSuffix} tone="sub" variant="secondary">님</AppText>
+                {t("{name}님", { name: currentUser.nickname })}
               </AppText>
               <ChevronRight color={colors.inkSub} size={16} />
             </Pressable>
           ) : (
             <View style={styles.authRow}>
               <Pressable
-                accessibilityLabel="로그인"
+                accessibilityLabel={t("로그인")}
                 accessibilityRole="button"
                 onPress={() => router.push("/auth/login")}
                 style={({ pressed }) => [styles.loginButton, pressed && styles.pressedWash]}
               >
-                <AppText capScale style={styles.bold} variant="secondary">로그인</AppText>
+                <AppText capScale style={styles.bold} variant="secondary">{t("로그인")}</AppText>
               </Pressable>
               <Pressable
-                accessibilityLabel="회원가입"
+                accessibilityLabel={t("회원가입")}
                 accessibilityRole="button"
                 onPress={() => router.push({ pathname: "/auth/login", params: { mode: "signup" } })}
                 style={({ pressed }) => [styles.signupButton, pressed && styles.pressedWash]}
               >
-                <AppText capScale style={styles.bold} variant="secondary">회원가입</AppText>
+                <AppText capScale style={styles.bold} variant="secondary">{t("회원가입")}</AppText>
               </Pressable>
             </View>
           )}
@@ -382,12 +388,12 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
 
         <View style={styles.hero} testID="home-hero">
           <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.heroTitle} variant="headline">
-            {`오늘 ${mealOfNow()}은\n어떤 라멘으로 할까요?`}
+            {t("오늘 {p0}은\n어떤 라멘으로 할까요?", { p0: mealOfNow() })}
           </AppText>
           <View style={styles.statusSlot}>
             {loggedIn && currentUser ? (
               <Pressable
-                accessibilityHint="마이 탭에서 기록을 봐요"
+                accessibilityHint={t("마이 탭에서 기록을 봐요")}
                 accessibilityLabel={statusLine}
                 accessibilityRole="button"
                 onPress={() => router.navigate("/native/my")}
@@ -403,8 +409,8 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
         </View>
 
         <Pressable
-          accessibilityHint={ticketsUsedUp ? "오늘 뽑은 식권을 다시 볼 수 있어요" : "국물과 상황을 골라 오늘의 한 그릇을 추천받아요"}
-          accessibilityLabel={ticketsUsedUp ? "오늘 뭐 먹지? AI 라멘 큐레이터, 오늘 식권을 다 뽑았어요" : "오늘 뭐 먹지? AI 라멘 큐레이터"}
+          accessibilityHint={ticketsUsedUp ? t("오늘 뽑은 식권을 다시 볼 수 있어요") : t("국물과 상황을 골라 오늘의 한 그릇을 추천받아요")}
+          accessibilityLabel={ticketsUsedUp ? t("오늘 뭐 먹지? AI 라멘 큐레이터, 오늘 식권을 다 뽑았어요") : t("오늘 뭐 먹지? AI 라멘 큐레이터")}
           accessibilityRole="button"
           // 오늘 식권을 다 뽑았으면 큐레이터에 들이지 않고 뽑아 둔 식권을 연다(사용자 결정, 2026.10.23)
           onPress={() => (ticketsUsedUp ? setTicketsOpen(true) : router.push("/ai-recommend"))}
@@ -415,14 +421,13 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
             <>
               <View style={styles.curatorCopy}>
                 <AppText lineBreakStrategyIOS="hangul-word" style={styles.curatorTitle} variant="sectionTitle">
-                  오늘 뭐 먹지?
-                </AppText>
+                  {t("오늘 뭐 먹지?")}</AppText>
                 <AppText lineBreakStrategyIOS="hangul-word" style={styles.curatorSub} tone="sub" variant="secondary">
-                  {ticketsUsedUp ? `오늘 식권 ${todayTickets.dailyLimit}장을 다 뽑았어요. 내일 다시 채워져요` : "국물과 상황에 맞는 오늘의 한 그릇 추천"}
+                  {ticketsUsedUp ? t("오늘 식권 {p0}장을 다 뽑았어요. 내일 다시 채워져요", { p0: todayTickets.dailyLimit }) : t("국물과 상황에 맞는 오늘의 한 그릇 추천")}
                 </AppText>
                 <View style={[styles.curatorButton, ticketsUsedUp && styles.curatorButtonDone, pressed && (ticketsUsedUp ? styles.curatorButtonDonePressed : styles.curatorButtonPressed)]}>
                   <AppText capScale style={styles.bold} tone={ticketsUsedUp ? "ink" : "onDark"} variant="secondary">
-                    {ticketsUsedUp ? "뽑은 식권 보기" : "AI 추천받기"}
+                    {ticketsUsedUp ? t("뽑은 식권 보기") : t("AI 추천받기")}
                   </AppText>
                 </View>
               </View>
@@ -435,8 +440,8 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
         {todayTickets?.tickets.length && !ticketsUsedUp ? (
           // 카드 안에 넣으면 버튼 안의 버튼이 되므로 카드 바로 아래 한 줄로 둔다. 다 뽑았으면 카드가 대신 연다
           <Pressable
-            accessibilityHint="오늘 뽑은 식권을 골라 다시 볼 수 있어요"
-            accessibilityLabel={`오늘 뽑은 식권 ${todayTickets.tickets.length}장, 남은 식권 ${todayTickets.remaining}장`}
+            accessibilityHint={t("오늘 뽑은 식권을 골라 다시 볼 수 있어요")}
+            accessibilityLabel={t("오늘 뽑은 식권 {p0}장, 남은 식권 {p1}장", { p0: todayTickets.tickets.length, p1: todayTickets.remaining })}
             accessibilityRole="button"
             onPress={() => setTicketsOpen(true)}
             style={({ pressed }) => [styles.ticketLine, pressed && styles.pressedWash]}
@@ -444,9 +449,9 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
           >
             <Ticket color={colors.ink} size={16} />
             <AppText capScale style={[styles.bold, styles.flexShrink]} variant="secondary">
-              {`오늘 뽑은 식권 ${todayTickets.tickets.length}장`}
+              {t("오늘 뽑은 식권 {p0}장", { p0: todayTickets.tickets.length })}
               <AppText capScale tone="sub" variant="secondary">
-                {` · 남은 식권 ${todayTickets.remaining}장`}
+                {t(" · 남은 식권 {p0}장", { p0: todayTickets.remaining })}
               </AppText>
             </AppText>
             <View style={styles.flex} />
@@ -454,22 +459,22 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
           </Pressable>
         ) : todayTickets && todayTickets.tickets.length === 0 && todayTickets.remaining > 0 ? (
           // 오늘 아직 안 뽑았어도 몇 장 남았는지 알린다. 뽑을 식권이 없어 열 것이 없으니 누르는 줄이 아니다(큐레이터는 위 카드가 연다)
-          <View accessibilityLabel={`오늘 식권 ${todayTickets.remaining}장 남았어요`} style={styles.ticketLine} testID="home-tickets-left">
+          <View accessibilityLabel={t("오늘 식권 {count}장 남았어요", { count: todayTickets.remaining })} style={styles.ticketLine} testID="home-tickets-left">
             <Ticket color={colors.textMuted} size={16} />
             <AppText capScale style={styles.flexShrink} tone="sub" variant="secondary">
-              {`오늘 식권 ${todayTickets.remaining}장 남았어요`}
+              {t("오늘 식권 {count}장 남았어요", { count: todayTickets.remaining })}
             </AppText>
           </View>
         ) : null}
 
-        {shopsQuery.isLoading ? <LoadingState label="라멘집을 불러오는 중…" /> : null}
+        {shopsQuery.isLoading ? <LoadingState label={t("라멘집을 불러오는 중…")} /> : null}
         {shopsQuery.error ? (
           <EmptyState
             // 로컬 원장의 오류(저장소)는 다시 올려도 풀리지 않아 서버에서 읽을 때만 다시 부른다
-            actionLabel={shopsQuery.remote ? "다시 불러오기" : undefined}
-            description="잠시 후 다시 열어 주세요."
+            actionLabel={shopsQuery.remote ? t("다시 불러오기") : undefined}
+            description={t("잠시 후 다시 열어 주세요.")}
             onAction={onRetry}
-            title="라멘집을 불러오지 못했어요"
+            title={t("라멘집을 불러오지 못했어요")}
           />
         ) : null}
 
@@ -477,16 +482,16 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
           <View style={styles.sectionFirst} testID="home-curation">
             <SectionHead
               right={<AppText capScale style={styles.bold} tone="sub" variant="meta">{pickDateLabel}</AppText>}
-              title="오늘의 큐레이션"
+              title={t("오늘의 큐레이션")}
             />
             <Pressable
-              accessibilityLabel={`오늘의 큐레이션, ${todayPick.name}${todayPick.branch ? ` ${todayPick.branch}` : ""}${pickCatalog.spec ? `, ${pickCatalog.spec}` : ""}${pickQuote ? `, ${pickByAi ? "AI가 요약했어요, " : ""}${pickQuote}` : ""}, 매장 상세 보기`}
+              accessibilityLabel={t("오늘의 큐레이션, {p0}{p1}{p2}{p3}, 매장 상세 보기", { p0: todayPick.name, p1: todayPick.branch ? ` ${todayPick.branch}` : "", p2: pickCatalog.spec ? `, ${pickCatalog.spec}` : "", p3: pickQuote ? `, ${pickByAi ? `${t("AI가 요약했어요")}, ` : ""}${pickQuote}` : "" })}
               accessibilityRole="button"
               onPress={() => openShop(todayPick.id)}
               style={({ pressed }) => pressed && pressFade}
             >
               <View style={styles.pickPhoto}>
-                <ResilientUriImage accessibilityLabel={`${todayPick.name} 대표 사진`} style={StyleSheet.absoluteFill} uri={todayPick.photos[0]} />
+                <ResilientUriImage accessibilityLabel={t("{p0} 대표 사진", { p0: todayPick.name })} style={StyleSheet.absoluteFill} uri={todayPick.photos[0]} />
                 {pickCatalog.style ? <View style={styles.pickType}><PhotoTypePill type={pickCatalog.style} /></View> : null}
               </View>
               <View style={styles.pickCopy}>
@@ -501,7 +506,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
                       // 섹션 머리의 날짜처럼 진한 잉크 글씨로 둔다(사용자 결정, 2026.10.23)
                       <View style={styles.pickSummaryLabel}>
                         <Sparkles color={colors.ink} size={14} />
-                        <AppText capScale style={styles.bold} variant="meta">AI가 요약했어요</AppText>
+                        <AppText capScale style={styles.bold} variant="meta">{t("AI가 요약했어요")}</AppText>
                       </View>
                     ) : null}
                     <AppText lineBreakStrategyIOS="hangul-word" tone="sub" variant="secondary">
@@ -514,15 +519,15 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
           </View>
         ) : curation.remote ? (
           <View style={styles.sectionFirst} testID="home-curation">
-            <SectionHead title="오늘의 큐레이션" />
+            <SectionHead title={t("오늘의 큐레이션")} />
             {curation.isLoading ? (
-              <LoadingState label="오늘의 큐레이션을 불러오는 중…" />
+              <LoadingState label={t("오늘의 큐레이션을 불러오는 중…")} />
             ) : (
               <EmptyState
-                actionLabel={curation.error ? "다시 불러오기" : undefined}
-                description={curation.error ? "잠시 후 다시 열어 주세요." : "곧 새로운 라멘집을 소개할게요."}
+                actionLabel={curation.error ? t("다시 불러오기") : undefined}
+                description={curation.error ? t("잠시 후 다시 열어 주세요.") : t("곧 새로운 라멘집을 소개할게요.")}
                 onAction={onRetry}
-                title={curation.error ? "오늘의 큐레이션을 불러오지 못했어요" : "오늘의 큐레이션을 준비 중이에요"}
+                title={curation.error ? t("오늘의 큐레이션을 불러오지 못했어요") : t("오늘의 큐레이션을 준비 중이에요")}
               />
             )}
           </View>
@@ -544,7 +549,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
                 const type = catalogOf(shop).style
                 return (
                   <Pressable
-                    accessibilityLabel={`추천 ${index + 1}위, ${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${reason}, 매장 상세 보기`}
+                    accessibilityLabel={t("추천 {p0}위, {p1}{p2}, {p3}, 매장 상세 보기", { p0: index + 1, p1: shop.name, p2: shop.branch ? ` ${shop.branch}` : "", p3: reason })}
                     accessibilityRole="button"
                     key={shop.id}
                     onPress={() => openShop(shop.id)}
@@ -572,24 +577,24 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
             <SectionHead
               right={
                 <Pressable
-                  accessibilityLabel="지도에서 보기"
+                  accessibilityLabel={t("지도에서 보기")}
                   accessibilityRole="button"
                   hitSlop={{ top: 8, bottom: 8 }}
                   onPress={() => router.navigate("/native/map")}
                   style={({ pressed }) => [styles.mapLink, pressed && styles.pressedWash]}
                 >
-                  <AppText capScale style={styles.bold} tone="sub" variant="secondary">지도에서 보기</AppText>
+                  <AppText capScale style={styles.bold} tone="sub" variant="secondary">{t("지도에서 보기")}</AppText>
                   <ChevronRight color={colors.inkSub} size={16} />
                 </Pressable>
               }
-              title={shopsQuery.remote && !origin ? "라멘집 둘러보기" : "가까운 라멘집"}
+              title={shopsQuery.remote && !origin ? t("라멘집 둘러보기") : t("가까운 라멘집")}
             />
             {nearby.map((shop, index) => {
               const catalog = catalogOf(shop)
               const status = statusOf(shop)
               return (
                 <Pressable
-                  accessibilityLabel={`${shop.name}${shop.branch ? ` ${shop.branch}` : ""}, ${shopsQuery.remote && shop.distanceM <= 0 ? "거리 정보 없음" : formatDistance(shop.distanceM)}, ${status.label}, 매장 상세 보기`}
+                  accessibilityLabel={t("{p0}{p1}, {p2}, {p3}, 매장 상세 보기", { p0: shop.name, p1: shop.branch ? ` ${shop.branch}` : "", p2: shopsQuery.remote && shop.distanceM <= 0 ? "거리 정보 없음" : formatDistance(shop.distanceM), p3: status.label })}
                   accessibilityRole="button"
                   key={shop.id}
                   onPress={() => openShop(shop.id)}
@@ -607,7 +612,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
                     ) : null}
                     <AppText capScale numberOfLines={1} tone="muted" variant="meta">
                       {`${shopsQuery.remote && shop.distanceM <= 0 ? "거리 정보 없음" : formatDistance(shop.distanceM)} · `}
-                      <AppText style={status.open && styles.openStatus} tone="muted" variant="meta">{status.label}</AppText>
+                      <AppText style={status.open && styles.openStatus} tone="muted" variant="meta">{t(status.label)}</AppText>
                     </AppText>
                   </View>
                 </Pressable>
@@ -621,17 +626,17 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
             <SectionHead
               right={
                 <Pressable
-                  accessibilityLabel="라운지 가기"
+                  accessibilityLabel={t("라운지 가기")}
                   accessibilityRole="button"
                   hitSlop={{ top: 8, bottom: 8 }}
                   onPress={() => router.navigate("/native/lounge")}
                   style={({ pressed }) => [styles.mapLink, pressed && styles.pressedWash]}
                 >
-                  <AppText capScale style={styles.bold} tone="sub" variant="secondary">라운지 가기</AppText>
+                  <AppText capScale style={styles.bold} tone="sub" variant="secondary">{t("라운지 가기")}</AppText>
                   <ChevronRight color={colors.inkSub} size={16} />
                 </Pressable>
               }
-              title="라운지 새 라멘로그"
+              title={t("라운지 새 라멘로그")}
             />
             <ScrollView
               contentContainerStyle={styles.loungeRow}
@@ -644,7 +649,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
             >
               {loungePreview.map((log) => (
                 <Pressable
-                  accessibilityLabel={`${log.author.name}의 라멘로그, ${log.shop.name} ${log.menuName}`}
+                  accessibilityLabel={t("{p0}의 라멘로그, {p1} {p2}", { p0: log.author.name, p1: log.shop.name, p2: log.menuName })}
                   accessibilityRole="button"
                   key={log.id}
                   onPress={() => router.push({ pathname: "/log/[logId]", params: { logId: log.id } })}

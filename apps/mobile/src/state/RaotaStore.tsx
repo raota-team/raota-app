@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 import type {
   CommunityComment,
   CommunityPost,
@@ -980,7 +981,7 @@ export interface RaotaProviderProps extends PropsWithChildren {
 function errorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
-    : "로컬 데이터를 저장하지 못했습니다."
+    : t("로컬 데이터를 저장하지 못했습니다.")
 }
 
 export function RaotaProvider({
@@ -1425,7 +1426,7 @@ export function RaotaProvider({
   const createLog = useCallback(
     async (input: CreateRamenLogInput): Promise<RamenLog> => {
       const user = selectCurrentUser(state)
-      if (!user) throw new Error("로그인 후 라멘 기록을 저장할 수 있어요.")
+      if (!user) throw new Error(t("로그인 후 라멘 기록을 저장할 수 있어요."))
       const remote = isRemote("ramenLogs")
       // 서버 매장은 기기 원장에 없다. 매장이 있는지는 서버가 확인한다(404)
       const validationError = validateRecordDraft(input, remote ? {} : {
@@ -1523,7 +1524,7 @@ export function RaotaProvider({
   const updateLog = useCallback(
     async (logId: string, input: CreateRamenLogInput): Promise<RamenLog> => {
       const user = selectCurrentUser(state)
-      if (!user) throw new Error("로그인 후 기록을 고칠 수 있어요.")
+      if (!user) throw new Error(t("로그인 후 기록을 고칠 수 있어요."))
       const validationError = validateRecordDraft(input)[0]
       if (validationError) throw new Error(validationError.message)
 
@@ -1538,14 +1539,14 @@ export function RaotaProvider({
           if (isApiError(error, "RESOURCE_NOT_FOUND")) {
             dispatch({ type: "ACCOUNT_UPDATE", memberId, update: (current) => accountWithoutLog(current, logId) })
             remoteCache.invalidate("lounge:", `log:${logId}`, MY_LOGS_OF_TYPE_KEY)
-            throw new Error("이미 삭제된 기록이에요.")
+            throw new Error(t("이미 삭제된 기록이에요."))
           }
           throw new Error(writeErrorMessage(error, "기록을 고치지 못했어요. 다시 시도해 주세요."))
         }
       }
 
       const previous = state.logs.find((item) => item.id === logId)
-      if (!previous || previous.author.id !== user.id) throw new Error("내가 남긴 기록만 고칠 수 있어요.")
+      if (!previous || previous.author.id !== user.id) throw new Error(t("내가 남긴 기록만 고칠 수 있어요."))
       const previousPhotos = previous.photos ?? (previous.imageUrl ? [previous.imageUrl] : [])
       const nextPhotos = input.photos ?? []
       const added = nextPhotos.filter((uri) => !previousPhotos.includes(uri))
@@ -1742,7 +1743,7 @@ export function RaotaProvider({
   const createPost = useCallback(
     async (input: CreateCommunityPostInput): Promise<CommunityPost> => {
       const user = selectCurrentUser(state)
-      if (!user) throw new Error("로그인 후 게시글을 작성할 수 있어요.")
+      if (!user) throw new Error(t("로그인 후 게시글을 작성할 수 있어요."))
       const imageUrls = await persistMediaFiles(
         input.imageUrls ?? [],
         "community-post",
@@ -1847,7 +1848,7 @@ export function RaotaProvider({
   )
   const refreshTasteReport = useCallback((): TasteReport => {
     const user = selectCurrentUser(state)
-    if (!user) throw new Error("로그인 후 취향 리포트를 만들 수 있어요.")
+    if (!user) throw new Error(t("로그인 후 취향 리포트를 만들 수 있어요."))
     const ownedLogs = state.logs.filter(
       (log) => log.author.id === state.user?.id,
     )

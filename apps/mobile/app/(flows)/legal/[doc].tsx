@@ -1,3 +1,5 @@
+import { t, getLocale } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import { router, useLocalSearchParams } from "expo-router"
 import { Linking, ScrollView, StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -16,6 +18,7 @@ import { colors, line, spacing } from "@/src/theme"
  * 로그인하지 않아도 볼 수 있다(심사: 개인정보처리방침은 앱 안에서 언제든 열 수 있어야 한다).
  */
 export default function LegalDocumentScreen() {
+  useLocale()
   const { doc } = useLocalSearchParams<{ doc?: string }>()
   const insets = useSafeAreaInsets()
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/native"))
@@ -23,8 +26,8 @@ export default function LegalDocumentScreen() {
   if (!isLegalDocumentKey(doc)) {
     return (
       <Screen style={styles.screen}>
-        <Header onBack={goBack} title="문서를 찾을 수 없어요" />
-        <EmptyState actionLabel="돌아가기" onAction={goBack} title="요청한 문서가 없어요" />
+        <Header onBack={goBack} title={t("문서를 찾을 수 없어요")} />
+        <EmptyState actionLabel={t("돌아가기")} onAction={goBack} title={t("요청한 문서가 없어요")} />
       </Screen>
     )
   }
@@ -37,11 +40,14 @@ export default function LegalDocumentScreen() {
   )
   return (
     <Screen style={styles.screen}>
-      <Header onBack={goBack} title={document.title} />
+      <Header onBack={goBack} title={t(document.title)} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.x8 }]}>
         <AppText tone="muted" variant="meta">
-          시행일 {document.effectiveDate}
+          {t("시행일 ")}{document.effectiveDate}
         </AppText>
+        {getLocale() !== "ko" ? (
+          <AppText tone="sub" variant="secondary">{t("이 문서는 한국어 원문으로 제공됩니다.")}</AppText>
+        ) : null}
         {document.sections.map((section) => (
           <View key={section.heading} style={styles.section}>
             <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" variant="cardTitle">

@@ -1,3 +1,5 @@
+import { useLocale } from "@/src/i18n"
+import { formatDate, getLocale, t } from "@raota/shared"
 import { ChevronRight, Ticket } from "lucide-react-native"
 import { Pressable, StyleSheet, View } from "react-native"
 import Svg, { Line } from "react-native-svg"
@@ -13,8 +15,8 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 function seoulParts(date: Date) {
   const seoul = new Date(date.getTime() + SEOUL_OFFSET_MS)
   return {
-    date: `${seoul.getUTCFullYear()}년 ${seoul.getUTCMonth() + 1}월 ${seoul.getUTCDate()}일`,
-    weekday: WEEKDAYS[seoul.getUTCDay()],
+    date: getLocale() === "ko" ? `${seoul.getUTCFullYear()}년 ${seoul.getUTCMonth() + 1}월 ${seoul.getUTCDate()}일` : formatDate(date, { year: "numeric", month: "short", day: "numeric", timeZone: "Asia/Seoul" }),
+    weekday: getLocale() === "ko" ? WEEKDAYS[seoul.getUTCDay()] : formatDate(date, { weekday: "short", timeZone: "Asia/Seoul" }),
     time: `${String(seoul.getUTCHours()).padStart(2, "0")}:${String(seoul.getUTCMinutes()).padStart(2, "0")}`,
   }
 }
@@ -28,7 +30,8 @@ export function ticketIssuedAt(iso: string): string {
 /** 뽑은 날(서울)로 묶을 때의 키와 머리 글 "2026년 10월 23일 (목)" */
 export function ticketDay(iso: string): { key: string; label: string } {
   const { date, weekday } = seoulParts(new Date(iso))
-  return { key: date, label: `${date} (${weekday})` }
+  const seoul = new Date(new Date(iso).getTime() + SEOUL_OFFSET_MS)
+  return { key: seoul.toISOString().slice(0, 10), label: `${date} (${weekday})` }
 }
 
 /**
@@ -36,14 +39,15 @@ export function ticketDay(iso: string): { key: string; label: string } {
  * 그날 몇 번째인지 알 때만(오늘 식권) No.를 함께 적는다.
  */
 export function TicketCard({ ticket, number, onPress }: { ticket: RemoteTicket; number?: number; onPress: () => void }) {
+  useLocale()
   const first = ticket.shops[0]
   const photo = first?.photos.find(Boolean)
   // 종이 색은 그 식권에 고른 국물. 조건에 없으면 첫 매장의 종류로 정한다
   const type = ticket.appliedConditions.find((label) => label in soup) ?? first?.ramenTypes?.[0] ?? ""
   return (
     <Pressable
-      accessibilityHint="이 식권의 추천을 다시 봐요"
-      accessibilityLabel={`${ticketIssuedAt(ticket.createdAt)}에 뽑은 식권, ${first ? first.name : "보여줄 가게 없음"}, ${ticket.appliedConditions.join(", ")}`}
+      accessibilityHint={t("이 식권의 추천을 다시 봐요")}
+      accessibilityLabel={t("{p0}에 뽑은 식권, {p1}, {p2}", { p0: ticketIssuedAt(ticket.createdAt), p1: first ? first.name : t("보여줄 가게 없음"), p2: ticket.appliedConditions.join(", ") })}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.card, { backgroundColor: ticketPaperOf(type) }, pressed && pressFade]}
@@ -59,7 +63,7 @@ export function TicketCard({ ticket, number, onPress }: { ticket: RemoteTicket; 
       {/* 글 묶음이 남은 폭을 모두 차지해야 오른쪽 꼬리가 칸마다 같은 자리에 선다 */}
       <View style={styles.copy}>
         <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={1} style={styles.ink} variant="bodyStrong">
-          {first ? first.name : "지금은 보여줄 가게가 없어요"}
+          {first ? first.name : t("지금은 보여줄 가게가 없어요")}
         </AppText>
         {ticket.appliedConditions.length ? (
           <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.muted} variant="meta">
@@ -99,13 +103,14 @@ export function TodayTicketsSheet({
   /** 지난 식권 화면을 연다. 없으면 링크를 두지 않는다 */
   onHistory?: () => void
 }) {
+  useLocale()
   const now = seoulParts(new Date())
   const count = today?.tickets.length ?? 0
   return (
     <BottomSheet
-      description={today ? `${now.date} (${now.weekday}) · 하루 ${today.dailyLimit}장, 자정에 다시 채워져요` : undefined}
+      description={today ? t("{p0} ({p1}) · 하루 {p2}장, 자정에 다시 채워져요", { p0: now.date, p1: now.weekday, p2: today.dailyLimit }) : undefined}
       onClose={onClose}
-      title="오늘 뽑은 식권"
+      title={t("오늘 뽑은 식권")}
       visible={visible}
     >
       <View style={styles.list}>
@@ -115,13 +120,13 @@ export function TodayTicketsSheet({
         ))}
         {onHistory ? (
           <Pressable
-            accessibilityHint="다른 날 뽑은 식권까지 날짜별로 봐요"
+            accessibilityHint={t("다른 날 뽑은 식권까지 날짜별로 봐요")}
             accessibilityRole="button"
             onPress={onHistory}
             style={({ pressed }) => [styles.historyLink, pressed && styles.historyLinkPressed]}
             testID="ai-ticket-history"
           >
-            <AppText capScale tone="sub" variant="secondary">지난 식권 보기</AppText>
+            <AppText capScale tone="sub" variant="secondary">{t("지난 식권 보기")}</AppText>
             <ChevronRight color={colors.textMuted} size={16} />
           </Pressable>
         ) : null}

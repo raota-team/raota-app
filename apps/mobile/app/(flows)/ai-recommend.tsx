@@ -1,3 +1,5 @@
+import { formatDate, getLocale, t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import * as Haptics from "expo-haptics"
 import * as Location from "expo-location"
 import { router, useLocalSearchParams } from "expo-router"
@@ -113,6 +115,27 @@ interface Condition {
   label: string
   applied: boolean
   note: string
+  /** App-authored annotations retain source keys so a locale change never resets the result. */
+  local?: true
+  labelParams?: Record<string, string | number>
+  noteParams?: Record<string, string | number>
+  soupLabel?: string
+  matchedLabels?: string[]
+}
+
+function conditionLabel(condition: Condition): string {
+  if (!condition.local) return condition.label
+  const params = { ...condition.labelParams }
+  if (condition.soupLabel) params.v1 = t(condition.soupLabel)
+  return t(condition.label, params)
+}
+
+function conditionNote(condition: Condition): string {
+  if (!condition.local) return condition.note
+  const params = { ...condition.noteParams }
+  if (condition.soupLabel) params.v1 = t(condition.soupLabel)
+  if (condition.matchedLabels) params.v1 = condition.matchedLabels.map((label) => t(label)).join(", ")
+  return t(condition.note, params)
 }
 
 interface Candidate {
@@ -150,10 +173,10 @@ const DEFAULT_INPUTS: Inputs = { soupId: "", moodId: "", priorityId: "", prompt:
 /** 고른 조건은 실제 네 단계와 같은 이름으로 표시한다. 아직 고르지 않은 값은 빈 문자열(칸에는 이름만 남는다) */
 function chosenConditions(inputs: Inputs) {
   return [
-    { label: "국물", value: SOUP_OPTIONS.find((option) => option.id === inputs.soupId)?.label ?? "" },
-    { label: "상황", value: MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label ?? "" },
-    { label: "중요", value: PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label ?? "" },
-    { label: "추가", value: inputs.prompt.trim() },
+    { label: t("국물"), value: t(SOUP_OPTIONS.find((option) => option.id === inputs.soupId)?.label ?? "") },
+    { label: t("상황"), value: t(MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label ?? "") },
+    { label: t("중요"), value: t(PRIORITY_OPTIONS.find((option) => option.id === inputs.priorityId)?.label ?? "") },
+    { label: t("추가"), value: inputs.prompt.trim() },
   ]
 }
 
@@ -248,7 +271,7 @@ function ChosenConditionCell({ label, value }: { label: string; value: string })
   return (
     <Animated.View style={[styles.chosenChip, cellStyle]} testID={`ai-condition-${label}`}>
       <Animated.Text maxFontSizeMultiplier={maxFontScale} style={[typography.meta, styles.chosenLabel, labelStyle]}>
-        {label}
+        {t(label)}
       </Animated.Text>
       {/* 아직 고르지 않은 칸은 이름만 둔다("—" 같은 빈 값 표시는 쓰지 않는다). 칸 높이는 고정이라 채워져도 밀리지 않는다 */}
       {filled ? (
@@ -269,7 +292,7 @@ function QuickPromptTile({ text, added, onPress }: { text: string; added: boolea
   const motion = useChoiceMotion(added)
   return (
     <AnimatedPressable
-      accessibilityLabel={added ? `${text}, 추가됨` : `${text} 추가`}
+      accessibilityLabel={added ? t("{v1}, 추가됨", { v1: t(text) }) : t("{v1} 추가", { v1: t(text) })}
       accessibilityRole="button"
       accessibilityState={{ selected: added, disabled: added }}
       disabled={added}
@@ -282,7 +305,7 @@ function QuickPromptTile({ text, added, onPress }: { text: string; added: boolea
       style={[styles.quickChip, motion.containerStyle]}
     >
       <Animated.Text maxFontSizeMultiplier={maxFontScale} style={[typography.secondary, styles.quickText, motion.textStyle]}>
-        {text}
+        {t(text)}
       </Animated.Text>
     </AnimatedPressable>
   )
@@ -324,14 +347,14 @@ function TicketButton({
           </View>
         ) : null}
         <Animated.Text lineBreakStrategyIOS="hangul-word" style={[typography.cardTitle, motion.textStyle]}>
-          {label}
+          {t(label)}
         </Animated.Text>
         <Animated.Text
           lineBreakStrategyIOS="hangul-word"
           maxFontSizeMultiplier={maxFontScale}
           style={[typography.meta, styles.optionSub, motion.subStyle]}
         >
-          {sub}
+          {t(sub)}
         </Animated.Text>
         {soupType ? <View style={[styles.soupSwatch, { backgroundColor: soupColorOf(soupType) }]} /> : null}
       </AnimatedPressable>
@@ -344,13 +367,13 @@ function TicketMachine({ step, picked, hint, children }: { step: 1 | 2 | 3; pick
   return (
     <View style={styles.machine}>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.machineHead}>
-        <AppText capScale style={styles.machineBrand} variant="meta">RAOTA 식권</AppText>
-        <AppText capScale tone="muted" variant="meta">{step}단계</AppText>
+        <AppText capScale style={styles.machineBrand} variant="meta">{t("RAOTA 식권")}</AppText>
+        <AppText capScale tone="muted" variant="meta">{step}{t("단계")}</AppText>
       </View>
       {children}
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.machineSlot}>
         <View style={styles.machineSlotBar} />
-        <AppText capScale numberOfLines={1} tone="muted" variant="meta">{picked ? `${picked} 골랐어요` : hint}</AppText>
+        <AppText capScale numberOfLines={1} tone="muted" variant="meta">{picked ? t("{v1} 골랐어요", { v1: t(picked) }) : hint}</AppText>
       </View>
     </View>
   )
@@ -393,9 +416,9 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
   const soup = SOUP_OPTIONS.find((option) => option.id === inputs.soupId) ?? SOUP_OPTIONS[0]
   const soupMatches = (shop: CuratorShop) => matchesSoupChoice(shop, soup.label, soup.keys)
   if (narrow(soupMatches)) {
-    conditions.push({ label: `${soup.label} 계보`, applied: true, note: `${soup.label} 계보 ${pool.length}곳 중에서 골랐어요` })
+    conditions.push({ label: "{v1} 계보", labelParams: { v1: soup.label }, soupLabel: soup.label, applied: true, note: "{v1} 계보 {v2}곳 중에서 골랐어요", noteParams: { v1: soup.label, v2: pool.length } })
   } else {
-    conditions.push({ label: `${soup.label} 계보`, applied: false, note: "전체 라멘집으로 넓혀서 골라 봤어요" })
+    conditions.push({ label: "{v1} 계보", labelParams: { v1: soup.label }, soupLabel: soup.label, applied: false, note: "전체 라멘집으로 넓혀서 골라 봤어요" })
   }
 
   const mood = MOOD_OPTIONS.find((option) => option.id === inputs.moodId) ?? MOOD_OPTIONS[0]
@@ -440,8 +463,8 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
     }
     conditions.push(
       applied.length
-        ? { label: `직접 입력: ${prompt}`, applied: true, note: `${applied.join(", ")} 조건을 매장 정보와 대조했어요` }
-        : { label: `직접 입력: ${prompt}`, applied: false, note: "적어 주신 조건은 매장 정보가 채워지는 대로 맞춰 드릴게요" },
+        ? { label: "직접 입력: {v1}", labelParams: { v1: prompt }, applied: true, note: "{v1} 조건을 매장 정보와 대조했어요", matchedLabels: applied }
+        : { label: "직접 입력: {v1}", labelParams: { v1: prompt }, applied: false, note: "적어 주신 조건은 매장 정보가 채워지는 대로 맞춰 드릴게요" },
     )
   }
 
@@ -462,17 +485,17 @@ function curate(shops: CuratorShop[], inputs: Inputs, taste: TasteReport | null)
     }
     // 랭킹이 실제로 내 취향 리포트를 받아 순서를 매긴 경우에만 알린다(빠른 한 끼는 거리순이라 쓰지 않는다)
     if (taste && ranked.length) {
-      conditions.push({ label: "내 취향", applied: true, note: `내 기록 ${taste.recordCount}그릇의 취향을 반영했어요` })
+      conditions.push({ label: "내 취향", applied: true, note: "내 기록 {v1}그릇의 취향을 반영했어요", noteParams: { v1: taste.recordCount } })
     }
   }
   if (ranked.length) {
     const candidates = ranked.map((shop) => candidateFor(shop, soup))
-    return { ...candidates[0], conditions, fallback: false, candidates, index: 0, recommendationId: null }
+    return { ...candidates[0], conditions: conditions.map((condition) => ({ ...condition, local: true })), fallback: false, candidates, index: 0, recommendationId: null }
   }
 
   const fallbackCandidates = [...all].sort(byPopularity).map((shop) => candidateFor(shop, soup))
   return fallbackCandidates.length
-    ? { ...fallbackCandidates[0], conditions, fallback: true, candidates: fallbackCandidates, index: 0, recommendationId: null }
+    ? { ...fallbackCandidates[0], conditions: conditions.map((condition) => ({ ...condition, local: true })), fallback: true, candidates: fallbackCandidates, index: 0, recommendationId: null }
     : null
 }
 
@@ -531,7 +554,7 @@ function issuedDay(iso: string): { foot: string; day: string; today: boolean } {
   const date = at.getUTCDate()
   return {
     foot: `${String(at.getUTCFullYear()).slice(-2)}.${String(month).padStart(2, "0")}.${String(date).padStart(2, "0")}`,
-    day: `${month}월 ${date}일`,
+    day: getLocale() === "ko" ? `${month}월 ${date}일` : formatDate(iso, { month: "short", day: "numeric", timeZone: "Asia/Seoul" }),
     today: at.getUTCFullYear() === now.getUTCFullYear() && month === now.getUTCMonth() + 1 && date === now.getUTCDate(),
   }
 }
@@ -576,6 +599,7 @@ function focusOn(ref: React.RefObject<View | null>) {
 }
 
 export default function AIRecommendScreen() {
+  const locale = useLocale()
   const { currentUser } = useRaota()
   const shopsQuery = useAllShops()
   const bowls = useMyBowls()
@@ -585,7 +609,7 @@ export default function AIRecommendScreen() {
   const ctaSize = useMemo(() => ({ minHeight: Math.max(56, 2 * (typography.button.lineHeight ?? 18) * Math.min(fontScale, maxFontScale) + 2 * spacing.x2) }), [fontScale])
   const compact = width < 360
   const [inputs, setInputs] = useState<Inputs>(DEFAULT_INPUTS)
-  const selectedConditions = useMemo(() => chosenConditions(inputs), [inputs])
+  const selectedConditions = useMemo(() => chosenConditions(inputs), [inputs, locale])
   const [step, setStep] = useState<Step>(1)
   const [curation, setCuration] = useState<Curation | null>(null)
   // 식권 연출이 기다리는 준비 신호. 서버 추천은 응답 전에 발권 화면으로 넘어가 이 약속을 기다린다
@@ -636,7 +660,7 @@ export default function AIRecommendScreen() {
     const picked = todayTickets?.tickets.find((ticket) => ticket.id === ticketParam) ?? (ticketParam ? knownTicket(ticketParam) : null)
     const next = picked ? curationFromTicket(picked) : null
     if (!next) {
-      setToast("이 식권을 지금은 보여드릴 수 없어요")
+      setToast(t("이 식권을 지금은 보여드릴 수 없어요"))
       return
     }
     setCuration(next)
@@ -735,7 +759,7 @@ export default function AIRecommendScreen() {
     const next = curationFromTicket(ticket)
     setTicketsOpen(false)
     if (!next) {
-      setToast("이 식권의 가게를 지금은 보여드릴 수 없어요")
+      setToast(t("이 식권의 가게를 지금은 보여드릴 수 없어요"))
       return
     }
     setCuration(next)
@@ -752,7 +776,7 @@ export default function AIRecommendScreen() {
     const index = (curation.index + 1) % curation.candidates.length
     const next = curation.candidates[index]
     setCuration({ ...curation, ...next, index })
-    AccessibilityInfo.announceForAccessibility(`다음 추천, ${next.shop.name}`)
+    AccessibilityInfo.announceForAccessibility(t("다음 추천, {v1}", { v1: next.shop.name }))
   }
 
   const recordShop = (shop: CuratorShop) => {
@@ -774,8 +798,8 @@ export default function AIRecommendScreen() {
   if (ticketPending) {
     return (
       <Screen>
-        <Header backLabel="뒤로가기" onBack={() => (router.canGoBack() ? router.back() : router.replace("/native"))} title="AI 라멘 큐레이터" />
-        <LoadingState label="식권을 불러오는 중…" />
+        <Header backLabel={t("뒤로가기")} onBack={() => (router.canGoBack() ? router.back() : router.replace("/native"))} title={t("AI 라멘 큐레이터")} />
+        <LoadingState label={t("식권을 불러오는 중…")} />
       </Screen>
     )
   }
@@ -785,14 +809,14 @@ export default function AIRecommendScreen() {
   if (ticketsUsedUp && typeof step === "number") {
     return (
       <Screen contentContainerStyle={styles.flex} edges={ALL_EDGES}>
-        <Header backLabel="뒤로가기" onBack={() => (router.canGoBack() ? router.back() : router.replace("/native"))} title="AI 라멘 큐레이터" />
+        <Header backLabel={t("뒤로가기")} onBack={() => (router.canGoBack() ? router.back() : router.replace("/native"))} title={t("AI 라멘 큐레이터")} />
         <EmptyState
-          actionLabel={todayTickets.tickets.length ? "뽑은 식권 보기" : undefined}
-          description={`식권은 하루 ${todayTickets.dailyLimit}장이에요. 내일 다시 뽑을 수 있어요.`}
+          actionLabel={todayTickets.tickets.length ? t("뽑은 식권 보기") : undefined}
+          description={t("식권은 하루 {v1}장이에요. 내일 다시 뽑을 수 있어요.", { v1: todayTickets.dailyLimit })}
           icon={<Ticket color={colors.textMuted} size={32} />}
           onAction={() => setTicketsOpen(true)}
           style={styles.flex}
-          title="오늘 식권을 다 뽑았어요"
+          title={t("오늘 식권을 다 뽑았어요")}
         />
         <TodayTicketsSheet onClose={() => setTicketsOpen(false)} onHistory={openHistory} onSelect={openTicket} today={todayTickets} visible={ticketsOpen} />
       </Screen>
@@ -836,7 +860,7 @@ export default function AIRecommendScreen() {
     <Screen contentContainerStyle={styles.flex} edges={numericStep || result ? undefined : ALL_EDGES} keyboardAvoiding>
       <Header
         align="center"
-        backLabel={numericStep && numericStep > 1 ? "이전 단계로" : "뒤로가기"}
+        backLabel={numericStep && numericStep > 1 ? t("이전 단계로") : t("뒤로가기")}
         // 단계 안에서는 헤더 셰브론도 "이전"과 같이 한 단계만 올라간다.
         // 플로우를 통째로 빠져나가면 고른 답이 전부 사라진다
         onBack={() =>
@@ -848,13 +872,13 @@ export default function AIRecommendScreen() {
         }
         right={
           numericStep ? (
-            <AppText accessibilityLabel={`4단계 중 ${numericStep}단계`} capScale style={styles.stepCount} tone="sub" variant="meta">
+            <AppText accessibilityLabel={t("4단계 중 {v1}단계", { v1: numericStep })} capScale style={styles.stepCount} tone="sub" variant="meta">
               {`${numericStep} / 4`}
             </AppText>
           ) : null
         }
         style={styles.flowHeader}
-        title="AI 라멘 큐레이터"
+        title={t("AI 라멘 큐레이터")}
         titleStyle={styles.navTitle}
       />
 
@@ -870,21 +894,21 @@ export default function AIRecommendScreen() {
           <View>
             {todayTickets ? (
               <View style={styles.ticketStrip}>
-                <View accessible accessibilityLabel={`오늘 남은 식권 ${todayTickets.remaining}장, 하루 ${todayTickets.dailyLimit}장`} style={styles.ticketCount}>
+                <View accessible accessibilityLabel={t("오늘 남은 식권 {v1}장, 하루 {v2}장", { v1: todayTickets.remaining, v2: todayTickets.dailyLimit })} style={styles.ticketCount}>
                   <Ticket color={colors.ink} size={16} />
                   <AppText capScale style={styles.ticketCountText} variant="meta">
-                    {`오늘 남은 식권 ${todayTickets.remaining}장`}
+                    {t("오늘 남은 식권 {v1}장", { v1: todayTickets.remaining })}
                   </AppText>
                 </View>
                 {todayTickets.tickets.length ? (
                   <Pressable
-                    accessibilityHint="오늘 뽑은 식권을 골라 다시 볼 수 있어요"
-                    accessibilityLabel={`뽑은 식권 ${todayTickets.tickets.length}장 보기`}
+                    accessibilityHint={t("오늘 뽑은 식권을 골라 다시 볼 수 있어요")}
+                    accessibilityLabel={t("뽑은 식권 {v1}장 보기", { v1: todayTickets.tickets.length })}
                     accessibilityRole="button"
                     onPress={() => setTicketsOpen(true)}
                     style={({ pressed }) => [styles.ticketLink, pressed && styles.pressedWash]}
                   >
-                    <AppText capScale tone="sub" variant="meta">{`뽑은 식권 ${todayTickets.tickets.length}장 보기`}</AppText>
+                    <AppText capScale tone="sub" variant="meta">{t("뽑은 식권 {v1}장 보기", { v1: todayTickets.tickets.length })}</AppText>
                     <ChevronRight color={colors.textMuted} size={14} />
                   </Pressable>
                 ) : null}
@@ -893,42 +917,42 @@ export default function AIRecommendScreen() {
             <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: `${(numericStep / 4) * 100}%` }]} />
             </View>
-            <AppText style={styles.chosenTitle} tone="sub" variant="meta">고른 조건</AppText>
+            <AppText style={styles.chosenTitle} tone="sub" variant="meta">{t("고른 조건")}</AppText>
             <View
               accessible
               accessibilityLabel={
                 selectedConditions.some(({ value }) => value)
-                  ? `고른 조건. ${selectedConditions.filter(({ value }) => value).map(({ label, value }) => `${label} ${value}`).join(", ")}`
-                  : "고른 조건 없음"
+                  ? t("고른 조건. {v1}", { v1: selectedConditions.filter(({ value }) => value).map(({ label, value }) => `${label} ${value}`).join(", ") })
+                  : t("고른 조건 없음")
               }
               style={styles.chosenRow}
             >
               {selectedConditions.map(({ label, value }) => (
-                <ChosenConditionCell key={label} label={label} value={value} />
+                <ChosenConditionCell key={label} label={t(label)} value={value} />
               ))}
             </View>
             <View accessible accessibilityRole="header" ref={headingRef}>
-              <AppText lineBreakStrategyIOS="hangul-word" variant="headline">{STEP_TITLES[numericStep].title}</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" variant="headline">{t(STEP_TITLES[numericStep].title)}</AppText>
             </View>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.help} tone="sub" variant="secondary">
-              {STEP_TITLES[numericStep].help}
+              {t(STEP_TITLES[numericStep].help)}
             </AppText>
 
             {numericStep === 1 ? (
               <TicketMachine
-                hint="국물 버튼을 눌러 주세요"
+                hint={t("국물 버튼을 눌러 주세요")}
                 picked={SOUP_OPTIONS.find((soup) => soup.id === inputs.soupId)?.label ?? ""}
                 step={1}
               >
-                <View accessibilityLabel="국물 베이스" accessibilityRole="radiogroup" style={styles.optionGrid}>
+                <View accessibilityLabel={t("국물 베이스")} accessibilityRole="radiogroup" style={styles.optionGrid}>
                   {SOUP_OPTIONS.map((soup) => (
                     <TicketButton
                       key={soup.id}
-                      label={soup.label}
+                      label={t(soup.label)}
                       soupType={soup.label}
                       onPress={() => setInput("soupId", soup.id)}
                       selected={inputs.soupId === soup.id}
-                      sub={soup.sub}
+                      sub={t(soup.sub)}
                     />
                   ))}
                 </View>
@@ -937,7 +961,7 @@ export default function AIRecommendScreen() {
 
             {numericStep === 2 || numericStep === 3 ? (
               <TicketMachine
-                hint={numericStep === 2 ? "상황 버튼을 눌러 주세요" : "가장 중요한 것을 눌러 주세요"}
+                hint={numericStep === 2 ? t("상황 버튼을 눌러 주세요") : t("가장 중요한 것을 눌러 주세요")}
                 picked={
                   (numericStep === 2
                     ? MOOD_OPTIONS.find((option) => option.id === inputs.moodId)?.label
@@ -945,14 +969,14 @@ export default function AIRecommendScreen() {
                 }
                 step={numericStep}
               >
-                <View accessibilityLabel={numericStep === 2 ? "식사 상황" : "가장 중요한 요소"} accessibilityRole="radiogroup" style={styles.optionGrid}>
+                <View accessibilityLabel={numericStep === 2 ? t("식사 상황") : t("가장 중요한 요소")} accessibilityRole="radiogroup" style={styles.optionGrid}>
                   {(numericStep === 2 ? MOOD_OPTIONS : PRIORITY_OPTIONS).map((option) => (
                     <TicketButton
                       key={option.id}
-                      label={option.label}
+                      label={t(option.label)}
                       onPress={() => setInput(numericStep === 2 ? "moodId" : "priorityId", option.id)}
                       selected={numericStep === 2 ? inputs.moodId === option.id : inputs.priorityId === option.id}
-                      sub={option.sub}
+                      sub={t(option.sub)}
                     />
                   ))}
                 </View>
@@ -961,24 +985,23 @@ export default function AIRecommendScreen() {
 
             {numericStep === 4 ? (
               <View style={styles.promptWrap}>
-                <AppText style={styles.promptLabel} variant="secondary">추가 조건</AppText>
+                <AppText style={styles.promptLabel} variant="secondary">{t("추가 조건")}</AppText>
                 <TextInput
-                  accessibilityHint="선택 사항이에요"
-                  accessibilityLabel="더 바라는 점"
+                  accessibilityHint={t("선택 사항이에요")}
+                  accessibilityLabel={t("더 바라는 점")}
                   maxFontSizeMultiplier={maxFontScale}
                   maxLength={PROMPT_MAX_LENGTH}
                   multiline
                   scrollEnabled
                   onChangeText={(text) => setInput("prompt", text)}
-                  placeholder="예: 차슈가 푸짐하고 지금 영업 중인 곳"
+                  placeholder={t("예: 차슈가 푸짐하고 지금 영업 중인 곳")}
                   placeholderTextColor={colors.textMuted}
                   style={styles.promptInput}
                   textAlignVertical="top"
                   value={inputs.prompt}
                 />
                 <AppText style={styles.quickTitle} tone="sub" variant="sectionTitle">
-                  자주 찾는 조건
-                </AppText>
+                  {t("자주 찾는 조건 ")}</AppText>
                 <View style={styles.quickRow}>
                   {QUICK_PROMPTS.map((text) => (
                     <QuickPromptTile
@@ -997,11 +1020,10 @@ export default function AIRecommendScreen() {
         {step === "result" && !result ? (
           <View>
             <View accessible accessibilityRole="header" ref={headingRef}>
-              <AppText lineBreakStrategyIOS="hangul-word" variant="screenTitle">추천할 라멘집을 찾지 못했어요</AppText>
+              <AppText lineBreakStrategyIOS="hangul-word" variant="screenTitle">{t("추천할 라멘집을 찾지 못했어요")}</AppText>
             </View>
             <AppText lineBreakStrategyIOS="hangul-word" style={styles.help} tone="sub" variant="secondary">
-              매장 정보를 불러오지 못했어요. 잠시 뒤 다시 추천받아 주세요.
-            </AppText>
+              {t("매장 정보를 불러오지 못했어요. 잠시 뒤 다시 추천받아 주세요. ")}</AppText>
             <RestartButton onPress={restart} />
           </View>
         ) : null}
@@ -1010,22 +1032,24 @@ export default function AIRecommendScreen() {
           <View>
             <View accessible accessibilityRole="header" ref={headingRef}>
               <AppText lineBreakStrategyIOS="hangul-word" style={styles.resultTitle} variant="screenTitle">
-                {pastDay ? (nickname ? `${pastDay.day} ${nickname}님을 위한 라멘집` : `${pastDay.day}의 추천`) : nickname ? `오늘 ${nickname}님을 위한 라멘집` : "오늘의 추천"}
+                {pastDay
+                  ? (nickname ? t("{day} {nickname}님을 위한 라멘집", { day: pastDay.day, nickname }) : t("{day}의 추천", { day: pastDay.day }))
+                  : nickname ? t("오늘 {v1}님을 위한 라멘집", { v1: nickname }) : t("오늘의 추천")}
               </AppText>
             </View>
 
             {/* 뽑은 식권: 발권 화면에서 내려온 것과 같은 색종이 식권에 매장 사진을 얹는다 */}
             <View style={[styles.resultCard, { backgroundColor: ticketPaperOf(resultType) }]} testID="ai-result-ticket">
               <View style={styles.resultPhotoWrap}>
-                <ResilientUriImage accessibilityLabel={`${result.shop.name} 대표 사진`} style={styles.resultPhoto} transition={0} uri={result.shop.photos[0]} />
+                <ResilientUriImage accessibilityLabel={t("{v1} 대표 사진", { v1: result.shop.name })} style={styles.resultPhoto} transition={0} uri={result.shop.photos[0]} />
                 {resultType ? (
-                  <View accessible accessibilityLabel={`라멘 종류 ${resultType.replace(/\s*라멘$/, "")}`} accessibilityRole="text" style={styles.resultPhotoTag}>
+                  <View accessible accessibilityLabel={t("라멘 종류 {v1}", { v1: resultType.replace(/\s*라멘$/, "") })} accessibilityRole="text" style={styles.resultPhotoTag}>
                     <AppText capScale style={styles.resultPhotoTagText} variant="meta">{resultType.replace(/\s*라멘$/, "")}</AppText>
                   </View>
                 ) : null}
               </View>
               <View style={styles.ticketMain}>
-                <AppText style={styles.ticketMuted} variant="meta">{pastDay ? `${pastDay.day}의 한 그릇` : "오늘의 한 그릇"}</AppText>
+                <AppText style={styles.ticketMuted} variant="meta">{pastDay ? t("{day}의 한 그릇", { day: pastDay.day }) : t("오늘의 한 그릇")}</AppText>
                 <AppText lineBreakStrategyIOS="hangul-word" style={[styles.resultName, styles.ticketText]} variant="sectionTitle">
                   {result.shop.name}
                   {result.shop.branch ? (
@@ -1050,11 +1074,10 @@ export default function AIRecommendScreen() {
               // AI가 쓴 이유가 있으면 고른 조건을 다시 늘어놓지 않고 이 매장을 고른 이유를 보여준다
               <View style={styles.conditions} testID="ai-recommend-reason">
                 <AppText accessibilityRole="header" style={styles.conditionsTitle} variant="sectionTitle">
-                  추천 이유
-                </AppText>
-                <View accessibilityLabel="AI가 썼어요" accessible style={styles.aiLabel}>
+                  {t("추천 이유 ")}</AppText>
+                <View accessibilityLabel={t("AI가 썼어요")} accessible style={styles.aiLabel}>
                   <Sparkles color={colors.ink} size={16} />
-                  <AppText capScale style={styles.aiLabelText} variant="meta">AI가 썼어요</AppText>
+                  <AppText capScale style={styles.aiLabelText} variant="meta">{t("AI가 썼어요")}</AppText>
                 </View>
                 <AppText lineBreakStrategyIOS="hangul-word" style={styles.reasonText} variant="secondary">
                   {result.reason}
@@ -1063,28 +1086,27 @@ export default function AIRecommendScreen() {
             ) : result.conditions.length || result.fallbackNote ? (
               <View style={styles.conditions}>
                 <AppText accessibilityRole="header" style={styles.conditionsTitle} variant="sectionTitle">
-                  추천에 쓴 조건
-                </AppText>
+                  {t("추천에 쓴 조건 ")}</AppText>
                 {result.fallback ? (
                   <AppText lineBreakStrategyIOS="hangul-word" style={styles.fallbackNote} tone="sub" variant="secondary">
-                    {result.fallbackNote ?? "라멘로그가 많이 쌓인 가까운 곳 중에서 골라 봤어요."}
+                    {result.fallbackNote === POPULAR_FALLBACK_NOTE ? t(POPULAR_FALLBACK_NOTE) : result.fallbackNote ?? t("라멘로그가 많이 쌓인 가까운 곳 중에서 골라 봤어요.")}
                   </AppText>
                 ) : null}
                 {result.conditions.map((condition) => (
                   <View
                     accessible
-                    accessibilityLabel={`${condition.label}, ${condition.applied ? "반영했어요" : "참고했어요"}${condition.note ? `. ${condition.note}` : ""}`}
+                    accessibilityLabel={t("{v1}, {v2}{v3}", { v1: conditionLabel(condition), v2: condition.applied ? t("반영했어요") : t("참고했어요"), v3: condition.note ? `. ${conditionNote(condition)}` : "" })}
                     key={condition.label}
                     style={styles.condition}
                   >
                     <View style={styles.flexShrink}>
                       <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionLabel} variant="bodyStrong">
-                        {condition.label}
+                        {conditionLabel(condition)}
                       </AppText>
                       {/* 서버가 준 조건은 이름만 있다 */}
                       {condition.note ? (
                         <AppText lineBreakStrategyIOS="hangul-word" style={styles.conditionNote} tone="sub" variant="secondary">
-                          {condition.note}
+                          {conditionNote(condition)}
                         </AppText>
                       ) : null}
                     </View>
@@ -1097,7 +1119,7 @@ export default function AIRecommendScreen() {
             {result.candidates.length > 1 ? (
               <RestartButton onPress={showNextCandidate} />
             ) : (
-              <RestartButton label="조건 바꿔 다시 고르기" onPress={restart} />
+              <RestartButton label={t("조건 바꿔 다시 고르기")} onPress={restart} />
             )}
           </View>
         ) : null}
@@ -1106,10 +1128,10 @@ export default function AIRecommendScreen() {
       {numericStep ? (
         <StickyActionBar>
           {numericStep > 1 ? (
-            <Button disabled={requesting} fullWidth onPress={() => setStep((numericStep - 1) as Step)} title="이전" variant="secondary" />
+            <Button disabled={requesting} fullWidth onPress={() => setStep((numericStep - 1) as Step)} title={t("이전")} variant="secondary" />
           ) : null}
           <Button
-            accessibilityHint={stepAnswered ? undefined : "위에서 하나를 골라야 다음으로 갈 수 있어요"}
+            accessibilityHint={stepAnswered ? undefined : t("위에서 하나를 골라야 다음으로 갈 수 있어요")}
             disabled={!stepAnswered}
             loading={numericStep === 4 && requesting}
             onPress={() => {
@@ -1120,17 +1142,17 @@ export default function AIRecommendScreen() {
             }}
             rightIcon={numericStep === 4 ? undefined : <ChevronRight color={colors.onDark} size={16} />}
             style={[styles.primaryCta, ctaSize]}
-            title={numericStep === 4 ? "AI 맞춤 추천받기" : stepAnswered ? "다음" : numericStep === 1 ? "국물을 골라주세요" : numericStep === 2 ? "상황을 골라주세요" : "중요한 요소를 골라주세요"}
+            title={numericStep === 4 ? t("AI 맞춤 추천받기") : stepAnswered ? t("다음") : numericStep === 1 ? t("국물을 골라주세요") : numericStep === 2 ? t("상황을 골라주세요") : t("중요한 요소를 골라주세요")}
           />
         </StickyActionBar>
       ) : result ? (
         <StickyActionBar>
           <Button
-            accessibilityHint={loggedIn ? undefined : "로그인 화면으로 이동해요"}
+            accessibilityHint={loggedIn ? undefined : t("로그인 화면으로 이동해요")}
             fullWidth
             onPress={() => recordShop(result.shop)}
             style={[styles.stickyButton, ctaSize]}
-            title="이 가게 기록하기"
+            title={t("이 가게 기록하기")}
             variant="secondary"
           />
           <Button
@@ -1138,25 +1160,25 @@ export default function AIRecommendScreen() {
             onPress={() => openResultShop(result)}
             rightIcon={compact ? undefined : <ChevronRight color={colors.onDark} size={16} />}
             style={[styles.stickyButton, ctaSize]}
-            title="매장 상세 보기"
+            title={t("매장 상세 보기")}
           />
         </StickyActionBar>
       ) : null}
       <TodayTicketsSheet onClose={() => setTicketsOpen(false)} onHistory={openHistory} onSelect={openTicket} today={todayTickets} visible={ticketsOpen} />
       <ConfirmDialog
-        cancelLabel="취소"
-        confirmLabel="식권 쓰기"
+        cancelLabel={t("취소")}
+        confirmLabel={t("식권 쓰기")}
         message={
           todayTickets?.remaining === 1
-            ? `오늘 남은 마지막 식권이에요. 자정에 다시 ${todayTickets.dailyLimit}장이 채워져요.`
-            : `오늘 남은 식권 ${todayTickets?.remaining ?? 0}장 중 1장을 써요. 자정에 다시 ${todayTickets?.dailyLimit ?? 0}장이 채워져요.`
+            ? t("오늘 남은 마지막 식권이에요. 자정에 다시 {v1}장이 채워져요.", { v1: todayTickets.dailyLimit })
+            : t("오늘 남은 식권 {v1}장 중 1장을 써요. 자정에 다시 {v2}장이 채워져요.", { v1: todayTickets?.remaining ?? 0, v2: todayTickets?.dailyLimit ?? 0 })
         }
         onCancel={() => setConfirmingTicket(false)}
         onConfirm={() => {
           setConfirmingTicket(false)
           startAnalysis()
         }}
-        title="식권 1장을 쓸까요?"
+        title={t("식권 1장을 쓸까요?")}
         visible={confirmingTicket}
       />
       <Toast message={toast ?? ""} onDismiss={() => setToast(null)} style={{ bottom: ctaSize.minHeight + spacing.x6 }} visible={Boolean(toast)} />
@@ -1195,12 +1217,12 @@ function LoadingDot({ index, progress, still }: { index: number; progress: Share
 function RestartButton({ label = "다시 추천받기", onPress }: { label?: string; onPress: () => void }) {
   return (
     <Pressable
-      accessibilityLabel={label}
+      accessibilityLabel={t(label)}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.restart, pressed && styles.pressedWash]}
     >
-      <AppText style={styles.restartText} variant="bodyStrong">{label}</AppText>
+      <AppText style={styles.restartText} variant="bodyStrong">{t(label)}</AppText>
     </Pressable>
   )
 }
@@ -1300,15 +1322,7 @@ function CurationLoading({
     transform: [{ translateY: ticketShift.value }],
   }))
 
-  const message = phase === "error"
-    ? "추천을 가져오지 못했어요. 고른 조건은 그대로예요"
-    : phase === "out"
-      ? LOADING_MESSAGES[3]
-      : phase === "stub"
-        ? LOADING_MESSAGES[2]
-        : pressed >= 2
-          ? LOADING_MESSAGES[1]
-          : LOADING_MESSAGES[0]
+  const message = phase === "error" ? t("추천을 가져오지 못했어요. 고른 조건은 그대로예요") : phase === "out" ? t(LOADING_MESSAGES[3]) : phase === "stub" ? t(LOADING_MESSAGES[2]) : pressed >= 2 ? t(LOADING_MESSAGES[1]) : t(LOADING_MESSAGES[0])
 
   /** iOS에서는 제목 포커스와 겹치지 않도록 첫 문구를 빼고 직접 읽어 준다. */
   useEffect(() => {
@@ -1329,22 +1343,22 @@ function CurationLoading({
 
   return (
     <Screen contentContainerStyle={styles.flex} edges={ALL_EDGES}>
-      <Header align="center" backLabel="추천 조건으로 돌아가기" onBack={onBack} style={styles.flowHeader} title="AI 라멘 큐레이터" titleStyle={styles.navTitle} />
+      <Header align="center" backLabel={t("추천 조건으로 돌아가기")} onBack={onBack} style={styles.flowHeader} title={t("AI 라멘 큐레이터")} titleStyle={styles.navTitle} />
       <ScrollView
         contentContainerStyle={[styles.loadingBody, !ticketHeight || !stubHeight ? styles.invisible : undefined]}
         showsVerticalScrollIndicator={false}
         style={styles.flex}
       >
-        <View accessible accessibilityLabel={phase === "out" ? "오늘의 한 그릇을 찾았어요" : "조건에 맞는 한 그릇을 찾는 중"} accessibilityRole="header" ref={titleRef}>
+        <View accessible accessibilityLabel={phase === "out" ? t("오늘의 한 그릇을 찾았어요") : t("조건에 맞는 한 그릇을 찾는 중")} accessibilityRole="header" ref={titleRef}>
           <AppText accessibilityElementsHidden importantForAccessibility="no-hide-descendants" lineBreakStrategyIOS="hangul-word" style={[styles.center, styles.invisible]} variant="headline">
-            {"조건에 맞는 한 그릇을\n찾는 중"}
+            {t("조건에 맞는 한 그릇을\n찾는 중")}
           </AppText>
           <AppText lineBreakStrategyIOS="hangul-word" style={styles.loadingTitleVisible} variant="headline">
-            {phase === "out" ? "오늘의 한 그릇을 찾았어요" : "조건에 맞는 한 그릇을\n찾는 중"}
+            {phase === "out" ? t("오늘의 한 그릇을 찾았어요") : t("조건에 맞는 한 그릇을\n찾는 중")}
           </AppText>
         </View>
         <AppText style={styles.loadingSub} tone="muted" variant="secondary">
-          {phase === "out" ? "고른 조건으로 오늘의 라멘을 찾았어요." : "내 취향으로 오늘의 라멘을 고르고 있어요."}
+          {phase === "out" ? t("고른 조건으로 오늘의 라멘을 찾았어요.") : t("내 취향으로 오늘의 라멘을 고르고 있어요.")}
         </AppText>
 
         <View style={styles.loadingChips}>
@@ -1353,7 +1367,7 @@ function CurationLoading({
             return (
               <View
                 accessible
-                accessibilityLabel={`${label}, ${value}, ${lit ? "확인했어요" : "확인 중"}`}
+                accessibilityLabel={t("{v1}, {v2}, {v3}", { v1: label, v2: value, v3: lit ? t("확인했어요") : t("확인 중") })}
                 accessibilityRole="text"
                 key={label}
                 style={[styles.loadingChip, lit && styles.loadingChipOn]}
@@ -1377,7 +1391,7 @@ function CurationLoading({
             style={[styles.ticket, { backgroundColor: ticketPaperOf(typeLabel) }, ticketStyle]}
           >
             <View style={styles.ticketMain}>
-              <AppText style={styles.ticketMuted} variant="meta">오늘의 한 그릇</AppText>
+              <AppText style={styles.ticketMuted} variant="meta">{t("오늘의 한 그릇")}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" style={[styles.ticketName, styles.ticketText]} variant="headline">{shop?.name ?? ""}</AppText>
               <AppText lineBreakStrategyIOS="hangul-word" style={[styles.ticketPlace, styles.ticketText]} variant="secondary">
                 {[typeLabel, place].filter(Boolean).join(" · ")}
@@ -1391,20 +1405,20 @@ function CurationLoading({
         <View style={styles.loadingActions}>
           <View accessibilityLiveRegion="polite" style={styles.statusLine}>
             <AppText accessibilityRole="text" lineBreakStrategyIOS="hangul-word" style={styles.statusText} tone="sub" variant="secondary">
-              {message}
+              {t(message)}
             </AppText>
             {/* 서버 추천은 몇 초에서 25초까지 걸려, 기다리는 동안 멈춘 화면처럼 보이지 않게 점을 움직인다 */}
             {!ready && !failed ? <LoadingDots /> : null}
           </View>
           {phase === "error" ? (
-            <Button onPress={onBack} size="small" title="추천 조건으로 돌아가기" variant="ghost" />
+            <Button onPress={onBack} size="small" title={t("추천 조건으로 돌아가기")} variant="ghost" />
           ) : ready ? (
             // 결과 준비 전에는 건너뛰기를 내놓지 않는다.
             <Button
               onPress={onComplete}
               rightIcon={<ArrowRight color={colors.ink} size={16} />}
               size="small"
-              title="추천 바로 보기"
+              title={t("추천 바로 보기")}
               variant="ghost"
             />
           ) : null}
@@ -1423,8 +1437,8 @@ function MealTicketFoot({ issueDate, onLayout }: { issueDate: string; onLayout?:
         <Line stroke={ticketInk.rule} strokeDasharray="4 4" strokeWidth={line.base} x1={0} x2="100%" y1={line.base / 2} y2={line.base / 2} />
       </Svg>
       <View style={styles.ticketFootRow}>
-        <AppText capScale style={[styles.ticketMuted, styles.ticketBrand]} variant="meta">RAOTA 식권</AppText>
-        <AppText capScale style={[styles.ticketMuted, styles.tabular]} variant="meta">{issueDate} · 1매</AppText>
+        <AppText capScale style={[styles.ticketMuted, styles.ticketBrand]} variant="meta">{t("RAOTA 식권")}</AppText>
+        <AppText capScale style={[styles.ticketMuted, styles.tabular]} variant="meta">{issueDate} {t(" · 1매")}</AppText>
       </View>
     </View>
   )

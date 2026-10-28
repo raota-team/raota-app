@@ -7,6 +7,12 @@ process.env.EXPO_PUBLIC_FEATURE_TASTE_REPORT ??= "true"
 
 jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage)
 
+// Keep existing Korean fixtures independent of the language of the developer's machine.
+jest.mock("expo-localization", () => {
+  const locales = [{ languageTag: "ko-KR", languageCode: "ko" }]
+  return { getLocales: jest.fn(() => locales), useLocales: jest.fn(() => locales) }
+})
+
 // expo-secure-store는 불러오는 순간 네이티브 모듈을 찾는다. 메모리 대체본(__mocks__)으로 바꿔 둔다
 jest.mock("expo-secure-store")
 

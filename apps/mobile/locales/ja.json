@@ -1,0 +1,7 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "近くのラーメン店と距離を表示するために位置情報を使用します。",
+    "NSCameraUsageDescription": "ラーメンの記録に写真を残すためにカメラを使用します。",
+    "NSPhotoLibraryUsageDescription": "ラーメンの記録とプロフィールに写真を追加するために写真ライブラリを使用します。"
+  }
+}

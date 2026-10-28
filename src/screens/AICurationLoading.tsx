@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 import { useEffect, useRef, type CSSProperties } from 'react'
 import { ArrowRight, Check, ChevronLeft } from 'lucide-react'
 import useLoadingSequence from '../hooks/useLoadingSequence'
@@ -18,17 +19,17 @@ export default function AICurationLoading({ conditions, onBack, onComplete }: Pr
   useEffect(() => titleRef.current?.focus({ preventScroll: true }), [])
 
   return (
-    <section className="h-full min-h-0 overflow-y-auto bg-white text-ink flex flex-col" aria-label="AI 라멘 추천 준비">
+    <section className="h-full min-h-0 overflow-y-auto bg-white text-ink flex flex-col" aria-label={t("AI 라멘 추천 준비")}>
       <header className="flex shrink-0 items-center justify-between px-4 py-2">
-        <button type="button" onClick={onBack} aria-label="추천 조건으로 돌아가기" className="taste-loading-action flex h-11 w-11 items-center justify-center rounded-full hover:bg-canvas-soft"><ChevronLeft size={22} aria-hidden="true" /></button>
-        <span className="text-[15px] font-bold">AI 라멘 추천</span>
+        <button type="button" onClick={onBack} aria-label={t("추천 조건으로 돌아가기")} className="taste-loading-action flex h-11 w-11 items-center justify-center rounded-full hover:bg-canvas-soft"><ChevronLeft size={22} aria-hidden="true" /></button>
+        <span className="text-[15px] font-bold">{t("AI 라멘 추천")}</span>
         <span className="w-11" aria-hidden="true" />
       </header>
 
       <div className="flex flex-1 flex-col justify-center px-6 py-4 text-center">
-        <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-bold leading-[1.4] tracking-tight outline-none">오늘의 한 그릇을<br />찾고 있어요</h1>
+        <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-bold leading-[1.4] tracking-tight outline-none">{t("오늘의 한 그릇을")}<br />{t("찾고 있어요")}</h1>
         <p className="mx-auto mt-3 max-w-[280px] text-sm leading-6 text-ink-sub break-keep">
-          {conditions.length > 0 ? conditions.join(' · ') : '전체 라멘집에서 골라요'}
+          {conditions.length > 0 ? conditions.map(condition => t(condition)).join(' · ') : t("전체 라멘집에서 골라요")}
         </p>
 
         <div className="ai-curation-visual relative mx-auto my-6 flex aspect-square w-full max-w-[280px] items-center justify-center" aria-hidden="true" data-complete={complete} data-reduced-motion={reducedMotion} style={{ '--curation-duration': `${duration}ms` } as CSSProperties}>
@@ -48,13 +49,13 @@ export default function AICurationLoading({ conditions, onBack, onComplete }: Pr
         <p role="status" aria-live="polite" aria-atomic="true" className="min-h-6 text-sm font-medium leading-6 text-ink-sub">
           <span key={stage} className="taste-loading-status flex items-center justify-center gap-2">
             <span className="h-1 w-1 shrink-0 rounded-full bg-brand" aria-hidden="true" />
-            {MESSAGES[stage]}
+            {t(MESSAGES[stage])}
           </span>
         </p>
       </div>
 
       <footer className="shrink-0 px-6 pb-6 pt-2">
-        <button type="button" onClick={onComplete} className="taste-loading-action mx-auto flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium text-ink-sub hover:bg-canvas-soft active:bg-canvas-soft">추천 바로 보기 <ArrowRight size={16} aria-hidden="true" /></button>
+        <button type="button" onClick={onComplete} className="taste-loading-action mx-auto flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-medium text-ink-sub hover:bg-canvas-soft active:bg-canvas-soft">{t("추천 바로 보기")} <ArrowRight size={16} aria-hidden="true" /></button>
       </footer>
     </section>
   )

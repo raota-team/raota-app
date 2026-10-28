@@ -1,3 +1,5 @@
+import { useLocale } from "@/src/i18n"
+import { t } from "@raota/shared"
 import Svg, { Line, Path } from "react-native-svg"
 import { ChevronLeft, X } from "lucide-react-native"
 import {
@@ -126,6 +128,7 @@ export interface AppTextProps extends TextProps {
 
 /** 역할(variant)과 색(tone)으로 쓰는 글씨. 12pt 하한이 들어 있다. */
 export function AppText({ variant = "body", tone = "ink", capScale = false, style, ...props }: AppTextProps) {
+  useLocale()
   return (
     <NativeText
       maxFontSizeMultiplier={capScale ? maxFontScale : undefined}
@@ -161,6 +164,7 @@ export function Screen({
   scrollViewProps,
   testID,
 }: ScreenProps) {
+  useLocale()
   const content = scroll ? (
     <ScrollView
       keyboardDismissMode="interactive"
@@ -212,7 +216,7 @@ export function Header({
   title,
   subtitle,
   onBack,
-  backLabel = "뒤로",
+  backLabel = t("뒤로"),
   left,
   right,
   align = "left",
@@ -220,6 +224,7 @@ export function Header({
   style,
   titleStyle,
 }: HeaderProps) {
+  useLocale()
   const back =
     left ??
     (onBack ? (
@@ -270,6 +275,7 @@ export interface SectionHeaderProps {
 
 /** 섹션 제목(section-title) + 오른쪽 메타. 제목 위 eyebrow 라벨은 쓰지 않는다 */
 export function SectionHeader({ title, meta, metaTone = "sub", metaStyle, style }: SectionHeaderProps) {
+  useLocale()
   return (
     <View style={[styles.sectionHeader, style]}>
       <AppText accessibilityRole="header" style={styles.flex} variant="sectionTitle">
@@ -342,6 +348,7 @@ export function Button({
   accessibilityLabel = title,
   ...props
 }: ButtonProps) {
+  useLocale()
   const unavailable = disabled || loading
   // Keep optional icons in the row when the button becomes unavailable; hiding their paint
   // must not change the label's position or the width of a neighboring button.
@@ -400,6 +407,7 @@ export interface IconButtonProps extends Omit<PressableProps, "children" | "styl
 
 /** 44pt 원형 아이콘 버튼. onImage 아이콘은 호출부에서 colors.onPhotoPill을 사용한다. */
 export function IconButton({ icon, onImage = false, style, ...props }: IconButtonProps) {
+  useLocale()
   return (
     <Pressable
       accessibilityRole="button"
@@ -443,6 +451,7 @@ export function Chip({
   onPressOut,
   ...props
 }: ChipProps) {
+  useLocale()
   const motion = useSelectableMotion(selected, Boolean(disabled))
   return (
     <AnimatedPressable
@@ -475,6 +484,7 @@ export function Chip({
 
 /** 읽기 전용 보조 정보는 칩과 같은 면에 얹는다. */
 export function Tag({ label, style }: { label: string; style?: StyleProp<ViewStyle> }) {
+  useLocale()
   return (
     <View style={[styles.tag, style]}>
       <AppText capScale style={styles.tagText} tone="muted" variant="meta">
@@ -494,6 +504,7 @@ export interface StickerProps extends Omit<ViewProps, "style" | "children"> {
 
 /** 읽기 전용 표시 라벨. 사진 위는 photoPill 알약, 평소에는 따뜻한 회색 알약. onImage 아이콘은 호출부에서 colors.onPhotoPill을 쓴다. */
 export function Sticker({ label, onImage = false, icon, style, ...props }: StickerProps) {
+  useLocale()
   return (
     <View
       // 라벨을 준 스티커는 하나로 묶어 읽는다. 묶지 않으면 라벨이 무시되고 안쪽 글씨만 읽힌다
@@ -529,6 +540,7 @@ export interface TicketCutProps {
  * 그리지 못하므로 선과 반원을 SVG로 그리고, 양 끝의 바탕색으로 식권 면을 덮는다.
  */
 export function TicketCut({ orientation = "horizontal", startFill = colors.paper, endFill = colors.paper }: TicketCutProps) {
+  useLocale()
   const r = NOTCH_RADIUS
   const thick = r + line.base
   const span = 2 * r + 2
@@ -573,12 +585,13 @@ export function TicketCut({ orientation = "horizontal", startFill = colors.paper
 
 /** 원장 스타일과 기록 종류를 모두 종류 이름으로 보여 준다. */
 export function RamenTypeTag({ type, inList = false, onImage = false, style }: RamenTypeTagProps) {
-  const label = type.replace(/\s*라멘$/, "").trim()
+  useLocale()
+  const label = t(type.replace(/\s*라멘$/, "").trim())
   // 이름이 "라멘"뿐이면 종류 정보가 없어 표시하지 않는다.
   if (!label) return null
   return (
     <View
-      accessibilityLabel={`라멘 종류 ${label}`}
+      accessibilityLabel={t("라멘 종류 {p0}", { p0: label })}
       accessible
       style={[inList ? styles.typeInList : styles.ramenTypeTag, onImage && styles.onImagePill, style]}
     >
@@ -604,6 +617,7 @@ export interface SoupDotProps {
 
 /** 이름 없이 색만으로 종류를 알 수 없으므로 점 자체는 읽지 않는다. */
 export function SoupDot({ type, size = 12, style }: SoupDotProps) {
+  useLocale()
   return (
     <View
       accessibilityElementsHidden
@@ -652,6 +666,7 @@ function ScorePill({
   variant: "button" | "cardTitle"
   onPress: () => void
 }) {
+  useLocale()
   const motion = useSelectableMotion(selected)
   return (
     <AnimatedPressable
@@ -682,9 +697,10 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
   { label, low, high, value, onChange, hero = false, words, options, invalid = false, index, style },
   ref,
 ) {
-  const lean = (score: number) => (score <= 2 ? `${low} 쪽` : score >= 4 ? `${high} 쪽` : "보통")
-  const word = value !== null ? (options?.find((option) => option.value === value)?.label ?? words?.[value - 1] ?? `${value}점`) : null
-  const status = invalid && value === null ? "골라주세요" : word ?? "미선택"
+  useLocale()
+  const lean = (score: number) => (score <= 2 ? t("{side} 쪽", { side: t(low) }) : score >= 4 ? t("{side} 쪽", { side: t(high) }) : t("보통"))
+  const word = value !== null ? (options?.find((option) => option.value === value)?.label ?? words?.[value - 1] ?? t("{value}점", { value })) : null
+  const status = invalid && value === null ? t("골라주세요") : word ? t(word) : t("미선택")
   const choose = (score: number) => {
     if (Platform.OS !== "web" && score !== value) void Haptics.selectionAsync().catch(() => undefined)
     onChange(score)
@@ -718,10 +734,10 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
           return (
             <ScorePill
               accessibilityLabel={options
-                ? `${label} ${option.label}, ${option.value}점`
-                : `${label} ${option.value}점, ${lean(option.value)}`}
+                ? t("{p0} {p1}, {p2}점", { p0: t(label), p1: t(option.label), p2: option.value })
+                : t("{p0} {p1}점, {p2}", { p0: t(label), p1: option.value, p2: lean(option.value) })}
               key={option.value}
-              label={option.label}
+              label={t(option.label)}
               onPress={() => choose(option.value)}
               selected={selected}
               variant={options ? "button" : "cardTitle"}
@@ -731,8 +747,8 @@ export const ScoreSegment = forwardRef<View, ScoreSegmentProps>(function ScoreSe
       </View>
       {!options ? (
         <View style={styles.scoreEnds}>
-          <AppText capScale tone="sub" variant="meta">{low}</AppText>
-          <AppText capScale tone="sub" variant="meta">{high}</AppText>
+          <AppText capScale tone="sub" variant="meta">{t(low)}</AppText>
+          <AppText capScale tone="sub" variant="meta">{t(high)}</AppText>
         </View>
       ) : null}
     </View>
@@ -753,6 +769,7 @@ export interface CardProps extends PropsWithChildren {
 
 /** 따뜻한 회색 면을 사용하며, 누를 때도 테두리 없이 면으로만 반응한다. */
 export function Card({ children, onPress, accessibilityLabel, style, contentStyle, testID }: CardProps) {
+  useLocale()
   if (onPress) {
     return (
       <Pressable
@@ -802,6 +819,7 @@ export function Toast({
   icon,
   style,
 }: ToastProps) {
+  useLocale()
   const screenReader = useScreenReaderEnabled()
   const hasAction = Boolean(actionLabel && onAction)
   // 2.5초는 화면 읽기로 되돌리기 버튼까지 가기에 짧다. 화면 읽기가 켜져 있고 행동이 있으면 직접 닫을 때까지 두고,
@@ -818,7 +836,7 @@ export function Toast({
   // iOS는 alert 역할만으로 읽어 주지 않는다. 안드로이드는 live region이 읽으므로 두 번 읽지 않게 iOS·웹에서만 알린다.
   useEffect(() => {
     if (!visible || !message || Platform.OS === "android") return
-    AccessibilityInfo.announceForAccessibility(hasAction ? `${message}. ${actionLabel} 버튼이 있어요` : message)
+    AccessibilityInfo.announceForAccessibility(hasAction ? `${message}. ${t("{action} 버튼이 있어요", { action: actionLabel ?? "" })}` : message)
   }, [actionLabel, hasAction, message, visible])
 
   if (!visible) return null
@@ -842,7 +860,7 @@ export function Toast({
         </Pressable>
       ) : null}
       {holdUntilClosed && onDismiss ? (
-        <Pressable accessibilityLabel="알림 닫기" accessibilityRole="button" onPress={onDismiss} style={styles.toastAction}>
+        <Pressable accessibilityLabel={t("알림 닫기")} accessibilityRole="button" onPress={onDismiss} style={styles.toastAction}>
           <X color={colors.onDark} size={18} />
         </Pressable>
       ) : null}
@@ -879,6 +897,7 @@ export interface EmptyStateProps {
 
 /** 아이콘 → 짧은 제목 → 해결 방법 → 필요할 때만 CTA */
 export function EmptyState({ title, description, icon, actionLabel, onAction, style }: EmptyStateProps) {
+  useLocale()
   return (
     <View style={[styles.stateContainer, style]}>
       {icon ? <View style={styles.stateIcon}>{icon}</View> : null}
@@ -907,7 +926,8 @@ export interface LoadingStateProps {
   style?: StyleProp<ViewStyle>
 }
 
-export function LoadingState({ label = "불러오는 중…", fullScreen = false, color = colors.ink, style }: LoadingStateProps) {
+export function LoadingState({ label = t("불러오는 중…"), fullScreen = false, color = colors.ink, style }: LoadingStateProps) {
+  useLocale()
   return (
     <View
       accessibilityLabel={label}
@@ -948,6 +968,7 @@ export interface StickyActionBarProps extends PropsWithChildren {
  * 320×568 화면에서도 스크롤 없이 보여야 하는 CTA(기록 저장, 완료, 다음 단계)에 쓴다.
  */
 export function StickyActionBar({ hint, hintTone = "muted", hintIsError = false, reserveHintLines = 0, style, children }: StickyActionBarProps) {
+  useLocale()
   const insets = useSafeAreaInsets()
   const hintText = hint ? (
     <AppText
@@ -997,12 +1018,13 @@ export function BottomSheet({
   onClose,
   title,
   description,
-  closeLabel = "닫기",
+  closeLabel = t("닫기"),
   maxHeight = "85%",
   dismissOnBackdropPress = true,
   footer,
   children,
 }: BottomSheetProps) {
+  useLocale()
   const { mounted, progress, sheetHeight, reduceMotion, onSheetLayout } = useSheetTransition(visible)
   const { dragY, dragHandlers } = useSheetDrag({ visible, sheetHeight, reduceMotion, enabled: dismissOnBackdropPress, onDismiss: onClose })
   // Keep the header mounted while the sheet exits. Some callers clear their title
@@ -1025,7 +1047,7 @@ export function BottomSheet({
         {/* 뒤판은 제자리에서 흐려진다. 시트와 함께 밀려 올라오면 화면 전체가 딸려 오는 것처럼 보인다 */}
         <Animated.View style={[styles.backdrop, { opacity: progress }]}>
           <Pressable
-            accessibilityLabel={`${shownTitle ?? "시트"} 닫기`}
+            accessibilityLabel={t("{p0} 닫기", { p0: shownTitle ?? t("시트") })}
             accessibilityRole="button"
             onPress={dismissOnBackdropPress ? onClose : undefined}
             style={styles.fill}
@@ -1191,13 +1213,14 @@ export function ConfirmDialog({
   visible,
   title,
   message,
-  confirmLabel = "확인",
-  cancelLabel = "취소",
+  confirmLabel = t("확인"),
+  cancelLabel = t("취소"),
   destructive = false,
   loading = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  useLocale()
   const { fontScale } = useWindowDimensions()
   /*
    * 320pt 폭에 두 버튼을 나란히 두면 큰 글씨에서 문구가 단어 가운데서 쪼개진다.
@@ -1207,7 +1230,7 @@ export function ConfirmDialog({
   return (
     <Modal animationType="fade" onRequestClose={onCancel} presentationStyle="overFullScreen" transparent visible={visible}>
       <View style={styles.dialogRoot}>
-        <Pressable accessibilityLabel={`${title} 닫기`} accessibilityRole="button" onPress={onCancel} style={styles.backdrop} />
+        <Pressable accessibilityLabel={t("{p0} 닫기", { p0: title })} accessibilityRole="button" onPress={onCancel} style={styles.backdrop} />
         <View accessibilityRole="alert" accessibilityViewIsModal style={styles.dialog}>
           <AppText accessibilityRole="header" lineBreakStrategyIOS="hangul-word" style={styles.textCenter} variant="sectionTitle">
             {title}

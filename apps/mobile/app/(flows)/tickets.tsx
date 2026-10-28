@@ -1,3 +1,5 @@
+import { t } from "@raota/shared"
+import { useLocale } from "@/src/i18n"
 import { router } from "expo-router"
 import { Ticket } from "lucide-react-native"
 import { useMemo, useState } from "react"
@@ -16,10 +18,11 @@ import { colors, spacing, typography } from "@/src/theme"
  * 매장이 그사이 모두 추천에서 빠진 식권도 날짜와 장수가 맞도록 목록에 남는다("지금은 보여줄 가게가 없어요").
  */
 export default function TicketHistoryScreen() {
+  const locale = useLocale()
   const insets = useSafeAreaInsets()
   const history = useTicketHistory()
   const [refreshing, setRefreshing] = useState(false)
-  const sections = useMemo(() => groupByDay(history.data), [history.data])
+  const sections = useMemo(() => groupByDay(history.data), [history.data, locale])
 
   const refresh = async () => {
     setRefreshing(true)
@@ -32,26 +35,26 @@ export default function TicketHistoryScreen() {
   const open = (ticket: RemoteTicket) => router.push({ pathname: "/ai-recommend", params: { ticket: ticket.id } })
 
   const empty = !history.enabled ? (
-    <EmptyState description="AI 큐레이터에서 식권을 뽑으면 여기에 날짜별로 쌓여요." icon={<Ticket color={colors.textMuted} size={32} />} style={styles.state} title="뽑은 식권이 없어요" />
+    <EmptyState description={t("AI 큐레이터에서 식권을 뽑으면 여기에 날짜별로 쌓여요.")} icon={<Ticket color={colors.textMuted} size={32} />} style={styles.state} title={t("뽑은 식권이 없어요")} />
   ) : history.isLoading ? (
-    <LoadingState label="식권을 불러오는 중…" style={styles.state} />
+    <LoadingState label={t("식권을 불러오는 중…")} style={styles.state} />
   ) : history.error ? (
     <EmptyState
-      actionLabel="다시 불러오기"
-      description="연결을 확인하고 다시 불러와 주세요."
+      actionLabel={t("다시 불러오기")}
+      description={t("연결을 확인하고 다시 불러와 주세요.")}
       icon={<Ticket color={colors.textMuted} size={32} />}
       onAction={() => void refresh()}
       style={styles.state}
-      title="지난 식권을 불러오지 못했어요"
+      title={t("지난 식권을 불러오지 못했어요")}
     />
   ) : (
     <EmptyState
-      actionLabel="AI 추천받기"
-      description="AI 큐레이터에서 식권을 뽑으면 여기에 날짜별로 쌓여요."
+      actionLabel={t("AI 추천받기")}
+      description={t("AI 큐레이터에서 식권을 뽑으면 여기에 날짜별로 쌓여요.")}
       icon={<Ticket color={colors.textMuted} size={32} />}
       onAction={() => router.push("/ai-recommend")}
       style={styles.state}
-      title="아직 뽑은 식권이 없어요"
+      title={t("아직 뽑은 식권이 없어요")}
     />
   )
 
@@ -59,14 +62,14 @@ export default function TicketHistoryScreen() {
     <Screen>
       <Header
         align="center"
-        backLabel="뒤로가기"
+        backLabel={t("뒤로가기")}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/native/my"))}
-        title="지난 식권"
+        title={t("지난 식권")}
         titleStyle={typography.sectionTitle}
       />
       <SectionList
         ListEmptyComponent={empty}
-        ListFooterComponent={history.data.length && history.hasMore && history.isLoading ? <LoadingState label="더 불러오는 중…" /> : null}
+        ListFooterComponent={history.data.length && history.hasMore && history.isLoading ? <LoadingState label={t("더 불러오는 중…")} /> : null}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.section }]}
         keyExtractor={(ticket) => ticket.id}
         onEndReached={() => {
@@ -78,7 +81,7 @@ export default function TicketHistoryScreen() {
         renderItem={({ item }) => <TicketCard onPress={() => open(item)} ticket={item} />}
         renderSectionHeader={({ section }) => (
           <AppText accessibilityRole="header" style={styles.day} tone="sub" variant="secondary">
-            {`${section.title} · ${section.data.length}장`}
+            {t("{day} · {count}장", { day: section.title, count: section.data.length })}
           </AppText>
         )}
         sections={sections}

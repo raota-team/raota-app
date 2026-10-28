@@ -1,3 +1,4 @@
+import { t } from "@raota/shared"
 import { useEffect, useState, type ReactNode } from 'react'
 import { recordMonthKey } from './utils/monthlyReport'
 import { Home, MapPin, MessageSquare, Flame, User } from 'lucide-react'
@@ -734,7 +735,7 @@ export default function App() {
 
         {/* 5-Tab Navigation Bar */}
         {activeTabScreen && (
-          <nav aria-label="주요 메뉴" className="relative z-40 flex-shrink-0 bg-white border-t border-[#E2E2E2] pb-[env(safe-area-inset-bottom)]">
+          <nav aria-label={t("주요 메뉴")} className="relative z-40 flex-shrink-0 bg-white border-t border-[#E2E2E2] pb-[env(safe-area-inset-bottom)]">
             <div className="flex items-stretch h-14 px-1">
               {TAB_DEFS.map(({ id, label, Icon }) => {
                 const active = displayTab === id
@@ -751,7 +752,7 @@ export default function App() {
                     )}
                     <Icon active={active} />
                     <span className={`text-[12px] leading-none font-bold tracking-tight ${active ? 'text-[#E60000]' : 'text-[#6B6E73]'}`}>
-                      {label}
+                      {t(label)}
                     </span>
                   </button>
                 )

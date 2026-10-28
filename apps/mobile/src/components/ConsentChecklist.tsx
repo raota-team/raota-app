@@ -1,3 +1,5 @@
+import { useLocale } from "@/src/i18n"
+import { t } from "@raota/shared"
 import { useState, type ReactNode } from "react"
 import { Check } from "lucide-react-native"
 import { Pressable, StyleSheet, View } from "react-native"
@@ -35,6 +37,7 @@ function CheckRow({
   children: ReactNode
   strong?: boolean
 }) {
+  useLocale()
   return (
     <Pressable
       accessibilityLabel={label}
@@ -54,6 +57,7 @@ function CheckRow({
 }
 
 function ViewLink({ label, onPress }: { label: string; onPress: () => void }) {
+  useLocale()
   return (
     <Pressable
       accessibilityLabel={label}
@@ -62,8 +66,7 @@ function ViewLink({ label, onPress }: { label: string; onPress: () => void }) {
       style={({ pressed }) => [styles.viewLink, pressed && styles.pressedWash]}
     >
       <AppText capScale tone="muted" variant="meta">
-        보기
-      </AppText>
+        {t("보기")}</AppText>
     </Pressable>
   )
 }
@@ -77,7 +80,8 @@ export interface ConsentChecklistProps {
   errorMessage?: string
 }
 
-export function ConsentChecklist({ value, onChange, showError, errorMessage = CONSENT_REQUIRED_ERROR }: ConsentChecklistProps) {
+export function ConsentChecklist({ value, onChange, showError, errorMessage = t(CONSENT_REQUIRED_ERROR) }: ConsentChecklistProps) {
+  useLocale()
   const [policy, setPolicy] = useState<PolicyType | null>(null)
   const error = showError && (!value.terms || !value.privacy)
   const allAgreed = value.terms && value.privacy && value.marketing
@@ -87,37 +91,30 @@ export function ConsentChecklist({ value, onChange, showError, errorMessage = CO
       <View style={styles.termsAll}>
         <CheckRow
           checked={allAgreed}
-          label="약관 전체 동의"
+          label={t("약관 전체 동의")}
           onChange={(next) => onChange({ terms: next, privacy: next, marketing: next })}
           strong
         >
-          약관 전체 동의
-        </CheckRow>
+          {t("약관 전체 동의")}</CheckRow>
       </View>
       <View style={styles.termRow}>
-        <CheckRow checked={value.terms} label="필수, 서비스 이용약관 동의" onChange={(terms) => onChange({ ...value, terms })}>
+        <CheckRow checked={value.terms} label={t("필수, 서비스 이용약관 동의")} onChange={(terms) => onChange({ ...value, terms })}>
           <AppText style={styles.bold} tone="sub" variant="meta">
-            [필수]
-          </AppText>{" "}
-          서비스 이용약관 동의
-        </CheckRow>
-        <ViewLink label="서비스 이용약관 보기" onPress={() => setPolicy("terms")} />
+            {t("[필수]")}</AppText>{" "}
+          {t("서비스 이용약관 동의")}</CheckRow>
+        <ViewLink label={t("서비스 이용약관 보기")} onPress={() => setPolicy("terms")} />
       </View>
       <View style={styles.termRow}>
-        <CheckRow checked={value.privacy} label="필수, 개인정보 수집 및 이용 동의" onChange={(privacy) => onChange({ ...value, privacy })}>
+        <CheckRow checked={value.privacy} label={t("필수, 개인정보 수집 및 이용 동의")} onChange={(privacy) => onChange({ ...value, privacy })}>
           <AppText style={styles.bold} tone="sub" variant="meta">
-            [필수]
-          </AppText>{" "}
-          개인정보 수집 및 이용 동의
-        </CheckRow>
-        <ViewLink label="개인정보 수집 및 이용 동의 보기" onPress={() => setPolicy("privacy")} />
+            {t("[필수]")}</AppText>{" "}
+          {t("개인정보 수집 및 이용 동의")}</CheckRow>
+        <ViewLink label={t("개인정보 수집 및 이용 동의 보기")} onPress={() => setPolicy("privacy")} />
       </View>
-      <CheckRow checked={value.marketing} label="선택, 라멘 추천 및 소식 수신 동의" onChange={(marketing) => onChange({ ...value, marketing })}>
+      <CheckRow checked={value.marketing} label={t("선택, 라멘 추천 및 소식 수신 동의")} onChange={(marketing) => onChange({ ...value, marketing })}>
         <AppText style={styles.bold} tone="sub" variant="meta">
-          [선택]
-        </AppText>{" "}
-        라멘 추천 및 소식 수신 동의
-      </CheckRow>
+          {t("[선택]")}</AppText>{" "}
+        {t("라멘 추천 및 소식 수신 동의")}</CheckRow>
       <AppText
         accessibilityElementsHidden={!error}
         accessibilityLiveRegion={error ? "polite" : undefined}
@@ -138,12 +135,12 @@ export function ConsentChecklist({ value, onChange, showError, errorMessage = CO
               if (policy === "privacy") onChange({ ...value, privacy: true })
               setPolicy(null)
             }}
-            title="확인하고 동의"
+            title={t("확인하고 동의")}
             variant="secondary"
           />
         }
         onClose={() => setPolicy(null)}
-        title={policy === "privacy" ? "개인정보 수집 및 이용 동의" : policy === "terms" ? "서비스 이용약관" : undefined}
+        title={policy === "privacy" ? t("개인정보 수집 및 이용 동의") : policy === "terms" ? t("서비스 이용약관") : undefined}
         type={policy}
       />
     </View>
