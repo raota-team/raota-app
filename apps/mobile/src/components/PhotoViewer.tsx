@@ -15,7 +15,7 @@ import {
 } from "react-native"
 import Animated, { Easing, runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-
+import { sizedImageUri } from "../api/imageSize"
 import { colors, radii, spacing, touchTarget } from "../theme"
 import { AppText } from "./ui"
 /** 아래로 이만큼 끌었다 놓으면 닫는다 */
@@ -73,6 +73,12 @@ export function PhotoViewer({ photos, index, label, onClose, onIndexChange, onFa
   /** 전환용 사진 층과 넘겨 보기 목록 중 무엇을 보일지. 둘을 잠깐 겹쳐 두어 바뀌는 순간 깜빡이지 않게 한다 */
   const layerOn = useSharedValue(hasOrigin ? 1 : 0)
   const pagerOn = useSharedValue(hasOrigin ? 0 : 1)
+
+  // 원본은 4032×3024·수 MB까지 크다(2026.10.28 새 기록 2.5MB). 전환 층은 화면 크기로 줄인 사진을 써서 받고 푸는 사이 전환이
+  // 끊기지 않게 한다. 자리표시는 누른 칸이 이미 받아 둔 크기라 캐시에서 바로 그려진다. 원본은 다 열린 뒤 확대용으로만 받는다
+  const screenUri = (uri: string) => sizedImageUri(uri, Math.max(width, height))
+  const startUri = photos[index ?? 0] ?? ""
+  const originUri = origin ? sizedImageUri(startUri, Math.max(origin.width, origin.height)) : undefined
 
   // 끝 틀: 화면 폭에 맞춘 contain 크기, 세로 가운데
   const fitWidth = Math.min(width, height * aspect)
@@ -204,6 +210,7 @@ export function PhotoViewer({ photos, index, label, onClose, onIndexChange, onFa
                   label={`${label} ${itemIndex + 1}`}
                   onPullClose={pullDismiss}
                   onZoomChange={setZoomed}
+                  placeholderUri={screenUri(item)}
                   uri={item}
                   width={width}
                 />
@@ -223,8 +230,10 @@ export function PhotoViewer({ photos, index, label, onClose, onIndexChange, onFa
               onLoad={({ source }) => {
                 if (source.width > 0 && source.height > 0) setAspect(source.width / source.height)
               }}
+              placeholder={originUri ? { uri: originUri } : undefined}
+              placeholderContentFit="cover"
               priority="high"
-              source={{ uri: photos[index ?? 0] }}
+              source={{ uri: screenUri(startUri) }}
               style={StyleSheet.absoluteFill}
               transition={0}
             />
@@ -246,6 +255,7 @@ export function PhotoViewer({ photos, index, label, onClose, onIndexChange, onFa
 
 function ZoomablePhoto({
   uri,
+  placeholderUri,
   label,
   width,
   height,
@@ -253,6 +263,8 @@ function ZoomablePhoto({
   onZoomChange,
 }: {
   uri: string
+  /** 원본을 받는 동안 보일, 전환 층과 같은 화면 크기 사진 */
+  placeholderUri: string
   label: string
   width: number
   height: number
@@ -307,7 +319,7 @@ function ZoomablePhoto({
       style={{ width, height }}
     >
       <Pressable accessibilityLabel={label} accessibilityRole="image" onPress={({ nativeEvent }) => onTap(nativeEvent.locationX, nativeEvent.locationY)}>
-        <Image contentFit="contain" source={{ uri }} style={{ width, height }} transition={120} />
+        <Image contentFit="contain" placeholder={{ uri: placeholderUri }} placeholderContentFit="contain" source={{ uri }} style={{ width, height }} transition={120} />
       </Pressable>
     </ScrollView>
   )
