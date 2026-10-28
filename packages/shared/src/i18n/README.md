@@ -31,7 +31,7 @@ labelOf(log.ramenType)                            // 저장·API 값의 표시 �
 ## 번역 갱신
 
 1. 코드에 문구를 쓰고 `pnpm i18n:extract` — 모든 언어 PO에 새 메시지가 추가됩니다.
-2. `locales/{en,zh,ja,es}/messages.po`의 빈 `msgstr`을 번역합니다. `{이름}` 자리표시자와 `plural`/`select` 구조는 그대로 둡니다.
+2. `locales/{en,zh,ja,es}/messages.po`의 빈 `msgstr`을 번역합니다. `{이름}` 자리표시자와 `plural`/`select` 구조는 그대로 둡니다. 한국어 원문에 없어도 번역문에서 수를 맞출 수 있습니다: `{count}그릇` → `{count, plural, one {# bowl} other {# bowls}}`. 값이 숫자가 아닌 문자열(이미 포맷한 수 등)이면 `#` 대신 `{count}`를 씁니다. 모바일은 Hermes에 `Intl.PluralRules`가 없어 `apps/mobile/src/polyfills.ts`가 채우므로, 지원 언어를 더하면 그곳에도 locale-data를 더합니다.
 3. `pnpm i18n:compile` — `messages.ts`를 다시 만듭니다. PO와 `messages.ts`를 함께 커밋합니다.
 
 `apps/mobile/__tests__/i18n.test.tsx`가 번역이 빠진 메시지와 자리표시자가 어긋난 번역을 찾아 실패시킵니다.

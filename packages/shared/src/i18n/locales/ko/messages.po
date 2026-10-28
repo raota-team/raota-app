@@ -156,6 +156,11 @@ msgid "{broth}에\n"
 msgstr "{broth}에\n"
 "{noodle}"
 
+#: apps/mobile/app/native/my.tsx:705
+#: apps/mobile/app/native/my.tsx:787
+msgid "{count}곳 남음"
+msgstr "{count}곳 남음"
+
 #: apps/mobile/src/components/TasteStory.tsx:136
 msgid "{count}곳을 다녔어요"
 msgstr "{count}곳을 다녔어요"
@@ -171,6 +176,10 @@ msgstr "{count}그릇"
 #: src/components/MonthlyReportCard.tsx:28
 msgid "{count}그릇 기록, {status}"
 msgstr "{count}그릇 기록, {status}"
+
+#: apps/mobile/app/native/my.tsx:594
+msgid "{count}그릇 남음"
+msgstr "{count}그릇 남음"
 
 #: src/components/MonthlyReportCard.tsx:28
 msgid "{count}그릇 더 필요"
@@ -451,10 +460,6 @@ msgstr "{p0} 크게 보기"
 msgid "{p0} 탭"
 msgstr "{p0} 탭"
 
-#: apps/mobile/app/native/my.tsx:1238
-msgid "{p0}, {p1}{p2} 남음"
-msgstr "{p0}, {p1}{p2} 남음"
-
 #: apps/mobile/app/native/index.tsx:574
 msgid "{p0}{p1}, {p2}, {p3}, 매장 상세 보기"
 msgstr "{p0}{p1}, {p2}, {p3}, 매장 상세 보기"
@@ -679,11 +684,11 @@ msgstr "{v0} 닫기"
 msgid "{v0} 대표 사진"
 msgstr "{v0} 대표 사진"
 
-#: src/screens/LoungeScreen.tsx:1437
+#: src/screens/LoungeScreen.tsx:1439
 msgid "{v0} 댓글"
 msgstr "{v0} 댓글"
 
-#: src/screens/LoungeScreen.tsx:1523
+#: src/screens/LoungeScreen.tsx:1525
 msgid "{v0} 댓글 입력"
 msgstr "{v0} 댓글 입력"
 
@@ -714,10 +719,6 @@ msgstr "{v0} 알림 받기"
 #: src/screens/MyScreen.tsx:674
 msgid "{v0} 저장 해제"
 msgstr "{v0} 저장 해제"
-
-#: src/screens/LoungeScreen.tsx:1407
-msgid "{v0}{v1}"
-msgstr "{v0}{v1}"
 
 #: src/screens/RecordCompleteScreen.tsx:153
 msgid "{v0}그릇 → {v1}그릇 평균"
@@ -1085,13 +1086,13 @@ msgid "AI 큐레이터"
 msgstr "AI 큐레이터"
 
 #: apps/mobile/app/native/my.tsx:1072
-#: packages/shared/src/i18n/labels.ts:109
+#: packages/shared/src/i18n/labels.ts:108
 msgid "AI 큐레이터에서 뽑은 식권을 날짜별로 다시 봐요"
 msgstr "AI 큐레이터에서 뽑은 식권을 날짜별로 다시 봐요"
 
 #: apps/mobile/app/(flows)/tickets.tsx:38
 #: apps/mobile/app/(flows)/tickets.tsx:53
-#: packages/shared/src/i18n/labels.ts:110
+#: packages/shared/src/i18n/labels.ts:109
 msgid "AI 큐레이터에서 식권을 뽑으면 여기에 날짜별로 쌓여요."
 msgstr "AI 큐레이터에서 식권을 뽑으면 여기에 날짜별로 쌓여요."
 
@@ -1112,7 +1113,7 @@ msgid "Apple로 계속하기"
 msgstr "Apple로 계속하기"
 
 #: apps/mobile/src/auth/social.ts:105
-#: packages/shared/src/i18n/labels.ts:87
+#: packages/shared/src/i18n/labels.ts:86
 msgid "Apple에서 로그인 정보를 받지 못했어요."
 msgstr "Apple에서 로그인 정보를 받지 못했어요."
 
@@ -1121,7 +1122,7 @@ msgid "Google 로그인 중"
 msgstr "Google 로그인 중"
 
 #: apps/mobile/src/auth/social.ts:80
-#: packages/shared/src/i18n/labels.ts:85
+#: packages/shared/src/i18n/labels.ts:84
 msgid "Google 로그인이 설정되지 않았어요."
 msgstr "Google 로그인이 설정되지 않았어요."
 
@@ -1134,7 +1135,7 @@ msgid "Google로 시작하기"
 msgstr "Google로 시작하기"
 
 #: apps/mobile/src/auth/social.ts:85
-#: packages/shared/src/i18n/labels.ts:86
+#: packages/shared/src/i18n/labels.ts:85
 msgid "Google에서 로그인 정보를 받지 못했어요."
 msgstr "Google에서 로그인 정보를 받지 못했어요."
 
@@ -1335,7 +1336,7 @@ msgstr "가까운 영업 중 매장 · {distance}"
 msgid "가끔"
 msgstr "가끔"
 
-#: packages/shared/src/i18n/labels.ts:44
+#: packages/shared/src/i18n/labels.ts:43
 msgid "가끔 생각남"
 msgstr "가끔 생각남"
 
@@ -1351,7 +1352,7 @@ msgstr "가입 처리 중"
 msgid "가입은 됐지만 소개·사진을 저장하지 못했어요. 다시 누르면 그것만 저장해요."
 msgstr "가입은 됐지만 소개·사진을 저장하지 못했어요. 다시 누르면 그것만 저장해요."
 
-#: packages/shared/src/i18n/labels.ts:104
+#: packages/shared/src/i18n/labels.ts:103
 msgid "가입은 완료됐지만 추가 프로필을 저장하지 못했어요."
 msgstr "가입은 완료됐지만 추가 프로필을 저장하지 못했어요."
 
@@ -1398,7 +1399,7 @@ msgstr "가장 즐겨 먹는 종류를 골라 주세요. 프로필에 표시돼�
 msgid "각 달에 먹은 라멘의 종류별 비율을 비교해요."
 msgstr "각 달에 먹은 라멘의 종류별 비율을 비교해요."
 
-#: packages/shared/src/i18n/labels.ts:153
+#: packages/shared/src/i18n/labels.ts:152
 #: src/types.ts:59
 msgid "간"
 msgstr "간"
@@ -1421,7 +1422,7 @@ msgstr "감정"
 msgid "감정서 발행"
 msgstr "감정서 발행"
 
-#: packages/shared/src/i18n/labels.ts:123
+#: packages/shared/src/i18n/labels.ts:122
 msgid "감칠맛 좋아요"
 msgstr "감칠맛 좋아요"
 
@@ -1546,7 +1547,7 @@ msgstr "게시판 분류"
 msgid "결과 바로 보기"
 msgstr "결과 바로 보기"
 
-#: packages/shared/src/i18n/labels.ts:137
+#: packages/shared/src/i18n/labels.ts:136
 msgid "계란 좋아요"
 msgstr "계란 좋아요"
 
@@ -1633,9 +1634,7 @@ msgstr "골라주세요"
 
 #: apps/mobile/app/native/my.tsx:304
 #: apps/mobile/app/native/my.tsx:657
-#: apps/mobile/app/native/my.tsx:705
 #: apps/mobile/app/native/my.tsx:756
-#: apps/mobile/app/native/my.tsx:787
 #: src/screens/MapScreen.tsx:698
 #: src/screens/MyScreen.tsx:492
 #: src/screens/MyScreen.tsx:596
@@ -1658,16 +1657,16 @@ msgstr "공감"
 msgid "공감 {p0}개"
 msgstr "공감 {p0}개"
 
-#: src/screens/LoungeScreen.tsx:1420
+#: src/screens/LoungeScreen.tsx:1422
 msgid "공감 취소, 공감 {v0}개"
 msgstr "공감 취소, 공감 {v0}개"
 
 #: apps/mobile/src/components/LoungeLog.tsx:199
-#: packages/shared/src/i18n/labels.ts:99
+#: packages/shared/src/i18n/labels.ts:98
 msgid "공감을 반영하지 못했어요. 다시 시도해 주세요."
 msgstr "공감을 반영하지 못했어요. 다시 시도해 주세요."
 
-#: src/screens/LoungeScreen.tsx:1420
+#: src/screens/LoungeScreen.tsx:1422
 msgid "공감하기, 공감 {v0}개"
 msgstr "공감하기, 공감 {v0}개"
 
@@ -1752,12 +1751,12 @@ msgstr "괜찮았어요"
 msgid "구글 리뷰 연동"
 msgstr "구글 리뷰 연동"
 
-#: packages/shared/src/i18n/labels.ts:140
+#: packages/shared/src/i18n/labels.ts:139
 msgid "구성 알차요"
 msgstr "구성 알차요"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:174
-#: packages/shared/src/i18n/labels.ts:151
+#: packages/shared/src/i18n/labels.ts:150
 #: src/types.ts:57
 msgid "국물"
 msgstr "국물"
@@ -1792,7 +1791,7 @@ msgstr "국물을 골라주세요"
 msgid "국물이 덜 짠 곳"
 msgstr "국물이 덜 짠 곳"
 
-#: packages/shared/src/i18n/labels.ts:129
+#: packages/shared/src/i18n/labels.ts:128
 msgid "국물이 잘 배어요"
 msgstr "국물이 잘 배어요"
 
@@ -1805,7 +1804,6 @@ msgstr "그다음은 {name} {count}번"
 #: apps/mobile/app/native/my.tsx:303
 #: apps/mobile/app/native/my.tsx:573
 #: apps/mobile/app/native/my.tsx:584
-#: apps/mobile/app/native/my.tsx:594
 #: apps/mobile/app/native/my.tsx:739
 #: src/components/MenuDistributionChart.tsx:27
 #: src/components/MonthlyReportCard.tsx:23
@@ -1898,7 +1896,7 @@ msgstr "글 올리기"
 msgid "글 종류"
 msgstr "글 종류"
 
-#: src/screens/LoungeScreen.tsx:1650
+#: src/screens/LoungeScreen.tsx:1652
 msgid "글쓰기"
 msgstr "글쓰기"
 
@@ -1979,7 +1977,7 @@ msgstr "기록은 계정에 저장돼요. 로그인하면 남긴 라멘이 계�
 msgid "기록은 계정에 저장돼요. 로그인하면 취향 리포트도 함께 쌓여요."
 msgstr "기록은 계정에 저장돼요. 로그인하면 취향 리포트도 함께 쌓여요."
 
-#: packages/shared/src/i18n/labels.ts:97
+#: packages/shared/src/i18n/labels.ts:96
 msgid "기록을 고치지 못했어요. 다시 시도해 주세요."
 msgstr "기록을 고치지 못했어요. 다시 시도해 주세요."
 
@@ -2016,11 +2014,11 @@ msgstr "기록을 불러오지 못했어요 · 다시 불러오기"
 msgid "기록을 불러오지 못했어요. 다시 불러오기"
 msgstr "기록을 불러오지 못했어요. 다시 불러오기"
 
-#: packages/shared/src/i18n/labels.ts:96
+#: packages/shared/src/i18n/labels.ts:95
 msgid "기록을 저장하지 못했어요. 다시 시도해 주세요."
 msgstr "기록을 저장하지 못했어요. 다시 시도해 주세요."
 
-#: packages/shared/src/i18n/labels.ts:98
+#: packages/shared/src/i18n/labels.ts:97
 msgid "기록을 지우지 못했어요. 다시 시도해 주세요."
 msgstr "기록을 지우지 못했어요. 다시 시도해 주세요."
 
@@ -2050,7 +2048,7 @@ msgstr "기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언�
 msgid "기록이 저장됐어요"
 msgstr "기록이 저장됐어요"
 
-#: src/screens/LoungeScreen.tsx:1645
+#: src/screens/LoungeScreen.tsx:1647
 msgid "기록하기"
 msgstr "기록하기"
 
@@ -2070,7 +2068,7 @@ msgstr "기록할 때가 되면 알려드릴게요"
 msgid "기록할 때가 되면 알려드릴까요?"
 msgstr "기록할 때가 되면 알려드릴까요?"
 
-#: packages/shared/src/i18n/labels.ts:124
+#: packages/shared/src/i18n/labels.ts:123
 msgid "기름져요"
 msgstr "기름져요"
 
@@ -2096,7 +2094,7 @@ msgid "기억해둘 점 (예: 다음엔 면을 단단하게)"
 msgstr "기억해둘 점 (예: 다음엔 면을 단단하게)"
 
 #: apps/mobile/src/domain/lounge.ts:49
-#: packages/shared/src/i18n/labels.ts:23
+#: packages/shared/src/i18n/labels.ts:22
 msgid "기타"
 msgstr "기타"
 
@@ -2109,7 +2107,7 @@ msgstr "길을 잃은 한 그릇이에요"
 msgid "깔끔하고 깊은 감칠맛"
 msgstr "깔끔하고 깊은 감칠맛"
 
-#: packages/shared/src/i18n/labels.ts:122
+#: packages/shared/src/i18n/labels.ts:121
 msgid "깔끔해요"
 msgstr "깔끔해요"
 
@@ -2199,7 +2197,7 @@ msgstr "내 기록 {count}그릇의 취향을 반영했어요"
 msgid "내 기록 공개하기"
 msgstr "내 기록 공개하기"
 
-#: packages/shared/src/i18n/labels.ts:146
+#: packages/shared/src/i18n/labels.ts:145
 msgid "내 기록을 불러오지 못했어요."
 msgstr "내 기록을 불러오지 못했어요."
 
@@ -2279,12 +2277,12 @@ msgstr "내 활동"
 
 #: apps/mobile/app/(flows)/record/new.tsx:963
 #: apps/mobile/src/state/RaotaStore.tsx:1549
-#: packages/shared/src/i18n/labels.ts:91
+#: packages/shared/src/i18n/labels.ts:90
 msgid "내가 남긴 기록만 고칠 수 있어요."
 msgstr "내가 남긴 기록만 고칠 수 있어요."
 
 #: apps/mobile/src/data/remote.ts:437
-#: packages/shared/src/i18n/labels.ts:81
+#: packages/shared/src/i18n/labels.ts:80
 msgid "내가 쓴 글만 고치거나 지울 수 있어요."
 msgstr "내가 쓴 글만 고치거나 지울 수 있어요."
 
@@ -2316,7 +2314,7 @@ msgid "네이버 지도에서 위치와 길찾기를 열어요"
 msgstr "네이버 지도에서 위치와 길찾기를 열어요"
 
 #: apps/mobile/src/api/client.ts:331
-#: packages/shared/src/i18n/labels.ts:77
+#: packages/shared/src/i18n/labels.ts:76
 msgid "네트워크 연결을 확인해 주세요."
 msgstr "네트워크 연결을 확인해 주세요."
 
@@ -2346,7 +2344,7 @@ msgstr "누르면 빠진 항목으로 이동해요"
 msgid "누르면 정렬 메뉴가 열려요"
 msgstr "누르면 정렬 메뉴가 열려요"
 
-#: packages/shared/src/i18n/labels.ts:56
+#: packages/shared/src/i18n/labels.ts:55
 msgid "누적"
 msgstr "누적"
 
@@ -2372,7 +2370,7 @@ msgstr "늘었어요"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:58
 #: apps/mobile/app/native/map.web.tsx:44
-#: packages/shared/src/i18n/labels.ts:17
+#: packages/shared/src/i18n/labels.ts:16
 msgid "니보시"
 msgstr "니보시"
 
@@ -2424,7 +2422,7 @@ msgid "님에게 답글 작성 중"
 msgstr "님에게 답글 작성 중"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:124
-#: packages/shared/src/i18n/labels.ts:107
+#: packages/shared/src/i18n/labels.ts:106
 msgid "다른 날 뽑은 식권까지 날짜별로 봐요"
 msgstr "다른 날 뽑은 식권까지 날짜별로 봐요"
 
@@ -2465,7 +2463,7 @@ msgid "다시 가고 싶나요?"
 msgstr "다시 가고 싶나요?"
 
 #: apps/mobile/src/api/client.ts:477
-#: packages/shared/src/i18n/labels.ts:74
+#: packages/shared/src/i18n/labels.ts:73
 msgid "다시 로그인해 주세요."
 msgstr "다시 로그인해 주세요."
 
@@ -2564,17 +2562,17 @@ msgid "단골집"
 msgstr "단골집"
 
 #: packages/shared/src/domain/identity.ts:59
-#: packages/shared/src/i18n/labels.ts:67
+#: packages/shared/src/i18n/labels.ts:66
 msgid "단골형"
 msgstr "단골형"
 
-#: packages/shared/src/i18n/labels.ts:39
+#: packages/shared/src/i18n/labels.ts:38
 msgid "단단하게"
 msgstr "단단하게"
 
 #: apps/mobile/src/components/TasteStory.tsx:50
 #: packages/shared/src/domain/identity.ts:58
-#: packages/shared/src/i18n/labels.ts:65
+#: packages/shared/src/i18n/labels.ts:64
 msgid "단단한 면"
 msgstr "단단한 면"
 
@@ -2584,7 +2582,7 @@ msgstr "단단한 면"
 msgid "단단한 편"
 msgstr "단단한 편"
 
-#: packages/shared/src/i18n/labels.ts:127
+#: packages/shared/src/i18n/labels.ts:126
 msgid "단단해요"
 msgstr "단단해요"
 
@@ -2654,15 +2652,15 @@ msgstr "대표 스타일"
 #: src/screens/LoungeScreen.tsx:961
 #: src/screens/LoungeScreen.tsx:973
 #: src/screens/LoungeScreen.tsx:976
-#: src/screens/LoungeScreen.tsx:1443
-#: src/screens/LoungeScreen.tsx:1611
+#: src/screens/LoungeScreen.tsx:1445
+#: src/screens/LoungeScreen.tsx:1613
 #: src/screens/MyScreen.tsx:454
 #: src/screens/MyScreen.tsx:697
 #: src/screens/NotificationScreen.tsx:60
 msgid "댓글"
 msgstr "댓글"
 
-#: src/screens/LoungeScreen.tsx:1475
+#: src/screens/LoungeScreen.tsx:1477
 msgid "댓글 {v0}개 더 보기"
 msgstr "댓글 {v0}개 더 보기"
 
@@ -2670,7 +2668,7 @@ msgstr "댓글 {v0}개 더 보기"
 msgid "댓글 {v1}"
 msgstr "댓글 {v1}"
 
-#: src/screens/LoungeScreen.tsx:1532
+#: src/screens/LoungeScreen.tsx:1534
 msgid "댓글 등록"
 msgstr "댓글 등록"
 
@@ -2683,11 +2681,27 @@ msgstr "댓글 신고하기"
 msgid "댓글 입력"
 msgstr "댓글 입력"
 
-#: src/screens/LoungeScreen.tsx:1495
+#: src/screens/LoungeScreen.tsx:1409
+msgid "댓글 입력 닫기"
+msgstr "댓글 입력 닫기"
+
+#: src/screens/LoungeScreen.tsx:1408
+msgid "댓글 입력 닫기, 댓글 {count}개"
+msgstr "댓글 입력 닫기, 댓글 {count}개"
+
+#: src/screens/LoungeScreen.tsx:1497
 msgid "댓글 입력창 열기"
 msgstr "댓글 입력창 열기"
 
-#: src/screens/LoungeScreen.tsx:1475
+#: src/screens/LoungeScreen.tsx:1409
+msgid "댓글 작성"
+msgstr "댓글 작성"
+
+#: src/screens/LoungeScreen.tsx:1408
+msgid "댓글 작성, 댓글 {count}개"
+msgstr "댓글 작성, 댓글 {count}개"
+
+#: src/screens/LoungeScreen.tsx:1477
 msgid "댓글 접기"
 msgstr "댓글 접기"
 
@@ -2704,7 +2718,7 @@ msgstr "댓글은 2자 이상 적어 주세요."
 msgid "댓글을 2자 이상 입력해 주세요"
 msgstr "댓글을 2자 이상 입력해 주세요"
 
-#: packages/shared/src/i18n/labels.ts:100
+#: packages/shared/src/i18n/labels.ts:99
 msgid "댓글을 남기지 못했어요. 다시 시도해 주세요."
 msgstr "댓글을 남기지 못했어요. 다시 시도해 주세요."
 
@@ -2730,7 +2744,7 @@ msgid "댓글을 입력하세요"
 msgstr "댓글을 입력하세요"
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:306
-#: packages/shared/src/i18n/labels.ts:101
+#: packages/shared/src/i18n/labels.ts:100
 msgid "댓글을 지우지 못했어요. 다시 시도해 주세요."
 msgstr "댓글을 지우지 못했어요. 다시 시도해 주세요."
 
@@ -2764,7 +2778,7 @@ msgid "데모 계정으로 체험"
 msgstr "데모 계정으로 체험"
 
 #: apps/mobile/src/data/hooks.ts:70
-#: packages/shared/src/i18n/labels.ts:24
+#: packages/shared/src/i18n/labels.ts:23
 msgid "데이터를 불러오지 못했어요"
 msgstr "데이터를 불러오지 못했어요"
 
@@ -2777,17 +2791,17 @@ msgstr "데이트/아늑한 분위기"
 msgid "도착한 알림이 없습니다"
 msgstr "도착한 알림이 없습니다"
 
-#: packages/shared/src/i18n/labels.ts:59
+#: packages/shared/src/i18n/labels.ts:58
 msgid "돈골파"
 msgstr "돈골파"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:53
 #: apps/mobile/app/native/map.web.tsx:39
-#: packages/shared/src/i18n/labels.ts:12
+#: packages/shared/src/i18n/labels.ts:11
 msgid "돈코츠"
 msgstr "돈코츠"
 
-#: packages/shared/src/i18n/labels.ts:118
+#: packages/shared/src/i18n/labels.ts:117
 #: src/screens/RegisterScreen.tsx:27
 msgid "돈코츠 (돼지뼈)"
 msgstr "돈코츠 (돼지뼈)"
@@ -2891,7 +2905,7 @@ msgid "등록된 이메일 없음"
 msgstr "등록된 이메일 없음"
 
 #: src/screens/LoungeScreen.tsx:978
-#: src/screens/LoungeScreen.tsx:1445
+#: src/screens/LoungeScreen.tsx:1447
 msgid "등록순"
 msgstr "등록순"
 
@@ -2899,7 +2913,7 @@ msgstr "등록순"
 msgid "등록순 "
 msgstr "등록순 "
 
-#: packages/shared/src/i18n/labels.ts:131
+#: packages/shared/src/i18n/labels.ts:130
 msgid "딱 좋아요"
 msgstr "딱 좋아요"
 
@@ -2928,11 +2942,11 @@ msgstr "라멘 기록을 모으고 있어요"
 msgid "라멘 기록하기"
 msgstr "라멘 기록하기"
 
-#: packages/shared/src/i18n/labels.ts:52
+#: packages/shared/src/i18n/labels.ts:51
 msgid "라멘 마스터"
 msgstr "라멘 마스터"
 
-#: packages/shared/src/i18n/labels.ts:51
+#: packages/shared/src/i18n/labels.ts:50
 msgid "라멘 미식가"
 msgstr "라멘 미식가"
 
@@ -2954,7 +2968,7 @@ msgstr "라멘 성지순례 중"
 msgid "라멘 스타일"
 msgstr "라멘 스타일"
 
-#: packages/shared/src/i18n/labels.ts:46
+#: packages/shared/src/i18n/labels.ts:45
 msgid "라멘 입문자"
 msgstr "라멘 입문자"
 
@@ -2992,7 +3006,7 @@ msgstr "라멘 추천 및 소식 수신 동의"
 msgid "라멘 취향 감정서"
 msgstr "라멘 취향 감정서"
 
-#: packages/shared/src/i18n/labels.ts:49
+#: packages/shared/src/i18n/labels.ts:48
 msgid "라멘 탐험가"
 msgstr "라멘 탐험가"
 
@@ -3029,23 +3043,23 @@ msgstr "라멘로그 {count}개"
 msgid "라멘로그 {count}그릇 이상"
 msgstr "라멘로그 {count}그릇 이상"
 
-#: packages/shared/src/i18n/labels.ts:145
+#: packages/shared/src/i18n/labels.ts:144
 msgid "라멘로그 100그릇 이상"
 msgstr "라멘로그 100그릇 이상"
 
-#: packages/shared/src/i18n/labels.ts:142
+#: packages/shared/src/i18n/labels.ts:141
 msgid "라멘로그 10그릇 이상"
 msgstr "라멘로그 10그릇 이상"
 
-#: packages/shared/src/i18n/labels.ts:141
+#: packages/shared/src/i18n/labels.ts:140
 msgid "라멘로그 1그릇 이상"
 msgstr "라멘로그 1그릇 이상"
 
-#: packages/shared/src/i18n/labels.ts:143
+#: packages/shared/src/i18n/labels.ts:142
 msgid "라멘로그 30그릇 이상"
 msgstr "라멘로그 30그릇 이상"
 
-#: packages/shared/src/i18n/labels.ts:144
+#: packages/shared/src/i18n/labels.ts:143
 msgid "라멘로그 50그릇 이상"
 msgstr "라멘로그 50그릇 이상"
 
@@ -3161,7 +3175,7 @@ msgstr "라멘에 진심인 편입니다."
 msgid "라멘에 진심인 편입니다. 깊은 국물 맛을 찾아다녀요."
 msgstr "라멘에 진심인 편입니다. 깊은 국물 맛을 찾아다녀요."
 
-#: packages/shared/src/i18n/labels.ts:47
+#: packages/shared/src/i18n/labels.ts:46
 msgid "라멘을 즐기는 자"
 msgstr "라멘을 즐기는 자"
 
@@ -3182,7 +3196,7 @@ msgstr "라멘집 검색"
 msgid "라멘집 공식 인스타그램 소식 모아보기"
 msgstr "라멘집 공식 인스타그램 소식 모아보기"
 
-#: packages/shared/src/i18n/labels.ts:50
+#: packages/shared/src/i18n/labels.ts:49
 msgid "라멘집 단골"
 msgstr "라멘집 단골"
 
@@ -3199,7 +3213,7 @@ msgstr "라멘집 이름, 계보, 지점 검색"
 msgid "라멘집 지도"
 msgstr "라멘집 지도"
 
-#: packages/shared/src/i18n/labels.ts:48
+#: packages/shared/src/i18n/labels.ts:47
 msgid "라멘집 탐험가"
 msgstr "라멘집 탐험가"
 
@@ -3285,7 +3299,7 @@ msgstr "라오타에서 쓸 닉네임과 취향을 정해요. "
 
 #: apps/mobile/app/native/_layout.tsx:149
 #: apps/mobile/app/native/lounge.tsx:158
-#: packages/shared/src/i18n/labels.ts:27
+#: packages/shared/src/i18n/labels.ts:26
 #: src/App.tsx:298
 msgid "라운지"
 msgstr "라운지"
@@ -3374,44 +3388,44 @@ msgid "로그인 화면으로 이동해요"
 msgstr "로그인 화면으로 이동해요"
 
 #: apps/mobile/src/state/RaotaStore.tsx:1746
-#: packages/shared/src/i18n/labels.ts:92
+#: packages/shared/src/i18n/labels.ts:91
 msgid "로그인 후 게시글을 작성할 수 있어요."
 msgstr "로그인 후 게시글을 작성할 수 있어요."
 
 #: apps/mobile/src/state/RaotaStore.tsx:1527
-#: packages/shared/src/i18n/labels.ts:89
+#: packages/shared/src/i18n/labels.ts:88
 msgid "로그인 후 기록을 고칠 수 있어요."
 msgstr "로그인 후 기록을 고칠 수 있어요."
 
 #: apps/mobile/src/state/RaotaStore.tsx:1429
-#: packages/shared/src/i18n/labels.ts:88
+#: packages/shared/src/i18n/labels.ts:87
 msgid "로그인 후 라멘 기록을 저장할 수 있어요."
 msgstr "로그인 후 라멘 기록을 저장할 수 있어요."
 
 #: apps/mobile/src/state/RaotaStore.tsx:1851
-#: packages/shared/src/i18n/labels.ts:93
+#: packages/shared/src/i18n/labels.ts:92
 msgid "로그인 후 취향 리포트를 만들 수 있어요."
 msgstr "로그인 후 취향 리포트를 만들 수 있어요."
 
 #: apps/mobile/app/(flows)/auth/login.tsx:304
 #: apps/mobile/src/auth/social.ts:32
-#: packages/shared/src/i18n/labels.ts:83
+#: packages/shared/src/i18n/labels.ts:82
 msgid "로그인을 취소했어요."
 msgstr "로그인을 취소했어요."
 
 #: apps/mobile/src/data/remote.ts:434
-#: packages/shared/src/i18n/labels.ts:79
+#: packages/shared/src/i18n/labels.ts:78
 msgid "로그인이 끝났어요. 다시 로그인해 주세요."
 msgstr "로그인이 끝났어요. 다시 로그인해 주세요."
 
 #: apps/mobile/src/api/client.ts:436
-#: packages/shared/src/i18n/labels.ts:73
+#: packages/shared/src/i18n/labels.ts:72
 msgid "로그인이 필요해요."
 msgstr "로그인이 필요해요."
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:113
 #: src/screens/LoungeScreen.tsx:1073
-#: src/screens/LoungeScreen.tsx:1491
+#: src/screens/LoungeScreen.tsx:1493
 msgid "로그인하고 댓글 남기기"
 msgstr "로그인하고 댓글 남기기"
 
@@ -3450,7 +3464,7 @@ msgid "로그인하지 않고 홈으로 가요"
 msgstr "로그인하지 않고 홈으로 가요"
 
 #: apps/mobile/src/state/RaotaStore.tsx:984
-#: packages/shared/src/i18n/labels.ts:82
+#: packages/shared/src/i18n/labels.ts:81
 msgid "로컬 데이터를 저장하지 못했습니다."
 msgstr "로컬 데이터를 저장하지 못했습니다."
 
@@ -3472,7 +3486,7 @@ msgid "링크를 열 수 없어요"
 msgstr "링크를 열 수 없어요"
 
 #: apps/mobile/app/native/_layout.tsx:150
-#: packages/shared/src/i18n/labels.ts:28
+#: packages/shared/src/i18n/labels.ts:27
 #: src/App.tsx:300
 msgid "마이"
 msgstr "마이"
@@ -3485,7 +3499,7 @@ msgstr "마이 탭에서 기록을 봐요"
 msgid "마이 탭으로 가요"
 msgstr "마이 탭으로 가요"
 
-#: packages/shared/src/i18n/labels.ts:21
+#: packages/shared/src/i18n/labels.ts:20
 #: src/screens/RegisterScreen.tsx:33
 msgid "마제소바"
 msgstr "마제소바"
@@ -3530,7 +3544,7 @@ msgstr "많이 먹은 메뉴"
 msgid "맑게"
 msgstr "맑게"
 
-#: packages/shared/src/i18n/labels.ts:58
+#: packages/shared/src/i18n/labels.ts:57
 msgid "맑은"
 msgstr "맑은"
 
@@ -3558,7 +3572,7 @@ msgstr "맑은 청탕부터 묵직한 백탕까지 골라보세요."
 msgid "맑은 편"
 msgstr "맑은 편"
 
-#: packages/shared/src/i18n/labels.ts:36
+#: packages/shared/src/i18n/labels.ts:35
 msgid "맑음"
 msgstr "맑음"
 
@@ -3602,7 +3616,7 @@ msgid "맛집후기"
 msgstr "맛집후기"
 
 #: apps/mobile/app/native/map.web.tsx:31
-#: packages/shared/src/i18n/labels.ts:147
+#: packages/shared/src/i18n/labels.ts:146
 msgid "망원동"
 msgstr "망원동"
 
@@ -3707,7 +3721,7 @@ msgstr "매장, 지점, 스타일 검색"
 msgid "매장을 찾을 수 없어요"
 msgstr "매장을 찾을 수 없어요"
 
-#: packages/shared/src/i18n/labels.ts:134
+#: packages/shared/src/i18n/labels.ts:133
 msgid "매콤해요"
 msgstr "매콤해요"
 
@@ -3779,7 +3793,7 @@ msgstr "메모"
 msgid "메모는 {max}자까지 남길 수 있어요. 지금 {count}자예요."
 msgstr "메모는 {max}자까지 남길 수 있어요. 지금 {count}자예요."
 
-#: packages/shared/src/i18n/labels.ts:138
+#: packages/shared/src/i18n/labels.ts:137
 msgid "멘마 좋아요"
 msgstr "멘마 좋아요"
 
@@ -3791,7 +3805,7 @@ msgstr "멘마수집"
 #: apps/mobile/app/(flows)/record/new.tsx:142
 #: apps/mobile/src/components/ShopTasteCard.tsx:61
 #: apps/mobile/src/components/TasteStory.tsx:158
-#: packages/shared/src/i18n/labels.ts:152
+#: packages/shared/src/i18n/labels.ts:151
 #: src/screens/AIRecommendScreen.tsx:157
 #: src/types.ts:58
 msgid "면"
@@ -3811,7 +3825,7 @@ msgid "면 무료 리필"
 msgstr "면 무료 리필"
 
 #: apps/mobile/src/domain/lounge.ts:125
-#: packages/shared/src/i18n/labels.ts:31
+#: packages/shared/src/i18n/labels.ts:30
 msgid "면 삶기"
 msgstr "면 삶기"
 
@@ -3831,7 +3845,7 @@ msgstr "멸치 육수"
 msgid "모두 읽음"
 msgstr "모두 읽음"
 
-#: src/screens/LoungeScreen.tsx:1620
+#: src/screens/LoungeScreen.tsx:1622
 msgid "모든 글을 확인했습니다"
 msgstr "모든 글을 확인했습니다"
 
@@ -3887,11 +3901,11 @@ msgstr "미선택"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:56
 #: apps/mobile/app/native/map.web.tsx:42
-#: packages/shared/src/i18n/labels.ts:15
+#: packages/shared/src/i18n/labels.ts:14
 msgid "미소"
 msgstr "미소"
 
-#: packages/shared/src/i18n/labels.ts:120
+#: packages/shared/src/i18n/labels.ts:119
 #: src/screens/RegisterScreen.tsx:31
 msgid "미소 (된장)"
 msgstr "미소 (된장)"
@@ -3901,7 +3915,7 @@ msgstr "미소 (된장)"
 msgid "미소 라멘 (된장)"
 msgstr "미소 라멘 (된장)"
 
-#: packages/shared/src/i18n/labels.ts:63
+#: packages/shared/src/i18n/labels.ts:62
 msgid "미소파"
 msgstr "미소파"
 
@@ -3927,7 +3941,7 @@ msgstr "발행하면 취향 리포트에 반영돼요"
 msgid "밥 무료 제공"
 msgstr "밥 무료 제공"
 
-#: packages/shared/src/i18n/labels.ts:135
+#: packages/shared/src/i18n/labels.ts:134
 msgid "밥 생각나요"
 msgstr "밥 생각나요"
 
@@ -4080,7 +4094,7 @@ msgstr "본문"
 
 #: apps/mobile/src/components/TasteStory.tsx:50
 #: packages/shared/src/domain/identity.ts:58
-#: packages/shared/src/i18n/labels.ts:66
+#: packages/shared/src/i18n/labels.ts:65
 msgid "부드러운 면"
 msgstr "부드러운 면"
 
@@ -4090,11 +4104,11 @@ msgstr "부드러운 면"
 msgid "부드러운 편"
 msgstr "부드러운 편"
 
-#: packages/shared/src/i18n/labels.ts:128
+#: packages/shared/src/i18n/labels.ts:127
 msgid "부드러워요"
 msgstr "부드러워요"
 
-#: packages/shared/src/i18n/labels.ts:38
+#: packages/shared/src/i18n/labels.ts:37
 msgid "부드럽게"
 msgstr "부드럽게"
 
@@ -4168,7 +4182,7 @@ msgid "뽑은 식권 보기"
 msgstr "뽑은 식권 보기"
 
 #: apps/mobile/app/(flows)/tickets.tsx:38
-#: packages/shared/src/i18n/labels.ts:111
+#: packages/shared/src/i18n/labels.ts:110
 msgid "뽑은 식권이 없어요"
 msgstr "뽑은 식권이 없어요"
 
@@ -4346,17 +4360,17 @@ msgstr "색이 진할수록 그날 기록이 많아요"
 msgid "샘플"
 msgstr "샘플"
 
-#: packages/shared/src/i18n/labels.ts:150
+#: packages/shared/src/i18n/labels.ts:149
 msgid "서교동"
 msgstr "서교동"
 
 #: apps/mobile/src/api/client.ts:310
-#: packages/shared/src/i18n/labels.ts:69
+#: packages/shared/src/i18n/labels.ts:68
 msgid "서버 응답 형식이 올바르지 않아요."
 msgstr "서버 응답 형식이 올바르지 않아요."
 
 #: apps/mobile/src/api/client.ts:534
-#: packages/shared/src/i18n/labels.ts:76
+#: packages/shared/src/i18n/labels.ts:75
 msgid "서버 주소가 설정되지 않았어요."
 msgstr "서버 주소가 설정되지 않았어요."
 
@@ -4529,11 +4543,11 @@ msgstr "소식 종류"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:52
 #: apps/mobile/app/native/map.web.tsx:38
-#: packages/shared/src/i18n/labels.ts:11
+#: packages/shared/src/i18n/labels.ts:10
 msgid "쇼유"
 msgstr "쇼유"
 
-#: packages/shared/src/i18n/labels.ts:117
+#: packages/shared/src/i18n/labels.ts:116
 #: src/screens/RegisterScreen.tsx:26
 msgid "쇼유 (간장)"
 msgstr "쇼유 (간장)"
@@ -4543,7 +4557,7 @@ msgstr "쇼유 (간장)"
 msgid "쇼유 라멘 (간장)"
 msgstr "쇼유 라멘 (간장)"
 
-#: packages/shared/src/i18n/labels.ts:61
+#: packages/shared/src/i18n/labels.ts:60
 #: src/screens/RegisterScreen.tsx:18
 msgid "쇼유파"
 msgstr "쇼유파"
@@ -4585,7 +4599,7 @@ msgstr "숨김 해제"
 #: apps/mobile/app/(flows)/hidden-authors.tsx:34
 #: apps/mobile/app/(flows)/log/[logId].tsx:335
 #: apps/mobile/src/components/LoungeLog.tsx:551
-#: packages/shared/src/i18n/labels.ts:102
+#: packages/shared/src/i18n/labels.ts:101
 msgid "숨김을 풀지 못했어요. 다시 시도해 주세요."
 msgstr "숨김을 풀지 못했어요. 다시 시도해 주세요."
 
@@ -4602,7 +4616,7 @@ msgstr "쉬는 시간 {v1} – {v2}"
 msgid "스팸·홍보"
 msgstr "스팸·홍보"
 
-#: packages/shared/src/i18n/labels.ts:132
+#: packages/shared/src/i18n/labels.ts:131
 msgid "슴슴해요"
 msgstr "슴슴해요"
 
@@ -4620,11 +4634,11 @@ msgstr "승급·공지 알림이 없습니다"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:55
 #: apps/mobile/app/native/map.web.tsx:41
-#: packages/shared/src/i18n/labels.ts:14
+#: packages/shared/src/i18n/labels.ts:13
 msgid "시오"
 msgstr "시오"
 
-#: packages/shared/src/i18n/labels.ts:119
+#: packages/shared/src/i18n/labels.ts:118
 #: src/screens/RegisterScreen.tsx:30
 msgid "시오 (소금)"
 msgstr "시오 (소금)"
@@ -4634,7 +4648,7 @@ msgstr "시오 (소금)"
 msgid "시오 라멘 (소금)"
 msgstr "시오 라멘 (소금)"
 
-#: packages/shared/src/i18n/labels.ts:62
+#: packages/shared/src/i18n/labels.ts:61
 msgid "시오파"
 msgstr "시오파"
 
@@ -4685,7 +4699,7 @@ msgid "신고 사유를 고르면 보낼 수 있어요"
 msgstr "신고 사유를 고르면 보낼 수 있어요"
 
 #: apps/mobile/src/components/LoungeLog.tsx:540
-#: packages/shared/src/i18n/labels.ts:103
+#: packages/shared/src/i18n/labels.ts:102
 msgid "신고를 보내지 못했어요. 다시 시도해 주세요."
 msgstr "신고를 보내지 못했어요. 다시 시도해 주세요."
 
@@ -4715,7 +4729,7 @@ msgstr "신규"
 msgid "아래 내용을 길게 눌러 복사해 주세요."
 msgstr "아래 내용을 길게 눌러 복사해 주세요."
 
-#: packages/shared/src/i18n/labels.ts:22
+#: packages/shared/src/i18n/labels.ts:21
 msgid "아부라소바"
 msgstr "아부라소바"
 
@@ -4725,7 +4739,7 @@ msgstr "아쉬운 편"
 
 #: apps/mobile/app/(flows)/record/new.tsx:137
 #: apps/mobile/src/domain/lounge.ts:119
-#: packages/shared/src/i18n/labels.ts:34
+#: packages/shared/src/i18n/labels.ts:33
 msgid "아쉬움"
 msgstr "아쉬움"
 
@@ -4766,7 +4780,7 @@ msgstr "아직 계정이 없으신가요?"
 msgid "아직 공개된 라멘로그가 없어요"
 msgstr "아직 공개된 라멘로그가 없어요"
 
-#: src/screens/LoungeScreen.tsx:1561
+#: src/screens/LoungeScreen.tsx:1563
 msgid "아직 글이 없어요"
 msgstr "아직 글이 없어요"
 
@@ -4816,7 +4830,7 @@ msgid "아직 보여드릴 취향이 없어요 "
 msgstr "아직 보여드릴 취향이 없어요 "
 
 #: apps/mobile/app/(flows)/tickets.tsx:57
-#: packages/shared/src/i18n/labels.ts:114
+#: packages/shared/src/i18n/labels.ts:113
 msgid "아직 뽑은 식권이 없어요"
 msgstr "아직 뽑은 식권이 없어요"
 
@@ -4843,7 +4857,7 @@ msgid "아직 집계 중이에요 "
 msgstr "아직 집계 중이에요 "
 
 #: packages/shared/src/domain/identity.ts:49
-#: packages/shared/src/i18n/labels.ts:54
+#: packages/shared/src/i18n/labels.ts:53
 msgid "아직 취향을 모으는 중"
 msgstr "아직 취향을 모으는 중"
 
@@ -4950,7 +4964,7 @@ msgstr "약관 전체 동의"
 msgid "약관에 동의하고"
 msgstr "약관에 동의하고"
 
-#: packages/shared/src/i18n/labels.ts:130
+#: packages/shared/src/i18n/labels.ts:129
 msgid "양 많아요"
 msgstr "양 많아요"
 
@@ -4983,7 +4997,7 @@ msgstr "어울리는 라멘집을 찾고 있어요"
 msgid "어제"
 msgstr "어제"
 
-#: packages/shared/src/i18n/labels.ts:125
+#: packages/shared/src/i18n/labels.ts:124
 msgid "어패류 향"
 msgstr "어패류 향"
 
@@ -4993,12 +5007,12 @@ msgstr "에 자주 간 라멘집 "
 
 #: apps/mobile/app/(flows)/tickets.tsx:44
 #: apps/mobile/app/native/lounge.tsx:126
-#: packages/shared/src/i18n/labels.ts:113
+#: packages/shared/src/i18n/labels.ts:112
 msgid "연결을 확인하고 다시 불러와 주세요."
 msgstr "연결을 확인하고 다시 불러와 주세요."
 
 #: apps/mobile/src/data/remote.ts:433
-#: packages/shared/src/i18n/labels.ts:78
+#: packages/shared/src/i18n/labels.ts:77
 msgid "연결을 확인한 뒤 다시 시도해 주세요."
 msgstr "연결을 확인한 뒤 다시 시도해 주세요."
 
@@ -5019,7 +5033,7 @@ msgstr "연관 라멘집 태그 (선택)"
 msgid "연남/홍대"
 msgstr "연남/홍대"
 
-#: packages/shared/src/i18n/labels.ts:149
+#: packages/shared/src/i18n/labels.ts:148
 msgid "연남동"
 msgstr "연남동"
 
@@ -5169,7 +5183,7 @@ msgstr "오늘 뭐 먹지? AI 라멘 큐레이터"
 msgid "오늘 뭐 먹지? AI 라멘 큐레이터, 오늘 식권을 다 뽑았어요"
 msgstr "오늘 뭐 먹지? AI 라멘 큐레이터, 오늘 식권을 다 뽑았어요"
 
-#: src/screens/LoungeScreen.tsx:1551
+#: src/screens/LoungeScreen.tsx:1553
 msgid "오늘 방문한 라멘집이 있다면 아래 버튼으로 라멘로그를 남겨보세요"
 msgstr "오늘 방문한 라멘집이 있다면 아래 버튼으로 라멘로그를 남겨보세요"
 
@@ -5317,12 +5331,12 @@ msgid "요일별 영업시간을 시트로 열어요"
 msgstr "요일별 영업시간을 시트로 열어요"
 
 #: apps/mobile/src/api/client.ts:297
-#: packages/shared/src/i18n/labels.ts:70
+#: packages/shared/src/i18n/labels.ts:69
 msgid "요청을 처리하지 못했어요."
 msgstr "요청을 처리하지 못했어요."
 
 #: apps/mobile/src/api/client.ts:329
-#: packages/shared/src/i18n/labels.ts:72
+#: packages/shared/src/i18n/labels.ts:71
 msgid "요청을 취소했어요."
 msgstr "요청을 취소했어요."
 
@@ -5430,7 +5444,7 @@ msgid "육수"
 msgstr "육수"
 
 #: apps/mobile/src/domain/lounge.ts:124
-#: packages/shared/src/i18n/labels.ts:30
+#: packages/shared/src/i18n/labels.ts:29
 msgid "육수 농도"
 msgstr "육수 농도"
 
@@ -5452,7 +5466,7 @@ msgid "음란물"
 msgstr "음란물"
 
 #: apps/mobile/src/api/client.ts:326
-#: packages/shared/src/i18n/labels.ts:71
+#: packages/shared/src/i18n/labels.ts:70
 msgid "응답이 너무 늦어요. 잠시 후 다시 시도해 주세요."
 msgstr "응답이 너무 늦어요. 잠시 후 다시 시도해 주세요."
 
@@ -5503,8 +5517,8 @@ msgid "이 기간에는 기록이 없어요. 라멘로그를 남기면 캘린더
 msgstr "이 기간에는 기록이 없어요. 라멘로그를 남기면 캘린더가 채워져요."
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:211
-#: src/screens/LoungeScreen.tsx:1500
-#: src/screens/LoungeScreen.tsx:1522
+#: src/screens/LoungeScreen.tsx:1502
+#: src/screens/LoungeScreen.tsx:1524
 msgid "이 기록에 댓글을 남겨보세요"
 msgstr "이 기록에 댓글을 남겨보세요"
 
@@ -5638,12 +5652,12 @@ msgid "이미 사용 중인 닉네임이에요. 다른 닉네임을 적어 주�
 msgstr "이미 사용 중인 닉네임이에요. 다른 닉네임을 적어 주세요."
 
 #: apps/mobile/src/data/remote.ts:436
-#: packages/shared/src/i18n/labels.ts:80
+#: packages/shared/src/i18n/labels.ts:79
 msgid "이미 삭제됐거나 볼 수 없는 글이에요."
 msgstr "이미 삭제됐거나 볼 수 없는 글이에요."
 
 #: apps/mobile/src/state/RaotaStore.tsx:1542
-#: packages/shared/src/i18n/labels.ts:90
+#: packages/shared/src/i18n/labels.ts:89
 msgid "이미 삭제된 기록이에요."
 msgstr "이미 삭제된 기록이에요."
 
@@ -5713,7 +5727,7 @@ msgstr "이벤트"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:54
 #: apps/mobile/app/native/map.web.tsx:40
-#: packages/shared/src/i18n/labels.ts:13
+#: packages/shared/src/i18n/labels.ts:12
 msgid "이에케"
 msgstr "이에케"
 
@@ -5723,7 +5737,7 @@ msgstr "이에케"
 msgid "이에케 (돈코츠쇼유)"
 msgstr "이에케 (돈코츠쇼유)"
 
-#: packages/shared/src/i18n/labels.ts:60
+#: packages/shared/src/i18n/labels.ts:59
 msgid "이에케파"
 msgstr "이에케파"
 
@@ -5863,11 +5877,11 @@ msgid "자주 간 라멘집"
 msgstr "자주 간 라멘집"
 
 #: apps/mobile/app/(flows)/record/new.tsx:152
-#: packages/shared/src/i18n/labels.ts:42
+#: packages/shared/src/i18n/labels.ts:41
 msgid "자주 갈래요"
 msgstr "자주 갈래요"
 
-#: packages/shared/src/i18n/labels.ts:43
+#: packages/shared/src/i18n/labels.ts:42
 msgid "자주 감"
 msgstr "자주 감"
 
@@ -5937,7 +5951,7 @@ msgstr "재방문 {v1}"
 
 #: apps/mobile/app/(flows)/record/complete.tsx:241
 #: apps/mobile/src/domain/lounge.ts:127
-#: packages/shared/src/i18n/labels.ts:33
+#: packages/shared/src/i18n/labels.ts:32
 #: src/screens/RecordCompleteScreen.tsx:131
 msgid "재방문 의사"
 msgstr "재방문 의사"
@@ -6082,7 +6096,7 @@ msgid "전체 라멘집으로 넓혀서 골라 봤어요"
 msgstr "전체 라멘집으로 넓혀서 골라 봤어요"
 
 #: apps/mobile/src/domain/lounge.ts:123
-#: packages/shared/src/i18n/labels.ts:29
+#: packages/shared/src/i18n/labels.ts:28
 msgid "전체 만족도"
 msgstr "전체 만족도"
 
@@ -6258,11 +6272,11 @@ msgstr "종합 취향 리포트"
 msgid "좋아요"
 msgstr "좋아요"
 
-#: src/screens/LoungeScreen.tsx:1603
+#: src/screens/LoungeScreen.tsx:1605
 msgid "좋아요 취소, {v0}개"
 msgstr "좋아요 취소, {v0}개"
 
-#: src/screens/LoungeScreen.tsx:1603
+#: src/screens/LoungeScreen.tsx:1605
 msgid "좋아요, {v0}개"
 msgstr "좋아요, {v0}개"
 
@@ -6401,7 +6415,7 @@ msgid "지금까지 고른 평가와 사진은 저장되지 않아요."
 msgstr "지금까지 고른 평가와 사진은 저장되지 않아요."
 
 #: apps/mobile/app/native/my.tsx:1060
-#: packages/shared/src/i18n/labels.ts:108
+#: packages/shared/src/i18n/labels.ts:107
 msgid "지금까지 뽑은 AI 식권을 날짜별로 다시 봐요"
 msgstr "지금까지 뽑은 AI 식권을 날짜별로 다시 봐요"
 
@@ -6416,17 +6430,17 @@ msgstr "지금은 보여줄 가게가 없어요"
 #: apps/mobile/app/(flows)/tickets.tsx:67
 #: apps/mobile/app/native/my.tsx:1061
 #: apps/mobile/app/native/my.tsx:1071
-#: packages/shared/src/i18n/labels.ts:105
+#: packages/shared/src/i18n/labels.ts:104
 msgid "지난 식권"
 msgstr "지난 식권"
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:130
-#: packages/shared/src/i18n/labels.ts:106
+#: packages/shared/src/i18n/labels.ts:105
 msgid "지난 식권 보기"
 msgstr "지난 식권 보기"
 
 #: apps/mobile/app/(flows)/tickets.tsx:48
-#: packages/shared/src/i18n/labels.ts:112
+#: packages/shared/src/i18n/labels.ts:111
 msgid "지난 식권을 불러오지 못했어요"
 msgstr "지난 식권을 불러오지 못했어요"
 
@@ -6454,7 +6468,7 @@ msgstr "지난주에 먹은 라멘, 남겨볼까요?"
 
 #: apps/mobile/app/native/_layout.tsx:148
 #: apps/mobile/app/native/map.web.tsx:271
-#: packages/shared/src/i18n/labels.ts:26
+#: packages/shared/src/i18n/labels.ts:25
 #: src/App.tsx:297
 #: src/screens/MapScreen.tsx:520
 msgid "지도"
@@ -6487,7 +6501,7 @@ msgstr "지도와 현재 위치는 앱에서 보여드려요. 여기서는 목�
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:59
 #: apps/mobile/app/native/map.web.tsx:45
-#: packages/shared/src/i18n/labels.ts:18
+#: packages/shared/src/i18n/labels.ts:17
 msgid "지로"
 msgstr "지로"
 
@@ -6539,7 +6553,7 @@ msgstr "진하게"
 msgid "진하고 묵직한 국물"
 msgstr "진하고 묵직한 국물"
 
-#: packages/shared/src/i18n/labels.ts:57
+#: packages/shared/src/i18n/labels.ts:56
 msgid "진한"
 msgstr "진한"
 
@@ -6566,15 +6580,15 @@ msgstr "진한 육수 취향"
 msgid "진한 편"
 msgstr "진한 편"
 
-#: packages/shared/src/i18n/labels.ts:37
+#: packages/shared/src/i18n/labels.ts:36
 msgid "진함"
 msgstr "진함"
 
-#: packages/shared/src/i18n/labels.ts:121
+#: packages/shared/src/i18n/labels.ts:120
 msgid "진해요"
 msgstr "진해요"
 
-#: packages/shared/src/i18n/labels.ts:133
+#: packages/shared/src/i18n/labels.ts:132
 msgid "짭짤해요"
 msgstr "짭짤해요"
 
@@ -6588,11 +6602,11 @@ msgid "찜을 바꾸지 못했어요. 다시 시도해 주세요."
 msgstr "찜을 바꾸지 못했어요. 다시 시도해 주세요."
 
 #: apps/mobile/app/native/my.tsx:251
-#: packages/shared/src/i18n/labels.ts:95
+#: packages/shared/src/i18n/labels.ts:94
 msgid "찜을 해제하지 못했어요. 다시 시도해 주세요."
 msgstr "찜을 해제하지 못했어요. 다시 시도해 주세요."
 
-#: packages/shared/src/i18n/labels.ts:94
+#: packages/shared/src/i18n/labels.ts:93
 msgid "찜하지 못했어요. 다시 시도해 주세요."
 msgstr "찜하지 못했어요. 다시 시도해 주세요."
 
@@ -6627,7 +6641,7 @@ msgstr "찜한 라멘집의 한정 메뉴, 휴무 소식"
 msgid "차슈"
 msgstr "차슈"
 
-#: packages/shared/src/i18n/labels.ts:136
+#: packages/shared/src/i18n/labels.ts:135
 msgid "차슈 좋아요"
 msgstr "차슈 좋아요"
 
@@ -6689,7 +6703,7 @@ msgstr "첫 그릇을 기록하면\n"
 "취향과 종류별 분포가 여기에 쌓여요."
 
 #: packages/shared/src/domain/identity.ts:50
-#: packages/shared/src/i18n/labels.ts:55
+#: packages/shared/src/i18n/labels.ts:54
 msgid "첫 그릇을 기록하면 어떤 라멘을 좋아하는지 보여드려요."
 msgstr "첫 그릇을 기록하면 어떤 라멘을 좋아하는지 보여드려요."
 
@@ -6697,7 +6711,7 @@ msgstr "첫 그릇을 기록하면 어떤 라멘을 좋아하는지 보여드려
 msgid "첫 그릇을 남기면 여기에 쌓여요."
 msgstr "첫 그릇을 남기면 여기에 쌓여요."
 
-#: src/screens/LoungeScreen.tsx:1562
+#: src/screens/LoungeScreen.tsx:1564
 msgid "첫 글을 올려 라멘러들과 이야기를 시작해 보세요."
 msgstr "첫 글을 올려 라멘러들과 이야기를 시작해 보세요."
 
@@ -6709,7 +6723,7 @@ msgstr "첫 기록"
 msgid "첫 기록 남기기"
 msgstr "첫 기록 남기기"
 
-#: packages/shared/src/i18n/labels.ts:53
+#: packages/shared/src/i18n/labels.ts:52
 msgid "첫 기록 전"
 msgstr "첫 기록 전"
 
@@ -6723,7 +6737,7 @@ msgid "첫 달의 메뉴부터 모아볼까요?"
 msgstr "첫 달의 메뉴부터 모아볼까요?"
 
 #: src/screens/LoungeScreen.tsx:982
-#: src/screens/LoungeScreen.tsx:1481
+#: src/screens/LoungeScreen.tsx:1483
 msgid "첫 댓글을 남겨 대화를 시작해 보세요."
 msgstr "첫 댓글을 남겨 대화를 시작해 보세요."
 
@@ -6761,7 +6775,7 @@ msgstr "총 라멘로그"
 msgid "총 라멘로그 {count}그릇"
 msgstr "총 라멘로그 {count}그릇"
 
-#: packages/shared/src/i18n/labels.ts:35
+#: packages/shared/src/i18n/labels.ts:34
 msgid "최고"
 msgstr "최고"
 
@@ -6933,7 +6947,7 @@ msgid "취향을 불러오는 중…"
 msgstr "취향을 불러오는 중…"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:60
-#: packages/shared/src/i18n/labels.ts:19
+#: packages/shared/src/i18n/labels.ts:18
 #: src/screens/RegisterScreen.tsx:32
 msgid "츠케멘"
 msgstr "츠케멘"
@@ -6956,7 +6970,7 @@ msgid "카카오 로그인 중"
 msgstr "카카오 로그인 중"
 
 #: apps/mobile/src/auth/social.ts:66
-#: packages/shared/src/i18n/labels.ts:84
+#: packages/shared/src/i18n/labels.ts:83
 msgid "카카오 로그인이 설정되지 않았어요."
 msgstr "카카오 로그인이 설정되지 않았어요."
 
@@ -6993,11 +7007,11 @@ msgstr "커뮤니티"
 msgid "커뮤니티에 글을 올렸습니다."
 msgstr "커뮤니티에 글을 올렸습니다."
 
-#: packages/shared/src/i18n/labels.ts:126
+#: packages/shared/src/i18n/labels.ts:125
 msgid "탄력 있어요"
 msgstr "탄력 있어요"
 
-#: packages/shared/src/i18n/labels.ts:20
+#: packages/shared/src/i18n/labels.ts:19
 msgid "탄탄멘"
 msgstr "탄탄멘"
 
@@ -7015,7 +7029,7 @@ msgstr "탈퇴하면 바로 로그아웃되고, 30일 뒤 같은 계정으로 �
 msgid "탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요."
 msgstr "탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요."
 
-#: packages/shared/src/i18n/labels.ts:64
+#: packages/shared/src/i18n/labels.ts:63
 msgid "탐험파"
 msgstr "탐험파"
 
@@ -7030,7 +7044,7 @@ msgstr "테스트 알림을 예약했어요"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:57
 #: apps/mobile/app/native/map.web.tsx:43
-#: packages/shared/src/i18n/labels.ts:16
+#: packages/shared/src/i18n/labels.ts:15
 msgid "토리파이탄"
 msgstr "토리파이탄"
 
@@ -7041,20 +7055,20 @@ msgid "토리파이탄 (닭백탕)"
 msgstr "토리파이탄 (닭백탕)"
 
 #: apps/mobile/src/api/client.ts:507
-#: packages/shared/src/i18n/labels.ts:75
+#: packages/shared/src/i18n/labels.ts:74
 msgid "토큰을 다시 받지 못했어요."
 msgstr "토큰을 다시 받지 못했어요."
 
 #: apps/mobile/app/(flows)/record/new.tsx:143
 #: apps/mobile/src/components/ShopTasteCard.tsx:62
 #: apps/mobile/src/domain/lounge.ts:126
-#: packages/shared/src/i18n/labels.ts:32
+#: packages/shared/src/i18n/labels.ts:31
 #: src/types.ts:60
 msgid "토핑"
 msgstr "토핑"
 
 #: packages/shared/src/domain/identity.ts:60
-#: packages/shared/src/i18n/labels.ts:68
+#: packages/shared/src/i18n/labels.ts:67
 msgid "토핑 중시"
 msgstr "토핑 중시"
 
@@ -7079,7 +7093,7 @@ msgstr "특징"
 msgid "특징: {v1}"
 msgstr "특징: {v1}"
 
-#: packages/shared/src/i18n/labels.ts:139
+#: packages/shared/src/i18n/labels.ts:138
 msgid "파 향 좋아요"
 msgstr "파 향 좋아요"
 
@@ -7096,12 +7110,12 @@ msgid "평소 평균과 같은 점수를 줘서"
 msgstr "평소 평균과 같은 점수를 줘서"
 
 #: apps/mobile/app/(flows)/record/complete.tsx:88
-#: packages/shared/src/i18n/labels.ts:115
+#: packages/shared/src/i18n/labels.ts:114
 msgid "평소보다 면을 단단하게 느낀 그릇이에요."
 msgstr "평소보다 면을 단단하게 느낀 그릇이에요."
 
 #: apps/mobile/app/(flows)/record/complete.tsx:88
-#: packages/shared/src/i18n/labels.ts:116
+#: packages/shared/src/i18n/labels.ts:115
 msgid "평소보다 면을 부드럽게 느낀 그릇이에요."
 msgstr "평소보다 면을 부드럽게 느낀 그릇이에요."
 
@@ -7235,7 +7249,7 @@ msgid "한 번"
 msgstr "한 번"
 
 #: apps/mobile/app/(flows)/record/new.tsx:152
-#: packages/shared/src/i18n/labels.ts:41
+#: packages/shared/src/i18n/labels.ts:40
 msgid "한 번이면 충분"
 msgstr "한 번이면 충분"
 
@@ -7252,7 +7266,7 @@ msgstr "한글, 영문, 숫자 2~12자"
 msgid "한글, 영문, 숫자, 밑줄 {v1}~{v2}자"
 msgstr "한글, 영문, 숫자, 밑줄 {v1}~{v2}자"
 
-#: packages/shared/src/i18n/labels.ts:45
+#: packages/shared/src/i18n/labels.ts:44
 msgid "한번이면 충분"
 msgstr "한번이면 충분"
 
@@ -7273,7 +7287,7 @@ msgstr "한줄 소개 (선택)"
 msgid "합정/상수"
 msgstr "합정/상수"
 
-#: packages/shared/src/i18n/labels.ts:148
+#: packages/shared/src/i18n/labels.ts:147
 msgid "합정동"
 msgstr "합정동"
 
@@ -7295,7 +7309,7 @@ msgid "혼자 편하게"
 msgstr "혼자 편하게"
 
 #: apps/mobile/app/native/_layout.tsx:147
-#: packages/shared/src/i18n/labels.ts:25
+#: packages/shared/src/i18n/labels.ts:24
 #: src/App.tsx:296
 msgid "홈"
 msgstr "홈"
@@ -7386,7 +7400,7 @@ msgstr "훌륭한 편"
 
 #: apps/mobile/app/(flows)/record/new.tsx:137
 #: apps/mobile/src/domain/lounge.ts:119
-#: packages/shared/src/i18n/labels.ts:40
+#: packages/shared/src/i18n/labels.ts:39
 msgid "훌륭함"
 msgstr "훌륭함"
 
