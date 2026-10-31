@@ -322,16 +322,19 @@ function TicketButton({
   soupType,
   selected,
   onPress,
+  compact = false,
 }: {
   label: string
   sub: string
   soupType?: string
   selected: boolean
   onPress: () => void
+  /** 국물 아홉 개를 3×3으로 한 화면에 담는다(사용자 결정 2026.11.01) */
+  compact?: boolean
 }) {
   const motion = useChoiceMotion(selected, { sink: true })
   return (
-    <View style={styles.ticketButtonSlot}>
+    <View style={[styles.ticketButtonSlot, compact && styles.ticketButtonSlotCompact]}>
       <View style={styles.ticketButtonLip} />
       <AnimatedPressable
         accessibilityLabel={`${label}, ${sub}`}
@@ -340,24 +343,30 @@ function TicketButton({
         onPress={onPress}
         onPressIn={motion.pressIn}
         onPressOut={motion.pressOut}
-        style={[styles.ticketButton, motion.containerStyle]}
+        style={[styles.ticketButton, compact && styles.ticketButtonCompact, motion.containerStyle]}
       >
         {selected ? (
-          <View style={styles.checkBadge}>
-            <Check color={colors.ink} size={14} strokeWidth={3} />
+          <View style={[styles.checkBadge, compact && styles.checkBadgeCompact]}>
+            <Check color={colors.ink} size={compact ? 12 : 14} strokeWidth={3} />
           </View>
         ) : null}
-        <Animated.Text lineBreakStrategyIOS="hangul-word" style={[typography.cardTitle, motion.textStyle]}>
+        <Animated.Text
+          lineBreakStrategyIOS="hangul-word"
+          maxFontSizeMultiplier={compact ? maxFontScale : undefined}
+          numberOfLines={compact ? 1 : undefined}
+          style={[typography.cardTitle, compact && styles.compactLabel, motion.textStyle]}
+        >
           {label}
         </Animated.Text>
         <Animated.Text
           lineBreakStrategyIOS="hangul-word"
           maxFontSizeMultiplier={maxFontScale}
+          numberOfLines={compact ? 1 : undefined}
           style={[typography.meta, styles.optionSub, motion.subStyle]}
         >
           {sub}
         </Animated.Text>
-        {soupType ? <View style={[styles.soupSwatch, { backgroundColor: soupColorOf(soupType) }]} /> : null}
+        {soupType ? <View style={[styles.soupSwatch, compact && styles.soupSwatchCompact, { backgroundColor: soupColorOf(soupType) }]} /> : null}
       </AnimatedPressable>
     </View>
   )
@@ -1023,16 +1032,21 @@ export default function AIRecommendScreen() {
                 picked={selectedConditions[0].value}
                 step={1}
               >
-                <View accessibilityLabel={t`국물 베이스`} accessibilityRole="radiogroup" style={styles.optionGrid}>
-                  {SOUP_OPTIONS.map((soup) => (
-                    <TicketButton
-                      key={soup.id}
-                      label={translate(soup.label)}
-                      soupType={soup.value}
-                      onPress={() => setInput("soupId", soup.id)}
-                      selected={inputs.soupId === soup.id}
-                      sub={translate(soup.sub)}
-                    />
+                <View accessibilityLabel={t`국물 베이스`} accessibilityRole="radiogroup" style={styles.soupGrid}>
+                  {[0, 3, 6].map((start) => (
+                    <View key={start} style={styles.soupRow}>
+                      {SOUP_OPTIONS.slice(start, start + 3).map((soup) => (
+                        <TicketButton
+                          compact
+                          key={soup.id}
+                          label={translate(soup.label)}
+                          soupType={soup.value}
+                          onPress={() => setInput("soupId", soup.id)}
+                          selected={inputs.soupId === soup.id}
+                          sub={translate(soup.sub)}
+                        />
+                      ))}
+                    </View>
                   ))}
                 </View>
               </TicketMachine>
@@ -1653,6 +1667,14 @@ const styles = StyleSheet.create({
   checkBadge: { position: "absolute", top: spacing.x2, right: spacing.x2, width: 24, height: 24, borderRadius: radii.pill, alignItems: "center", justifyContent: "center", backgroundColor: colors.canvas },
   soupSwatch: { height: 6, marginTop: spacing.x2, marginRight: -spacing.x4, borderRadius: radii.pill, borderWidth: line.hair, borderColor: colors.soupEdge },
   optionSub: { marginTop: spacing.x0_5 },
+  // 국물 3×3: 줄마다 셋을 같은 폭으로 나누고, 높이는 이름·설명·국물 색 띠만큼만 둔다(사용자 결정 2026.11.01, 한 화면에 들어오게)
+  soupGrid: { gap: spacing.x2 },
+  soupRow: { flexDirection: "row", gap: spacing.x2 },
+  ticketButtonSlotCompact: { flexBasis: 0, flexGrow: 1 },
+  ticketButtonCompact: { minHeight: 76, padding: spacing.x2_5, paddingRight: spacing.x2_5 },
+  checkBadgeCompact: { top: spacing.x1_5, right: spacing.x1_5, width: 20, height: 20 },
+  compactLabel: { fontSize: 15, lineHeight: 20 },
+  soupSwatchCompact: { marginTop: spacing.x1_5, marginRight: 0 },
 
   promptWrap: { marginTop: spacing.x3 },
   promptInput: {

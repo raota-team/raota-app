@@ -20,6 +20,7 @@ import { remoteReads, type RemoteTodayTickets } from "@/src/data/remote"
 import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { matchesShopRamenType, nearestShops } from "@/src/domain/shops"
 import { markLaunchReady } from "@/src/launch"
+import { openAiCurator } from "@/src/curatorEntry"
 import { useKnownLocation } from "@/src/location"
 import { markIntroShown, useOnboarding } from "@/src/onboarding"
 import { useRaota } from "@/src/state/RaotaStore"
@@ -402,11 +403,17 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
         <StartChecklist />
 
         <Pressable
-          accessibilityHint={ticketsUsedUp ? t`오늘 뽑은 식권을 다시 볼 수 있어요` : t`국물과 상황을 골라 오늘의 한 그릇을 추천받아요`}
+          accessibilityHint={
+            ticketsUsedUp
+              ? t`오늘 뽑은 식권을 다시 볼 수 있어요`
+              : !loggedIn && isRemote("recommendations")
+                ? t`로그인 화면으로 이동해요`
+                : t`국물과 상황을 골라 오늘의 한 그릇을 추천받아요`
+          }
           accessibilityLabel={ticketsUsedUp ? t`오늘 뭐 먹지? AI 라멘 큐레이터, 오늘 식권을 다 뽑았어요` : t`오늘 뭐 먹지? AI 라멘 큐레이터`}
           accessibilityRole="button"
-          // 오늘 식권을 다 뽑았으면 큐레이터에 들이지 않고 뽑아 둔 식권을 연다(사용자 결정, 2026.10.23)
-          onPress={() => (ticketsUsedUp ? setTicketsOpen(true) : router.push("/ai-recommend"))}
+          // 오늘 식권을 다 뽑았으면 큐레이터에 들이지 않고 뽑아 둔 식권을 연다(사용자 결정, 2026.10.23). 비회원은 로그인부터 한다
+          onPress={() => (ticketsUsedUp ? setTicketsOpen(true) : openAiCurator(loggedIn))}
           testID="home-curator"
           style={({ pressed }) => [styles.curator, pressed && styles.pressedWash]}
         >

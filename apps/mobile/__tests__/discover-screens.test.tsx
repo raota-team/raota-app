@@ -788,3 +788,17 @@ describe("first ticket for a new guest", () => {
     expect(view.queryByRole("button", { name: "둘러보기만 할게요" })).toBeNull()
   })
 })
+
+describe("AI curator entry for guests", () => {
+  it("sends a guest to login before the steps when AI picks need an account, and back to the curator after", async () => {
+    isRemote.mockImplementation((domain: string) => domain === "recommendations")
+    try {
+      const home = await renderScreen(<HomeScreen />, true)
+      await fireEvent.press(await home.findByRole("button", { name: "오늘 뭐 먹지? AI 라멘 큐레이터" }))
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/auth/login", params: { next: "/ai-recommend" } })
+      expect(router.push).not.toHaveBeenCalledWith("/ai-recommend")
+    } finally {
+      isRemote.mockImplementation(() => false)
+    }
+  })
+})

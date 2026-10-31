@@ -5,6 +5,7 @@ import { useEffect } from "react"
 import { Pressable, StyleSheet, View } from "react-native"
 
 import { AppText } from "@/src/components/ui"
+import { openAiCurator } from "@/src/curatorEntry"
 import { useMyBowls } from "@/src/data/hooks"
 import { useLocale } from "@/src/i18n"
 import { ONBOARDING_TASKS, completeOnboardingTask, dismissStartCard, useOnboarding, type OnboardingTask } from "@/src/onboarding"
@@ -12,9 +13,10 @@ import { useRaota } from "@/src/state/RaotaStore"
 import { colors, radii, spacing, touchTarget } from "@/src/theme"
 
 /** 각 칸을 누르면 그 일을 하는 화면으로 간다. 칸은 그 화면에서 실제로 해낸 순간 채워진다(src/onboarding.ts) */
-function openTask(task: OnboardingTask) {
+function openTask(task: OnboardingTask, loggedIn: boolean) {
   if (task === "map") router.navigate("/native/map")
-  else if (task === "ticket") router.push("/ai-recommend")
+  // 홈 큐레이터 카드와 같이 비회원은 로그인부터 한다
+  else if (task === "ticket") openAiCurator(loggedIn)
   // 기록은 회원만 쓸 수 있다. 비회원은 (flows) 레이아웃이 로그인으로 보낸 뒤 이리로 돌려보낸다
   else router.push({ pathname: "/record/select-shop", params: { mode: "nearby" } })
 }
@@ -73,7 +75,7 @@ export function StartChecklist() {
             accessibilityLabel={done ? t`${title}, 했어요` : title}
             accessibilityRole="button"
             key={task}
-            onPress={() => openTask(task)}
+            onPress={() => openTask(task, Boolean(currentUser?.isLoggedIn))}
             style={({ pressed }) => [styles.row, index > 0 && styles.rowDivider, pressed && styles.pressed]}
             testID={`start-task-${task}`}
           >
