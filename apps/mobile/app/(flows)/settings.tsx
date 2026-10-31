@@ -15,6 +15,7 @@ import { AppText, BottomSheet, Button, ConfirmDialog, Header, Screen, Toast } fr
 import { useMonthlyReports } from "@/src/data"
 import { TASTE_REPORT_ENABLED } from "@/src/features"
 import { useReminderSwitch } from "@/src/notifications"
+import { requestPermission, usePermissions, type PermissionKind, type PermissionState } from "@/src/permissions"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, line, radii, spacing, typography } from "@/src/theme"
 
@@ -53,6 +54,7 @@ export default function SettingsScreen() {
   const [toast, setToast] = useState<string | null>(null)
   const monthly = useMonthlyReports()
   const reminders = useReminderSwitch(monthly.data.current?.recordCount ?? 0)
+  const permissions = usePermissions()
 
   if (!user) return <Redirect href="/native" />
 
@@ -71,6 +73,26 @@ export default function SettingsScreen() {
     await reminders.toggle(next)
     setToast(next ? t`기록할 때가 되면 알려드릴게요` : t`알림을 껐어요. 언제든 다시 켤 수 있어요`)
   }
+
+  // 묻기 전이면 그 자리에서 권한창을 띄우고, 한 번 답한 권한은 앱이 바꿀 수 없어 설정 앱의 RAOTA 화면을 연다
+  const openPermission = async (kind: PermissionKind) => {
+    haptic()
+    if (permissions.snapshot[kind] === "undetermined") {
+      // 알림은 리마인더 스위치와 같은 흐름(권한을 묻고 바로 예약)을 탄다
+      if (kind === "notifications") await toggleReminders(true)
+      else await requestPermission(kind)
+      await permissions.refresh()
+      return
+    }
+    await Linking.openSettings().catch(() => setToast(t`설정 앱을 열지 못했어요`))
+  }
+
+  const permissionRows: { kind: PermissionKind; label: string; why: string }[] = [
+    { kind: "location", label: t`위치`, why: t`가까운 라멘집과 거리를 보여 줄 때 써요` },
+    { kind: "camera", label: t`카메라`, why: t`기록에 라멘 사진을 찍어 올릴 때 써요` },
+    { kind: "photos", label: t`사진`, why: t`기록과 프로필에 사진을 고를 때 써요` },
+    { kind: "notifications", label: t`알림`, why: t`기록 리마인더를 보낼 때 써요` },
+  ]
 
   const saveStyle = async (style: string) => {
     haptic()
@@ -168,6 +190,21 @@ export default function SettingsScreen() {
             </View>
           </Group>
         ) : null}
+
+        {Platform.OS === "web" ? null : (
+          <Group title={t`권한`}>
+            {permissionRows.map(({ kind, label, why }, index) => (
+              <PermissionRow
+                first={index === 0}
+                key={kind}
+                label={label}
+                onPress={() => void openPermission(kind)}
+                state={permissions.snapshot[kind]}
+                why={why}
+              />
+            ))}
+          </Group>
+        )}
 
         <Group title={t`약관 및 문의`}>
           <LinkRow first label={t`이용약관`} onPress={() => openLegal("terms")} />
@@ -363,6 +400,36 @@ function LinkRow({ label, onPress, value, first }: { label: string; onPress: () 
       <View style={styles.rowTrail}>
         {value ? (
           <AppText lineBreakStrategyIOS="hangul-word" numberOfLines={2} style={styles.shrink} tone="muted" variant="secondary">
+            {value}
+          </AppText>
+        ) : null}
+        <ChevronRight color={colors.textMuted} size={16} />
+      </View>
+    </Pressable>
+  )
+}
+
+/** 권한 한 줄: 이름과 쓰는 곳, 오른쪽에 지금 상태. 누르면 묻기 전이면 권한창, 아니면 설정 앱 */
+function PermissionRow({ label, why, state, onPress, first }: { label: string; why: string; state: PermissionState | null; onPress: () => void; first?: boolean }) {
+  const value =
+    state === "granted" ? t`허용` : state === "limited" ? t`일부 사진만` : state === "denied" ? t`꺼짐` : state === "undetermined" ? t`묻기 전` : null
+  return (
+    <Pressable
+      accessibilityHint={state === "undetermined" ? t`허용할지 묻는 창을 띄워요` : t`설정 앱을 열어요`}
+      accessibilityLabel={value ? `${label}, ${value}` : label}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, !first && styles.rowDivider, pressed && styles.pressedWash]}
+    >
+      <View style={styles.shrink}>
+        <AppText variant="bodyStrong">{label}</AppText>
+        <AppText lineBreakStrategyIOS="hangul-word" tone="muted" variant="secondary">
+          {why}
+        </AppText>
+      </View>
+      <View style={styles.rowTrail}>
+        {value ? (
+          <AppText capScale tone={state === "denied" ? "sub" : "muted"} variant="secondary">
             {value}
           </AppText>
         ) : null}

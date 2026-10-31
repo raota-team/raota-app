@@ -281,8 +281,8 @@ export default function RecordCompleteScreen() {
         visible={reminder.visible}
       />
 
-      {/* 하단 고정 CTA. 처음부터 보인다 */}
-      <StickyActionBar style={styles.footer}>
+      {/* 하단 고정 CTA. 처음부터 보인다. 알림을 거절했으면 버튼 위에 나중에 켜는 곳을 알려 준다 */}
+      <StickyActionBar hint={reminder.declined ? t`알림은 나중에 마이 > 설정에서 켤 수 있어요` : undefined} style={styles.footer}>
         <View style={styles.actions}>
           {/* 취향 리포트를 숨긴 빌드에서는 홈으로가 하나뿐인 주요 행동이다 */}
           {TASTE_REPORT_ENABLED ? (

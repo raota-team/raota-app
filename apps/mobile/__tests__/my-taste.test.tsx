@@ -2,7 +2,7 @@ import { act, fireEvent, render, waitFor, within } from "@testing-library/react-
 import type { ReactElement } from "react"
 import type * as Reanimated from "react-native-reanimated"
 import appConfig from "../app.json"
-import { AccessibilityInfo, Share, StyleSheet, processColor } from "react-native"
+import { AccessibilityInfo, Linking, Share, StyleSheet, processColor } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import { createInitialPersistedState } from "@/src/data/fixtures"
@@ -57,6 +57,13 @@ jest.mock("@/src/analytics", () => ({ track: jest.fn() }))
 jest.mock("expo-image-picker", () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(),
   launchImageLibraryAsync: jest.fn(),
+  getMediaLibraryPermissionsAsync: jest.fn(() => Promise.resolve({ status: "undetermined", granted: false })),
+  getCameraPermissionsAsync: jest.fn(() => Promise.resolve({ status: "undetermined", granted: false })),
+  requestCameraPermissionsAsync: jest.fn(),
+}))
+jest.mock("expo-location", () => ({
+  getForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: "undetermined", granted: false })),
+  requestForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: "granted", granted: true })),
 }))
 jest.mock("expo-haptics", () => ({
   ImpactFeedbackStyle: { Light: "light" },
@@ -345,6 +352,34 @@ describe("my screen (demo account)", () => {
     expect(router.push).toHaveBeenCalledWith({ pathname: "/legal/[doc]", params: { doc: "terms" } })
     expect(view.getByRole("button", { name: "문의하기, contact@raota.net" })).toBeTruthy()
     expect(view.getByText(`앱 버전 ${appConfig.expo.version}`)).toBeTruthy()
+  })
+
+  it("shows each permission's state in settings, asks when not asked yet and sends answered ones to the Settings app", async () => {
+    const location = jest.requireMock("expo-location") as { getForegroundPermissionsAsync: jest.Mock; requestForegroundPermissionsAsync: jest.Mock }
+    const picker = jest.requireMock("expo-image-picker") as { getMediaLibraryPermissionsAsync: jest.Mock }
+    let asked = false
+    location.getForegroundPermissionsAsync.mockImplementation(() =>
+      Promise.resolve(asked ? { status: "granted", granted: true } : { status: "undetermined", granted: false }),
+    )
+    location.requestForegroundPermissionsAsync.mockImplementation(() => {
+      asked = true
+      return Promise.resolve({ status: "granted", granted: true })
+    })
+    picker.getMediaLibraryPermissionsAsync.mockResolvedValue({ status: "denied", granted: false })
+    const openSettings = jest.spyOn(Linking, "openSettings").mockResolvedValue(undefined)
+    try {
+      const view = await renderScreen(<SettingsScreen />)
+      // 묻기 전이면 그 자리에서 권한창을 띄우고, 답을 다시 읽어 보여 준다
+      await fireEvent.press(await view.findByRole("button", { name: "위치, 묻기 전" }))
+      expect(location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1)
+      expect(await view.findByRole("button", { name: "위치, 허용" })).toBeTruthy()
+      expect(openSettings).not.toHaveBeenCalled()
+      // 한 번 거절한 권한은 앱이 다시 물을 수 없어 설정 앱을 연다
+      await fireEvent.press(view.getByRole("button", { name: "사진, 꺼짐" }))
+      expect(openSettings).toHaveBeenCalledTimes(1)
+    } finally {
+      openSettings.mockRestore()
+    }
   })
 
   it("shows a natural empty state for a new member with zero bowls", async () => {
