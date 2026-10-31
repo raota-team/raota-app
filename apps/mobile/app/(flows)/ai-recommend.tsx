@@ -891,6 +891,7 @@ export default function AIRecommendScreen() {
         onComplete={() => setStep("result")}
         resultReady={resultReady}
         shop={curation?.shop ?? null}
+        title={welcome ? t`첫 식권` : t`AI 라멘 큐레이터`}
         typeLabel={curation?.typeLabel ?? ""}
       />
     )
@@ -1378,6 +1379,7 @@ function CurationLoading({
   onComplete,
   resultReady,
   shop,
+  title,
   typeLabel,
 }: {
   conditions: TicketCondition[]
@@ -1386,6 +1388,8 @@ function CurationLoading({
   resultReady: Promise<Curation | null>
   /** 서버 응답 전에는 null이다. 그동안은 식권 아랫단까지만 내려와서 매장 칸이 비어 있어도 드러나지 않는다 */
   shop: CuratorShop | null
+  /** 머리글. 첫 식권 모드에서는 AI라고 하지 않는다 */
+  title: string
   typeLabel: string
 }) {
   const { width: screenWidth } = useWindowDimensions()
@@ -1479,7 +1483,7 @@ function CurationLoading({
 
   return (
     <Screen contentContainerStyle={styles.flex} edges={ALL_EDGES}>
-      <Header align="center" backLabel={t`추천 조건으로 돌아가기`} onBack={onBack} style={styles.flowHeader} title={t`AI 라멘 큐레이터`} titleStyle={styles.navTitle} />
+      <Header align="center" backLabel={t`추천 조건으로 돌아가기`} onBack={onBack} style={styles.flowHeader} title={title} titleStyle={styles.navTitle} />
       <ScrollView
         contentContainerStyle={[styles.loadingBody, !ticketHeight || !stubHeight ? styles.invisible : undefined]}
         showsVerticalScrollIndicator={false}
@@ -1496,7 +1500,7 @@ function CurationLoading({
           </AppText>
         </View>
         <AppText style={styles.loadingSub} tone="muted" variant="secondary">
-          {phase === "out" ? t`고른 조건으로 오늘의 라멘을 찾았어요.` : t`내 취향으로 오늘의 라멘을 고르고 있어요.`}
+          {phase === "out" ? t`고른 조건으로 오늘의 라멘을 찾았어요.` : t`고른 조건으로 오늘의 라멘을 고르고 있어요.`}
         </AppText>
 
         <View style={styles.loadingChips}>
