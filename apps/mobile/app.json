@@ -7,12 +7,17 @@
       "policy": "fingerprint"
     },
     "updates": {
-      "url": "https://u.expo.dev/e112cd2b-5a21-4cd3-aac8-cd1902cf8269",
+      "url": "https://dhqibujigcqbq.cloudfront.net/manifest",
       "requestHeaders": {
         "expo-channel-name": "production"
       },
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "codeSigningCertificate": "./certs/certificate.pem",
+      "codeSigningMetadata": {
+        "keyid": "main",
+        "alg": "rsa-v1_5-sha256"
+      }
     },
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
@@ -185,13 +190,6 @@
       "zh-Hans": "./locales/zh-Hans.json",
       "ja": "./locales/ja.json",
       "es": "./locales/es.json"
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "e112cd2b-5a21-4cd3-aac8-cd1902cf8269"
-      }
-    },
-    "owner": "heetea3174"
+    }
   }
 }
