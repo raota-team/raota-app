@@ -89,7 +89,9 @@ msgstr ", change from the previous report"
 
 #: src/screens/HomeScreen.tsx:110
 msgid ", 읽지 않은 알림 {count}개"
-msgstr ", {count, plural, one {# unread notification} other {# unread notifications}}"
+msgstr ""
+", {count, plural, one {# unread notification} other {# unread "
+"notifications}}"
 
 #: src/screens/NewsFeedScreen.tsx:208
 msgid ", 종료"
@@ -138,8 +140,7 @@ msgstr "[Optional]"
 
 #: apps/mobile/src/components/ConsentChecklist.tsx:104
 #: apps/mobile/src/components/ConsentChecklist.tsx:111
-#: src/screens/RegisterScreen.tsx:409
-#: src/screens/RegisterScreen.tsx:425
+#: src/screens/RegisterScreen.tsx:409 src/screens/RegisterScreen.tsx:425
 msgid "[필수]"
 msgstr "[Required]"
 
@@ -152,13 +153,14 @@ msgid "{axis} {choice}"
 msgstr "{axis}: {choice}"
 
 #: apps/mobile/src/components/TasteStory.tsx:153
-msgid "{broth}에\n"
+msgid ""
+"{broth}에\n"
 "{noodle}"
-msgstr "{broth},\n"
+msgstr ""
+"{broth},\n"
 "{noodle}"
 
-#: apps/mobile/app/native/my.tsx:705
-#: apps/mobile/app/native/my.tsx:787
+#: apps/mobile/app/native/my.tsx:705 apps/mobile/app/native/my.tsx:787
 msgid "{count}곳 남음"
 msgstr "{count, plural, one {# shop left} other {# shops left}}"
 
@@ -169,8 +171,7 @@ msgstr "Visited {count, plural, one {# shop} other {# shops}}"
 #: apps/mobile/src/components/TasteStory.tsx:145
 #: apps/mobile/src/notifications/reminders.ts:62
 #: src/components/MonthlyReportCard.tsx:37
-#: src/screens/MonthlyTasteScreen.tsx:98
-#: src/screens/TasteDetailScreen.tsx:169
+#: src/screens/MonthlyTasteScreen.tsx:98 src/screens/TasteDetailScreen.tsx:169
 msgid "{count}그릇"
 msgstr "{count, plural, one {# bowl} other {# bowls}}"
 
@@ -188,7 +189,9 @@ msgstr "{count, plural, one {# more bowl needed} other {# more bowls needed}}"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:727
 msgid "{count}그릇 중 {winners} {topCount}그릇 · {topPercent}%"
-msgstr "{winners}: {topCount} of {count, plural, one {# bowl} other {# bowls}} · {topPercent}%"
+msgstr ""
+"{winners}: {topCount} of {count, plural, one {# bowl} other {# bowls}} · "
+"{topPercent}%"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:726
 msgid "{count}그릇 중 {winners} 각 {topCount}그릇 · {topPercent}%"
@@ -199,9 +202,11 @@ msgid "{count}그릇 취향 기준"
 msgstr "Based on {count, plural, one {# bowl} other {# bowls}}"
 
 #: apps/mobile/src/components/TasteStory.tsx:134
-msgid "{count}그릇을\n"
+msgid ""
+"{count}그릇을\n"
 "기록했어요"
-msgstr "{count, plural, one {# bowl} other {# bowls}}\n"
+msgstr ""
+"{count, plural, one {# bowl} other {# bowls}}\n"
 "logged"
 
 #: apps/mobile/src/domain/shopTaste.ts:48
@@ -260,8 +265,7 @@ msgstr "Picks for {day}"
 msgid "{day}의 한 그릇"
 msgstr "Your bowl for {day}"
 
-#: apps/mobile/app/native/index.tsx:288
-#: apps/mobile/src/domain/lounge.ts:215
+#: apps/mobile/app/native/index.tsx:288 apps/mobile/src/domain/lounge.ts:215
 msgid "{days}일 전"
 msgstr "{days, plural, one {# day ago} other {# days ago}}"
 
@@ -307,7 +311,9 @@ msgstr "{label}: {value} points"
 
 #: apps/mobile/app/(flows)/record/new.tsx:1322
 msgid "{label}, 남은 필수 {count}개"
-msgstr "{label}, {count, plural, one {# required item left} other {# required items left}}"
+msgstr ""
+"{label}, {count, plural, one {# required item left} other {# required items "
+"left}}"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1211
 msgid "{label}, 반영했어요"
@@ -331,7 +337,8 @@ msgstr "{label}. Image unavailable."
 
 #: apps/mobile/app/(flows)/auth/onboarding.tsx:229
 msgid "{level} Lv.{levelNumber} · 첫 그릇을 기록하면 취향 분석이 시작돼요"
-msgstr "{level} Lv.{levelNumber} · Log your first bowl to start your taste profile"
+msgstr ""
+"{level} Lv.{levelNumber} · Log your first bowl to start your taste profile"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:482
 msgid "{matched} 조건을 매장 정보와 대조했어요"
@@ -355,7 +362,9 @@ msgstr "{month} in progress"
 
 #: apps/mobile/src/notifications/reminders.ts:80
 msgid "{month}월 기록이 {target}그릇이 되면 {publishMonth}월 1일에 리포트가 나와요."
-msgstr "Log {target} bowls in month {month} to get your report on the first day of month {publishMonth}."
+msgstr ""
+"Log {target} bowls in month {month} to get your report on the first day of "
+"month {publishMonth}."
 
 #: apps/mobile/app/native/my.tsx:1033
 msgid "{months}개월 비교"
@@ -395,9 +404,7 @@ msgstr "Shops {name} might like"
 
 #: apps/mobile/src/components/TasteStory.tsx:165
 msgid "{name}에\n"
-""
 msgstr "{name}\n"
-""
 
 #: apps/mobile/src/components/TodayTicketsSheet.tsx:112
 msgid "{p0} ({p1}) · 하루 {p2}장, 자정에 다시 채워져요"
@@ -467,7 +474,8 @@ msgstr "{p0}{p1}, {p2}, {p3}, view shop"
 
 #: apps/mobile/app/native/my.tsx:713
 msgid "{p0}{p1}, {p2}그릇, 마지막 방문 {p3}{p4}"
-msgstr "{p0}{p1}, {p2, plural, one {# bowl} other {# bowls}}, last visit {p3}{p4}"
+msgstr ""
+"{p0}{p1}, {p2, plural, one {# bowl} other {# bowls}}, last visit {p3}{p4}"
 
 #: apps/mobile/app/native/map.web.tsx:457
 msgid "{p0}{p1}, 매장 상세 보기"
@@ -536,7 +544,9 @@ msgstr "In {period} so far, {styles} has been your most frequent style."
 
 #: packages/shared/src/domain/identity.ts:71
 msgid "{scope} {total}그릇 중 {type} {count}그릇 · 육수 농도 평균 {score}"
-msgstr "{scope}: {count} {type} out of {total, plural, one {# bowl} other {# bowls}} · average broth richness {score}"
+msgstr ""
+"{scope}: {count} {type} out of {total, plural, one {# bowl} other {# bowls}}"
+" · average broth richness {score}"
 
 #: packages/shared/src/domain/identity.ts:51
 msgid "{scope} 0그릇"
@@ -555,8 +565,12 @@ msgid "{shop} 저장을 해제했어요"
 msgstr "Removed {shop} from saved shops"
 
 #: src/screens/RecordCompleteScreen.tsx:76
-msgid "{shop}의 {style} 한 그릇. 이번 그릇은 {axis} {score}점이 가장 높았고, 재방문 의사는 ‘{revisit}’으로 남겼어요."
-msgstr "{style} at {shop}. {axis} scored highest at {score}, and you marked revisit as ‘{revisit}’."
+msgid ""
+"{shop}의 {style} 한 그릇. 이번 그릇은 {axis} {score}점이 가장 높았고, 재방문 의사는 ‘{revisit}’으로 "
+"남겼어요."
+msgstr ""
+"{style} at {shop}. {axis} scored highest at {score}, and you marked revisit "
+"as ‘{revisit}’."
 
 #: src/screens/RecordCompleteScreen.tsx:75
 msgid "{shop}의 {style} 한 그릇이 {count}번째 기록으로 남았어요."
@@ -575,7 +589,8 @@ msgstr "{soup} style"
 #: apps/mobile/app/(flows)/ai-recommend.tsx:431
 #: apps/mobile/app/(flows)/ai-recommend.tsx:532
 msgid "{soup} 계보 {count}곳 중에서 골랐어요"
-msgstr "Chosen from {count, plural, one {# {soup} shop} other {# {soup} shops}}"
+msgstr ""
+"Chosen from {count, plural, one {# {soup} shop} other {# {soup} shops}}"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:381
 msgid "{step}단계"
@@ -591,15 +606,20 @@ msgstr "{style} style"
 
 #: src/screens/AIRecommendScreen.tsx:117
 msgid "{style} 계보 {count}곳 중에서 골랐어요"
-msgstr "Chosen from {count, plural, one {# {style} shop} other {# {style} shops}}"
+msgstr ""
+"Chosen from {count, plural, one {# {style} shop} other {# {style} shops}}"
 
 #: src/screens/MonthlyTasteScreen.tsx:118
 msgid "{style} 비율이 {period}보다 {difference}%p 늘었어요."
-msgstr "The share of {style} increased by {difference} percentage points compared with {period}."
+msgstr ""
+"The share of {style} increased by {difference} percentage points compared "
+"with {period}."
 
 #: src/screens/MonthlyTasteScreen.tsx:119
 msgid "{style} 비율이 {period}보다 {difference}%p 줄었어요."
-msgstr "The share of {style} decreased by {difference} percentage points compared with {period}."
+msgstr ""
+"The share of {style} decreased by {difference} percentage points compared "
+"with {period}."
 
 #: src/screens/AIRecommendScreen.tsx:119
 msgid "{style} 전문점이 아직 없어 전체 라멘집에서 골랐어요"
@@ -631,9 +651,10 @@ msgstr "{title}, {winners}: {count, plural, one {# bowl} other {# bowls}}"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:569
 msgid "{title}, {winners} 각 {count}그릇"
-msgstr "{title}, {winners}: {count, plural, one {# bowl each} other {# bowls each}}"
+msgstr ""
+"{title}, {winners}: {count, plural, one {# bowl each} other {# bowls each}}"
 
-#: apps/mobile/src/components/StartChecklist.tsx:75
+#: apps/mobile/src/components/StartChecklist.tsx:77
 msgid "{title}, 했어요"
 msgstr "{title}, done"
 
@@ -647,7 +668,9 @@ msgstr "{type}: {title}"
 
 #: packages/shared/src/domain/monthly.ts:158
 msgid "{type}를 {count}그릇으로 가장 많이 먹은 달이에요."
-msgstr "{type} was your most enjoyed style this month, with {count, plural, one {# bowl} other {# bowls}}."
+msgstr ""
+"{type} was your most enjoyed style this month, with {count, plural, one {# "
+"bowl} other {# bowls}}."
 
 #: packages/shared/src/domain/identity.ts:69
 msgid "{type}를 가장 많이 먹었고, 육수는 맑은 쪽을 좋아해요."
@@ -669,8 +692,7 @@ msgstr "{v0} {v1}{v2}"
 msgid "{v0} {v1}에 다시 정리함"
 msgstr "Updated {v0} {v1}"
 
-#: src/screens/RecordCompleteScreen.tsx:114
-#: src/screens/RecordScreen.tsx:421
+#: src/screens/RecordCompleteScreen.tsx:114 src/screens/RecordScreen.tsx:421
 #: src/screens/TasteDetailScreen.tsx:46
 msgid "{v0} {v1}점"
 msgstr "{v0}: {v1, plural, one {{v1} point} other {{v1} points}}"
@@ -679,14 +701,12 @@ msgstr "{v0}: {v1, plural, one {{v1} point} other {{v1} points}}"
 msgid "{v0} 기준"
 msgstr "As of {v0}"
 
-#: src/components/PolicySheet.tsx:60
-#: src/screens/MyScreen.tsx:188
+#: src/components/PolicySheet.tsx:60 src/screens/MyScreen.tsx:188
 #: src/screens/MyScreen.tsx:237
 msgid "{v0} 닫기"
 msgstr "Close {v0}"
 
-#: src/screens/AIRecommendScreen.tsx:355
-#: src/screens/HomeScreen.tsx:176
+#: src/screens/AIRecommendScreen.tsx:355 src/screens/HomeScreen.tsx:176
 #: src/screens/ShopDetailScreen.tsx:109
 msgid "{v0} 대표 사진"
 msgstr "Featured photo of {v0}"
@@ -705,7 +725,8 @@ msgstr "Log {v0} more to compare with {v1}."
 
 #: src/components/MonthlyReportCard.tsx:37
 msgid "{v0} 더 기록하면 지난달과 비율을 비교할 수 있어요. (한 달 {v1}그릇부터)"
-msgstr "Log {v0} more to compare with last month (at least {v1} bowls per month)."
+msgstr ""
+"Log {v0} more to compare with last month (at least {v1} bowls per month)."
 
 #: src/components/MenuDistributionChart.tsx:29
 msgid "{v0} 메뉴 분포. {v1}"
@@ -737,7 +758,8 @@ msgstr "With {v0} bowls logged, you can compare with last month."
 
 #: src/screens/TasteDetailScreen.tsx:297
 msgid "{v0}는 {v1}그릇으로 가장 적었어요."
-msgstr "{v0} was least frequent, at {v1, plural, one {# bowl} other {# bowls}}."
+msgstr ""
+"{v0} was least frequent, at {v1, plural, one {# bowl} other {# bowls}}."
 
 #: src/screens/TasteDetailScreen.tsx:297
 msgid "{v0}는 아직 기록이 없어요."
@@ -755,8 +777,7 @@ msgstr "{v0}'s log at {v1}"
 msgid "{v0}의 메뉴 분포"
 msgstr "{v0} menu distribution"
 
-#: src/screens/RecordScreen.tsx:401
-#: src/screens/RecordScreen.tsx:446
+#: src/screens/RecordScreen.tsx:401 src/screens/RecordScreen.tsx:446
 msgid "{v0}점"
 msgstr "{v0, plural, one {# point} other {# points}}"
 
@@ -818,11 +839,13 @@ msgstr "{v1} cover photo"
 
 #: apps/mobile/app/(flows)/taste/archive.tsx:340
 msgid "{v1} 더 기록하면 {v2}과 비교할 수 있어요. 한 달 {v3}그릇 미만이면 비교하지 않아요."
-msgstr "Log {v1} more to compare with {v2}. Comparison needs {v3} bowls per month."
+msgstr ""
+"Log {v1} more to compare with {v2}. Comparison needs {v3} bowls per month."
 
 #: apps/mobile/app/(flows)/taste/archive.tsx:190
 msgid "{v1} 더 기록하면 지난달과 비율을 비교할 수 있어요. (한 달 {v2}그릇부터)"
-msgstr "Log {v1} more to compare with last month (at least {v2} bowls per month)."
+msgstr ""
+"Log {v1} more to compare with last month (at least {v2} bowls per month)."
 
 #: apps/mobile/app/(flows)/taste/archive.tsx:423
 msgid "{v1} 라멘 종류별 그릇 수와 비율"
@@ -929,7 +952,9 @@ msgstr "{v2}/{v3}/{v1} ({v4})"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:998
 msgid "{v1}는 {v2}그릇으로 가장 적었어요."
-msgstr "{v1} was your least logged style, with {v2, plural, one {# bowl} other {# bowls}}."
+msgstr ""
+"{v1} was your least logged style, with {v2, plural, one {# bowl} other {# "
+"bowls}}."
 
 #: apps/mobile/app/(flows)/taste/index.tsx:997
 msgid "{v1}는 아직 기록이 없어요."
@@ -985,8 +1010,7 @@ msgstr "{v1} percentage point {v2}"
 msgid "{value}점"
 msgstr "{value, plural, one {# point} other {# points}}"
 
-#: apps/mobile/app/native/my.tsx:175
-#: src/screens/MyScreen.tsx:386
+#: apps/mobile/app/native/my.tsx:175 src/screens/MyScreen.tsx:386
 msgid "{year}년"
 msgstr "{year}"
 
@@ -996,7 +1020,9 @@ msgstr "Reply to @{v0}"
 
 #: src/screens/MonthlyTasteScreen.tsx:121
 msgid "%p는 두 달의 비율 차이예요. 비율은 그릇 수를 기준으로 반올림했어요."
-msgstr "Percentage points show the difference between months. Shares are rounded from bowl counts."
+msgstr ""
+"Percentage points show the difference between months. Shares are rounded "
+"from bowl counts."
 
 #: src/screens/HomeScreen.tsx:316
 msgid "© 2026 RAOTA · 라멘에 진심인 사람들"
@@ -1014,17 +1040,15 @@ msgstr "1 person"
 msgid "2그릇"
 msgstr "2 bowls"
 
-#: apps/mobile/app/(flows)/settings.tsx:310
-#: src/screens/MyScreen.tsx:825
+#: apps/mobile/app/(flows)/settings.tsx:310 src/screens/MyScreen.tsx:825
 msgid "30일 동안 같은 소셜 계정으로 재가입할 수 없어요."
 msgstr "You can’t register with the same social account for 30 days."
 
-#: apps/mobile/app/(flows)/settings.tsx:311
-#: src/screens/MyScreen.tsx:826
+#: apps/mobile/app/(flows)/settings.tsx:311 src/screens/MyScreen.tsx:826
 msgid "30일이 지나면 라멘로그, 취향 리포트, 저장한 매장이 모두 지워져요."
 msgstr "After 30 days, your logs, taste reports and saved shops are deleted."
 
-#: apps/mobile/src/components/StartChecklist.tsx:64
+#: apps/mobile/src/components/StartChecklist.tsx:66
 msgid "3가지 중 {doneCount}가지 했어요"
 msgstr "{doneCount} of 3 done"
 
@@ -1082,8 +1106,7 @@ msgstr "AI ramen curator"
 msgid "AI 맞춤 추천받기"
 msgstr "Get AI recommendations"
 
-#: apps/mobile/app/(flows)/tickets.tsx:52
-#: apps/mobile/app/native/index.tsx:430
+#: apps/mobile/app/(flows)/tickets.tsx:52 apps/mobile/app/native/index.tsx:430
 msgid "AI 추천받기"
 msgstr "Get AI picks"
 
@@ -1096,8 +1119,7 @@ msgstr "Your AI taste match"
 msgid "AI 큐레이터"
 msgstr "AI curator"
 
-#: apps/mobile/app/native/my.tsx:1072
-#: packages/shared/src/i18n/labels.ts:108
+#: apps/mobile/app/native/my.tsx:1072 packages/shared/src/i18n/labels.ts:108
 msgid "AI 큐레이터에서 뽑은 식권을 날짜별로 다시 봐요"
 msgstr "Browse your AI curator tickets by date"
 
@@ -1114,8 +1136,7 @@ msgstr "Written by AI"
 
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:544
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:546
-#: apps/mobile/app/native/index.tsx:488
-#: apps/mobile/app/native/index.tsx:509
+#: apps/mobile/app/native/index.tsx:488 apps/mobile/app/native/index.tsx:509
 msgid "AI가 요약했어요"
 msgstr "Summarized by AI"
 
@@ -1123,8 +1144,7 @@ msgstr "Summarized by AI"
 msgid "Apple로 계속하기"
 msgstr "Continue with Apple"
 
-#: apps/mobile/src/auth/social.ts:105
-#: packages/shared/src/i18n/labels.ts:86
+#: apps/mobile/src/auth/social.ts:105 packages/shared/src/i18n/labels.ts:86
 msgid "Apple에서 로그인 정보를 받지 못했어요."
 msgstr "Could not get sign-in details from Apple."
 
@@ -1132,8 +1152,7 @@ msgstr "Could not get sign-in details from Apple."
 msgid "Google 로그인 중"
 msgstr "Signing in with Google"
 
-#: apps/mobile/src/auth/social.ts:80
-#: packages/shared/src/i18n/labels.ts:84
+#: apps/mobile/src/auth/social.ts:80 packages/shared/src/i18n/labels.ts:84
 msgid "Google 로그인이 설정되지 않았어요."
 msgstr "Google sign-in is not configured."
 
@@ -1145,8 +1164,7 @@ msgstr "Continue with Google"
 msgid "Google로 시작하기"
 msgstr "Continue with Google"
 
-#: apps/mobile/src/auth/social.ts:85
-#: packages/shared/src/i18n/labels.ts:85
+#: apps/mobile/src/auth/social.ts:85 packages/shared/src/i18n/labels.ts:85
 msgid "Google에서 로그인 정보를 받지 못했어요."
 msgstr "Could not get sign-in details from Google."
 
@@ -1193,8 +1211,7 @@ msgstr " are tied for first."
 
 #: apps/mobile/app/(flows)/record/complete.tsx:213
 #: apps/mobile/app/(flows)/record/new.tsx:617
-#: src/screens/RecordCompleteScreen.tsx:99
-#: src/screens/RecordScreen.tsx:290
+#: src/screens/RecordCompleteScreen.tsx:99 src/screens/RecordScreen.tsx:290
 msgid "가게"
 msgstr "Shop"
 
@@ -1284,8 +1301,7 @@ msgstr "Price range"
 
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:743
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:752
-#: src/screens/ShopDetailScreen.tsx:127
-#: src/screens/ShopDetailScreen.tsx:389
+#: src/screens/ShopDetailScreen.tsx:127 src/screens/ShopDetailScreen.tsx:389
 msgid "가고 싶어요"
 msgstr "Want to go"
 
@@ -1309,8 +1325,7 @@ msgstr "Keep your wish list, visits, and favorite bowls together in RAOTA."
 msgid "가고 싶은 곳, 다녀온 곳을 라오타에 모아두세요. "
 msgstr "Keep the shops you love and want to visit in RAOTA. "
 
-#: apps/mobile/app/native/my.tsx:756
-#: src/screens/MyScreen.tsx:649
+#: apps/mobile/app/native/my.tsx:756 src/screens/MyScreen.tsx:649
 msgid "가고 싶은 라멘집"
 msgstr "Want to visit"
 
@@ -1319,8 +1334,7 @@ msgstr "Want to visit"
 msgid "가고 싶은 라멘집에 저장했어요"
 msgstr "Added to your saved shops"
 
-#: apps/mobile/app/native/my.tsx:309
-#: src/screens/MyScreen.tsx:452
+#: apps/mobile/app/native/my.tsx:309 src/screens/MyScreen.tsx:452
 msgid "가고싶어요"
 msgstr "Saved"
 
@@ -1337,8 +1351,7 @@ msgstr "Prioritized nearby shops"
 msgid "가까운 곳에서 고를까요?"
 msgstr "Pick somewhere nearby?"
 
-#: apps/mobile/app/native/index.tsx:590
-#: src/screens/HomeScreen.tsx:266
+#: apps/mobile/app/native/index.tsx:590 src/screens/HomeScreen.tsx:266
 msgid "가까운 라멘집"
 msgstr "Nearby ramen shops"
 
@@ -1370,11 +1383,15 @@ msgstr "Creating account"
 
 #: apps/mobile/app/(flows)/auth/onboarding.tsx:50
 msgid "가입은 됐지만 소개·사진을 저장하지 못했어요. 다시 누르면 그것만 저장해요."
-msgstr "Your account is ready, but your bio and photo weren’t saved. Tap again to retry those only."
+msgstr ""
+"Your account is ready, but your bio and photo weren’t saved. Tap again to "
+"retry those only."
 
 #: packages/shared/src/i18n/labels.ts:103
 msgid "가입은 완료됐지만 추가 프로필을 저장하지 못했어요."
-msgstr "Your account was created, but the additional profile details could not be saved."
+msgstr ""
+"Your account was created, but the additional profile details could not be "
+"saved."
 
 #: apps/mobile/app/(flows)/auth/onboarding.tsx:49
 msgid "가입하지 못했어요. 잠시 후 다시 시도해 주세요."
@@ -1409,8 +1426,7 @@ msgstr "Choose what matters most"
 msgid "가장 중요한 요소"
 msgstr "What matters most"
 
-#: apps/mobile/app/(flows)/settings.tsx:202
-#: src/screens/MyScreen.tsx:775
+#: apps/mobile/app/(flows)/settings.tsx:202 src/screens/MyScreen.tsx:775
 msgid "가장 즐겨 먹는 종류를 골라 주세요. 프로필에 표시돼요."
 msgstr "Choose your favorite style. It appears on your profile."
 
@@ -1419,8 +1435,7 @@ msgstr "Choose your favorite style. It appears on your profile."
 msgid "각 달에 먹은 라멘의 종류별 비율을 비교해요."
 msgstr "Compare the share of each ramen style across months."
 
-#: packages/shared/src/i18n/labels.ts:152
-#: src/types.ts:59
+#: packages/shared/src/i18n/labels.ts:152 src/types.ts:59
 msgid "간"
 msgstr "Seasoning"
 
@@ -1470,8 +1485,7 @@ msgstr "Personal data exposure"
 
 #: apps/mobile/src/components/ConsentChecklist.tsx:112
 #: apps/mobile/src/components/ConsentChecklist.tsx:144
-#: src/screens/RegisterScreen.tsx:425
-#: src/screens/RegisterScreen.tsx:481
+#: src/screens/RegisterScreen.tsx:425 src/screens/RegisterScreen.tsx:481
 msgid "개인정보 수집 및 이용 동의"
 msgstr "Consent to personal data collection and use"
 
@@ -1484,27 +1498,22 @@ msgstr "View personal data consent"
 #: apps/mobile/app/(flows)/legal/[doc].tsx:44
 #: apps/mobile/app/(flows)/settings.tsx:174
 #: apps/mobile/src/components/PolicySheet.tsx:38
-#: src/components/PolicySheet.tsx:20
-#: src/screens/HomeScreen.tsx:312
+#: src/components/PolicySheet.tsx:20 src/screens/HomeScreen.tsx:312
 msgid "개인정보처리방침"
 msgstr "Privacy policy"
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:81
-#: apps/mobile/app/native/index.tsx:597
-#: apps/mobile/app/native/index.tsx:614
+#: apps/mobile/app/native/index.tsx:597 apps/mobile/app/native/index.tsx:614
 #: apps/mobile/app/native/map.web.tsx:61
 msgid "거리 정보 없음"
 msgstr "Distance unavailable"
 
-#: apps/mobile/app/native/map.web.tsx:49
-#: src/screens/MapScreen.tsx:701
+#: apps/mobile/app/native/map.web.tsx:49 src/screens/MapScreen.tsx:701
 msgid "거리순"
 msgstr "Nearest"
 
-#: src/screens/LoungeScreen.tsx:1174
-#: src/screens/LoungeScreen.tsx:1196
-#: src/screens/LoungeScreen.tsx:1266
-#: src/screens/RecordSheet.tsx:320
+#: src/screens/LoungeScreen.tsx:1174 src/screens/LoungeScreen.tsx:1196
+#: src/screens/LoungeScreen.tsx:1266 src/screens/RecordSheet.tsx:320
 msgid "건"
 msgstr "items"
 
@@ -1522,24 +1531,19 @@ msgid "검색 결과 {v1}건"
 msgstr "{v1, plural, one {# search result} other {# search results}}"
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:328
-#: apps/mobile/app/native/map.web.tsx:506
-#: apps/mobile/app/native/my.tsx:695
-#: apps/mobile/app/native/my.tsx:777
-#: src/screens/MapScreen.tsx:753
-#: src/screens/MyScreen.tsx:619
-#: src/screens/MyScreen.tsx:659
+#: apps/mobile/app/native/map.web.tsx:506 apps/mobile/app/native/my.tsx:695
+#: apps/mobile/app/native/my.tsx:777 src/screens/MapScreen.tsx:753
+#: src/screens/MyScreen.tsx:619 src/screens/MyScreen.tsx:659
 msgid "검색 결과가 없어요"
 msgstr "No search results"
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:372
-#: apps/mobile/app/native/map.web.tsx:253
-#: src/screens/MapScreen.tsx:507
+#: apps/mobile/app/native/map.web.tsx:253 src/screens/MapScreen.tsx:507
 #: src/screens/RecordSheet.tsx:291
 msgid "검색어 지우기"
 msgstr "Clear search"
 
-#: apps/mobile/app/native/map.web.tsx:389
-#: src/screens/MapScreen.tsx:689
+#: apps/mobile/app/native/map.web.tsx:389 src/screens/MapScreen.tsx:689
 msgid "검색어나 필터를 바꿔 다시 찾아보세요."
 msgstr "Try a different search or filter."
 
@@ -1584,8 +1588,7 @@ msgstr " continue using RAOTA "
 msgid "계속 작성"
 msgstr "Keep writing"
 
-#: apps/mobile/app/(flows)/settings.tsx:123
-#: src/screens/MyScreen.tsx:727
+#: apps/mobile/app/(flows)/settings.tsx:123 src/screens/MyScreen.tsx:727
 msgid "계정"
 msgstr "Account"
 
@@ -1655,20 +1658,15 @@ msgid "곧 새로운 라멘집을 소개할게요."
 msgstr "New ramen shops are coming soon."
 
 #: apps/mobile/src/components/ui/index.tsx:704
-#: src/screens/RecordScreen.tsx:332
-#: src/screens/RecordScreen.tsx:401
+#: src/screens/RecordScreen.tsx:332 src/screens/RecordScreen.tsx:401
 #: src/screens/RecordScreen.tsx:446
 msgid "골라주세요"
 msgstr "Please choose"
 
-#: apps/mobile/app/native/my.tsx:304
-#: apps/mobile/app/native/my.tsx:657
-#: apps/mobile/app/native/my.tsx:756
-#: src/screens/MapScreen.tsx:698
-#: src/screens/MyScreen.tsx:492
-#: src/screens/MyScreen.tsx:596
-#: src/screens/MyScreen.tsx:649
-#: src/screens/RecordSheet.tsx:262
+#: apps/mobile/app/native/my.tsx:304 apps/mobile/app/native/my.tsx:657
+#: apps/mobile/app/native/my.tsx:756 src/screens/MapScreen.tsx:698
+#: src/screens/MyScreen.tsx:492 src/screens/MyScreen.tsx:596
+#: src/screens/MyScreen.tsx:649 src/screens/RecordSheet.tsx:262
 msgid "곳"
 msgstr " shops"
 
@@ -1676,8 +1674,7 @@ msgstr " shops"
 msgid "곳을 다녔어요"
 msgstr " shops visited"
 
-#: src/screens/MyScreen.tsx:696
-#: src/screens/MyScreen.tsx:717
+#: src/screens/MyScreen.tsx:696 src/screens/MyScreen.tsx:717
 #: src/screens/NotificationScreen.tsx:59
 msgid "공감"
 msgstr "Likes"
@@ -1714,7 +1711,9 @@ msgstr "{p0, plural, one {# public ramen log} other {# public ramen logs}}"
 
 #: src/screens/MyScreen.tsx:757
 msgid "공개 라멘로그 수를 기준으로 등급이 올라가요. 지금은 {count}그릇, Lv.{level} {title}예요."
-msgstr "Your level grows with public logs. You have {count, plural, one {# bowl} other {# bowls}} and are Lv.{level} {title}."
+msgstr ""
+"Your level grows with public logs. You have {count, plural, one {# bowl} "
+"other {# bowls}} and are Lv.{level} {title}."
 
 #: apps/mobile/app/(flows)/record/new.tsx:1152
 msgid "공개 범위"
@@ -1785,8 +1784,7 @@ msgid "구성 알차요"
 msgstr "Generous toppings"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:177
-#: packages/shared/src/i18n/labels.ts:150
-#: src/types.ts:57
+#: packages/shared/src/i18n/labels.ts:150 src/types.ts:57
 msgid "국물"
 msgstr "Broth"
 
@@ -1803,8 +1801,7 @@ msgstr "Broth base"
 msgid "국물과 면 취향을 살펴보고 있어요"
 msgstr "Reviewing your broth and noodle preferences"
 
-#: apps/mobile/app/native/index.tsx:426
-#: src/screens/HomeScreen.tsx:134
+#: apps/mobile/app/native/index.tsx:426 src/screens/HomeScreen.tsx:134
 msgid "국물과 상황에 맞는 오늘의 한 그릇 추천"
 msgstr "A bowl for your broth and mood"
 
@@ -1812,13 +1809,15 @@ msgstr "A bowl for your broth and mood"
 msgid "국물과 상황을 골라 오늘의 한 그릇을 추천받아요"
 msgstr "Choose your broth and mood for today's bowl"
 
-#: apps/mobile/src/components/StartChecklist.tsx:45
+#: apps/mobile/src/components/StartChecklist.tsx:47
 msgid "국물만 골라도 돼요"
 msgstr "Just pick a broth"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1246
 msgid "국물에 상황과 더 바라는 점까지 보고, 매일 새 식권을 뽑을 수 있어요."
-msgstr "It looks at your broth, the occasion and anything else you want, and you can draw new tickets every day."
+msgstr ""
+"It looks at your broth, the occasion and anything else you want, and you can"
+" draw new tickets every day."
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1270
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1294
@@ -1837,23 +1836,21 @@ msgstr "Soaks up broth"
 msgid "그다음은 {name} {count}번"
 msgstr "Next: {name}, {count, plural, one {# visit} other {# visits}}"
 
+#: apps/mobile/src/components/StartChecklist.tsx:100
+msgid "그대로 두기"
+msgstr "Keep it"
+
 #: apps/mobile/app/(flows)/my-type/[type].tsx:62
 #: apps/mobile/app/(flows)/taste/index.tsx:663
-#: apps/mobile/app/native/my.tsx:303
-#: apps/mobile/app/native/my.tsx:573
-#: apps/mobile/app/native/my.tsx:584
-#: apps/mobile/app/native/my.tsx:739
+#: apps/mobile/app/native/my.tsx:303 apps/mobile/app/native/my.tsx:573
+#: apps/mobile/app/native/my.tsx:584 apps/mobile/app/native/my.tsx:739
 #: src/components/MenuDistributionChart.tsx:27
 #: src/components/MonthlyReportCard.tsx:23
 #: src/screens/MonthlyTasteScreen.tsx:109
-#: src/screens/MonthlyTasteScreen.tsx:136
-#: src/screens/MyScreen.tsx:491
-#: src/screens/MyScreen.tsx:493
-#: src/screens/MyScreen.tsx:553
-#: src/screens/MyScreen.tsx:566
-#: src/screens/MyScreen.tsx:636
-#: src/screens/TasteDetailScreen.tsx:252
-#: src/screens/TasteDetailScreen.tsx:264
+#: src/screens/MonthlyTasteScreen.tsx:136 src/screens/MyScreen.tsx:491
+#: src/screens/MyScreen.tsx:493 src/screens/MyScreen.tsx:553
+#: src/screens/MyScreen.tsx:566 src/screens/MyScreen.tsx:636
+#: src/screens/TasteDetailScreen.tsx:252 src/screens/TasteDetailScreen.tsx:264
 #: src/screens/TasteDetailScreen.tsx:286
 msgid "그릇"
 msgstr " bowls"
@@ -1962,8 +1959,7 @@ msgid "기록 리마인더"
 msgstr "Log reminders"
 
 #: apps/mobile/src/components/RecordMenu.tsx:196
-#: src/screens/HomeScreen.tsx:323
-#: src/screens/HomeScreen.tsx:351
+#: src/screens/HomeScreen.tsx:323 src/screens/HomeScreen.tsx:351
 msgid "기록 메뉴 닫기"
 msgstr "Close logging menu"
 
@@ -1978,7 +1974,8 @@ msgstr "Close logging options"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:680
 msgid "기록 순서대로 {v1}개 그릇을 종류별로 쌓고 있어요"
-msgstr "Stacking {v1, plural, one {# bowl} other {# bowls}} by style in log order"
+msgstr ""
+"Stacking {v1, plural, one {# bowl} other {# bowls}} by style in log order"
 
 #: src/components/MenuDistributionChart.tsx:29
 #: src/components/MenuDistributionChart.tsx:32
@@ -1998,8 +1995,7 @@ msgstr "Save log"
 msgid "기록 화면을 준비하는 중…"
 msgstr "Preparing your log…"
 
-#: apps/mobile/app/(flows)/settings.tsx:292
-#: src/screens/MyScreen.tsx:811
+#: apps/mobile/app/(flows)/settings.tsx:292 src/screens/MyScreen.tsx:811
 msgid "기록과 취향 리포트는 계정에 그대로 남아 있어요."
 msgstr "Your logs and taste reports stay in your account."
 
@@ -2013,7 +2009,8 @@ msgstr "Logs are saved to your account. Sign in to keep collecting bowls."
 
 #: apps/mobile/app/(flows)/record/new.tsx:939
 msgid "기록은 계정에 저장돼요. 로그인하면 취향 리포트도 함께 쌓여요."
-msgstr "Logs are saved to your account. Sign in to build your taste report too."
+msgstr ""
+"Logs are saved to your account. Sign in to build your taste report too."
 
 #: packages/shared/src/i18n/labels.ts:96
 msgid "기록을 고치지 못했어요. 다시 시도해 주세요."
@@ -2029,7 +2026,9 @@ msgstr "New logs update this month’s chart right away. Days left this month: "
 
 #: src/components/MonthlyReportCard.tsx:25
 msgid "기록을 남기면 이번 달 분포에 바로 더해져요. 이번 달이 {count}일 남았어요."
-msgstr "New logs update this month's distribution. {count, plural, one {# day} other {# days}} left this month."
+msgstr ""
+"New logs update this month's distribution. {count, plural, one {# day} other"
+" {# days}} left this month."
 
 #: apps/mobile/app/(flows)/my-type/[type].tsx:50
 #: apps/mobile/app/(flows)/record/complete.tsx:173
@@ -2079,7 +2078,9 @@ msgstr "We’ll only remind you after a week without a log."
 
 #: apps/mobile/app/(flows)/auth/onboarding.tsx:254
 msgid "기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요."
-msgstr "We’ll only remind you after a week without a log. Turn this off anytime in Settings."
+msgstr ""
+"We’ll only remind you after a week without a log. Turn this off anytime in "
+"Settings."
 
 #: apps/mobile/app/(flows)/record/complete.tsx:199
 #: src/screens/RecordCompleteScreen.tsx:83
@@ -2092,7 +2093,8 @@ msgstr "Log a bowl"
 
 #: src/screens/TasteReportLoading.tsx:73
 msgid "기록한 {count}그릇을 바탕으로 분석해요"
-msgstr "Analyzing your {count, plural, one {# logged bowl} other {# logged bowls}}"
+msgstr ""
+"Analyzing your {count, plural, one {# logged bowl} other {# logged bowls}}"
 
 #: apps/mobile/app/(flows)/record/new.tsx:1240
 msgid "기록할 가게를 다시 골라요"
@@ -2131,8 +2133,7 @@ msgstr "Notes to remember"
 msgid "기억해둘 점 (예: 다음엔 면을 단단하게)"
 msgstr "Notes (e.g. firmer noodles next time)"
 
-#: apps/mobile/src/domain/lounge.ts:49
-#: packages/shared/src/i18n/labels.ts:22
+#: apps/mobile/src/domain/lounge.ts:49 packages/shared/src/i18n/labels.ts:22
 msgid "기타"
 msgstr "Other"
 
@@ -2170,8 +2171,7 @@ msgstr "Turn off to keep this log private and out of the feed."
 msgid "나가기"
 msgstr "Leave"
 
-#: apps/mobile/app/(flows)/record/new.tsx:158
-#: src/screens/RecordScreen.tsx:277
+#: apps/mobile/app/(flows)/record/new.tsx:158 src/screens/RecordScreen.tsx:277
 msgid "나만 보기"
 msgstr "Only me"
 
@@ -2183,8 +2183,7 @@ msgstr "Building your taste profile"
 msgid "나의 라멘 취향을"
 msgstr "Reviewing"
 
-#: apps/mobile/app/native/index.tsx:342
-#: src/screens/HomeScreen.tsx:81
+#: apps/mobile/app/native/index.tsx:342 src/screens/HomeScreen.tsx:81
 msgid "나의 라멘 취향을 찾는 곳"
 msgstr "Find your ramen taste"
 
@@ -2215,7 +2214,8 @@ msgstr "My comments"
 
 #: src/screens/RecordScreen.tsx:658
 msgid "남은 필수 {v0}개 보러 가기"
-msgstr "Complete {v0, plural, one {# remaining field} other {# remaining fields}}"
+msgstr ""
+"Complete {v0, plural, one {# remaining field} other {# remaining fields}}"
 
 #: apps/mobile/app/(flows)/record/complete.tsx:84
 #: apps/mobile/app/(flows)/record/complete.tsx:90
@@ -2223,7 +2223,7 @@ msgstr "Complete {v0, plural, one {# remaining field} other {# remaining fields}
 msgid "낮게"
 msgstr "lower"
 
-#: apps/mobile/src/components/StartChecklist.tsx:44
+#: apps/mobile/src/components/StartChecklist.tsx:46
 msgid "내 근처 문 연 라멘집 보기"
 msgstr "See ramen shops open near you"
 
@@ -2233,7 +2233,9 @@ msgstr "When someone comments on my posts or logs"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:505
 msgid "내 기록 {count}그릇의 취향을 반영했어요"
-msgstr "Matched to your taste from {count, plural, one {# logged bowl} other {# logged bowls}}"
+msgstr ""
+"Matched to your taste from {count, plural, one {# logged bowl} other {# "
+"logged bowls}}"
 
 #: src/screens/RecordScreen.tsx:606
 msgid "내 기록 공개하기"
@@ -2251,8 +2253,7 @@ msgstr "My comment"
 msgid "내 댓글 메뉴"
 msgstr "My comment menu"
 
-#: apps/mobile/app/native/my.tsx:940
-#: src/screens/MyScreen.tsx:767
+#: apps/mobile/app/native/my.tsx:940 src/screens/MyScreen.tsx:767
 msgid "내 등급"
 msgstr "My level"
 
@@ -2273,8 +2274,7 @@ msgstr "My ramen log menu"
 msgid "내 라멘로그에 다른 라멘러가 공감했을 때"
 msgstr "When someone likes my ramen log"
 
-#: apps/mobile/app/native/map.tsx:456
-#: src/screens/MapScreen.tsx:627
+#: apps/mobile/app/native/map.tsx:456 src/screens/MapScreen.tsx:627
 msgid "내 위치로 이동"
 msgstr "My location"
 
@@ -2305,8 +2305,7 @@ msgstr "See what's changed in your taste report"
 msgid "내 취향 여권 보기"
 msgstr "View my taste passport"
 
-#: src/screens/ShopDetailScreen.tsx:200
-#: src/screens/ShopDetailScreen.tsx:203
+#: src/screens/ShopDetailScreen.tsx:200 src/screens/ShopDetailScreen.tsx:203
 msgid "내 취향 일치도"
 msgstr "My taste match"
 
@@ -2318,8 +2317,7 @@ msgstr "My taste card"
 msgid "내 취향과 잘 맞는 라멘집"
 msgstr "Shops that match your taste"
 
-#: apps/mobile/app/native/my.tsx:313
-#: src/screens/MyScreen.tsx:507
+#: apps/mobile/app/native/my.tsx:313 src/screens/MyScreen.tsx:507
 msgid "내 활동"
 msgstr "My activity"
 
@@ -2329,8 +2327,7 @@ msgstr "My activity"
 msgid "내가 남긴 기록만 고칠 수 있어요."
 msgstr "You can only edit your own logs."
 
-#: apps/mobile/src/data/remote.ts:437
-#: packages/shared/src/i18n/labels.ts:80
+#: apps/mobile/src/data/remote.ts:437 packages/shared/src/i18n/labels.ts:80
 msgid "내가 쓴 글만 고치거나 지울 수 있어요."
 msgstr "You can only edit or delete your own posts."
 
@@ -2361,8 +2358,7 @@ msgstr "Directions in Naver Map"
 msgid "네이버 지도에서 위치와 길찾기를 열어요"
 msgstr "Open location and directions in Naver Map"
 
-#: apps/mobile/src/api/client.ts:331
-#: packages/shared/src/i18n/labels.ts:76
+#: apps/mobile/src/api/client.ts:331 packages/shared/src/i18n/labels.ts:76
 msgid "네트워크 연결을 확인해 주세요."
 msgstr "Please check your internet connection."
 
@@ -2398,11 +2394,14 @@ msgstr "All time"
 
 #: packages/shared/src/domain/identity.ts:72
 msgid "누적 {total}그릇 중 {type} {count}그릇 · 육수 농도 평균 {score}"
-msgstr "All time: {count} {type} out of {total, plural, one {# bowl} other {# bowls}} · average broth richness {score}"
+msgstr ""
+"All time: {count} {type} out of {total, plural, one {# bowl} other {# "
+"bowls}} · average broth richness {score}"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:123
 msgid "누적 {v1}그릇 중 {v2} {v3}그릇"
-msgstr "{v3, plural, one {# {v2} bowl} other {# {v2} bowls}} out of {v1} total"
+msgstr ""
+"{v3, plural, one {# {v2} bowl} other {# {v2} bowls}} out of {v1} total"
 
 #: packages/shared/src/domain/identity.ts:51
 msgid "누적 0그릇"
@@ -2417,8 +2416,7 @@ msgid "늘었어요"
 msgstr "increased"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:61
-#: apps/mobile/app/native/map.web.tsx:44
-#: packages/shared/src/i18n/labels.ts:16
+#: apps/mobile/app/native/map.web.tsx:44 packages/shared/src/i18n/labels.ts:16
 msgid "니보시"
 msgstr "Niboshi"
 
@@ -2448,10 +2446,11 @@ msgstr "Enter a nickname of {NICKNAME_MIN}–{NICKNAME_MAX} characters."
 msgid "닉네임을 입력해 주세요. 2~12자로 쓸 수 있어요."
 msgstr "Enter a nickname of 2–12 characters."
 
-#: apps/mobile/src/domain/nickname.ts:27
-#: src/screens/RegisterScreen.tsx:135
+#: apps/mobile/src/domain/nickname.ts:27 src/screens/RegisterScreen.tsx:135
 msgid "닉네임이 너무 짧아요. {count}자만 더 적어 주세요."
-msgstr "Your nickname is too short. Add {count, plural, one {# more character} other {# more characters}}."
+msgstr ""
+"Your nickname is too short. Add {count, plural, one {# more character} other"
+" {# more characters}}."
 
 #: src/screens/RegisterScreen.tsx:185
 msgid "님, 반가워요"
@@ -2474,8 +2473,7 @@ msgstr ": replying"
 msgid "다른 날 뽑은 식권까지 날짜별로 봐요"
 msgstr "Browse tickets from other days by date"
 
-#: apps/mobile/app/native/map.web.tsx:503
-#: src/screens/MapScreen.tsx:754
+#: apps/mobile/app/native/map.web.tsx:503 src/screens/MapScreen.tsx:754
 msgid "다른 매장명이나 라멘 종류로 찾아보세요."
 msgstr "Try another shop name or ramen type."
 
@@ -2488,13 +2486,11 @@ msgstr "More styles"
 msgid "다른 스타일 접기"
 msgstr "Show fewer styles"
 
-#: apps/mobile/app/native/my.tsx:693
-#: src/screens/MyScreen.tsx:619
+#: apps/mobile/app/native/my.tsx:693 src/screens/MyScreen.tsx:619
 msgid "다른 이름이나 메뉴로 찾아보세요."
 msgstr "Try another name or menu item."
 
-#: apps/mobile/app/native/my.tsx:775
-#: src/screens/MyScreen.tsx:659
+#: apps/mobile/app/native/my.tsx:775 src/screens/MyScreen.tsx:659
 msgid "다른 이름이나 스타일로 찾아보세요."
 msgstr "Try another name or style."
 
@@ -2502,7 +2498,7 @@ msgstr "Try another name or style."
 msgid "다른 종류를 고르거나 전체 라멘로그를 둘러보세요."
 msgstr "Choose another type or view all ramen logs."
 
-#: apps/mobile/src/components/StartChecklist.tsx:46
+#: apps/mobile/src/components/StartChecklist.tsx:48
 msgid "다섯 가지로 한 장에 남겨요"
 msgstr "Five ratings on one sheet"
 
@@ -2514,27 +2510,18 @@ msgstr "Five ratings update your taste passport."
 msgid "다시 가고 싶나요?"
 msgstr "Would you return?"
 
-#: apps/mobile/src/api/client.ts:477
-#: packages/shared/src/i18n/labels.ts:73
+#: apps/mobile/src/api/client.ts:477 packages/shared/src/i18n/labels.ts:73
 msgid "다시 로그인해 주세요."
 msgstr "Please sign in again."
-
-#: apps/mobile/src/components/StartChecklist.tsx:54
-msgid "다시 보이지 않아요"
-msgstr "It won't show again"
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:430
 #: apps/mobile/app/(flows)/record/select-shop.tsx:302
 #: apps/mobile/app/(flows)/record/select-shop.tsx:424
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:154
-#: apps/mobile/app/(flows)/tickets.tsx:43
-#: apps/mobile/app/native/index.tsx:474
-#: apps/mobile/app/native/index.tsx:527
-#: apps/mobile/app/native/lounge.tsx:125
-#: apps/mobile/app/native/lounge.tsx:190
-#: apps/mobile/app/native/map.tsx:448
-#: apps/mobile/app/native/map.web.tsx:502
-#: apps/mobile/app/native/my.tsx:637
+#: apps/mobile/app/(flows)/tickets.tsx:43 apps/mobile/app/native/index.tsx:474
+#: apps/mobile/app/native/index.tsx:527 apps/mobile/app/native/lounge.tsx:125
+#: apps/mobile/app/native/lounge.tsx:190 apps/mobile/app/native/map.tsx:448
+#: apps/mobile/app/native/map.web.tsx:502 apps/mobile/app/native/my.tsx:637
 #: apps/mobile/app/native/my.tsx:767
 msgid "다시 불러오기"
 msgstr "Reload"
@@ -2571,8 +2558,7 @@ msgstr "Next day {time}"
 msgid "다음 달 리포트가 나올 즈음 알려드릴까요?"
 msgstr "Want a reminder about next month’s report?"
 
-#: apps/mobile/app/native/my.tsx:434
-#: apps/mobile/app/native/my.tsx:444
+#: apps/mobile/app/native/my.tsx:434 apps/mobile/app/native/my.tsx:444
 msgid "다음 등급까지 {p0}그릇"
 msgstr "{p0, plural, one {# bowl} other {# bowls}} to the next level"
 
@@ -2608,8 +2594,7 @@ msgstr "Your next bowl"
 msgid "다음에 맛볼 한 그릇 "
 msgstr "Your next bowl "
 
-#: apps/mobile/app/native/my.tsx:713
-#: apps/mobile/app/native/my.tsx:728
+#: apps/mobile/app/native/my.tsx:713 apps/mobile/app/native/my.tsx:728
 #: src/screens/MyScreen.tsx:631
 msgid "단골"
 msgstr "Regular"
@@ -2634,8 +2619,7 @@ msgid "단단한 면"
 msgstr "Firm noodles"
 
 #: apps/mobile/app/(flows)/record/new.tsx:137
-#: apps/mobile/src/domain/lounge.ts:118
-#: apps/mobile/src/domain/shopTaste.ts:37
+#: apps/mobile/src/domain/lounge.ts:118 apps/mobile/src/domain/shopTaste.ts:37
 msgid "단단한 편"
 msgstr "Firm"
 
@@ -2649,19 +2633,19 @@ msgstr "Firm"
 #: apps/mobile/src/components/PolicySheet.tsx:43
 #: apps/mobile/src/components/RecordMenu.tsx:51
 #: apps/mobile/src/components/RecordMenu.tsx:184
+#: apps/mobile/src/components/StartChecklist.tsx:101
 #: apps/mobile/src/components/ui/index.tsx:1022
-#: src/components/PolicySheet.tsx:78
-#: src/components/PolicySheet.tsx:101
-#: src/screens/MyScreen.tsx:195
-#: src/screens/NotificationScreen.tsx:314
-#: src/screens/RecordScreen.tsx:671
-#: src/screens/RecordScreen.tsx:686
-#: src/screens/RecordSheet.tsx:169
-#: src/screens/RecordSheet.tsx:190
-#: src/screens/TasteDetailScreen.tsx:330
-#: src/screens/TasteDetailScreen.tsx:368
+#: src/components/PolicySheet.tsx:78 src/components/PolicySheet.tsx:101
+#: src/screens/MyScreen.tsx:195 src/screens/NotificationScreen.tsx:314
+#: src/screens/RecordScreen.tsx:671 src/screens/RecordScreen.tsx:686
+#: src/screens/RecordSheet.tsx:169 src/screens/RecordSheet.tsx:190
+#: src/screens/TasteDetailScreen.tsx:330 src/screens/TasteDetailScreen.tsx:368
 msgid "닫기"
 msgstr "Close"
+
+#: apps/mobile/src/components/StartChecklist.tsx:56
+msgid "닫기 전에 한 번 물어봐요"
+msgstr "Asks once before closing"
 
 #: apps/mobile/app/(flows)/record/new.tsx:1379
 msgid "달력 닫기"
@@ -2706,14 +2690,10 @@ msgstr "Signature style"
 
 #: apps/mobile/src/components/LoungeLog.tsx:508
 #: apps/mobile/src/components/LoungeLog.tsx:555
-#: src/screens/LoungeScreen.tsx:961
-#: src/screens/LoungeScreen.tsx:973
-#: src/screens/LoungeScreen.tsx:976
-#: src/screens/LoungeScreen.tsx:1445
-#: src/screens/LoungeScreen.tsx:1613
-#: src/screens/MyScreen.tsx:454
-#: src/screens/MyScreen.tsx:697
-#: src/screens/NotificationScreen.tsx:60
+#: src/screens/LoungeScreen.tsx:961 src/screens/LoungeScreen.tsx:973
+#: src/screens/LoungeScreen.tsx:976 src/screens/LoungeScreen.tsx:1445
+#: src/screens/LoungeScreen.tsx:1613 src/screens/MyScreen.tsx:454
+#: src/screens/MyScreen.tsx:697 src/screens/NotificationScreen.tsx:60
 msgid "댓글"
 msgstr "Comment"
 
@@ -2744,7 +2724,8 @@ msgstr "Close comment box"
 
 #: src/screens/LoungeScreen.tsx:1408
 msgid "댓글 입력 닫기, 댓글 {count}개"
-msgstr "Close comment box, {count, plural, one {# comment} other {# comments}}"
+msgstr ""
+"Close comment box, {count, plural, one {# comment} other {# comments}}"
 
 #: src/screens/LoungeScreen.tsx:1497
 msgid "댓글 입력창 열기"
@@ -2834,8 +2815,7 @@ msgstr "More"
 msgid "데모 계정으로 체험"
 msgstr "Try the demo"
 
-#: apps/mobile/src/data/hooks.ts:70
-#: packages/shared/src/i18n/labels.ts:23
+#: apps/mobile/src/data/hooks.ts:70 packages/shared/src/i18n/labels.ts:23
 msgid "데이터를 불러오지 못했어요"
 msgstr "Couldn't load the data. Please try again."
 
@@ -2853,18 +2833,15 @@ msgid "돈골파"
 msgstr "Tonkotsu fan"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:56
-#: apps/mobile/app/native/map.web.tsx:39
-#: packages/shared/src/i18n/labels.ts:11
+#: apps/mobile/app/native/map.web.tsx:39 packages/shared/src/i18n/labels.ts:11
 msgid "돈코츠"
 msgstr "Tonkotsu"
 
-#: packages/shared/src/i18n/labels.ts:117
-#: src/screens/RegisterScreen.tsx:27
+#: packages/shared/src/i18n/labels.ts:117 src/screens/RegisterScreen.tsx:27
 msgid "돈코츠 (돼지뼈)"
 msgstr "Tonkotsu (pork bone)"
 
-#: apps/mobile/app/native/map.web.tsx:39
-#: src/screens/MapScreen.tsx:77
+#: apps/mobile/app/native/map.web.tsx:39 src/screens/MapScreen.tsx:77
 msgid "돈코츠 라멘 (돼지뼈)"
 msgstr "Tonkotsu (pork bone)"
 
@@ -2934,15 +2911,11 @@ msgstr "Back"
 #: apps/mobile/app/(flows)/tickets.tsx:65
 #: apps/mobile/src/components/LoungeLog.tsx:365
 #: apps/mobile/src/components/LoungeLog.tsx:412
-#: src/screens/AIRecommendScreen.tsx:239
-#: src/screens/LoginScreen.tsx:104
+#: src/screens/AIRecommendScreen.tsx:239 src/screens/LoginScreen.tsx:104
 #: src/screens/MonthlyTasteScreen.tsx:57
-#: src/screens/NotificationScreen.tsx:204
-#: src/screens/RecordScreen.tsx:271
-#: src/screens/RegisterScreen.tsx:229
-#: src/screens/ShopDetailScreen.tsx:124
-#: src/screens/TasteDetailScreen.tsx:202
-#: src/screens/TasteReportLoading.tsx:62
+#: src/screens/NotificationScreen.tsx:204 src/screens/RecordScreen.tsx:271
+#: src/screens/RegisterScreen.tsx:229 src/screens/ShopDetailScreen.tsx:124
+#: src/screens/TasteDetailScreen.tsx:202 src/screens/TasteReportLoading.tsx:62
 msgid "뒤로가기"
 msgstr "Back"
 
@@ -2955,18 +2928,15 @@ msgid "등급 안내, Lv.{p0} {p1}"
 msgstr "Level guide, Lv.{p0} {p1}"
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:222
-#: src/screens/LoungeScreen.tsx:666
-#: src/screens/LoungeScreen.tsx:1062
+#: src/screens/LoungeScreen.tsx:666 src/screens/LoungeScreen.tsx:1062
 msgid "등록"
 msgstr "Post"
 
-#: apps/mobile/app/(flows)/settings.tsx:132
-#: src/screens/MyScreen.tsx:732
+#: apps/mobile/app/(flows)/settings.tsx:132 src/screens/MyScreen.tsx:732
 msgid "등록된 이메일 없음"
 msgstr "No email added"
 
-#: src/screens/LoungeScreen.tsx:978
-#: src/screens/LoungeScreen.tsx:1447
+#: src/screens/LoungeScreen.tsx:978 src/screens/LoungeScreen.tsx:1447
 msgid "등록순"
 msgstr "Oldest first"
 
@@ -2997,8 +2967,7 @@ msgstr "Gathering your ramen logs"
 
 #: apps/mobile/app/(flows)/record/new.tsx:936
 #: apps/mobile/app/(flows)/record/new.tsx:1197
-#: apps/mobile/app/native/_layout.tsx:116
-#: src/screens/HomeScreen.tsx:351
+#: apps/mobile/app/native/_layout.tsx:116 src/screens/HomeScreen.tsx:351
 #: src/screens/RecordScreen.tsx:275
 msgid "라멘 기록하기"
 msgstr "Log a bowl"
@@ -3024,8 +2993,7 @@ msgstr "Add ramen photo"
 msgid "라멘 성지순례 중"
 msgstr "On a ramen pilgrimage"
 
-#: apps/mobile/app/(flows)/settings.tsx:207
-#: src/screens/MyScreen.tsx:776
+#: apps/mobile/app/(flows)/settings.tsx:207 src/screens/MyScreen.tsx:776
 msgid "라멘 스타일"
 msgstr "Ramen style"
 
@@ -3036,8 +3004,7 @@ msgstr "Ramen beginner"
 #: apps/mobile/app/(flows)/record/new.tsx:621
 #: apps/mobile/app/(flows)/record/new.tsx:1040
 #: apps/mobile/app/(flows)/record/new.tsx:1041
-#: src/screens/RecordScreen.tsx:150
-#: src/screens/RecordScreen.tsx:331
+#: src/screens/RecordScreen.tsx:150 src/screens/RecordScreen.tsx:331
 msgid "라멘 종류"
 msgstr "Ramen style"
 
@@ -3071,8 +3038,7 @@ msgstr "Ramen taste profile"
 msgid "라멘 탐험가"
 msgstr "Ramen explorer"
 
-#: apps/mobile/app/native/my.tsx:912
-#: src/screens/MyScreen.tsx:755
+#: apps/mobile/app/native/my.tsx:912 src/screens/MyScreen.tsx:755
 msgid "라멘 활동 등급"
 msgstr "Ramen activity levels"
 
@@ -3088,10 +3054,8 @@ msgstr "Ramen logs and conversations"
 #: apps/mobile/app/native/my.tsx:307
 #: apps/mobile/src/components/LoungeLog.tsx:508
 #: apps/mobile/src/components/LoungeLog.tsx:555
-#: src/screens/LoungeScreen.tsx:1105
-#: src/screens/LoungeScreen.tsx:1266
-#: src/screens/MyScreen.tsx:450
-#: src/screens/ShopDetailScreen.tsx:168
+#: src/screens/LoungeScreen.tsx:1105 src/screens/LoungeScreen.tsx:1266
+#: src/screens/MyScreen.tsx:450 src/screens/ShopDetailScreen.tsx:168
 msgid "라멘로그"
 msgstr "Ramen log"
 
@@ -3099,8 +3063,7 @@ msgstr "Ramen log"
 msgid "라멘로그 {count}개"
 msgstr "{count, plural, one {{count} ramen log} other {{count} ramen logs}}"
 
-#: apps/mobile/app/native/my.tsx:921
-#: src/screens/MyScreen.tsx:765
+#: apps/mobile/app/native/my.tsx:921 src/screens/MyScreen.tsx:765
 msgid "라멘로그 {count}그릇 이상"
 msgstr "{count}+ bowls logged"
 
@@ -3134,7 +3097,9 @@ msgstr "Log counts aren't available, so this was for reference only"
 
 #: apps/mobile/app/native/my.tsx:916
 msgid "라멘로그 수를 기준으로 등급이 올라가요. 지금은 {count}그릇, Lv.{level} {title}예요."
-msgstr "Your level grows with your logs. You have {count, plural, one {# bowl} other {# bowls}}: Lv.{level} {title}."
+msgstr ""
+"Your level grows with your logs. You have {count, plural, one {# bowl} other"
+" {# bowls}}: Lv.{level} {title}."
 
 #: apps/mobile/app/native/my.tsx:424
 msgid "라멘로그 수에 따른 활동 등급을 설명해요"
@@ -3144,8 +3109,7 @@ msgstr "Learn about levels based on your logs"
 msgid "라멘로그 신고하기"
 msgstr "Report ramen log"
 
-#: apps/mobile/app/native/my.tsx:484
-#: src/screens/MyScreen.tsx:524
+#: apps/mobile/app/native/my.tsx:484 src/screens/MyScreen.tsx:524
 msgid "라멘로그 캘린더"
 msgstr "Ramen log calendar"
 
@@ -3161,8 +3125,7 @@ msgstr "Picked from nearby shops with plenty of ramen logs."
 msgid "라멘로그를 남기고 라멘러들과 소통하면 알림이 도착합니다."
 msgstr "Log bowls and connect with others to receive updates."
 
-#: apps/mobile/app/native/my.tsx:693
-#: src/screens/MyScreen.tsx:619
+#: apps/mobile/app/native/my.tsx:693 src/screens/MyScreen.tsx:619
 msgid "라멘로그를 남기면 매장별 방문 수가 쌓여요."
 msgstr "Log bowls to track visits to each shop."
 
@@ -3176,7 +3139,9 @@ msgstr "Shops you've logged. Total visits: "
 
 #: src/screens/MyScreen.tsx:598
 msgid "라멘로그를 남긴 매장이에요. 방문 수를 더하면 총 {count}그릇이에요."
-msgstr "These are shops in your ramen logs, totaling {count, plural, one {# bowl} other {# bowls}}."
+msgstr ""
+"These are shops in your ramen logs, totaling {count, plural, one {# bowl} "
+"other {# bowls}}."
 
 #: src/screens/HomeScreen.tsx:252
 msgid "라멘로그를 남길수록 내 취향에 맞는 가게를 순위로 알려드려요."
@@ -3192,8 +3157,7 @@ msgid "라멘로그를 불러오는 중…"
 msgstr "Loading ramen log…"
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:386
-#: apps/mobile/app/native/lounge.tsx:129
-#: apps/mobile/app/native/lounge.tsx:135
+#: apps/mobile/app/native/lounge.tsx:129 apps/mobile/app/native/lounge.tsx:135
 msgid "라멘로그를 불러오지 못했어요"
 msgstr "Couldn’t load this ramen log"
 
@@ -3219,8 +3183,7 @@ msgstr "View the ramen log and comments"
 msgid "라멘로그와 평점이 쌓인 곳을 우선했어요"
 msgstr "Prioritized shops with more logs and ratings"
 
-#: src/App.tsx:299
-#: src/screens/NewsFeedScreen.tsx:167
+#: src/App.tsx:299 src/screens/NewsFeedScreen.tsx:167
 msgid "라멘속보"
 msgstr "Ramen news"
 
@@ -3245,12 +3208,9 @@ msgstr "Ramen enthusiast"
 msgid "라멘집"
 msgstr "Ramen shop"
 
-#: apps/mobile/app/native/map.web.tsx:241
-#: src/screens/LoungeScreen.tsx:713
-#: src/screens/LoungeScreen.tsx:714
-#: src/screens/LoungeScreen.tsx:1149
-#: src/screens/LoungeScreen.tsx:1150
-#: src/screens/MapScreen.tsx:504
+#: apps/mobile/app/native/map.web.tsx:241 src/screens/LoungeScreen.tsx:713
+#: src/screens/LoungeScreen.tsx:714 src/screens/LoungeScreen.tsx:1149
+#: src/screens/LoungeScreen.tsx:1150 src/screens/MapScreen.tsx:504
 msgid "라멘집 검색"
 msgstr "Search ramen shops"
 
@@ -3266,8 +3226,7 @@ msgstr "Ramen regular"
 msgid "라멘집 둘러보기"
 msgstr "Browse ramen shops"
 
-#: apps/mobile/app/native/map.web.tsx:245
-#: src/screens/MapScreen.tsx:501
+#: apps/mobile/app/native/map.web.tsx:245 src/screens/MapScreen.tsx:501
 msgid "라멘집 이름, 계보, 지점 검색"
 msgstr "Search shop name, style or branch"
 
@@ -3279,13 +3238,11 @@ msgstr "Ramen shop map"
 msgid "라멘집 탐험가"
 msgstr "Ramen explorer"
 
-#: apps/mobile/app/native/index.tsx:470
-#: apps/mobile/app/native/map.web.tsx:498
+#: apps/mobile/app/native/index.tsx:470 apps/mobile/app/native/map.web.tsx:498
 msgid "라멘집을 불러오는 중…"
 msgstr "Loading ramen shops…"
 
-#: apps/mobile/app/native/index.tsx:477
-#: apps/mobile/app/native/map.web.tsx:506
+#: apps/mobile/app/native/index.tsx:477 apps/mobile/app/native/map.web.tsx:506
 msgid "라멘집을 불러오지 못했어요"
 msgstr "Couldn't load ramen shops"
 
@@ -3297,8 +3254,7 @@ msgstr "Couldn't load ramen shops."
 msgid "라멘집을 불러오지 못했어요. 잠시 후 다시 열어 주세요."
 msgstr "Couldn't load shops. Please open this again shortly."
 
-#: apps/mobile/app/(flows)/shop/[shopId].tsx:678
-#: src/screens/MapScreen.tsx:742
+#: apps/mobile/app/(flows)/shop/[shopId].tsx:678 src/screens/MapScreen.tsx:742
 #: src/screens/ShopDetailScreen.tsx:293
 msgid "라스트오더"
 msgstr "Last order"
@@ -3310,8 +3266,7 @@ msgstr "Last order"
 msgid "라스트오더 {time}"
 msgstr "Last order {time}"
 
-#: src/components/TasteReportCover.tsx:31
-#: src/screens/MyScreen.tsx:438
+#: src/components/TasteReportCover.tsx:31 src/screens/MyScreen.tsx:438
 msgid "라오타"
 msgstr "RAOTA"
 
@@ -3334,15 +3289,16 @@ msgstr "Enter an email address for RAOTA notifications."
 
 #: apps/mobile/app/(flows)/auth/consent.tsx:77
 msgid "라오타 앱의 이용약관과 개인정보처리방침이 새로 적용돼요. 기록과 저장한 매장은 그대로 남아 있어요. "
-msgstr "RAOTA’s updated terms and privacy policy apply. Your logs and saved shops stay in your account. "
+msgstr ""
+"RAOTA’s updated terms and privacy policy apply. Your logs and saved shops "
+"stay in your account. "
 
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:361
 msgid "라오타 지도에서 이 가게 위치를 봐요"
 msgstr "Find this shop on the RAOTA map"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:844
-#: src/screens/TasteDetailScreen.tsx:165
-#: src/screens/TasteDetailScreen.tsx:175
+#: src/screens/TasteDetailScreen.tsx:165 src/screens/TasteDetailScreen.tsx:175
 msgid "라오타 취향 리포트"
 msgstr "RAOTA taste report"
 
@@ -3360,14 +3316,12 @@ msgid "라오타에서 쓸 닉네임과 취향을 정해요. "
 msgstr "Choose your RAOTA nickname and favorite style. "
 
 #: apps/mobile/app/native/_layout.tsx:149
-#: apps/mobile/app/native/lounge.tsx:158
-#: packages/shared/src/i18n/labels.ts:26
+#: apps/mobile/app/native/lounge.tsx:158 packages/shared/src/i18n/labels.ts:26
 #: src/App.tsx:298
 msgid "라운지"
 msgstr "Lounge"
 
-#: apps/mobile/app/native/index.tsx:629
-#: apps/mobile/app/native/index.tsx:635
+#: apps/mobile/app/native/index.tsx:629 apps/mobile/app/native/index.tsx:635
 msgid "라운지 가기"
 msgstr "Open lounge"
 
@@ -3407,23 +3361,18 @@ msgstr "Removed from the lounge and your logs."
 
 #: apps/mobile/app/(flows)/auth/consent.tsx:81
 #: apps/mobile/app/(flows)/settings.tsx:184
-#: apps/mobile/app/(flows)/settings.tsx:291
-#: src/screens/MyScreen.tsx:745
+#: apps/mobile/app/(flows)/settings.tsx:291 src/screens/MyScreen.tsx:745
 #: src/screens/MyScreen.tsx:807
 msgid "로그아웃"
 msgstr "Sign out"
 
-#: apps/mobile/app/(flows)/settings.tsx:300
-#: src/screens/MyScreen.tsx:805
+#: apps/mobile/app/(flows)/settings.tsx:300 src/screens/MyScreen.tsx:805
 msgid "로그아웃할까요?"
 msgstr "Sign out?"
 
-#: apps/mobile/app/native/index.tsx:361
-#: apps/mobile/app/native/index.tsx:366
-#: src/screens/HomeScreen.tsx:96
-#: src/screens/LoginScreen.tsx:108
-#: src/screens/LoginScreen.tsx:316
-#: src/screens/MyScreen.tsx:442
+#: apps/mobile/app/native/index.tsx:361 apps/mobile/app/native/index.tsx:366
+#: src/screens/HomeScreen.tsx:96 src/screens/LoginScreen.tsx:108
+#: src/screens/LoginScreen.tsx:316 src/screens/MyScreen.tsx:442
 #: src/screens/RegisterScreen.tsx:235
 msgid "로그인"
 msgstr "Log in"
@@ -3433,8 +3382,7 @@ msgid "로그인 상태 유지"
 msgstr "Stay logged in"
 
 #: apps/mobile/app/(flows)/auth/login.tsx:374
-#: apps/mobile/app/(flows)/auth/login.tsx:379
-#: src/screens/LoginScreen.tsx:332
+#: apps/mobile/app/(flows)/auth/login.tsx:379 src/screens/LoginScreen.tsx:332
 msgid "로그인 없이 둘러보기"
 msgstr "Explore without signing in"
 
@@ -3471,18 +3419,15 @@ msgid "로그인 후 취향 리포트를 만들 수 있어요."
 msgstr "Sign in to create a taste report."
 
 #: apps/mobile/app/(flows)/auth/login.tsx:304
-#: apps/mobile/src/auth/social.ts:32
-#: packages/shared/src/i18n/labels.ts:82
+#: apps/mobile/src/auth/social.ts:32 packages/shared/src/i18n/labels.ts:82
 msgid "로그인을 취소했어요."
 msgstr "Sign-in canceled."
 
-#: apps/mobile/src/data/remote.ts:434
-#: packages/shared/src/i18n/labels.ts:78
+#: apps/mobile/src/data/remote.ts:434 packages/shared/src/i18n/labels.ts:78
 msgid "로그인이 끝났어요. 다시 로그인해 주세요."
 msgstr "Your session has ended. Please sign in again."
 
-#: apps/mobile/src/api/client.ts:436
-#: packages/shared/src/i18n/labels.ts:72
+#: apps/mobile/src/api/client.ts:436 packages/shared/src/i18n/labels.ts:72
 msgid "로그인이 필요해요."
 msgstr "Please sign in to continue."
 
@@ -3491,8 +3436,7 @@ msgid "로그인하고 AI 식권 받기"
 msgstr "Log in for AI tickets"
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:113
-#: src/screens/LoungeScreen.tsx:1073
-#: src/screens/LoungeScreen.tsx:1493
+#: src/screens/LoungeScreen.tsx:1073 src/screens/LoungeScreen.tsx:1493
 msgid "로그인하고 댓글 남기기"
 msgstr "Sign in to comment"
 
@@ -3500,8 +3444,7 @@ msgstr "Sign in to comment"
 msgid "로그인하고 한 그릇을 기록해보세요"
 msgstr "Sign in and log a bowl"
 
-#: apps/mobile/app/(flows)/record/new.tsx:938
-#: src/screens/HomeScreen.tsx:258
+#: apps/mobile/app/(flows)/record/new.tsx:938 src/screens/HomeScreen.tsx:258
 #: src/screens/RegisterScreen.tsx:472
 msgid "로그인하기"
 msgstr "Sign in"
@@ -3541,7 +3484,9 @@ msgstr "Could not save data on this device."
 
 #: apps/mobile/app/(flows)/taste/archive.tsx:388
 msgid "를 {v1}그릇으로 가장 많이 먹었어요."
-msgstr " was your most enjoyed style, with {v1, plural, one {# bowl} other {# bowls}}."
+msgstr ""
+" was your most enjoyed style, with {v1, plural, one {# bowl} other {# "
+"bowls}}."
 
 #: apps/mobile/app/(flows)/taste/index.tsx:1064
 msgid "리포트 다시 뽑기"
@@ -3557,8 +3502,7 @@ msgid "링크를 열 수 없어요"
 msgstr "Couldn’t open this link"
 
 #: apps/mobile/app/native/_layout.tsx:150
-#: packages/shared/src/i18n/labels.ts:27
-#: src/App.tsx:300
+#: packages/shared/src/i18n/labels.ts:27 src/App.tsx:300
 msgid "마이"
 msgstr "My"
 
@@ -3570,23 +3514,19 @@ msgstr "View logs on My page"
 msgid "마이 탭으로 가요"
 msgstr "Open My page"
 
-#: packages/shared/src/i18n/labels.ts:20
-#: src/screens/RegisterScreen.tsx:33
+#: packages/shared/src/i18n/labels.ts:20 src/screens/RegisterScreen.tsx:33
 msgid "마제소바"
 msgstr "Mazesoba"
 
-#: apps/mobile/app/native/map.web.tsx:31
-#: src/screens/MapScreen.tsx:69
+#: apps/mobile/app/native/map.web.tsx:31 src/screens/MapScreen.tsx:69
 msgid "마포 · 망원동"
 msgstr "Mapo · Mangwon"
 
-#: apps/mobile/app/native/map.web.tsx:33
-#: src/screens/MapScreen.tsx:71
+#: apps/mobile/app/native/map.web.tsx:33 src/screens/MapScreen.tsx:71
 msgid "마포 · 연남/홍대"
 msgstr "Mapo · Yeonnam/Hongdae"
 
-#: apps/mobile/app/native/map.web.tsx:32
-#: src/screens/MapScreen.tsx:70
+#: apps/mobile/app/native/map.web.tsx:32 src/screens/MapScreen.tsx:70
 msgid "마포 · 합정/상수"
 msgstr "Mapo · Hapjeong/Sangsu"
 
@@ -3602,8 +3542,7 @@ msgstr "Rating {score} · Broth {broth} · Noodles {noodle}"
 msgid "만족도"
 msgstr "Satisfaction"
 
-#: apps/mobile/app/native/my.tsx:568
-#: src/screens/MyScreen.tsx:557
+#: apps/mobile/app/native/my.tsx:568 src/screens/MyScreen.tsx:557
 msgid "많음"
 msgstr "More"
 
@@ -3638,8 +3577,7 @@ msgid "맑은 청탕부터 묵직한 백탕까지 골라보세요."
 msgstr "Choose from clear chintan to hearty paitan."
 
 #: apps/mobile/app/(flows)/record/new.tsx:136
-#: apps/mobile/src/domain/lounge.ts:117
-#: apps/mobile/src/domain/shopTaste.ts:36
+#: apps/mobile/src/domain/lounge.ts:117 apps/mobile/src/domain/shopTaste.ts:36
 msgid "맑은 편"
 msgstr "Light"
 
@@ -3681,8 +3619,7 @@ msgstr "Taste: {score} out of 5, broth {broth}, noodles {noodle}"
 msgid "맛있었어요"
 msgstr "Delicious"
 
-#: src/screens/LoungeScreen.tsx:307
-#: src/screens/MyScreen.tsx:71
+#: src/screens/LoungeScreen.tsx:307 src/screens/MyScreen.tsx:71
 msgid "맛집후기"
 msgstr "Reviews"
 
@@ -3717,8 +3654,7 @@ msgid "매장 사진 선택"
 msgstr "Choose shop photo"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1312
-#: src/screens/AIRecommendScreen.tsx:461
-#: src/screens/HomeScreen.tsx:201
+#: src/screens/AIRecommendScreen.tsx:461 src/screens/HomeScreen.tsx:201
 msgid "매장 상세 보기"
 msgstr "View shop details"
 
@@ -3726,13 +3662,11 @@ msgstr "View shop details"
 msgid "매장 상세로 이동해요"
 msgstr "Opens shop details"
 
-#: apps/mobile/app/native/my.tsx:775
-#: src/screens/MyScreen.tsx:659
+#: apps/mobile/app/native/my.tsx:775 src/screens/MyScreen.tsx:659
 msgid "매장 상세에서 저장하면 여기에 모여요."
 msgstr "Save a shop to find it here."
 
-#: apps/mobile/app/native/my.tsx:759
-#: src/screens/MyScreen.tsx:650
+#: apps/mobile/app/native/my.tsx:759 src/screens/MyScreen.tsx:650
 msgid "매장 상세에서 저장한 곳이에요."
 msgstr "Shops saved from their detail pages."
 
@@ -3745,8 +3679,7 @@ msgid "매장 인스타그램을 열어요"
 msgstr "Open the shop’s Instagram"
 
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:152
-#: src/screens/LoungeScreen.tsx:1273
-#: src/screens/NewsFeedScreen.tsx:294
+#: src/screens/LoungeScreen.tsx:1273 src/screens/NewsFeedScreen.tsx:294
 msgid "매장 정보"
 msgstr "Shop details"
 
@@ -3778,13 +3711,11 @@ msgstr "Shop extras "
 msgid "매장 화면을 열어요"
 msgstr "Open shop page"
 
-#: apps/mobile/app/native/my.tsx:688
-#: src/screens/MyScreen.tsx:614
+#: apps/mobile/app/native/my.tsx:688 src/screens/MyScreen.tsx:614
 msgid "매장, 지점, 메뉴 검색"
 msgstr "Search shop, branch or menu"
 
-#: apps/mobile/app/native/my.tsx:761
-#: src/screens/MyScreen.tsx:655
+#: apps/mobile/app/native/my.tsx:761 src/screens/MyScreen.tsx:655
 msgid "매장, 지점, 스타일 검색"
 msgstr "Search shop, branch or style"
 
@@ -3801,7 +3732,7 @@ msgstr "Spicy"
 msgid "먹은 라멘 기록하기"
 msgstr "Log your ramen"
 
-#: apps/mobile/src/components/StartChecklist.tsx:46
+#: apps/mobile/src/components/StartChecklist.tsx:48
 msgid "먹은 라멘 한 그릇 기록하기"
 msgstr "Log a bowl you ate"
 
@@ -3824,8 +3755,7 @@ msgstr "Log your ramen to compare the styles you enjoyed each month."
 
 #: apps/mobile/app/(flows)/record/new.tsx:619
 #: apps/mobile/app/(flows)/record/new.tsx:1027
-#: src/screens/RecordScreen.tsx:149
-#: src/screens/RecordScreen.tsx:307
+#: src/screens/RecordScreen.tsx:149 src/screens/RecordScreen.tsx:307
 msgid "먹은 메뉴"
 msgstr "What did you eat?"
 
@@ -3847,8 +3777,7 @@ msgstr "Menu"
 msgid "메뉴 분포 범례"
 msgstr "Menu distribution legend"
 
-#: apps/mobile/app/native/map.web.tsx:343
-#: src/screens/MapScreen.tsx:576
+#: apps/mobile/app/native/map.web.tsx:343 src/screens/MapScreen.tsx:576
 msgid "메뉴 선택"
 msgstr "Choose menu"
 
@@ -3881,8 +3810,7 @@ msgstr "Menma fan"
 #: apps/mobile/src/components/ShopTasteCard.tsx:61
 #: apps/mobile/src/components/TasteStory.tsx:158
 #: packages/shared/src/i18n/labels.ts:151
-#: src/screens/AIRecommendScreen.tsx:157
-#: src/types.ts:58
+#: src/screens/AIRecommendScreen.tsx:157 src/types.ts:58
 msgid "면"
 msgstr "Noodles"
 
@@ -3899,8 +3827,7 @@ msgstr "Noodle refills"
 msgid "면 무료 리필"
 msgstr "Free noodle refills"
 
-#: apps/mobile/src/domain/lounge.ts:125
-#: packages/shared/src/i18n/labels.ts:30
+#: apps/mobile/src/domain/lounge.ts:125 packages/shared/src/i18n/labels.ts:30
 msgid "면 삶기"
 msgstr "Noodle firmness"
 
@@ -3928,14 +3855,12 @@ msgstr "You're all caught up"
 msgid "모든 라멘속보를 확인했습니다. 새 소식이 올라오면 알려드릴게요."
 msgstr "You're all caught up. We'll let you know about new updates."
 
-#: apps/mobile/app/native/map.web.tsx:37
-#: apps/mobile/app/native/map.web.tsx:37
+#: apps/mobile/app/native/map.web.tsx:37 apps/mobile/app/native/map.web.tsx:37
 #: src/screens/MapScreen.tsx:75
 msgid "모든 메뉴"
 msgstr "All menus"
 
-#: apps/mobile/app/native/map.web.tsx:271
-#: src/screens/MapScreen.tsx:520
+#: apps/mobile/app/native/map.web.tsx:271 src/screens/MapScreen.tsx:520
 msgid "목록"
 msgstr "List"
 
@@ -3943,8 +3868,7 @@ msgstr "List"
 msgid "목록으로"
 msgstr "Back to list"
 
-#: apps/mobile/app/native/map.web.tsx:264
-#: src/screens/MapScreen.tsx:517
+#: apps/mobile/app/native/map.web.tsx:264 src/screens/MapScreen.tsx:517
 msgid "목록으로 보기"
 msgstr "View list"
 
@@ -3969,24 +3893,20 @@ msgid "문의하기 · contact@raota.net"
 msgstr "Contact · contact@raota.net"
 
 #: apps/mobile/src/components/ui/index.tsx:704
-#: src/screens/RecordScreen.tsx:401
-#: src/screens/RecordScreen.tsx:446
+#: src/screens/RecordScreen.tsx:401 src/screens/RecordScreen.tsx:446
 msgid "미선택"
 msgstr "Not selected"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:59
-#: apps/mobile/app/native/map.web.tsx:42
-#: packages/shared/src/i18n/labels.ts:14
+#: apps/mobile/app/native/map.web.tsx:42 packages/shared/src/i18n/labels.ts:14
 msgid "미소"
 msgstr "Miso"
 
-#: packages/shared/src/i18n/labels.ts:119
-#: src/screens/RegisterScreen.tsx:31
+#: packages/shared/src/i18n/labels.ts:119 src/screens/RegisterScreen.tsx:31
 msgid "미소 (된장)"
 msgstr "Miso (soybean paste)"
 
-#: apps/mobile/app/native/map.web.tsx:42
-#: src/screens/MapScreen.tsx:80
+#: apps/mobile/app/native/map.web.tsx:42 src/screens/MapScreen.tsx:80
 msgid "미소 라멘 (된장)"
 msgstr "Miso (soybean paste)"
 
@@ -4044,8 +3964,7 @@ msgstr "View more visited shops"
 msgid "방문 매장 목록"
 msgstr "Visited shop list"
 
-#: apps/mobile/app/native/my.tsx:308
-#: src/screens/MyScreen.tsx:451
+#: apps/mobile/app/native/my.tsx:308 src/screens/MyScreen.tsx:451
 msgid "방문매장"
 msgstr "Visited"
 
@@ -4053,15 +3972,13 @@ msgstr "Visited"
 msgid "방문매장 더 보기"
 msgstr "More visited shops"
 
-#: apps/mobile/app/native/my.tsx:666
-#: src/screens/MyScreen.tsx:604
+#: apps/mobile/app/native/my.tsx:666 src/screens/MyScreen.tsx:604
 msgid "방문순"
 msgstr "Most visited"
 
 #: apps/mobile/app/(flows)/record/new.tsx:623
 #: apps/mobile/app/(flows)/record/new.tsx:1386
-#: src/screens/RecordScreen.tsx:151
-#: src/screens/RecordScreen.tsx:363
+#: src/screens/RecordScreen.tsx:151 src/screens/RecordScreen.tsx:363
 msgid "방문일"
 msgstr "Visit date"
 
@@ -4077,13 +3994,11 @@ msgstr "Choose a valid visit date no later than today."
 msgid "방문자 라멘로그"
 msgstr "Visitor ramen logs"
 
-#: apps/mobile/app/native/my.tsx:657
-#: src/screens/MyScreen.tsx:596
+#: apps/mobile/app/native/my.tsx:657 src/screens/MyScreen.tsx:596
 msgid "방문한 라멘집"
 msgstr "Visited shops"
 
-#: apps/mobile/app/native/my.tsx:688
-#: src/screens/MyScreen.tsx:612
+#: apps/mobile/app/native/my.tsx:688 src/screens/MyScreen.tsx:612
 msgid "방문한 라멘집 검색"
 msgstr "Search visited shops"
 
@@ -4103,10 +4018,8 @@ msgstr "bowl logged"
 msgid "범례. 하루 {p0} 순으로 빨강이 진해져요"
 msgstr "Legend. Darker red means {p0} per day"
 
-#: apps/mobile/app/(flows)/settings.tsx:346
-#: src/screens/MyScreen.tsx:733
-#: src/screens/MyScreen.tsx:740
-#: src/screens/RecordScreen.tsx:302
+#: apps/mobile/app/(flows)/settings.tsx:346 src/screens/MyScreen.tsx:733
+#: src/screens/MyScreen.tsx:740 src/screens/RecordScreen.tsx:302
 msgid "변경"
 msgstr "Change"
 
@@ -4130,8 +4043,7 @@ msgid "별점 {v0}점"
 msgstr "Rated {v0, plural, one {# star} other {# stars}}"
 
 #: apps/mobile/src/components/ConsentChecklist.tsx:70
-#: src/screens/RegisterScreen.tsx:420
-#: src/screens/RegisterScreen.tsx:436
+#: src/screens/RegisterScreen.tsx:420 src/screens/RegisterScreen.tsx:436
 msgid "보기"
 msgstr "View"
 
@@ -4150,8 +4062,7 @@ msgstr "No shops to show"
 
 #: apps/mobile/app/(flows)/record/new.tsx:138
 #: apps/mobile/src/components/ui/index.tsx:702
-#: apps/mobile/src/domain/lounge.ts:119
-#: apps/mobile/src/domain/shopTaste.ts:38
+#: apps/mobile/src/domain/lounge.ts:119 apps/mobile/src/domain/shopTaste.ts:38
 msgid "보통"
 msgstr "Average"
 
@@ -4174,8 +4085,7 @@ msgid "부드러운 면"
 msgstr "Soft noodles"
 
 #: apps/mobile/app/(flows)/record/new.tsx:137
-#: apps/mobile/src/domain/lounge.ts:118
-#: apps/mobile/src/domain/shopTaste.ts:37
+#: apps/mobile/src/domain/lounge.ts:118 apps/mobile/src/domain/shopTaste.ts:37
 msgid "부드러운 편"
 msgstr "Soft"
 
@@ -4302,8 +4212,7 @@ msgstr "Choose from your photo library"
 msgid "사진 보관함에서 선택"
 msgstr "Choose from library"
 
-#: apps/mobile/app/native/my.tsx:883
-#: src/screens/LoungeScreen.tsx:800
+#: apps/mobile/app/native/my.tsx:883 src/screens/LoungeScreen.tsx:800
 msgid "사진 삭제"
 msgstr "Remove photo"
 
@@ -4376,13 +4285,11 @@ msgstr "Delete"
 msgid "삭제한 댓글은 되돌릴 수 없어요."
 msgstr "Deleted comments can’t be restored."
 
-#: apps/mobile/app/native/my.tsx:891
-#: apps/mobile/app/native/my.tsx:895
+#: apps/mobile/app/native/my.tsx:891 apps/mobile/app/native/my.tsx:895
 msgid "상태 메시지"
 msgstr "Status message"
 
-#: apps/mobile/app/native/my.tsx:390
-#: apps/mobile/app/native/my.tsx:395
+#: apps/mobile/app/native/my.tsx:390 apps/mobile/app/native/my.tsx:395
 msgid "상태 메시지를 남겨 보세요"
 msgstr "Add a status message"
 
@@ -4404,7 +4311,9 @@ msgstr "New post"
 
 #: src/screens/TasteDetailScreen.tsx:313
 msgid "새 기록을 남기면 이 화면의 수치는 이미 더해져 있어요. 다시 정리하면 처음부터 다시 훑어봐요."
-msgstr "New logs are already included in these figures. Refresh to review your report from the start."
+msgstr ""
+"New logs are already included in these figures. Refresh to review your "
+"report from the start."
 
 #: src/screens/HomeScreen.tsx:154
 msgid "새 라멘로그를 남겼어요"
@@ -4414,8 +4323,7 @@ msgstr "Your ramen log is saved"
 msgid "새 소식이 올라오면 이곳에 모아 드릴게요."
 msgstr "New updates will appear here."
 
-#: apps/mobile/app/(flows)/settings.tsx:252
-#: src/screens/MyScreen.tsx:793
+#: apps/mobile/app/(flows)/settings.tsx:252 src/screens/MyScreen.tsx:793
 msgid "새 이메일 주소"
 msgstr "New email address"
 
@@ -4439,19 +4347,16 @@ msgstr "Sample"
 msgid "서교동"
 msgstr "Seogyo"
 
-#: apps/mobile/src/api/client.ts:310
-#: packages/shared/src/i18n/labels.ts:68
+#: apps/mobile/src/api/client.ts:310 packages/shared/src/i18n/labels.ts:68
 msgid "서버 응답 형식이 올바르지 않아요."
 msgstr "The server returned an unexpected response."
 
-#: apps/mobile/src/api/client.ts:534
-#: packages/shared/src/i18n/labels.ts:75
+#: apps/mobile/src/api/client.ts:534 packages/shared/src/i18n/labels.ts:75
 msgid "서버 주소가 설정되지 않았어요."
 msgstr "The server connection isn't configured."
 
 #: apps/mobile/src/components/ConsentChecklist.tsx:144
-#: src/components/PolicySheet.tsx:12
-#: src/screens/RegisterScreen.tsx:481
+#: src/components/PolicySheet.tsx:12 src/screens/RegisterScreen.tsx:481
 msgid "서비스 이용약관"
 msgstr "Terms of Service"
 
@@ -4488,11 +4393,15 @@ msgstr "Optional"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:96
 msgid "선택 사항이에요. 영업 중, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요."
-msgstr "Optional. Preferences we can verify, such as opening status, rice or chashu, influence the results."
+msgstr ""
+"Optional. Preferences we can verify, such as opening status, rice or chashu,"
+" influence the results."
 
 #: src/screens/AIRecommendScreen.tsx:189
 msgid "선택 사항이에요. 웨이팅, 밥, 차슈처럼 매장 정보와 대조할 수 있는 조건은 결과에 반영돼요."
-msgstr "Optional. Verifiable details such as waits, rice, and chashu can refine your results."
+msgstr ""
+"Optional. Verifiable details such as waits, rice, and chashu can refine your"
+" results."
 
 #: src/screens/LoungeScreen.tsx:735
 msgid "선택 안 함"
@@ -4531,8 +4440,7 @@ msgid "선택한 취향을 확인하고 있어요"
 msgstr "Reviewing your preferences"
 
 #: apps/mobile/app/(flows)/auth/onboarding.tsx:343
-#: apps/mobile/app/(flows)/settings.tsx:204
-#: src/screens/MyScreen.tsx:774
+#: apps/mobile/app/(flows)/settings.tsx:204 src/screens/MyScreen.tsx:774
 msgid "선호 라멘 스타일"
 msgstr "Favorite ramen style"
 
@@ -4544,8 +4452,7 @@ msgstr "Favorite ramen style "
 msgid "선호 라멘 스타일 (선택)"
 msgstr "Favorite ramen style (optional)"
 
-#: apps/mobile/app/(flows)/settings.tsx:134
-#: src/screens/MyScreen.tsx:737
+#: apps/mobile/app/(flows)/settings.tsx:134 src/screens/MyScreen.tsx:737
 msgid "선호 스타일"
 msgstr "Favorite style"
 
@@ -4561,8 +4468,7 @@ msgstr "Favorite style changed to {style}"
 msgid "선호 스타일을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요."
 msgstr "Couldn’t save your favorite style. Please try again shortly."
 
-#: apps/mobile/app/(flows)/settings.tsx:121
-#: apps/mobile/app/native/my.tsx:358
+#: apps/mobile/app/(flows)/settings.tsx:121 apps/mobile/app/native/my.tsx:358
 #: apps/mobile/app/native/my.tsx:844
 msgid "설정"
 msgstr "Settings"
@@ -4573,8 +4479,7 @@ msgstr "Couldn’t open Settings"
 
 #: apps/mobile/app/(flows)/auth/onboarding.tsx:128
 #: apps/mobile/app/(flows)/record/new.tsx:859
-#: apps/mobile/app/native/map.tsx:307
-#: apps/mobile/app/native/my.tsx:270
+#: apps/mobile/app/native/map.tsx:307 apps/mobile/app/native/my.tsx:270
 #: apps/mobile/src/components/RecordMenu.tsx:52
 msgid "설정 열기"
 msgstr "Open Settings"
@@ -4617,23 +4522,19 @@ msgid "소식 종류"
 msgstr "News category"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:55
-#: apps/mobile/app/native/map.web.tsx:38
-#: packages/shared/src/i18n/labels.ts:10
+#: apps/mobile/app/native/map.web.tsx:38 packages/shared/src/i18n/labels.ts:10
 msgid "쇼유"
 msgstr "Shoyu"
 
-#: packages/shared/src/i18n/labels.ts:116
-#: src/screens/RegisterScreen.tsx:26
+#: packages/shared/src/i18n/labels.ts:116 src/screens/RegisterScreen.tsx:26
 msgid "쇼유 (간장)"
 msgstr "Shoyu (soy sauce)"
 
-#: apps/mobile/app/native/map.web.tsx:38
-#: src/screens/MapScreen.tsx:76
+#: apps/mobile/app/native/map.web.tsx:38 src/screens/MapScreen.tsx:76
 msgid "쇼유 라멘 (간장)"
 msgstr "Shoyu (soy sauce)"
 
-#: packages/shared/src/i18n/labels.ts:60
-#: src/screens/RegisterScreen.tsx:18
+#: packages/shared/src/i18n/labels.ts:60 src/screens/RegisterScreen.tsx:18
 msgid "쇼유파"
 msgstr "Shoyu fan"
 
@@ -4652,7 +4553,9 @@ msgstr "Bean sprouts & garlic"
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:92
 msgid "숨긴 사람의 라멘로그와 댓글은 라운지에 보이지 않아요. 숨김을 풀면 다시 보여요. "
-msgstr "Hidden users’ logs and comments stay out of the lounge. Unhide them to see their posts again. "
+msgstr ""
+"Hidden users’ logs and comments stay out of the lounge. Unhide them to see "
+"their posts again. "
 
 #: apps/mobile/app/(flows)/hidden-authors.tsx:86
 #: apps/mobile/app/(flows)/settings.tsx:135
@@ -4708,18 +4611,15 @@ msgid "승급·공지 알림이 없습니다"
 msgstr "No level-up or notice updates"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:58
-#: apps/mobile/app/native/map.web.tsx:41
-#: packages/shared/src/i18n/labels.ts:13
+#: apps/mobile/app/native/map.web.tsx:41 packages/shared/src/i18n/labels.ts:13
 msgid "시오"
 msgstr "Shio"
 
-#: packages/shared/src/i18n/labels.ts:118
-#: src/screens/RegisterScreen.tsx:30
+#: packages/shared/src/i18n/labels.ts:118 src/screens/RegisterScreen.tsx:30
 msgid "시오 (소금)"
 msgstr "Shio (salt)"
 
-#: apps/mobile/app/native/map.web.tsx:41
-#: src/screens/MapScreen.tsx:79
+#: apps/mobile/app/native/map.web.tsx:41 src/screens/MapScreen.tsx:79
 msgid "시오 라멘 (소금)"
 msgstr "Shio (salt)"
 
@@ -4753,7 +4653,9 @@ msgstr "Use ticket"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:877
 msgid "식권은 하루 {v1}장이에요. 내일 다시 뽑을 수 있어요."
-msgstr "You get {v1, plural, one {# ticket} other {# tickets}} per day. Come back tomorrow."
+msgstr ""
+"You get {v1, plural, one {# ticket} other {# tickets}} per day. Come back "
+"tomorrow."
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:864
 #: apps/mobile/app/(flows)/tickets.tsx:40
@@ -4817,8 +4719,7 @@ msgid "아쉬운 편"
 msgstr "Disappointing"
 
 #: apps/mobile/app/(flows)/record/new.tsx:138
-#: apps/mobile/src/domain/lounge.ts:119
-#: packages/shared/src/i18n/labels.ts:33
+#: apps/mobile/src/domain/lounge.ts:119 packages/shared/src/i18n/labels.ts:33
 msgid "아쉬움"
 msgstr "Disappointing"
 
@@ -4863,8 +4764,7 @@ msgstr "No public ramen logs yet"
 msgid "아직 글이 없어요"
 msgstr "No posts yet"
 
-#: apps/mobile/app/native/my.tsx:647
-#: src/screens/MyScreen.tsx:588
+#: apps/mobile/app/native/my.tsx:647 src/screens/MyScreen.tsx:588
 msgid "아직 기록이 없어요"
 msgstr "No logs yet"
 
@@ -4882,21 +4782,22 @@ msgstr "No comments yet"
 msgid "아직 등록된 사진이 없어요"
 msgstr "No photos yet"
 
-#: src/screens/LoungeScreen.tsx:1281
-#: src/screens/ShopDetailScreen.tsx:363
+#: src/screens/LoungeScreen.tsx:1281 src/screens/ShopDetailScreen.tsx:363
 msgid "아직 라멘로그가 없어요"
 msgstr "No ramen logs yet"
 
 #: src/screens/AIRecommendScreen.tsx:162
 msgid "아직 매장 정보와 대조하지 못해 참고만 했어요"
-msgstr "We couldn't verify this against shop details, so it was for reference only"
+msgstr ""
+"We couldn't verify this against shop details, so it was for reference only"
 
 #: src/components/MonthlyTastePreview.tsx:41
 msgid "아직 모인 월별 기록이 없어요. 먹은 라멘이 쌓이면 달마다 어떤 종류를 즐겼는지 비교할 수 있어요."
-msgstr "No monthly logs yet. As you record bowls, you'll be able to compare your favorite styles by month."
+msgstr ""
+"No monthly logs yet. As you record bowls, you'll be able to compare your "
+"favorite styles by month."
 
-#: apps/mobile/app/native/my.tsx:695
-#: src/screens/MyScreen.tsx:619
+#: apps/mobile/app/native/my.tsx:695 src/screens/MyScreen.tsx:619
 msgid "아직 방문한 라멘집이 없어요"
 msgstr "No shops visited yet"
 
@@ -4913,8 +4814,7 @@ msgstr "Your taste story starts here "
 msgid "아직 뽑은 식권이 없어요"
 msgstr "You have not drawn any tickets yet"
 
-#: apps/mobile/app/(flows)/settings.tsx:134
-#: src/screens/MyScreen.tsx:739
+#: apps/mobile/app/(flows)/settings.tsx:134 src/screens/MyScreen.tsx:739
 msgid "아직 안 정했어요"
 msgstr "Not chosen yet"
 
@@ -4926,8 +4826,7 @@ msgstr "No menu logs for this month yet."
 msgid "아직 작성한 글이 없어요"
 msgstr "No posts yet"
 
-#: apps/mobile/app/native/my.tsx:777
-#: src/screens/MyScreen.tsx:659
+#: apps/mobile/app/native/my.tsx:777 src/screens/MyScreen.tsx:659
 msgid "아직 저장한 라멘집이 없어요"
 msgstr "No saved shops yet"
 
@@ -4944,15 +4843,15 @@ msgstr "Discovering your taste"
 msgid "아침"
 msgstr "breakfast"
 
-#: apps/mobile/app/(flows)/settings.tsx:138
-#: src/screens/MyScreen.tsx:483
+#: apps/mobile/app/(flows)/settings.tsx:138 src/screens/MyScreen.tsx:483
 #: src/screens/NotificationScreen.tsx:209
 msgid "알림"
 msgstr "Notifications"
 
 #: src/screens/MyScreen.tsx:483
 msgid "알림 {v0}개 안 읽음"
-msgstr "{v0, plural, one {# unread notification} other {# unread notifications}}"
+msgstr ""
+"{v0, plural, one {# unread notification} other {# unread notifications}}"
 
 #: apps/mobile/src/components/RecordMenu.tsx:50
 msgid "알림 권한이 꺼져 있어요"
@@ -5028,8 +4927,7 @@ msgstr "a late-night meal"
 msgid "약관 동의"
 msgstr "Terms agreement"
 
-#: apps/mobile/app/(flows)/settings.tsx:172
-#: src/screens/HomeScreen.tsx:307
+#: apps/mobile/app/(flows)/settings.tsx:172 src/screens/HomeScreen.tsx:307
 msgid "약관 및 문의"
 msgstr "Legal & contact"
 
@@ -5053,9 +4951,11 @@ msgid "양념"
 msgstr "Condiments"
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:344
-msgid "어느 가게를\n"
+msgid ""
+"어느 가게를\n"
 "기록할까요?"
-msgstr "Which shop did\n"
+msgstr ""
+"Which shop did\n"
 "you visit?"
 
 #: src/screens/RecordSheet.tsx:185
@@ -5090,8 +4990,7 @@ msgstr " favorite ramen shops "
 msgid "연결을 확인하고 다시 불러와 주세요."
 msgstr "Check your connection and reload."
 
-#: apps/mobile/src/data/remote.ts:433
-#: packages/shared/src/i18n/labels.ts:77
+#: apps/mobile/src/data/remote.ts:433 packages/shared/src/i18n/labels.ts:77
 msgid "연결을 확인한 뒤 다시 시도해 주세요."
 msgstr "Check your connection and try again."
 
@@ -5126,10 +5025,8 @@ msgstr "Opening status, distance and last order show up here."
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:83
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:59
-#: apps/mobile/app/native/index.tsx:40
-#: apps/mobile/app/native/map.web.tsx:67
-#: src/screens/HomeScreen.tsx:26
-#: src/screens/MapScreen.tsx:55
+#: apps/mobile/app/native/index.tsx:40 apps/mobile/app/native/map.web.tsx:67
+#: src/screens/HomeScreen.tsx:26 src/screens/MapScreen.tsx:55
 #: src/screens/ShopDetailScreen.tsx:43
 msgid "영업 정보 확인 필요"
 msgstr "Check opening hours"
@@ -5140,14 +5037,10 @@ msgstr "Closed for the day"
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:84
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:53
-#: apps/mobile/app/native/index.tsx:41
-#: apps/mobile/app/native/map.web.tsx:68
-#: apps/mobile/app/native/map.web.tsx:326
-#: apps/mobile/src/domain/hours.ts:174
-#: src/screens/HomeScreen.tsx:26
-#: src/screens/MapScreen.tsx:55
-#: src/screens/MapScreen.tsx:599
-#: src/screens/RecordSheet.tsx:91
+#: apps/mobile/app/native/index.tsx:41 apps/mobile/app/native/map.web.tsx:68
+#: apps/mobile/app/native/map.web.tsx:326 apps/mobile/src/domain/hours.ts:174
+#: src/screens/HomeScreen.tsx:26 src/screens/MapScreen.tsx:55
+#: src/screens/MapScreen.tsx:599 src/screens/RecordSheet.tsx:91
 #: src/screens/ShopDetailScreen.tsx:37
 msgid "영업 중"
 msgstr "Open"
@@ -5168,8 +5061,7 @@ msgstr "No shops are open, so we prioritized nearby options"
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:661
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:672
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:779
-#: src/screens/ShopDetailScreen.tsx:256
-#: src/screens/ShopDetailScreen.tsx:285
+#: src/screens/ShopDetailScreen.tsx:256 src/screens/ShopDetailScreen.tsx:285
 msgid "영업시간"
 msgstr "Business hours"
 
@@ -5206,15 +5098,16 @@ msgstr "E.g. special shoyu ramen"
 
 #: apps/mobile/app/(flows)/record/new.tsx:993
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:803
-#: apps/mobile/app/native/index.tsx:288
-#: src/screens/ShopDetailScreen.tsx:274
+#: apps/mobile/app/native/index.tsx:288 src/screens/ShopDetailScreen.tsx:274
 msgid "오늘"
 msgstr "Today"
 
 #: apps/mobile/app/native/index.tsx:382
-msgid "오늘 {p0}은\n"
+msgid ""
+"오늘 {p0}은\n"
 "어떤 라멘으로 할까요?"
-msgstr "What ramen for\n"
+msgstr ""
+"What ramen for\n"
 "{p0} today?"
 
 #: src/screens/AIRecommendScreen.tsx:350
@@ -5227,7 +5120,9 @@ msgstr "Today’s ramen pick for {v1}"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1322
 msgid "오늘 남은 마지막 식권이에요. 자정에 다시 {v1}장이 채워져요."
-msgstr "This is your last ticket today. {v1, plural, one {# new ticket arrives} other {# new tickets arrive}} at midnight."
+msgstr ""
+"This is your last ticket today. {v1, plural, one {# new ticket arrives} "
+"other {# new tickets arrive}} at midnight."
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:982
 msgid "오늘 남은 식권 {v1}장"
@@ -5235,11 +5130,15 @@ msgstr "{v1, plural, one {# ticket left today} other {# tickets left today}}"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1323
 msgid "오늘 남은 식권 {v1}장 중 1장을 써요. 자정에 다시 {v2}장이 채워져요."
-msgstr "Use 1 of your {v1} remaining tickets. {v2, plural, one {# new ticket arrives} other {# new tickets arrive}} at midnight."
+msgstr ""
+"Use 1 of your {v1} remaining tickets. {v2, plural, one {# new ticket "
+"arrives} other {# new tickets arrive}} at midnight."
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:979
 msgid "오늘 남은 식권 {v1}장, 하루 {v2}장"
-msgstr "{v1, plural, one {# ticket left today} other {# tickets left today}}, {v2} per day"
+msgstr ""
+"{v1, plural, one {# ticket left today} other {# tickets left today}}, {v2} "
+"per day"
 
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:820
 msgid "오늘 라스트오더 {v1}"
@@ -5257,8 +5156,7 @@ msgstr "Start with the bowl you ate today."
 msgid "오늘 뭐 먹지?"
 msgstr "What should I eat today?"
 
-#: apps/mobile/app/native/index.tsx:413
-#: src/screens/HomeScreen.tsx:133
+#: apps/mobile/app/native/index.tsx:413 src/screens/HomeScreen.tsx:133
 msgid "오늘 뭐 먹지? AI 라멘 큐레이터"
 msgstr "What to eat? AI ramen curator"
 
@@ -5276,11 +5174,13 @@ msgstr "Today's tickets"
 
 #: apps/mobile/app/native/index.tsx:452
 msgid "오늘 뽑은 식권 {p0}장"
-msgstr "{p0, plural, one {# ticket drawn today} other {# tickets drawn today}}"
+msgstr ""
+"{p0, plural, one {# ticket drawn today} other {# tickets drawn today}}"
 
 #: apps/mobile/app/native/index.tsx:444
 msgid "오늘 뽑은 식권 {p0}장, 남은 식권 {p1}장"
-msgstr "{p0, plural, one {# ticket drawn} other {# tickets drawn}}, {p1} left today"
+msgstr ""
+"{p0, plural, one {# ticket drawn} other {# tickets drawn}}, {p1} left today"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:987
 #: apps/mobile/app/native/index.tsx:443
@@ -5291,14 +5191,16 @@ msgstr "Choose one of today’s tickets to view it again"
 msgid "오늘 뽑은 식권을 다시 볼 수 있어요"
 msgstr "Revisit today's tickets"
 
-#: apps/mobile/app/native/index.tsx:462
-#: apps/mobile/app/native/index.tsx:465
+#: apps/mobile/app/native/index.tsx:462 apps/mobile/app/native/index.tsx:465
 msgid "오늘 식권 {count}장 남았어요"
-msgstr "{count, plural, one {# ticket left today} other {# tickets left today}}"
+msgstr ""
+"{count, plural, one {# ticket left today} other {# tickets left today}}"
 
 #: apps/mobile/app/native/index.tsx:426
 msgid "오늘 식권 {p0}장을 다 뽑았어요. 내일 다시 채워져요"
-msgstr "All {p0, plural, one {# ticket} other {# tickets}} used today. More tomorrow."
+msgstr ""
+"All {p0, plural, one {# ticket} other {# tickets}} used today. More "
+"tomorrow."
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:881
 msgid "오늘 식권을 다 뽑았어요"
@@ -5337,7 +5239,7 @@ msgstr "Today ({v1}): hours unavailable"
 msgid "오늘({v1}) 휴무"
 msgstr "Today ({v1}): closed"
 
-#: apps/mobile/src/components/StartChecklist.tsx:45
+#: apps/mobile/src/components/StartChecklist.tsx:47
 msgid "오늘의 식권 한 장 뽑기"
 msgstr "Draw today's ticket"
 
@@ -5354,8 +5256,7 @@ msgstr "Preparing today's picks"
 msgid "오늘의 추천이 준비됐어요"
 msgstr "Today’s pick is ready"
 
-#: apps/mobile/app/native/index.tsx:485
-#: apps/mobile/app/native/index.tsx:522
+#: apps/mobile/app/native/index.tsx:485 apps/mobile/app/native/index.tsx:522
 msgid "오늘의 큐레이션"
 msgstr "Today's selection"
 
@@ -5421,13 +5322,11 @@ msgstr "Done"
 msgid "요일별 영업시간을 시트로 열어요"
 msgstr "Open weekly business hours"
 
-#: apps/mobile/src/api/client.ts:297
-#: packages/shared/src/i18n/labels.ts:69
+#: apps/mobile/src/api/client.ts:297 packages/shared/src/i18n/labels.ts:69
 msgid "요청을 처리하지 못했어요."
 msgstr "We couldn't process your request. Please try again."
 
-#: apps/mobile/src/api/client.ts:329
-#: packages/shared/src/i18n/labels.ts:71
+#: apps/mobile/src/api/client.ts:329 packages/shared/src/i18n/labels.ts:71
 msgid "요청을 취소했어요."
 msgstr "Request canceled."
 
@@ -5470,7 +5369,8 @@ msgstr ", collecting this month "
 
 #: apps/mobile/app/(flows)/settings.tsx:28
 msgid "월간 리포트 마감 전과 기록이 일주일 뜸할 때만 알려드려요."
-msgstr "Reminders only before the monthly deadline or after a week without a log."
+msgstr ""
+"Reminders only before the monthly deadline or after a week without a log."
 
 #: apps/mobile/app/(flows)/taste/archive.tsx:263
 msgid "월별 기록을 불러오는 중…"
@@ -5527,7 +5427,9 @@ msgstr "Without location"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1115
 msgid "위치를 알려 주시면 걸어서 갈 수 있는 곳부터 봐요. 위치는 가까운 순서와 거리를 재는 데 써요."
-msgstr "Share your location and we'll start with places you can walk to. It's used to sort by distance and measure how far."
+msgstr ""
+"Share your location and we'll start with places you can walk to. It's used "
+"to sort by distance and measure how far."
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:268
 msgid "위치를 켜면 가까운 순으로 보여요"
@@ -5543,8 +5445,7 @@ msgstr "Finding your location…"
 msgid "육수"
 msgstr "Broth"
 
-#: apps/mobile/src/domain/lounge.ts:124
-#: packages/shared/src/i18n/labels.ts:29
+#: apps/mobile/src/domain/lounge.ts:124 packages/shared/src/i18n/labels.ts:29
 msgid "육수 농도"
 msgstr "Broth richness"
 
@@ -5565,8 +5466,7 @@ msgstr "Extra broth"
 msgid "음란물"
 msgstr "Sexual content"
 
-#: apps/mobile/src/api/client.ts:326
-#: packages/shared/src/i18n/labels.ts:70
+#: apps/mobile/src/api/client.ts:326 packages/shared/src/i18n/labels.ts:70
 msgid "응답이 너무 늦어요. 잠시 후 다시 시도해 주세요."
 msgstr "The request timed out. Please try again shortly."
 
@@ -5602,7 +5502,9 @@ msgstr "Search with this keyword"
 
 #: apps/mobile/app/(flows)/auth/login.tsx:45
 msgid "이 계정으로는 로그인할 수 없어요. 탈퇴한 계정은 30일이 지나야 다시 가입할 수 있어요."
-msgstr "You can’t sign in with this account. Deleted accounts can register again after 30 days."
+msgstr ""
+"You can’t sign in with this account. Deleted accounts can register again "
+"after 30 days."
 
 #: apps/mobile/app/(flows)/record/complete.tsx:66
 msgid "이 그릇도 기록으로 남겼어요."
@@ -5617,8 +5519,7 @@ msgid "이 기간에는 기록이 없어요. 라멘로그를 남기면 캘린더
 msgstr "No logs in this period. Log a bowl to fill your calendar."
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:211
-#: src/screens/LoungeScreen.tsx:1502
-#: src/screens/LoungeScreen.tsx:1524
+#: src/screens/LoungeScreen.tsx:1502 src/screens/LoungeScreen.tsx:1524
 msgid "이 기록에 댓글을 남겨보세요"
 msgstr "Leave a comment on this log"
 
@@ -5698,14 +5599,12 @@ msgstr "More shops listing this feature will improve the match"
 msgid "이 환경에서는 알림을 보낼 수 없어요"
 msgstr "Notifications aren't available here"
 
-#: apps/mobile/app/native/my.tsx:668
-#: src/screens/MapScreen.tsx:701
+#: apps/mobile/app/native/my.tsx:668 src/screens/MapScreen.tsx:701
 #: src/screens/MyScreen.tsx:606
 msgid "이름순"
 msgstr "Name"
 
-#: apps/mobile/app/(flows)/settings.tsx:126
-#: src/screens/MyScreen.tsx:730
+#: apps/mobile/app/(flows)/settings.tsx:126 src/screens/MyScreen.tsx:730
 msgid "이메일"
 msgstr "Email"
 
@@ -5713,8 +5612,7 @@ msgstr "Email"
 msgid "이메일 로그인 접기"
 msgstr "Hide email login"
 
-#: apps/mobile/app/(flows)/settings.tsx:246
-#: src/screens/MyScreen.tsx:789
+#: apps/mobile/app/(flows)/settings.tsx:246 src/screens/MyScreen.tsx:789
 msgid "이메일 변경"
 msgstr "Change email"
 
@@ -5722,8 +5620,7 @@ msgstr "Change email"
 msgid "이메일 주소"
 msgstr "Email address"
 
-#: apps/mobile/app/(flows)/settings.tsx:98
-#: src/screens/MyScreen.tsx:359
+#: apps/mobile/app/(flows)/settings.tsx:98 src/screens/MyScreen.tsx:359
 msgid "이메일 주소를 바꿨어요"
 msgstr "Email address updated"
 
@@ -5751,8 +5648,7 @@ msgstr "Already have an account?"
 msgid "이미 사용 중인 닉네임이에요. 다른 닉네임을 적어 주세요."
 msgstr "This nickname is taken. Please choose another."
 
-#: apps/mobile/src/data/remote.ts:436
-#: packages/shared/src/i18n/labels.ts:79
+#: apps/mobile/src/data/remote.ts:436 packages/shared/src/i18n/labels.ts:79
 msgid "이미 삭제됐거나 볼 수 없는 글이에요."
 msgstr "This post was deleted or is unavailable."
 
@@ -5791,15 +5687,20 @@ msgstr "Log {bowls} more this month to unlock your report"
 
 #: apps/mobile/app/native/index.tsx:288
 msgid "이번 달 {count}그릇 · 마지막 기록 {when}"
-msgstr "{count, plural, one {# bowl} other {# bowls}} this month · Last log {when}"
+msgstr ""
+"{count, plural, one {# bowl} other {# bowls}} this month · Last log {when}"
 
 #: apps/mobile/app/native/my.tsx:1033
 msgid "이번 달 {count}그릇 집계 중 · {months}개월 비교"
-msgstr "{count, plural, one {# bowl} other {# bowls}} this month · Compare {months, plural, one {# month} other {# months}}"
+msgstr ""
+"{count, plural, one {# bowl} other {# bowls}} this month · Compare {months, "
+"plural, one {# month} other {# months}}"
 
 #: src/screens/MonthlyTasteScreen.tsx:85
 msgid "이번 달 {total}그릇 중 종류가 확인된 {typed}그릇 기준이에요."
-msgstr "Based on {typed, plural, one {# bowl} other {# bowls}} with a known style out of {total} this month."
+msgstr ""
+"Based on {typed, plural, one {# bowl} other {# bowls}} with a known style "
+"out of {total} this month."
 
 #: src/components/MonthlyReportCard.tsx:34
 msgid "이번 달 {v0}그릇 이상 모이면 다음 달부터 달라진 비율을 비교할 수 있어요."
@@ -5807,15 +5708,23 @@ msgstr "Log at least {v0} bowls this month to compare changes next month."
 
 #: apps/mobile/app/(flows)/taste/archive.tsx:190
 msgid "이번 달 {v1}그릇 이상 모이면 다음 달부터 달라진 비율을 비교할 수 있어요."
-msgstr "Log at least {v1} bowls this month to compare style shares from next month."
+msgstr ""
+"Log at least {v1} bowls this month to compare style shares from next month."
 
 #: apps/mobile/app/(flows)/record/complete.tsx:275
 msgid "이번 달 기록이 {v1}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요."
-msgstr "Log {v1} bowls this month for a report on the first of next month. We’ll remind you before the deadline or after a week without a log."
+msgstr ""
+"Log {v1} bowls this month for a report on the first of next month. We’ll "
+"remind you before the deadline or after a week without a log."
 
 #: apps/mobile/app/(flows)/auth/onboarding.tsx:253
-msgid "이번 달 기록이 {v1}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 언제든 끌 수 있어요."
-msgstr "Log {v1} bowls this month to get a report on the first of next month. We’ll remind you before the deadline or after a week without a log. Turn this off anytime in Settings."
+msgid ""
+"이번 달 기록이 {v1}그릇이 되면 다음 달 1일에 월간 리포트가 나와요. 마감 전과 기록이 일주일 뜸할 때만 알려드릴게요. 설정에서 "
+"언제든 끌 수 있어요."
+msgstr ""
+"Log {v1} bowls this month to get a report on the first of next month. We’ll "
+"remind you before the deadline or after a week without a log. Turn this off "
+"anytime in Settings."
 
 #: src/screens/TasteDetailScreen.tsx:217
 msgid "이번에 남긴 기록"
@@ -5826,13 +5735,11 @@ msgid "이벤트"
 msgstr "Events"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:57
-#: apps/mobile/app/native/map.web.tsx:40
-#: packages/shared/src/i18n/labels.ts:12
+#: apps/mobile/app/native/map.web.tsx:40 packages/shared/src/i18n/labels.ts:12
 msgid "이에케"
 msgstr "Iekei"
 
-#: apps/mobile/app/native/map.web.tsx:40
-#: src/screens/MapScreen.tsx:78
+#: apps/mobile/app/native/map.web.tsx:40 src/screens/MapScreen.tsx:78
 #: src/screens/RegisterScreen.tsx:28
 msgid "이에케 (돈코츠쇼유)"
 msgstr "Iekei (pork and soy)"
@@ -5886,10 +5793,10 @@ msgstr "Previous question"
 
 #: src/screens/AIRecommendScreen.tsx:407
 msgid "이전에 받은 추천이에요. 조건을 바꾸려면 다시 추천받기를 눌러주세요."
-msgstr "This is an earlier recommendation. Choose again to change preferences."
+msgstr ""
+"This is an earlier recommendation. Choose again to change preferences."
 
-#: src/screens/LoungeScreen.tsx:306
-#: src/screens/LoungeScreen.tsx:348
+#: src/screens/LoungeScreen.tsx:306 src/screens/LoungeScreen.tsx:348
 msgid "인기"
 msgstr "Popular"
 
@@ -5903,8 +5810,7 @@ msgstr "Popular places"
 msgid "인기 있는 곳에서"
 msgstr "Popular places"
 
-#: apps/mobile/app/native/lounge.tsx:31
-#: apps/mobile/app/native/map.web.tsx:50
+#: apps/mobile/app/native/lounge.tsx:31 apps/mobile/app/native/map.web.tsx:50
 msgid "인기순"
 msgstr "Popular"
 
@@ -5980,8 +5886,7 @@ msgid "자주 간 곳 "
 msgstr "Frequent shop: "
 
 #: apps/mobile/app/(flows)/taste/index.tsx:946
-#: src/screens/TasteDetailScreen.tsx:169
-#: src/screens/TasteDetailScreen.tsx:273
+#: src/screens/TasteDetailScreen.tsx:169 src/screens/TasteDetailScreen.tsx:273
 #: src/screens/TasteDetailScreen.tsx:349
 msgid "자주 간 라멘집"
 msgstr "Frequent ramen shops"
@@ -6005,7 +5910,8 @@ msgstr "Popular preferences "
 
 #: apps/mobile/app/(flows)/record/new.tsx:1352
 msgid "작성 중인 기록이 있어요. 지금까지 고른 평가와 사진은 저장되지 않아요."
-msgstr "Your log is unfinished. Ratings and photos won’t be saved if you leave."
+msgstr ""
+"Your log is unfinished. Ratings and photos won’t be saved if you leave."
 
 #: src/screens/MyScreen.tsx:453
 msgid "작성글"
@@ -6024,16 +5930,14 @@ msgstr "My posts"
 msgid "잠시 후 다시 시도해 주세요"
 msgstr "Please try again shortly"
 
-#: apps/mobile/app/native/my.tsx:638
-#: apps/mobile/app/native/my.tsx:768
+#: apps/mobile/app/native/my.tsx:638 apps/mobile/app/native/my.tsx:768
 msgid "잠시 후 다시 시도해 주세요."
 msgstr "Please try again shortly."
 
 #: apps/mobile/app/(flows)/log/[logId].tsx:383
 #: apps/mobile/app/(flows)/record/select-shop.tsx:303
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:155
-#: apps/mobile/app/native/index.tsx:475
-#: apps/mobile/app/native/index.tsx:528
+#: apps/mobile/app/native/index.tsx:475 apps/mobile/app/native/index.tsx:528
 #: apps/mobile/app/native/map.web.tsx:503
 msgid "잠시 후 다시 열어 주세요."
 msgstr "Please try opening this again shortly."
@@ -6060,8 +5964,7 @@ msgid "재방문 {v1}"
 msgstr "Revisit: {v1}"
 
 #: apps/mobile/app/(flows)/record/complete.tsx:241
-#: apps/mobile/src/domain/lounge.ts:127
-#: packages/shared/src/i18n/labels.ts:32
+#: apps/mobile/src/domain/lounge.ts:127 packages/shared/src/i18n/labels.ts:32
 #: src/screens/RecordCompleteScreen.tsx:131
 msgid "재방문 의사"
 msgstr "Would revisit"
@@ -6078,8 +5981,7 @@ msgstr "Choose whether you’d revisit."
 msgid "저녁"
 msgstr "dinner"
 
-#: apps/mobile/app/(flows)/settings.tsx:242
-#: apps/mobile/app/native/my.tsx:860
+#: apps/mobile/app/(flows)/settings.tsx:242 apps/mobile/app/native/my.tsx:860
 #: src/screens/MyScreen.tsx:798
 msgid "저장"
 msgstr "Save"
@@ -6088,8 +5990,7 @@ msgstr "Save"
 msgid "저장 목록에서 기록하기"
 msgstr "Log a saved shop"
 
-#: apps/mobile/app/(flows)/record/new.tsx:1331
-#: src/screens/MyScreen.tsx:798
+#: apps/mobile/app/(flows)/record/new.tsx:1331 src/screens/MyScreen.tsx:798
 msgid "저장 중…"
 msgstr "Saving…"
 
@@ -6131,8 +6032,7 @@ msgstr "Couldn't save. Check your connection and try again."
 msgid "저장하지 못했어요. 잠시 뒤 다시 시도해 주세요."
 msgstr "Couldn’t save. Please try again shortly."
 
-#: apps/mobile/app/native/my.tsx:761
-#: src/screens/MyScreen.tsx:653
+#: apps/mobile/app/native/my.tsx:761 src/screens/MyScreen.tsx:653
 msgid "저장한 라멘집 검색"
 msgstr "Search saved shops"
 
@@ -6144,8 +6044,7 @@ msgstr "Loading saved shops…"
 msgid "저장한 라멘집을 불러오지 못했어요"
 msgstr "Couldn't load saved shops"
 
-#: apps/mobile/app/native/my.tsx:784
-#: apps/mobile/app/native/my.tsx:785
+#: apps/mobile/app/native/my.tsx:784 apps/mobile/app/native/my.tsx:785
 msgid "저장한 매장 더 보기"
 msgstr "More saved shops"
 
@@ -6161,18 +6060,14 @@ msgstr "Balanced broth"
 msgid "적어 주신 조건은 매장 정보가 채워지는 대로 맞춰 드릴게요"
 msgstr "We’ll match your request as more shop details become available"
 
-#: apps/mobile/app/native/my.tsx:563
-#: src/screens/MyScreen.tsx:555
+#: apps/mobile/app/native/my.tsx:563 src/screens/MyScreen.tsx:555
 msgid "적음"
 msgstr "Less"
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:94
-#: apps/mobile/app/native/lounge.tsx:181
-#: src/screens/LoungeScreen.tsx:305
-#: src/screens/NewsFeedScreen.tsx:19
-#: src/screens/NotificationScreen.tsx:169
-#: src/screens/RecordSheet.tsx:233
-#: src/screens/TasteDetailScreen.tsx:252
+#: apps/mobile/app/native/lounge.tsx:181 src/screens/LoungeScreen.tsx:305
+#: src/screens/NewsFeedScreen.tsx:19 src/screens/NotificationScreen.tsx:169
+#: src/screens/RecordSheet.tsx:233 src/screens/TasteDetailScreen.tsx:252
 #: src/screens/TasteDetailScreen.tsx:274
 msgid "전체"
 msgstr "All"
@@ -6187,11 +6082,15 @@ msgstr "Based on {count, plural, one {# bowl} other {# bowls}}"
 
 #: src/screens/TasteDetailScreen.tsx:133
 msgid "전체 {count}그릇으로 취향을 다시 정리했어요"
-msgstr "Your taste report is updated with all {count, plural, one {# bowl} other {# bowls}}"
+msgstr ""
+"Your taste report is updated with all {count, plural, one {# bowl} other {# "
+"bowls}}"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:822
 msgid "전체 {v1}그릇으로 취향을 다시 정리했어요"
-msgstr "Updated your taste profile with all {v1, plural, one {# bowl} other {# bowls}}"
+msgstr ""
+"Updated your taste profile with all {v1, plural, one {# bowl} other {# "
+"bowls}}"
 
 #: apps/mobile/app/native/lounge.tsx:179
 msgid "전체 라멘 종류"
@@ -6206,8 +6105,7 @@ msgstr "Choosing from all shops"
 msgid "전체 라멘집으로 넓혀서 골라 봤어요"
 msgstr "Expanded the search to all ramen shops"
 
-#: apps/mobile/src/domain/lounge.ts:123
-#: packages/shared/src/i18n/labels.ts:28
+#: apps/mobile/src/domain/lounge.ts:123 packages/shared/src/i18n/labels.ts:28
 msgid "전체 만족도"
 msgstr "Satisfaction"
 
@@ -6219,8 +6117,7 @@ msgstr "How was it overall?"
 msgid "전체 만족도를 골라주세요."
 msgstr "Rate your overall satisfaction."
 
-#: src/screens/LoungeScreen.tsx:1137
-#: src/screens/LoungeScreen.tsx:1173
+#: src/screens/LoungeScreen.tsx:1137 src/screens/LoungeScreen.tsx:1173
 msgid "전체 매장"
 msgstr "All shops"
 
@@ -6229,8 +6126,7 @@ msgstr "All shops"
 msgid "전체 보기"
 msgstr "View all"
 
-#: apps/mobile/app/native/map.web.tsx:30
-#: apps/mobile/app/native/map.web.tsx:30
+#: apps/mobile/app/native/map.web.tsx:30 apps/mobile/app/native/map.web.tsx:30
 #: src/screens/MapScreen.tsx:68
 msgid "전체 지역"
 msgstr "All areas"
@@ -6265,10 +6161,8 @@ msgstr "Show less"
 msgid "접속 중"
 msgstr "Connecting"
 
-#: apps/mobile/app/native/map.web.tsx:517
-#: apps/mobile/app/native/my.tsx:663
-#: src/screens/LoungeScreen.tsx:1221
-#: src/screens/MapScreen.tsx:700
+#: apps/mobile/app/native/map.web.tsx:517 apps/mobile/app/native/my.tsx:663
+#: src/screens/LoungeScreen.tsx:1221 src/screens/MapScreen.tsx:700
 #: src/screens/MyScreen.tsx:602
 msgid "정렬"
 msgstr "Sort"
@@ -6309,16 +6203,17 @@ msgstr "No shops match your filters"
 msgid "조건에 맞는 가게가 없어요."
 msgstr "No shops match these filters."
 
-#: apps/mobile/app/native/map.web.tsx:387
-#: src/screens/MapScreen.tsx:688
+#: apps/mobile/app/native/map.web.tsx:387 src/screens/MapScreen.tsx:688
 msgid "조건에 맞는 라멘집이 없어요"
 msgstr "No shops match your filters"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1508
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1512
-msgid "조건에 맞는 한 그릇을\n"
+msgid ""
+"조건에 맞는 한 그릇을\n"
 "찾는 중"
-msgstr "Finding a bowl\n"
+msgstr ""
+"Finding a bowl\n"
 "that fits"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:1506
@@ -6334,8 +6229,7 @@ msgstr "A little lacking"
 msgid "조회"
 msgstr "Views"
 
-#: apps/mobile/app/native/my.tsx:1101
-#: src/screens/MonthlyTasteScreen.tsx:104
+#: apps/mobile/app/native/my.tsx:1101 src/screens/MonthlyTasteScreen.tsx:104
 msgid "종류"
 msgstr " types"
 
@@ -6352,8 +6246,7 @@ msgid "종류별 분포"
 msgstr "Distribution by style"
 
 #: apps/mobile/app/(flows)/taste/archive.tsx:416
-#: src/screens/MonthlyTasteScreen.tsx:93
-#: src/screens/TasteDetailScreen.tsx:251
+#: src/screens/MonthlyTasteScreen.tsx:93 src/screens/TasteDetailScreen.tsx:251
 msgid "종류별로 먹은 라멘"
 msgstr "Bowls by style"
 
@@ -6372,7 +6265,9 @@ msgstr "View complete report"
 
 #: apps/mobile/app/native/my.tsx:1001
 msgid "종합 리포트 보기. {p0}, {p1}그릇을 기록했어요, {p2}곳을 다녔어요. {p3}장 이야기"
-msgstr "View full report. {p0}, {p1, plural, one {# bowl} other {# bowls}} logged, {p2, plural, one {# shop} other {# shops}} visited. {p3} stories"
+msgstr ""
+"View full report. {p0}, {p1, plural, one {# bowl} other {# bowls}} logged, "
+"{p2, plural, one {# shop} other {# shops}} visited. {p3} stories"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:648
 #: src/screens/TasteReportLoading.tsx:65
@@ -6391,8 +6286,7 @@ msgstr "Unlike, {v0, plural, one {# like} other {# likes}}"
 msgid "좋아요, {v0}개"
 msgstr "Like, {v0, plural, one {# like} other {# likes}}"
 
-#: src/screens/LoungeScreen.tsx:1216
-#: src/screens/LoungeScreen.tsx:1238
+#: src/screens/LoungeScreen.tsx:1216 src/screens/LoungeScreen.tsx:1238
 msgid "좋아요순"
 msgstr "Most liked"
 
@@ -6423,8 +6317,7 @@ msgstr "Nearby shops"
 msgid "주변 가게의 거리와 영업 상태 조건을 고를 수 있어요"
 msgstr "Filter nearby shops by distance and opening status"
 
-#: apps/mobile/src/components/RecordMenu.tsx:20
-#: src/screens/HomeScreen.tsx:64
+#: apps/mobile/src/components/RecordMenu.tsx:20 src/screens/HomeScreen.tsx:64
 msgid "주변 라멘집 기록하기"
 msgstr "Log a nearby shop"
 
@@ -6447,8 +6340,7 @@ msgstr "Address unavailable"
 msgid "주소, {v1}"
 msgstr "Address: {v1}"
 
-#: apps/mobile/app/native/_layout.tsx:110
-#: src/App.tsx:740
+#: apps/mobile/app/native/_layout.tsx:110 src/App.tsx:740
 msgid "주요 메뉴"
 msgstr "Main navigation"
 
@@ -6458,12 +6350,9 @@ msgstr "Parking available"
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:84
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:53
-#: apps/mobile/app/native/index.tsx:41
-#: apps/mobile/app/native/map.web.tsx:68
-#: apps/mobile/src/domain/hours.ts:178
-#: src/screens/HomeScreen.tsx:26
-#: src/screens/MapScreen.tsx:55
-#: src/screens/RecordSheet.tsx:91
+#: apps/mobile/app/native/index.tsx:41 apps/mobile/app/native/map.web.tsx:68
+#: apps/mobile/src/domain/hours.ts:178 src/screens/HomeScreen.tsx:26
+#: src/screens/MapScreen.tsx:55 src/screens/RecordSheet.tsx:91
 #: src/screens/ShopDetailScreen.tsx:37
 msgid "준비 중"
 msgstr "Closed now"
@@ -6478,8 +6367,7 @@ msgstr "decreased"
 
 #: apps/mobile/app/(flows)/record/new.tsx:136
 #: apps/mobile/app/(flows)/record/new.tsx:137
-#: apps/mobile/src/domain/lounge.ts:117
-#: apps/mobile/src/domain/lounge.ts:118
+#: apps/mobile/src/domain/lounge.ts:117 apps/mobile/src/domain/lounge.ts:118
 #: apps/mobile/src/domain/shopTaste.ts:36
 #: apps/mobile/src/domain/shopTaste.ts:37
 msgid "중간"
@@ -6530,8 +6418,7 @@ msgstr "So far"
 msgid "지금까지 고른 평가와 사진은 저장되지 않아요."
 msgstr "Your ratings and photos won't be saved."
 
-#: apps/mobile/app/native/my.tsx:1060
-#: packages/shared/src/i18n/labels.ts:107
+#: apps/mobile/app/native/my.tsx:1060 packages/shared/src/i18n/labels.ts:107
 msgid "지금까지 뽑은 AI 식권을 날짜별로 다시 봐요"
 msgstr "Revisit your AI tickets by date"
 
@@ -6543,10 +6430,8 @@ msgstr "AI picks are unavailable, so here are popular ramen shops"
 msgid "지금은 보여줄 가게가 없어요"
 msgstr "No shops to show right now"
 
-#: apps/mobile/app/(flows)/tickets.tsx:67
-#: apps/mobile/app/native/my.tsx:1061
-#: apps/mobile/app/native/my.tsx:1071
-#: packages/shared/src/i18n/labels.ts:104
+#: apps/mobile/app/(flows)/tickets.tsx:67 apps/mobile/app/native/my.tsx:1061
+#: apps/mobile/app/native/my.tsx:1071 packages/shared/src/i18n/labels.ts:104
 msgid "지난 식권"
 msgstr "Past tickets"
 
@@ -6584,14 +6469,12 @@ msgstr "Want to log last week's ramen?"
 
 #: apps/mobile/app/native/_layout.tsx:148
 #: apps/mobile/app/native/map.web.tsx:271
-#: packages/shared/src/i18n/labels.ts:25
-#: src/App.tsx:297
+#: packages/shared/src/i18n/labels.ts:25 src/App.tsx:297
 #: src/screens/MapScreen.tsx:520
 msgid "지도"
 msgstr "Map"
 
-#: apps/mobile/app/native/map.web.tsx:264
-#: src/screens/MapScreen.tsx:517
+#: apps/mobile/app/native/map.web.tsx:264 src/screens/MapScreen.tsx:517
 msgid "지도로 보기"
 msgstr "View map"
 
@@ -6600,8 +6483,7 @@ msgid "지도에서 다시 찾기"
 msgstr "Find on map"
 
 #: apps/mobile/app/(flows)/shop/[shopId].tsx:360
-#: apps/mobile/app/native/index.tsx:580
-#: apps/mobile/app/native/index.tsx:586
+#: apps/mobile/app/native/index.tsx:580 apps/mobile/app/native/index.tsx:586
 #: src/screens/HomeScreen.tsx:268
 msgid "지도에서 보기"
 msgstr "View on map"
@@ -6611,17 +6493,17 @@ msgstr "View on map"
 msgid "지도에서 영업 여부와 라스트오더를 확인하고 바로 찾아가요."
 msgstr "Check opening status and last orders on the map before you go."
 
-#: apps/mobile/src/components/StartChecklist.tsx:44
+#: apps/mobile/src/components/StartChecklist.tsx:46
 msgid "지도에서 핀을 눌러 보세요"
 msgstr "Tap a pin on the map"
 
 #: apps/mobile/app/native/map.web.tsx:640
 msgid "지도와 현재 위치는 앱에서 보여드려요. 여기서는 목록으로 볼 수 있어요."
-msgstr "Maps and your location are available in the app. Browse the list here."
+msgstr ""
+"Maps and your location are available in the app. Browse the list here."
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:62
-#: apps/mobile/app/native/map.web.tsx:45
-#: packages/shared/src/i18n/labels.ts:17
+#: apps/mobile/app/native/map.web.tsx:45 packages/shared/src/i18n/labels.ts:17
 msgid "지로"
 msgstr "Jiro"
 
@@ -6629,8 +6511,7 @@ msgstr "Jiro"
 msgid "지로 (지로계)"
 msgstr "Jiro style"
 
-#: apps/mobile/app/native/map.web.tsx:343
-#: src/screens/MapScreen.tsx:544
+#: apps/mobile/app/native/map.web.tsx:343 src/screens/MapScreen.tsx:544
 msgid "지역 선택"
 msgstr "Choose area"
 
@@ -6650,8 +6531,7 @@ msgstr "Choose an area"
 msgid "지워졌거나 볼 수 없는 기록이에요."
 msgstr "This log was deleted or is unavailable."
 
-#: apps/mobile/src/components/RecordMenu.tsx:22
-#: src/screens/HomeScreen.tsx:66
+#: apps/mobile/src/components/RecordMenu.tsx:22 src/screens/HomeScreen.tsx:66
 msgid "직접 검색해서 기록하기"
 msgstr "Search a shop to log"
 
@@ -6695,8 +6575,7 @@ msgid "진한 육수 취향"
 msgstr "For rich broth lovers"
 
 #: apps/mobile/app/(flows)/record/new.tsx:136
-#: apps/mobile/src/domain/lounge.ts:117
-#: apps/mobile/src/domain/shopTaste.ts:36
+#: apps/mobile/src/domain/lounge.ts:117 apps/mobile/src/domain/shopTaste.ts:36
 msgid "진한 편"
 msgstr "Rich"
 
@@ -6721,8 +6600,7 @@ msgstr "Dipping noodles"
 msgid "찜을 바꾸지 못했어요. 다시 시도해 주세요."
 msgstr "Couldn’t update saved shops. Please try again."
 
-#: apps/mobile/app/native/my.tsx:251
-#: packages/shared/src/i18n/labels.ts:94
+#: apps/mobile/app/native/my.tsx:251 packages/shared/src/i18n/labels.ts:94
 msgid "찜을 해제하지 못했어요. 다시 시도해 주세요."
 msgstr "Could not remove this saved shop. Please try again."
 
@@ -6731,8 +6609,7 @@ msgid "찜하지 못했어요. 다시 시도해 주세요."
 msgstr "Could not save this shop. Please try again."
 
 #: apps/mobile/app/(flows)/record/select-shop.tsx:50
-#: src/screens/RecordSheet.tsx:69
-#: src/screens/RecordSheet.tsx:262
+#: src/screens/RecordSheet.tsx:69 src/screens/RecordSheet.tsx:262
 msgid "찜한 가게"
 msgstr "Saved shops"
 
@@ -6790,15 +6667,19 @@ msgstr "Processing…"
 msgid "처음 {date}"
 msgstr "First {date}"
 
-#: apps/mobile/src/components/StartChecklist.tsx:55
+#: apps/mobile/src/components/StartChecklist.tsx:57
 msgid "처음 안내 닫기"
 msgstr "Close getting started"
+
+#: apps/mobile/src/components/StartChecklist.tsx:108
+msgid "처음 안내를 닫을까요?"
+msgstr "Close the getting-started guide?"
 
 #: apps/mobile/app/native/index.tsx:280
 msgid "처음이라면 여기부터"
 msgstr "Start here"
 
-#: apps/mobile/src/components/StartChecklist.tsx:52
+#: apps/mobile/src/components/StartChecklist.tsx:54
 msgid "처음이라면 이것부터"
 msgstr "New here? Start with these"
 
@@ -6819,15 +6700,16 @@ msgid "첫 그릇"
 msgstr "First bowl"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:908
-#: apps/mobile/app/native/my.tsx:644
-#: apps/mobile/app/native/my.tsx:992
+#: apps/mobile/app/native/my.tsx:644 apps/mobile/app/native/my.tsx:992
 msgid "첫 그릇 기록하기"
 msgstr "Log your first bowl"
 
 #: apps/mobile/app/(flows)/taste/index.tsx:902
-msgid "첫 그릇을 기록하면\n"
+msgid ""
+"첫 그릇을 기록하면\n"
 "취향과 종류별 분포가 여기에 쌓여요."
-msgstr "Log your first bowl to see\n"
+msgstr ""
+"Log your first bowl to see\n"
 "your taste profile and style breakdown here."
 
 #: packages/shared/src/domain/identity.ts:50
@@ -6864,8 +6746,7 @@ msgstr "Your first bowl on record."
 msgid "첫 달의 메뉴부터 모아볼까요?"
 msgstr "Start your first month of bowls?"
 
-#: src/screens/LoungeScreen.tsx:982
-#: src/screens/LoungeScreen.tsx:1483
+#: src/screens/LoungeScreen.tsx:982 src/screens/LoungeScreen.tsx:1483
 msgid "첫 댓글을 남겨 대화를 시작해 보세요."
 msgstr "Leave the first comment to start a conversation."
 
@@ -6891,8 +6772,7 @@ msgstr "This is your first month. Compare changes from next month."
 msgid "청탕 · 맑은 국물"
 msgstr "Chintan · Clear broth"
 
-#: apps/mobile/app/native/my.tsx:584
-#: src/screens/MapScreen.tsx:698
+#: apps/mobile/app/native/my.tsx:584 src/screens/MapScreen.tsx:698
 msgid "총"
 msgstr "Total"
 
@@ -6902,7 +6782,9 @@ msgstr "Across {total} bowls, {styles} are tied for first."
 
 #: src/screens/MonthlyTasteScreen.tsx:81
 msgid "총 {total}그릇 중 {styles}를 {count}그릇으로 가장 많이 먹었어요."
-msgstr "Across {total, plural, one {# bowl} other {# bowls}}, {styles} was your most frequent style with {count, plural, one {# bowl} other {# bowls}}."
+msgstr ""
+"Across {total, plural, one {# bowl} other {# bowls}}, {styles} was your most"
+" frequent style with {count, plural, one {# bowl} other {# bowls}}."
 
 #: src/screens/MyScreen.tsx:491
 msgid "총 라멘로그"
@@ -6920,8 +6802,7 @@ msgstr "Excellent"
 msgid "최고 등급"
 msgstr "Top level"
 
-#: apps/mobile/app/native/my.tsx:434
-#: apps/mobile/app/native/my.tsx:444
+#: apps/mobile/app/native/my.tsx:434 apps/mobile/app/native/my.tsx:444
 msgid "최고 등급이에요"
 msgstr "You've reached the top level"
 
@@ -6933,14 +6814,12 @@ msgstr "Recent"
 msgid "최근 {date}"
 msgstr "Latest {date}"
 
-#: apps/mobile/app/native/my.tsx:175
-#: apps/mobile/app/native/my.tsx:176
+#: apps/mobile/app/native/my.tsx:175 apps/mobile/app/native/my.tsx:176
 #: src/screens/MyScreen.tsx:386
 msgid "최근 1년"
 msgstr "Past year"
 
-#: apps/mobile/app/native/my.tsx:581
-#: src/screens/MyScreen.tsx:565
+#: apps/mobile/app/native/my.tsx:581 src/screens/MyScreen.tsx:565
 msgid "최근 기록"
 msgstr "Recent logs"
 
@@ -6953,10 +6832,8 @@ msgstr "Recent log list"
 msgid "최근 기록으로 다시 정리"
 msgstr "Refresh with recent logs"
 
-#: apps/mobile/app/native/lounge.tsx:30
-#: apps/mobile/app/native/my.tsx:667
-#: src/screens/LoungeScreen.tsx:1216
-#: src/screens/LoungeScreen.tsx:1238
+#: apps/mobile/app/native/lounge.tsx:30 apps/mobile/app/native/my.tsx:667
+#: src/screens/LoungeScreen.tsx:1216 src/screens/LoungeScreen.tsx:1238
 #: src/screens/MyScreen.tsx:605
 msgid "최신순"
 msgstr "Latest"
@@ -7026,8 +6903,7 @@ msgstr "Zoom out"
 #: apps/mobile/src/components/LoungeLog.tsx:513
 #: apps/mobile/src/components/RecordMenu.tsx:58
 #: apps/mobile/src/components/ui/index.tsx:1218
-#: src/screens/LoungeScreen.tsx:654
-#: src/screens/MyScreen.tsx:242
+#: src/screens/LoungeScreen.tsx:654 src/screens/MyScreen.tsx:242
 #: src/screens/MyScreen.tsx:797
 msgid "취소"
 msgstr "Cancel"
@@ -7084,8 +6960,7 @@ msgid "취향을 불러오는 중…"
 msgstr "Loading your taste profile…"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:63
-#: packages/shared/src/i18n/labels.ts:18
-#: src/screens/RegisterScreen.tsx:32
+#: packages/shared/src/i18n/labels.ts:18 src/screens/RegisterScreen.tsx:32
 msgid "츠케멘"
 msgstr "Tsukemen"
 
@@ -7106,8 +6981,7 @@ msgstr "Take a photo"
 msgid "카카오 로그인 중"
 msgstr "Signing in with Kakao"
 
-#: apps/mobile/src/auth/social.ts:66
-#: packages/shared/src/i18n/labels.ts:83
+#: apps/mobile/src/auth/social.ts:66 packages/shared/src/i18n/labels.ts:83
 msgid "카카오 로그인이 설정되지 않았어요."
 msgstr "Kakao sign-in is not configured."
 
@@ -7152,15 +7026,15 @@ msgstr "Springy"
 msgid "탄탄멘"
 msgstr "Tantanmen"
 
-#: apps/mobile/app/(flows)/settings.tsx:304
-#: src/screens/MyScreen.tsx:817
+#: apps/mobile/app/(flows)/settings.tsx:304 src/screens/MyScreen.tsx:817
 msgid "탈퇴하기"
 msgstr "Delete account"
 
-#: apps/mobile/app/(flows)/settings.tsx:308
-#: src/screens/MyScreen.tsx:823
+#: apps/mobile/app/(flows)/settings.tsx:308 src/screens/MyScreen.tsx:823
 msgid "탈퇴하면 바로 로그아웃되고, 30일 뒤 같은 계정으로 다시 가입할 수 있어요."
-msgstr "Deleting your account signs you out immediately. You can register again with the same account after 30 days."
+msgstr ""
+"Deleting your account signs you out immediately. You can register again with"
+" the same account after 30 days."
 
 #: apps/mobile/app/(flows)/settings.tsx:112
 msgid "탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요."
@@ -7180,26 +7054,22 @@ msgid "테스트 알림을 예약했어요"
 msgstr "Test notification scheduled"
 
 #: apps/mobile/app/(flows)/ai-recommend.tsx:60
-#: apps/mobile/app/native/map.web.tsx:43
-#: packages/shared/src/i18n/labels.ts:15
+#: apps/mobile/app/native/map.web.tsx:43 packages/shared/src/i18n/labels.ts:15
 msgid "토리파이탄"
 msgstr "Tori paitan"
 
-#: apps/mobile/app/native/map.web.tsx:43
-#: src/screens/MapScreen.tsx:81
+#: apps/mobile/app/native/map.web.tsx:43 src/screens/MapScreen.tsx:81
 #: src/screens/RegisterScreen.tsx:29
 msgid "토리파이탄 (닭백탕)"
 msgstr "Tori paitan (chicken)"
 
-#: apps/mobile/src/api/client.ts:507
-#: packages/shared/src/i18n/labels.ts:74
+#: apps/mobile/src/api/client.ts:507 packages/shared/src/i18n/labels.ts:74
 msgid "토큰을 다시 받지 못했어요."
 msgstr "Couldn't renew your session. Please sign in again."
 
 #: apps/mobile/app/(flows)/record/new.tsx:144
 #: apps/mobile/src/components/ShopTasteCard.tsx:62
-#: apps/mobile/src/domain/lounge.ts:126
-#: packages/shared/src/i18n/labels.ts:31
+#: apps/mobile/src/domain/lounge.ts:126 packages/shared/src/i18n/labels.ts:31
 #: src/types.ts:60
 msgid "토핑"
 msgstr "Toppings"
@@ -7221,8 +7091,7 @@ msgstr "Rate the toppings."
 msgid "토핑이 주인공"
 msgstr "Toppings take the lead"
 
-#: src/screens/AIRecommendScreen.tsx:373
-#: src/screens/ShopDetailScreen.tsx:188
+#: src/screens/AIRecommendScreen.tsx:373 src/screens/ShopDetailScreen.tsx:188
 msgid "특징"
 msgstr "Highlights"
 
@@ -7330,8 +7199,7 @@ msgstr "Keep this log private"
 msgid "핀을 눌러 보세요"
 msgstr "Tap a pin"
 
-#: src/screens/RecordScreen.tsx:285
-#: src/screens/RecordScreen.tsx:385
+#: src/screens/RecordScreen.tsx:285 src/screens/RecordScreen.tsx:385
 msgid "필수"
 msgstr "Required"
 
@@ -7356,8 +7224,7 @@ msgstr "Required, consent to personal data use"
 msgid "필수, 서비스 이용약관 동의"
 msgstr "Required, agree to Terms of Service"
 
-#: apps/mobile/app/native/map.web.tsx:330
-#: src/screens/MapScreen.tsx:607
+#: apps/mobile/app/native/map.web.tsx:330 src/screens/MapScreen.tsx:607
 msgid "필터 초기화"
 msgstr "Reset filters"
 
@@ -7393,6 +7260,12 @@ msgstr "What matters most in your bowl?"
 msgid "한 번"
 msgstr "Once"
 
+#: apps/mobile/src/components/StartChecklist.tsx:102
+msgid "한 번 닫으면 다시 나타나지 않아요. 지도·식권·기록은 지금처럼 쓸 수 있어요."
+msgstr ""
+"Once closed, it won't come back. The map, tickets and logs work just the "
+"same."
+
 #: apps/mobile/app/(flows)/record/new.tsx:153
 #: packages/shared/src/i18n/labels.ts:40
 msgid "한 번이면 충분"
@@ -7400,7 +7273,8 @@ msgstr "Once is enough"
 
 #: apps/mobile/src/components/ShopTasteCard.tsx:54
 msgid "한 번이면 충분 {count}명"
-msgstr "{count, plural, one {# says once is enough} other {# say once is enough}}"
+msgstr ""
+"{count, plural, one {# says once is enough} other {# say once is enough}}"
 
 #: src/screens/RegisterScreen.tsx:350
 msgid "한글, 영문, 숫자 2~12자"
@@ -7454,8 +7328,7 @@ msgid "혼자 편하게"
 msgstr "Comfortable on your own"
 
 #: apps/mobile/app/native/_layout.tsx:147
-#: packages/shared/src/i18n/labels.ts:24
-#: src/App.tsx:296
+#: packages/shared/src/i18n/labels.ts:24 src/App.tsx:296
 msgid "홈"
 msgstr "Home"
 
@@ -7483,8 +7356,7 @@ msgid "확대"
 msgstr "Zoom in"
 
 #: apps/mobile/app/native/my.tsx:910
-#: apps/mobile/src/components/ui/index.tsx:1217
-#: src/screens/MyScreen.tsx:756
+#: apps/mobile/src/components/ui/index.tsx:1217 src/screens/MyScreen.tsx:756
 msgid "확인"
 msgstr "OK"
 
@@ -7518,19 +7390,15 @@ msgid "활동 알림이 없습니다"
 msgstr "No activity notifications"
 
 #: apps/mobile/app/(flows)/settings.tsx:191
-#: apps/mobile/app/(flows)/settings.tsx:315
-#: src/screens/MyScreen.tsx:750
+#: apps/mobile/app/(flows)/settings.tsx:315 src/screens/MyScreen.tsx:750
 #: src/screens/MyScreen.tsx:815
 msgid "회원 탈퇴"
 msgstr "Delete account"
 
 #: apps/mobile/app/(flows)/auth/onboarding.tsx:281
-#: apps/mobile/app/native/index.tsx:369
-#: apps/mobile/app/native/index.tsx:374
-#: src/screens/HomeScreen.tsx:102
-#: src/screens/LoginScreen.tsx:114
-#: src/screens/LoginScreen.tsx:336
-#: src/screens/MyScreen.tsx:443
+#: apps/mobile/app/native/index.tsx:369 apps/mobile/app/native/index.tsx:374
+#: src/screens/HomeScreen.tsx:102 src/screens/LoginScreen.tsx:114
+#: src/screens/LoginScreen.tsx:336 src/screens/MyScreen.tsx:443
 #: src/screens/RegisterScreen.tsx:233
 msgid "회원가입"
 msgstr "Join RAOTA"
@@ -7545,8 +7413,7 @@ msgid "훌륭한 편"
 msgstr "Excellent"
 
 #: apps/mobile/app/(flows)/record/new.tsx:138
-#: apps/mobile/src/domain/lounge.ts:119
-#: packages/shared/src/i18n/labels.ts:39
+#: apps/mobile/src/domain/lounge.ts:119 packages/shared/src/i18n/labels.ts:39
 msgid "훌륭함"
 msgstr "Excellent"
 

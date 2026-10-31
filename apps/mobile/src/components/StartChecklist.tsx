@@ -1,10 +1,10 @@
 import { t } from "@lingui/core/macro"
 import { router } from "expo-router"
 import { Check, ChevronRight, X } from "lucide-react-native"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Pressable, StyleSheet, View } from "react-native"
 
-import { AppText } from "@/src/components/ui"
+import { AppText, ConfirmDialog } from "@/src/components/ui"
 import { openAiCurator } from "@/src/curatorEntry"
 import { useMyBowls } from "@/src/data/hooks"
 import { useLocale } from "@/src/i18n"
@@ -31,6 +31,8 @@ export function StartChecklist() {
   const { currentUser, isHydrated } = useRaota()
   const bowls = useMyBowls()
   const hasBowls = isHydrated && Boolean(currentUser?.isLoggedIn) && bowls.data.length > 0
+  // ✕는 한 번 묻는다. 닫으면 다시 나타나지 않는다(사용자 결정 2026.11.01)
+  const [confirmingClose, setConfirmingClose] = useState(false)
   // 이미 기록이 있는 회원 계정(다시 깔고 로그인 등)이면 첫 기록 칸은 해낸 것으로 친다
   useEffect(() => {
     if (hasBowls) completeOnboardingTask("record")
@@ -51,11 +53,11 @@ export function StartChecklist() {
       <View style={styles.head}>
         <AppText accessibilityRole="header" style={styles.title} variant="bodyStrong">{t`처음이라면 이것부터`}</AppText>
         <Pressable
-          accessibilityHint={t`다시 보이지 않아요`}
+          accessibilityHint={t`닫기 전에 한 번 물어봐요`}
           accessibilityLabel={t`처음 안내 닫기`}
           accessibilityRole="button"
           hitSlop={8}
-          onPress={dismissStartCard}
+          onPress={() => setConfirmingClose(true)}
           style={({ pressed }) => [styles.close, pressed && styles.pressed]}
         >
           <X color={colors.onDark} size={18} />
@@ -94,6 +96,18 @@ export function StartChecklist() {
           </Pressable>
         )
       })}
+      <ConfirmDialog
+        cancelLabel={t`그대로 두기`}
+        confirmLabel={t`닫기`}
+        message={t`한 번 닫으면 다시 나타나지 않아요. 지도·식권·기록은 지금처럼 쓸 수 있어요.`}
+        onCancel={() => setConfirmingClose(false)}
+        onConfirm={() => {
+          setConfirmingClose(false)
+          dismissStartCard()
+        }}
+        title={t`처음 안내를 닫을까요?`}
+        visible={confirmingClose}
+      />
     </View>
   )
 }

@@ -141,7 +141,12 @@ describe("home for a brand-new guest", () => {
     const again = await renderHome()
     expect(await again.findByText("처음이라면 이것부터")).toBeTruthy()
     expect(router.push).not.toHaveBeenCalledWith({ pathname: "/ai-recommend", params: { welcome: "1" } })
+    // ✕는 한 번 묻는다. "그대로 두기"면 남고, "닫기"를 눌러야 사라진다
     await fireEvent.press(again.getByRole("button", { name: "처음 안내 닫기" }))
+    await fireEvent.press(await again.findByRole("button", { name: "그대로 두기" }))
+    expect(again.getByText("처음이라면 이것부터")).toBeTruthy()
+    await fireEvent.press(again.getByRole("button", { name: "처음 안내 닫기" }))
+    await fireEvent.press(await again.findByRole("button", { name: "닫기" }))
     expect(again.queryByText("처음이라면 이것부터")).toBeNull()
     await again.unmount()
     const closed = await renderHome()
