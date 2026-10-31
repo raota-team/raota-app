@@ -236,6 +236,7 @@ describe("record reminder opt-in on the complete screen", () => {
     await waitFor(() => expect(notifications.scheduleNotificationAsync).toHaveBeenCalled())
     expect(await AsyncStorage.getItem(REMINDER_DECISION_KEY)).toBe("accepted")
     await waitFor(() => expect(view.queryByText(prompt)).toBeNull())
+    expect(view.queryByText("알림은 나중에 마이 > 설정에서 켤 수 있어요")).toBeNull()
   })
 
   it("remembers a no without asking the system", async () => {
@@ -243,6 +244,8 @@ describe("record reminder opt-in on the complete screen", () => {
     await fireEvent.press(await view.findByRole("button", { name: "괜찮아요" }, { timeout: promptTimeout }))
 
     await waitFor(() => expect(view.queryByText(prompt)).toBeNull())
+    // 거절하면 버튼 위에 나중에 켜는 곳을 알려 준다
+    expect(view.getByText("알림은 나중에 마이 > 설정에서 켤 수 있어요")).toBeTruthy()
     expect(await AsyncStorage.getItem(REMINDER_DECISION_KEY)).toBe("declined")
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled()
   })

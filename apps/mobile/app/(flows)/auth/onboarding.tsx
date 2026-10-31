@@ -259,7 +259,8 @@ export default function OnboardingScreen() {
           visible={reminder.visible}
         />
 
-        <StickyActionBar>
+        {/* 알림을 거절했으면 버튼 위에 나중에 켜는 곳을 알려 준다 */}
+        <StickyActionBar hint={reminder.declined ? t`알림은 나중에 마이 > 설정에서 켤 수 있어요` : undefined}>
           <Button
             fullWidth
             onPress={() => router.replace("/native")}

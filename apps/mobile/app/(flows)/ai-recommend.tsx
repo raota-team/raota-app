@@ -649,6 +649,8 @@ export default function AIRecommendScreen() {
   const requestingRef = useRef(false)
   const [requesting, setRequesting] = useState(false)
   const [toast, setToast] = useState<MessageDescriptor | null>(null)
+  // 첫 식권에서 위치를 거절했다. 결과가 뜨면 나중에 켜는 곳을 한 번 알려 준다(사용자 결정 2026.11.01)
+  const [locationDeclined, setLocationDeclined] = useState(false)
   // 서버 추천은 하루에 뽑을 수 있는 식권 수가 있다. 옛 서버(식권 없음)이거나 읽지 못하면 null이라 아무것도 막지 않고, 막는 일은 서버가 한다
   const ticketsEnabled = remoteCurator && loggedIn
   const [todayTickets, setTodayTickets] = useState<RemoteTodayTickets | null>(null)
@@ -738,6 +740,8 @@ export default function AIRecommendScreen() {
             (await Location.getLastKnownPositionAsync()) ??
             (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }))
           if (position) here = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+        } else {
+          setLocationDeclined(true)
         }
       } catch {
         // 위치 없이 인기순으로 고른다
@@ -751,6 +755,12 @@ export default function AIRecommendScreen() {
     setResultReady(Promise.resolve(next))
     setStep(next && !reducedMotion ? "loading" : "result")
   }
+
+  useEffect(() => {
+    if (step !== "result" || !locationDeclined) return
+    setLocationDeclined(false)
+    setToast(msg`위치 없이 인기 있는 곳에서 골랐어요. 위치는 나중에 휴대폰 설정에서 켤 수 있어요.`)
+  }, [step, locationDeclined])
 
   // 다음 후보로 바뀔 때도 결과 맨 위(제목)부터 다시 읽게 한다
   useEffect(() => {

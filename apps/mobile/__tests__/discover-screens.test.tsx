@@ -773,8 +773,9 @@ describe("first ticket for a new guest", () => {
     expect(location.requestForegroundPermissionsAsync).not.toHaveBeenCalled()
     await fireEvent.press(view.getByRole("button", { name: "식권 뽑기" }))
     expect(location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1)
-    // 거절해도 인기순으로 식권을 뽑는다
+    // 거절해도 인기순으로 식권을 뽑고, 결과에서 나중에 위치를 켜는 곳을 알려 준다
     expect(track).toHaveBeenCalledWith("onboarding_first_ticket", { soup: "shoyu", nearby: false })
+    expect(await view.findByText("위치 없이 인기 있는 곳에서 골랐어요. 위치는 나중에 휴대폰 설정에서 켤 수 있어요.", {}, { timeout: 8000 })).toBeTruthy()
 
     const skipped = await renderScreen(<AIRecommendScreen />, true)
     await skipped.findByText("오늘 어떤 국물이 당겨요?")

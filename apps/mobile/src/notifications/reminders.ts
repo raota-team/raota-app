@@ -300,6 +300,8 @@ export const ONBOARDING_PROMPT_DELAY = 1200
 export function useRecordReminderPrompt(enabled: boolean, monthCount: number, delayMs = REMINDER_PROMPT_DELAY) {
   const [visible, setVisible] = useState(false)
   const [busy, setBusy] = useState(false)
+  // 안내에서 거절했거나 시스템 권한창에서 막았다. 화면이 "나중에 설정에서 켤 수 있어요"를 보여 준다(사용자 결정 2026.11.01)
+  const [declined, setDeclined] = useState(false)
   const countRef = useRef(monthCount)
   countRef.current = monthCount
 
@@ -321,7 +323,7 @@ export function useRecordReminderPrompt(enabled: boolean, monthCount: number, de
   const accept = useCallback(async () => {
     setBusy(true)
     try {
-      await acceptReminders({ monthCount: countRef.current })
+      if (!(await acceptReminders({ monthCount: countRef.current }))) setDeclined(true)
     } finally {
       setBusy(false)
       setVisible(false)
@@ -330,10 +332,11 @@ export function useRecordReminderPrompt(enabled: boolean, monthCount: number, de
 
   const decline = useCallback(() => {
     setVisible(false)
+    setDeclined(true)
     void declineReminders()
   }, [])
 
-  return { visible, busy, accept, decline }
+  return { visible, busy, declined, accept, decline }
 }
 
 /**
