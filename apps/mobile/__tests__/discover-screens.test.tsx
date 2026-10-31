@@ -728,6 +728,8 @@ describe("first ticket for a new guest", () => {
       const view = await renderScreen(<AIRecommendScreen />, true)
       expect(await view.findByText("오늘 어떤 국물이 당겨요?")).toBeTruthy()
       expect(view.queryByText("1 / 4")).toBeNull()
+      // 처음 켠 앱의 첫 화면은 나가는 길이 "둘러보기만 할게요" 하나다
+      expect(view.queryByRole("button", { name: "뒤로가기" })).toBeNull()
       expect(view.getByRole("button", { name: "국물을 골라주세요" })).toBeDisabled()
       await fireEvent.press(view.getByRole("radio", { name: "돈코츠, 돼지뼈 육수" }))
       await fireEvent.press(view.getByRole("button", { name: "다음" }))

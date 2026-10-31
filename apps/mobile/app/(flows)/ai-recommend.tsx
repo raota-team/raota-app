@@ -692,14 +692,26 @@ export default function AIRecommendScreen() {
     [loggedIn, bowls.data, tasteProfile.data.profile, shopsQuery.data],
   )
 
+  // 처음 켠 앱의 첫 화면은 뒤로 가기가 없다(사용자 결정 2026.11.01). 나가는 길은 오른쪽 위 "둘러보기만 할게요" 하나
+  const welcomeFirstStep = welcome && step === 1
+  // "둘러보기만 할게요"·"홈으로"로 나갈 때는 막지 않는다. 막아 둔 채 router.back()하면 한 단계 올라가기로 바뀐다
+  const [leaving, setLeaving] = useState(false)
+
   // 2~4단계(와 발권 연출)에서 스와이프·하드웨어 뒤로 가기는 플로우를 나가지 않고 한 단계만 올라간다.
-  // 나가면 고른 답이 전부 사라진다. 1단계와 결과 화면은 평소처럼 나간다. usePreventRemove는 iOS 네이티브 스와이프까지 막는다
-  usePreventRemove(step !== 1 && step !== "result", () => {
+  // 나가면 고른 답이 전부 사라진다. 1단계와 결과 화면은 평소처럼 나간다(첫 식권의 1단계는 아무 일도 없다).
+  // usePreventRemove는 iOS 네이티브 스와이프와 안드로이드 뒤로 가기까지 막는다
+  usePreventRemove(!leaving && ((step !== 1 && step !== "result") || welcomeFirstStep), () => {
     if (step === "loading") requestSeq.current += 1
     setStep((current) =>
       current === "loading" ? (welcome ? "where" : 4) : current === "where" ? 1 : typeof current === "number" && current > 1 ? ((current - 1) as Step) : current,
     )
   })
+
+  useEffect(() => {
+    if (!leaving) return
+    if (router.canGoBack()) router.back()
+    else router.replace("/native")
+  }, [leaving])
 
   // 결과(새로 뽑았거나 뽑아 둔 식권)를 한 번이라도 보면 홈 "처음이라면 이것부터"의 식권 칸을 채운다
   useEffect(() => {
@@ -709,8 +721,7 @@ export default function AIRecommendScreen() {
   /** 첫 식권 안내를 나간다. 홈에서 열었으니 홈으로 돌아간다 */
   const leaveWelcome = (skipped: boolean) => {
     if (skipped) track("onboarding_intro_skipped", { step: String(step) })
-    if (router.canGoBack()) router.back()
-    else router.replace("/native")
+    setLeaving(true)
   }
 
   /** "내 주변에서"면 여기서 처음 위치 권한을 묻는다(묻는 이유가 바로 앞 화면에 있다). 거절하거나 못 읽으면 인기순으로 고른다 */
@@ -925,21 +936,25 @@ export default function AIRecommendScreen() {
   return (
     // 아래 고정 버튼이 없는 화면(추천 실패)은 홈 인디케이터 영역을 비워 둔다
     <Screen contentContainerStyle={styles.flex} edges={numericStep || result || step === "where" ? undefined : ALL_EDGES} keyboardAvoiding>
+      {/* 처음 켠 앱의 첫 화면에는 뒤로 가기 버튼이 없다(스와이프는 위 usePreventRemove가 막는다) */}
       <Header
         align="center"
         backLabel={(numericStep && numericStep > 1) || step === "where" ? t`이전 단계로` : t`뒤로가기`}
         // 단계 안에서는 헤더 셰브론도 "이전"과 같이 한 단계만 올라간다.
         // 플로우를 통째로 빠져나가면 고른 답이 전부 사라진다
-        onBack={() =>
-          step === "where"
-            ? setStep(1)
-            : numericStep && numericStep > 1
-              ? setStep((numericStep - 1) as Step)
-              : welcome
-                ? leaveWelcome(step !== "result")
-                : router.canGoBack()
-                  ? router.back()
-                  : router.replace("/native")
+        onBack={
+          welcomeFirstStep
+            ? undefined
+            : () =>
+                step === "where"
+                  ? setStep(1)
+                  : numericStep && numericStep > 1
+                    ? setStep((numericStep - 1) as Step)
+                    : welcome
+                      ? leaveWelcome(step !== "result")
+                      : router.canGoBack()
+                        ? router.back()
+                        : router.replace("/native")
         }
         right={
           welcome ? (
