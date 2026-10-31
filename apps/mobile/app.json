@@ -3,6 +3,17 @@
     "name": "RAOTA",
     "slug": "raota",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e112cd2b-5a21-4cd3-aac8-cd1902cf8269",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      },
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "raota",
@@ -174,6 +185,13 @@
       "zh-Hans": "./locales/zh-Hans.json",
       "ja": "./locales/ja.json",
       "es": "./locales/es.json"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e112cd2b-5a21-4cd3-aac8-cd1902cf8269"
+      }
+    },
+    "owner": "heetea3174"
   }
 }
