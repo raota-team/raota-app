@@ -965,7 +965,8 @@ export default function AIRecommendScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={styles.body}
+        // 첫 식권은 고를 것이 적어 위에 몰리면 아래가 휑하다. 화면 가운데에 둔다(사용자 결정 2026.11.01)
+        contentContainerStyle={[styles.body, welcome && (numericStep || step === "where") && styles.bodyCentered]}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         ref={scrollRef}
@@ -1612,6 +1613,7 @@ const styles = StyleSheet.create({
   navTitle: { fontSize: 18, lineHeight: 24 },
 
   body: { paddingHorizontal: spacing.gutter, paddingTop: spacing.x4, paddingBottom: spacing.x8 },
+  bodyCentered: { flexGrow: 1, justifyContent: "center" },
   progressTrack: {
     height: 4,
     borderRadius: radii.pill,
