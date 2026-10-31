@@ -21,6 +21,12 @@ export type AnalyticsEvent =
   | "log_commented"
   | "content_reported"
   | "author_hidden"
+  // 처음 쓰는 사람 안내(src/onboarding.ts). 첫 식권은 국물·위치 사용 여부만 남긴다
+  | "onboarding_intro_shown"
+  | "onboarding_intro_skipped"
+  | "onboarding_first_ticket"
+  | "onboarding_task_completed"
+  | "onboarding_card_dismissed"
 
 export type AnalyticsProps = Record<string, string | number | boolean | null>
 

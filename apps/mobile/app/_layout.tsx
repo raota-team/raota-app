@@ -10,6 +10,7 @@ import "react-native-reanimated"
 
 import { track } from "@/src/analytics"
 import { startPostHogAnalytics } from "@/src/analytics/posthog"
+import { loadOnboarding } from "@/src/onboarding"
 import { Toast } from "@/src/components/ui"
 import LaunchCover from "@/src/components/LaunchCover"
 import { cancelRecordReminders, configureReminderPresentation, deepLinkToPath } from "@/src/notifications"
@@ -38,6 +39,8 @@ void SplashScreen.preventAutoHideAsync()
 configureReminderPresentation()
 startErrorMonitoring()
 startPostHogAnalytics()
+// 앱 저장소가 상태를 처음 쓰기 전에 읽어야 첫 설치를 가릴 수 있다(src/onboarding.ts)
+void loadOnboarding()
 
 /** 앱 열기(D1·D7 리텐션용). 처음 뜰 때와 백그라운드에서 돌아올 때 한 번씩 */
 function useAppOpenTracking() {

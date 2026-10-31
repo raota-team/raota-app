@@ -9,8 +9,10 @@ import { Image, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } f
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { monthKeyOfDate, seoulMonthKey, seoulToday, type RamenLog, type Shop, type ShopCatalogItem, type TasteIdentity, type TasteProfile } from "@raota/shared"
+import { track } from "@/src/analytics"
 import { isRemote } from "@/src/api/config"
 import { ResilientUriImage } from "@/src/components/ResilientUriImage"
+import { StartChecklist } from "@/src/components/StartChecklist"
 import { AppText, EmptyState, LoadingState } from "@/src/components/ui"
 import { TodayTicketsSheet } from "@/src/components/TodayTicketsSheet"
 import { useAllShops, useLoungeLogs, useMyBowls, useShops, useTasteIdentity, useTasteProfile, useTodayCuration } from "@/src/data/hooks"
@@ -19,6 +21,7 @@ import { rankShopsForAIRecommendation } from "@/src/domain/ai-recommendation"
 import { matchesShopRamenType, nearestShops } from "@/src/domain/shops"
 import { markLaunchReady } from "@/src/launch"
 import { useKnownLocation } from "@/src/location"
+import { markIntroShown, useOnboarding } from "@/src/onboarding"
 import { useRaota } from "@/src/state/RaotaStore"
 import { colors, maxFontScale, pressFade, radii, spacing, touchTarget } from "@/src/theme"
 
@@ -192,7 +195,7 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   useLocale()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  const { currentUser } = useRaota()
+  const { currentUser, isHydrated } = useRaota()
   const shopsQuery = useShops()
   // 가까운 라멘집은 전체 매장(지도와 같은 목록, 앱이 뜰 때 미리 받아 둔다)에서 잰다
   const allShops = useAllShops().data
@@ -202,6 +205,17 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
   const tasteIdentity = useTasteIdentity()
   const origin = useKnownLocation()
   const loggedIn = Boolean(currentUser?.isLoggedIn)
+  // 처음 켠 비회원에게 첫 식권을 한 번 연다(src/onboarding.ts). 회원으로 시작했으면 띄우지 않고 띄운 것으로 친다.
+  // 로그인 상태를 다 읽은 뒤에만 정한다(읽기 전에는 회원인지 모른다)
+  const onboarding = useOnboarding()
+  const introPending = Boolean(onboarding && !onboarding.introShown)
+  useEffect(() => {
+    if (!introPending || !isHydrated) return
+    markIntroShown()
+    if (loggedIn) return
+    track("onboarding_intro_shown")
+    router.push({ pathname: "/ai-recommend", params: { welcome: "1" } })
+  }, [introPending, isHydrated, loggedIn])
   // 오늘 뽑은 AI 식권. 큐레이터에서 뽑고 돌아오면 다시 읽어야 해서 화면에 들어올 때마다 읽는다
   const ticketsEnabled = isRemote("recommendations") && loggedIn
   const [todayTickets, setTodayTickets] = useState<RemoteTodayTickets | null>(null)
@@ -384,6 +398,8 @@ function HomeBody({ onRetry }: { onRetry: () => void }) {
             ) : null}
           </View>
         </View>
+
+        <StartChecklist />
 
         <Pressable
           accessibilityHint={ticketsUsedUp ? t`오늘 뽑은 식권을 다시 볼 수 있어요` : t`국물과 상황을 골라 오늘의 한 그릇을 추천받아요`}
