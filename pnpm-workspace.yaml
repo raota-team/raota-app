@@ -6,9 +6,6 @@ allowBuilds:
   '@parcel/watcher': true
   # 출시 빌드에서 소스맵을 Sentry로 올리는 sentry-cli 바이너리를 받는다
   '@sentry/cli': true
-  # eas-cli가 끌고 오는 선택 의존성. 설치 스크립트 없이도 eas update가 돈다
-  dtrace-provider: false
-  protobufjs: false
   unrs-resolver: true
 minimumReleaseAgeExclude:
   - '@expo/cli@57.0.22'
