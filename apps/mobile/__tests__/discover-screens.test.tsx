@@ -15,7 +15,7 @@ import HomeScreen from "@/app/native/index"
 import ShopDetailScreen from "@/app/(flows)/shop/[shopId]"
 import AIRecommendScreen from "@/app/(flows)/ai-recommend"
 
-const mockParams: { shopId?: string; ticket?: string } = {}
+const mockParams: { shopId?: string; ticket?: string; welcome?: string } = {}
 
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), canGoBack: jest.fn(() => true), navigate: jest.fn(), push: jest.fn(), replace: jest.fn() },
@@ -49,6 +49,7 @@ jest.mock("expo-haptics", () => ({
 jest.mock("expo-location", () => ({
   Accuracy: { Balanced: 3 },
   getForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: "denied" })),
+  requestForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: "denied" })),
   getLastKnownPositionAsync: jest.fn(() => Promise.resolve(null)),
   getCurrentPositionAsync: jest.fn(),
 }))
@@ -117,6 +118,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   delete mockParams.shopId
   delete mockParams.ticket
+  delete mockParams.welcome
 })
 
 describe("home", () => {
@@ -712,6 +714,92 @@ describe("AI curator", () => {
       expect(home.getByRole("button", { name: /에 뽑은 식권, 식권라멘1/ })).toBeTruthy()
     } finally {
       tickets.mockRestore()
+      isRemote.mockImplementation(() => false)
+    }
+  })
+})
+
+describe("first ticket for a new guest", () => {
+  it("lets a guest pick a soup and get an app-picked ticket without logging in, even when AI picks need an account", async () => {
+    jest.useFakeTimers()
+    mockParams.welcome = "1"
+    isRemote.mockImplementation((domain: string) => domain === "recommendations")
+    try {
+      const view = await renderScreen(<AIRecommendScreen />, true)
+      expect(await view.findByText("오늘 어떤 국물이 당겨요?")).toBeTruthy()
+      expect(view.queryByText("1 / 4")).toBeNull()
+      // 처음 켠 앱의 첫 화면은 나가는 길이 "둘러보기만 할게요" 하나다
+      expect(view.queryByRole("button", { name: "뒤로가기" })).toBeNull()
+      expect(view.getByRole("button", { name: "국물을 골라주세요" })).toBeDisabled()
+      await fireEvent.press(view.getByRole("radio", { name: "돈코츠, 돼지뼈 육수" }))
+      await fireEvent.press(view.getByRole("button", { name: "다음" }))
+
+      expect(view.getByText("가까운 곳에서 고를까요?")).toBeTruthy()
+      expect(view.getByRole("radio", { name: "내 주변에서, 가까운 곳부터", checked: true })).toBeTruthy()
+      // 위치 없이 고르면 권한을 묻지 않는다
+      await fireEvent.press(view.getByRole("radio", { name: "인기 있는 곳에서, 위치 없이" }))
+      await fireEvent.press(view.getByRole("button", { name: "식권 뽑기" }))
+      const { requestForegroundPermissionsAsync } = jest.requireMock("expo-location") as { requestForegroundPermissionsAsync: jest.Mock }
+      expect(requestForegroundPermissionsAsync).not.toHaveBeenCalled()
+      expect(track).toHaveBeenCalledWith("onboarding_first_ticket", { soup: "tonkotsu", nearby: false })
+      expect(router.push).not.toHaveBeenCalledWith("/auth/login")
+
+      // 발권 연출은 단계마다 다음 타이머를 건다. 한 단계씩 흘려 보낸다
+      for (let i = 0; i < 12; i += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(600)
+        })
+      }
+      await waitFor(() => expect(view.getByText("첫 식권이 나왔어요")).toBeTruthy())
+      expect(view.getByRole("text", { name: "라멘 종류 돈코츠" })).toBeTruthy()
+      expect(view.getByText("인기 있는 곳")).toBeTruthy()
+      // 앱이 고른 식권이라 AI가 썼다고 하지 않는다
+      expect(view.queryByText("AI가 썼어요")).toBeNull()
+      await fireEvent.press(view.getByRole("button", { name: "로그인하고 AI 식권 받기" }))
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/auth/login", params: { next: "/ai-recommend" } })
+    } finally {
+      isRemote.mockImplementation(() => false)
+      jest.useRealTimers()
+    }
+  })
+
+  it("asks for location only after choosing nearby and leaves for home on skip", async () => {
+    mockParams.welcome = "1"
+    const location = jest.requireMock("expo-location") as { requestForegroundPermissionsAsync: jest.Mock }
+    const view = await renderScreen(<AIRecommendScreen />, true)
+    await view.findByText("오늘 어떤 국물이 당겨요?")
+    await fireEvent.press(view.getByRole("radio", { name: "쇼유, 간장 타레" }))
+    await fireEvent.press(view.getByRole("button", { name: "다음" }))
+    expect(location.requestForegroundPermissionsAsync).not.toHaveBeenCalled()
+    await fireEvent.press(view.getByRole("button", { name: "식권 뽑기" }))
+    expect(location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1)
+    // 거절해도 인기순으로 식권을 뽑는다
+    expect(track).toHaveBeenCalledWith("onboarding_first_ticket", { soup: "shoyu", nearby: false })
+
+    const skipped = await renderScreen(<AIRecommendScreen />, true)
+    await skipped.findByText("오늘 어떤 국물이 당겨요?")
+    await fireEvent.press(skipped.getByRole("button", { name: "둘러보기만 할게요" }))
+    expect(track).toHaveBeenCalledWith("onboarding_intro_skipped", { step: "1" })
+    expect(router.back).toHaveBeenCalled()
+  })
+
+  it("keeps the regular curator for members even with the welcome link", async () => {
+    mockParams.welcome = "1"
+    const view = await renderScreen(<AIRecommendScreen />)
+    expect(await view.findByText("1 / 4")).toBeTruthy()
+    expect(view.queryByRole("button", { name: "둘러보기만 할게요" })).toBeNull()
+  })
+})
+
+describe("AI curator entry for guests", () => {
+  it("sends a guest to login before the steps when AI picks need an account, and back to the curator after", async () => {
+    isRemote.mockImplementation((domain: string) => domain === "recommendations")
+    try {
+      const home = await renderScreen(<HomeScreen />, true)
+      await fireEvent.press(await home.findByRole("button", { name: "오늘 뭐 먹지? AI 라멘 큐레이터" }))
+      expect(router.push).toHaveBeenCalledWith({ pathname: "/auth/login", params: { next: "/ai-recommend" } })
+      expect(router.push).not.toHaveBeenCalledWith("/ai-recommend")
+    } finally {
       isRemote.mockImplementation(() => false)
     }
   })

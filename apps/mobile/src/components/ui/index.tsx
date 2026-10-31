@@ -240,7 +240,7 @@ export function Header({
     ) : null)
   return (
     <View style={[styles.header, style]}>
-      {align === "center" || back ? <View style={styles.headerSide}>{back}</View> : null}
+      {align === "center" || back ? <View style={[styles.headerSide, align === "center" && styles.headerSideCenter]}>{back}</View> : null}
       <View style={[styles.headerTitles, align === "center" && styles.headerTitlesCenter]}>
         <NativeText
           accessibilityRole="header"
@@ -259,7 +259,7 @@ export function Header({
           </AppText>
         ) : null}
       </View>
-      <View style={[styles.headerSide, styles.headerRight]}>{right}</View>
+      <View style={[styles.headerSide, styles.headerRight, align === "center" && styles.headerSideCenter]}>{right}</View>
     </View>
   )
 }
@@ -1282,7 +1282,9 @@ const styles = StyleSheet.create({
   headerSide: { minWidth: touchTarget, minHeight: touchTarget, justifyContent: "center" },
   headerRight: { alignItems: "flex-end" },
   headerTitles: { flex: 1, paddingHorizontal: spacing.x2 },
-  headerTitlesCenter: { alignItems: "center" },
+  // 가운데 제목: 양옆 칸이 남는 폭을 똑같이 나눠 가져서, 오른쪽 글자 버튼이 넓어도 제목이 화면 한가운데에 온다
+  headerSideCenter: { flex: 1 },
+  headerTitlesCenter: { flex: 0, flexShrink: 1, alignItems: "center" },
   sectionHeader: { flexDirection: "row", alignItems: "baseline", gap: spacing.x2, marginBottom: spacing.x3 },
   iconButton: {
     width: touchTarget,

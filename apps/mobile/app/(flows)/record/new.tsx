@@ -58,6 +58,7 @@ import {
   type TasteScores,
 } from "@raota/shared"
 import { track } from "@/src/analytics"
+import { completeOnboardingTask } from "@/src/onboarding"
 import { useLog, useShop, useTasteNoteFields } from "@/src/data"
 import {
   RECORD_NOTE_MAX_LENGTH,
@@ -832,6 +833,7 @@ export default function NewRecordScreen() {
       }
       const log = await actions.createLog(input)
       track("record_saved", { hasPhoto: photos.length > 0, scoresComplete: true })
+      completeOnboardingTask("record")
       actions.clearRecordDraft()
       // 성공 뒤에는 화면이 떠날 때까지 저장을 다시 받지 않는다
       setLeaving({ kind: "complete", logId: log.id })

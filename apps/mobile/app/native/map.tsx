@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { AppText } from "@/src/components/ui"
 import { useShop } from "@/src/data/hooks"
 import { calculateMapClusters, regionToSpread, type MapRegion } from "@/src/domain/map"
-import { colors, radii, spacing, touchTarget } from "@/src/theme"
+import { completeOnboardingTask, useOnboarding } from "@/src/onboarding"
+import { colors, radii, shadows, spacing, touchTarget } from "@/src/theme"
 import {
   MAP_PIN_HEIGHT,
   MapHeader,
@@ -123,6 +124,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   const [headerHeight, setHeaderHeight] = useState(insets.top + spacing.x2 + spacing.x12 + spacing.x16)
   const reducedMotion = useReducedMotion()
   const filters = useMapFilters(origin)
+  const onboarding = useOnboarding()
 
   // 지도를 이미 그렸는지. 그린 뒤에는 시작 위치(initialRegion)를 바꿔도 소용없어 대신 카메라를 옮긴다
   const startResolvedRef = useRef(startResolved)
@@ -237,6 +239,7 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
   // 핀을 고르면 그 가게로 옮기기만 한다. 확대 수준을 바꾸면 묶음이 풀리며 핀들이 자리를 옮겨 고른 곳을 놓친다
   const selectShop = (shopId: string, latitude: number, longitude: number) => {
     setSelectedId(shopId)
+    completeOnboardingTask("map")
     void Haptics.selectionAsync().catch(() => undefined)
     mapRef.current?.animateCameraTo({ latitude, longitude, duration: cameraMs, easing: "EaseOut" })
   }
@@ -464,6 +467,14 @@ function MapBody({ onRetry }: { onRetry: () => void }) {
               <View pointerEvents="box-none" style={styles.quickViewWrap}>
                 <QuickView onClose={() => setSelectedId(null)} shop={selected} />
               </View>
+            ) : onboarding && !onboarding.done.map && !filters.isLoading && markerShops.length > 0 ? (
+              // 처음 쓰는 사람 안내(src/onboarding.ts): 핀을 한 번 누를 때까지 그 자리에서 한 줄로만 알린다
+              <View pointerEvents="none" style={styles.quickViewWrap}>
+                <View accessibilityLiveRegion="polite" accessible style={styles.pinHint}>
+                  <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.pinHintTitle} variant="secondary">{t`핀을 눌러 보세요`}</AppText>
+                  <AppText capScale lineBreakStrategyIOS="hangul-word" style={styles.pinHintText} variant="meta">{t`영업 여부와 거리, 라스트오더가 여기에 나와요.`}</AppText>
+                </View>
+              </View>
             ) : !filters.isLoading && markerShops.length === 0 ? (
               <View pointerEvents="box-none" style={styles.quickViewWrap}>
                 <QuickView shop={null} />
@@ -544,5 +555,8 @@ const styles = StyleSheet.create({
   labelMeasure: { position: "absolute", left: 0, top: 0, opacity: 0 },
   // 퀵뷰와 조작키는 지도 위에서만 그림자를 가진다.
   quickViewWrap: { position: "absolute", left: spacing.x2_5, right: spacing.x2_5, bottom: spacing.x2_5 },
+  pinHint: { backgroundColor: colors.deep, borderRadius: radii.md, paddingVertical: spacing.x3, paddingHorizontal: spacing.x4, ...shadows.modal },
+  pinHintTitle: { color: colors.onDark, fontWeight: "700" },
+  pinHintText: { color: colors.onDark, marginTop: spacing.x0_5 },
   controls: { alignSelf: "flex-end" },
 })
